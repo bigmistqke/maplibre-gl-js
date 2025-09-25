@@ -68873,6 +68873,7 @@ exports.config = performance$1.config;
 exports.removeProtocol = performance$1.removeProtocol;
 exports.AttributionControl = AttributionControl;
 exports.BoxZoomHandler = BoxZoomHandler;
+exports.Camera = Camera;
 exports.CanvasSource = CanvasSource;
 exports.CooperativeGesturesHandler = CooperativeGesturesHandler;
 exports.DoubleClickZoomHandler = DoubleClickZoomHandler;

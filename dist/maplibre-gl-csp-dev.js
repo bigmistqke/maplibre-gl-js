@@ -66371,6 +66371,7 @@ function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadca
 exports.AJAXError = AJAXError;
 exports.AttributionControl = AttributionControl;
 exports.BoxZoomHandler = BoxZoomHandler;
+exports.Camera = Camera;
 exports.CanvasSource = CanvasSource;
 exports.CooperativeGesturesHandler = CooperativeGesturesHandler;
 exports.DoubleClickZoomHandler = DoubleClickZoomHandler;

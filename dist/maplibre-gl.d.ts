@@ -7836,7 +7836,7 @@ export type CameraUpdateTransformFunction = (next: {
 	bearing?: number;
 	elevation?: number;
 };
-declare abstract class Camera extends Evented {
+export declare abstract class Camera extends Evented {
 	transform: ITransform;
 	cameraHelper: ICameraHelper;
 	terrain: Terrain;
