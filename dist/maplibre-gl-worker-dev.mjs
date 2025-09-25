@@ -995,7 +995,7 @@ toRadian: toRadian
 /**
  * Creates a new identity mat2
  *
- * @returns {mat2} a new 2x2 matrix
+ * @returns {mat2<DefaultArrayType>} a new 2x2 matrix
  */
 function create$8() {
   var out = new ARRAY_TYPE(4);
@@ -1012,7 +1012,7 @@ function create$8() {
  * Creates a new mat2 initialized with values from an existing matrix
  *
  * @param {ReadonlyMat2} a matrix to clone
- * @returns {mat2} a new 2x2 matrix
+ * @returns {mat2<DefaultArrayType} a new 2x2 matrix
  */
 function clone$9(a) {
   var out = new ARRAY_TYPE(4);
@@ -1026,9 +1026,10 @@ function clone$9(a) {
 /**
  * Copy the values from one mat2 to another
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the source matrix
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function copy$8(out, a) {
   out[0] = a[0];
@@ -1041,8 +1042,9 @@ function copy$8(out, a) {
 /**
  * Set a mat2 to the identity matrix
  *
- * @param {mat2} out the receiving matrix
- * @returns {mat2} out
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
+ * @returns {Mat2.Result<T>} out
  */
 function identity$5(out) {
   out[0] = 1;
@@ -1059,7 +1061,7 @@ function identity$5(out) {
  * @param {Number} m01 Component in column 0, row 1 position (index 1)
  * @param {Number} m10 Component in column 1, row 0 position (index 2)
  * @param {Number} m11 Component in column 1, row 1 position (index 3)
- * @returns {mat2} out A new 2x2 matrix
+ * @returns {mat2<DefaultArrayType>} out A new 2x2 matrix
  */
 function fromValues$8(m00, m01, m10, m11) {
   var out = new ARRAY_TYPE(4);
@@ -1073,12 +1075,13 @@ function fromValues$8(m00, m01, m10, m11) {
 /**
  * Set the components of a mat2 to the given values
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {Number} m00 Component in column 0, row 0 position (index 0)
  * @param {Number} m01 Component in column 0, row 1 position (index 1)
  * @param {Number} m10 Component in column 1, row 0 position (index 2)
  * @param {Number} m11 Component in column 1, row 1 position (index 3)
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function set$8(out, m00, m01, m10, m11) {
   out[0] = m00;
@@ -1091,9 +1094,10 @@ function set$8(out, m00, m01, m10, m11) {
 /**
  * Transpose the values of a mat2
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the source matrix
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function transpose$2(out, a) {
   // If we are transposing ourselves we can skip a few steps but have to cache
@@ -1114,9 +1118,10 @@ function transpose$2(out, a) {
 /**
  * Inverts a mat2
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the source matrix
- * @returns {mat2 | null} out, or null if source matrix is not invertible
+ * @returns {Mat2.Result<T> | null} out, or null if source matrix is not invertible
  */
 function invert$5(out, a) {
   var a0 = a[0],
@@ -1140,9 +1145,10 @@ function invert$5(out, a) {
 /**
  * Calculates the adjugate of a mat2
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the source matrix
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function adjoint$2(out, a) {
   // Caching this value is necessary if out == a
@@ -1167,10 +1173,11 @@ function determinant$3(a) {
 /**
  * Multiplies two mat2's
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the first operand
  * @param {ReadonlyMat2} b the second operand
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function multiply$8(out, a, b) {
   var a0 = a[0],
@@ -1191,10 +1198,11 @@ function multiply$8(out, a, b) {
 /**
  * Rotates a mat2 by the given angle
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function rotate$4(out, a, rad) {
   var a0 = a[0],
@@ -1213,10 +1221,11 @@ function rotate$4(out, a, rad) {
 /**
  * Scales the mat2 by the dimensions in the given vec2
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the matrix to rotate
  * @param {ReadonlyVec2} v the vec2 to scale the matrix by
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  **/
 function scale$8(out, a, v) {
   var a0 = a[0],
@@ -1239,9 +1248,10 @@ function scale$8(out, a, v) {
  *     mat2.identity(dest);
  *     mat2.rotate(dest, dest, rad);
  *
- * @param {mat2} out mat2 receiving operation result
+ * @template {mat2} T
+ * @param {T} out mat2 receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function fromRotation$4(out, rad) {
   var s = Math.sin(rad);
@@ -1260,9 +1270,10 @@ function fromRotation$4(out, rad) {
  *     mat2.identity(dest);
  *     mat2.scale(dest, dest, vec);
  *
- * @param {mat2} out mat2 receiving operation result
+ * @template {mat2} T
+ * @param {T} out mat2 receiving operation result
  * @param {ReadonlyVec2} v Scaling vector
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function fromScaling$3(out, v) {
   out[0] = v[0];
@@ -1311,10 +1322,11 @@ function LDU(L, D, U, a) {
 /**
  * Adds two mat2's
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the first operand
  * @param {ReadonlyMat2} b the second operand
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function add$8(out, a, b) {
   out[0] = a[0] + b[0];
@@ -1327,10 +1339,11 @@ function add$8(out, a, b) {
 /**
  * Subtracts matrix b from matrix a
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the first operand
  * @param {ReadonlyMat2} b the second operand
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function subtract$6(out, a, b) {
   out[0] = a[0] - b[0];
@@ -1373,10 +1386,11 @@ function equals$9(a, b) {
 /**
  * Multiply each element of the matrix by a scalar.
  *
- * @param {mat2} out the receiving matrix
+ * @template {mat2} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2} a the matrix to scale
  * @param {Number} b amount to scale the matrix's elements by
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function multiplyScalar$3(out, a, b) {
   out[0] = a[0] * b;
@@ -1389,11 +1403,12 @@ function multiplyScalar$3(out, a, b) {
 /**
  * Adds two mat2's after multiplying each element of the second operand by a scalar value.
  *
- * @param {mat2} out the receiving vector
+ * @template {mat2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyMat2} a the first operand
  * @param {ReadonlyMat2} b the second operand
  * @param {Number} scale the amount to scale b's elements by before adding
- * @returns {mat2} out
+ * @returns {Mat2.Result<T>} out
  */
 function multiplyScalarAndAdd$3(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -1467,7 +1482,7 @@ transpose: transpose$2
 /**
  * Creates a new identity mat2d
  *
- * @returns {mat2d} a new 2x3 matrix
+ * @returns {mat2d<DefaultArrayType>} a new 2x3 matrix
  */
 function create$7() {
   var out = new ARRAY_TYPE(6);
@@ -1486,7 +1501,7 @@ function create$7() {
  * Creates a new mat2d initialized with values from an existing matrix
  *
  * @param {ReadonlyMat2d} a matrix to clone
- * @returns {mat2d} a new 2x3 matrix
+ * @returns {mat2d<DefaultArrayType>} a new 2x3 matrix
  */
 function clone$8(a) {
   var out = new ARRAY_TYPE(6);
@@ -1502,9 +1517,10 @@ function clone$8(a) {
 /**
  * Copy the values from one mat2d to another
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the source matrix
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function copy$7(out, a) {
   out[0] = a[0];
@@ -1519,8 +1535,9 @@ function copy$7(out, a) {
 /**
  * Set a mat2d to the identity matrix
  *
- * @param {mat2d} out the receiving matrix
- * @returns {mat2d} out
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
+ * @returns {Mat2d.Result<T>} out
  */
 function identity$4(out) {
   out[0] = 1;
@@ -1541,7 +1558,7 @@ function identity$4(out) {
  * @param {Number} d Component D (index 3)
  * @param {Number} tx Component TX (index 4)
  * @param {Number} ty Component TY (index 5)
- * @returns {mat2d} A new mat2d
+ * @returns {mat2d<DefaultArrayType>} A new mat2d
  */
 function fromValues$7(a, b, c, d, tx, ty) {
   var out = new ARRAY_TYPE(6);
@@ -1557,14 +1574,15 @@ function fromValues$7(a, b, c, d, tx, ty) {
 /**
  * Set the components of a mat2d to the given values
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {Number} a Component A (index 0)
  * @param {Number} b Component B (index 1)
  * @param {Number} c Component C (index 2)
  * @param {Number} d Component D (index 3)
  * @param {Number} tx Component TX (index 4)
  * @param {Number} ty Component TY (index 5)
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function set$7(out, a, b, c, d, tx, ty) {
   out[0] = a;
@@ -1579,9 +1597,10 @@ function set$7(out, a, b, c, d, tx, ty) {
 /**
  * Inverts a mat2d
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the source matrix
- * @returns {mat2d | null} out, or null if source matrix is not invertible
+ * @returns {Mat2d.Result<T> | null} out, or null if source matrix is not invertible
  */
 function invert$4(out, a) {
   var aa = a[0],
@@ -1617,10 +1636,11 @@ function determinant$2(a) {
 /**
  * Multiplies two mat2d's
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the first operand
  * @param {ReadonlyMat2d} b the second operand
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function multiply$7(out, a, b) {
   var a0 = a[0],
@@ -1647,10 +1667,11 @@ function multiply$7(out, a, b) {
 /**
  * Rotates a mat2d by the given angle
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function rotate$3(out, a, rad) {
   var a0 = a[0],
@@ -1673,10 +1694,11 @@ function rotate$3(out, a, rad) {
 /**
  * Scales the mat2d by the dimensions in the given vec2
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the matrix to translate
  * @param {ReadonlyVec2} v the vec2 to scale the matrix by
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  **/
 function scale$7(out, a, v) {
   var a0 = a[0],
@@ -1699,10 +1721,11 @@ function scale$7(out, a, v) {
 /**
  * Translates the mat2d by the dimensions in the given vec2
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the matrix to translate
  * @param {ReadonlyVec2} v the vec2 to translate the matrix by
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  **/
 function translate$4(out, a, v) {
   var a0 = a[0],
@@ -1729,9 +1752,10 @@ function translate$4(out, a, v) {
  *     mat2d.identity(dest);
  *     mat2d.rotate(dest, dest, rad);
  *
- * @param {mat2d} out mat2d receiving operation result
+ * @template {mat2d} T
+ * @param {T} out mat2d receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function fromRotation$3(out, rad) {
   var s = Math.sin(rad),
@@ -1752,9 +1776,10 @@ function fromRotation$3(out, rad) {
  *     mat2d.identity(dest);
  *     mat2d.scale(dest, dest, vec);
  *
- * @param {mat2d} out mat2d receiving operation result
+ * @template {mat2d} T
+ * @param {T} out mat2d receiving operation result
  * @param {ReadonlyVec2} v Scaling vector
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function fromScaling$2(out, v) {
   out[0] = v[0];
@@ -1773,9 +1798,10 @@ function fromScaling$2(out, v) {
  *     mat2d.identity(dest);
  *     mat2d.translate(dest, dest, vec);
  *
- * @param {mat2d} out mat2d receiving operation result
+ * @template {mat2d} T
+ * @param {T} out mat2d receiving operation result
  * @param {ReadonlyVec2} v Translation vector
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function fromTranslation$3(out, v) {
   out[0] = 1;
@@ -1810,10 +1836,11 @@ function frob$2(a) {
 /**
  * Adds two mat2d's
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the first operand
  * @param {ReadonlyMat2d} b the second operand
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function add$7(out, a, b) {
   out[0] = a[0] + b[0];
@@ -1828,10 +1855,11 @@ function add$7(out, a, b) {
 /**
  * Subtracts matrix b from matrix a
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the first operand
  * @param {ReadonlyMat2d} b the second operand
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function subtract$5(out, a, b) {
   out[0] = a[0] - b[0];
@@ -1846,10 +1874,11 @@ function subtract$5(out, a, b) {
 /**
  * Multiply each element of the matrix by a scalar.
  *
- * @param {mat2d} out the receiving matrix
+ * @template {mat2d} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the matrix to scale
  * @param {Number} b amount to scale the matrix's elements by
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function multiplyScalar$2(out, a, b) {
   out[0] = a[0] * b;
@@ -1864,11 +1893,12 @@ function multiplyScalar$2(out, a, b) {
 /**
  * Adds two mat2d's after multiplying each element of the second operand by a scalar value.
  *
- * @param {mat2d} out the receiving vector
+ * @template {mat2d} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyMat2d} a the first operand
  * @param {ReadonlyMat2d} b the second operand
  * @param {Number} scale the amount to scale b's elements by before adding
- * @returns {mat2d} out
+ * @returns {Mat2d.Result<T>} out
  */
 function multiplyScalarAndAdd$2(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -1963,7 +1993,7 @@ translate: translate$4
 /**
  * Creates a new identity mat3
  *
- * @returns {mat3} a new 3x3 matrix
+ * @returns {mat3<DefaultArrayType>} a new 3x3 matrix
  */
 function create$6() {
   var out = new ARRAY_TYPE(9);
@@ -1984,9 +2014,10 @@ function create$6() {
 /**
  * Copies the upper-left 3x3 values into the given mat3.
  *
- * @param {mat3} out the receiving 3x3 matrix
+ * @template {mat3} T
+ * @param {T} out the receiving 3x3 matrix
  * @param {ReadonlyMat4} a   the source 4x4 matrix
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function fromMat4$1(out, a) {
   out[0] = a[0];
@@ -2005,7 +2036,7 @@ function fromMat4$1(out, a) {
  * Creates a new mat3 initialized with values from an existing matrix
  *
  * @param {ReadonlyMat3} a matrix to clone
- * @returns {mat3} a new 3x3 matrix
+ * @returns {mat3<DefaultArrayType>} a new 3x3 matrix
  */
 function clone$7(a) {
   var out = new ARRAY_TYPE(9);
@@ -2024,9 +2055,10 @@ function clone$7(a) {
 /**
  * Copy the values from one mat3 to another
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the source matrix
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function copy$6(out, a) {
   out[0] = a[0];
@@ -2053,7 +2085,7 @@ function copy$6(out, a) {
  * @param {Number} m20 Component in column 2, row 0 position (index 6)
  * @param {Number} m21 Component in column 2, row 1 position (index 7)
  * @param {Number} m22 Component in column 2, row 2 position (index 8)
- * @returns {mat3} A new mat3
+ * @returns {mat3<DefaultArrayType>} A new mat3
  */
 function fromValues$6(m00, m01, m02, m10, m11, m12, m20, m21, m22) {
   var out = new ARRAY_TYPE(9);
@@ -2072,7 +2104,8 @@ function fromValues$6(m00, m01, m02, m10, m11, m12, m20, m21, m22) {
 /**
  * Set the components of a mat3 to the given values
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {Number} m00 Component in column 0, row 0 position (index 0)
  * @param {Number} m01 Component in column 0, row 1 position (index 1)
  * @param {Number} m02 Component in column 0, row 2 position (index 2)
@@ -2082,7 +2115,7 @@ function fromValues$6(m00, m01, m02, m10, m11, m12, m20, m21, m22) {
  * @param {Number} m20 Component in column 2, row 0 position (index 6)
  * @param {Number} m21 Component in column 2, row 1 position (index 7)
  * @param {Number} m22 Component in column 2, row 2 position (index 8)
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function set$6(out, m00, m01, m02, m10, m11, m12, m20, m21, m22) {
   out[0] = m00;
@@ -2100,8 +2133,9 @@ function set$6(out, m00, m01, m02, m10, m11, m12, m20, m21, m22) {
 /**
  * Set a mat3 to the identity matrix
  *
- * @param {mat3} out the receiving matrix
- * @returns {mat3} out
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
+ * @returns {Mat3.Result<T>} out
  */
 function identity$3(out) {
   out[0] = 1;
@@ -2119,9 +2153,10 @@ function identity$3(out) {
 /**
  * Transpose the values of a mat3
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the source matrix
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function transpose$1(out, a) {
   // If we are transposing ourselves we can skip a few steps but have to cache some values
@@ -2152,9 +2187,10 @@ function transpose$1(out, a) {
 /**
  * Inverts a mat3
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the source matrix
- * @returns {mat3 | null} out, or null if source matrix is not invertible
+ * @returns {Mat3.Result<T> | null} out, or null if source matrix is not invertible
  */
 function invert$3(out, a) {
   var a00 = a[0],
@@ -2191,9 +2227,10 @@ function invert$3(out, a) {
 /**
  * Calculates the adjugate of a mat3
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the source matrix
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function adjoint$1(out, a) {
   var a00 = a[0],
@@ -2239,10 +2276,11 @@ function determinant$1(a) {
 /**
  * Multiplies two mat3's
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the first operand
  * @param {ReadonlyMat3} b the second operand
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function multiply$6(out, a, b) {
   var a00 = a[0],
@@ -2278,10 +2316,11 @@ function multiply$6(out, a, b) {
 /**
  * Translate a mat3 by the given vector
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the matrix to translate
  * @param {ReadonlyVec2} v vector to translate by
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function translate$3(out, a, v) {
   var a00 = a[0],
@@ -2310,10 +2349,11 @@ function translate$3(out, a, v) {
 /**
  * Rotates a mat3 by the given angle
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function rotate$2(out, a, rad) {
   var a00 = a[0],
@@ -2342,10 +2382,11 @@ function rotate$2(out, a, rad) {
 /**
  * Scales the mat3 by the dimensions in the given vec2
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the matrix to scale
  * @param {ReadonlyVec2} v the vec2 to scale the matrix by
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  **/
 function scale$6(out, a, v) {
   var x = v[0],
@@ -2369,9 +2410,10 @@ function scale$6(out, a, v) {
  *     mat3.identity(dest);
  *     mat3.translate(dest, dest, vec);
  *
- * @param {mat3} out mat3 receiving operation result
+ * @template {mat3} T
+ * @param {T} out mat3 receiving operation result
  * @param {ReadonlyVec2} v Translation vector
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function fromTranslation$2(out, v) {
   out[0] = 1;
@@ -2393,9 +2435,10 @@ function fromTranslation$2(out, v) {
  *     mat3.identity(dest);
  *     mat3.rotate(dest, dest, rad);
  *
- * @param {mat3} out mat3 receiving operation result
+ * @template {mat3} T
+ * @param {T} out mat3 receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function fromRotation$2(out, rad) {
   var s = Math.sin(rad),
@@ -2419,9 +2462,10 @@ function fromRotation$2(out, rad) {
  *     mat3.identity(dest);
  *     mat3.scale(dest, dest, vec);
  *
- * @param {mat3} out mat3 receiving operation result
+ * @template {mat3} T
+ * @param {T} out mat3 receiving operation result
  * @param {ReadonlyVec2} v Scaling vector
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function fromScaling$1(out, v) {
   out[0] = v[0];
@@ -2439,9 +2483,10 @@ function fromScaling$1(out, v) {
 /**
  * Copies the values from a mat2d into a mat3
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat2d} a the matrix to copy
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  **/
 function fromMat2d(out, a) {
   out[0] = a[0];
@@ -2459,10 +2504,11 @@ function fromMat2d(out, a) {
 /**
  * Calculates a 3x3 matrix from the given quaternion
  *
- * @param {mat3} out mat3 receiving operation result
+ * @template {mat3} T
+ * @param {T} out mat3 receiving operation result
  * @param {ReadonlyQuat} q Quaternion to create matrix from
  *
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function fromQuat$1(out, q) {
   var x = q[0],
@@ -2496,10 +2542,11 @@ function fromQuat$1(out, q) {
 /**
  * Calculates a 3x3 normal matrix (transpose inverse) from the 4x4 matrix
  *
- * @param {mat3} out mat3 receiving operation result
+ * @template {mat3} T
+ * @param {T} out mat3 receiving operation result
  * @param {ReadonlyMat4} a Mat4 to derive the normal matrix from
  *
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function normalFromMat4(out, a) {
   var a00 = a[0],
@@ -2552,10 +2599,11 @@ function normalFromMat4(out, a) {
 /**
  * Generates a 2D projection matrix with the given bounds
  *
- * @param {mat3} out mat3 frustum matrix will be written into
+ * @template {mat3} T
+ * @param {T} out mat3 frustum matrix will be written into
  * @param {number} width Width of your gl context
  * @param {number} height Height of gl context
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function projection$1(out, width, height) {
   out[0] = 2 / width;
@@ -2593,10 +2641,11 @@ function frob$1(a) {
 /**
  * Adds two mat3's
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the first operand
  * @param {ReadonlyMat3} b the second operand
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function add$6(out, a, b) {
   out[0] = a[0] + b[0];
@@ -2614,10 +2663,11 @@ function add$6(out, a, b) {
 /**
  * Subtracts matrix b from matrix a
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the first operand
  * @param {ReadonlyMat3} b the second operand
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function subtract$4(out, a, b) {
   out[0] = a[0] - b[0];
@@ -2635,10 +2685,11 @@ function subtract$4(out, a, b) {
 /**
  * Multiply each element of the matrix by a scalar.
  *
- * @param {mat3} out the receiving matrix
+ * @template {mat3} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat3} a the matrix to scale
  * @param {Number} b amount to scale the matrix's elements by
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function multiplyScalar$1(out, a, b) {
   out[0] = a[0] * b;
@@ -2656,11 +2707,12 @@ function multiplyScalar$1(out, a, b) {
 /**
  * Adds two mat3's after multiplying each element of the second operand by a scalar value.
  *
- * @param {mat3} out the receiving vector
+ * @template {mat3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyMat3} a the first operand
  * @param {ReadonlyMat3} b the second operand
  * @param {Number} scale the amount to scale b's elements by before adding
- * @returns {mat3} out
+ * @returns {Mat3.Result<T>} out
  */
 function multiplyScalarAndAdd$1(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -2771,7 +2823,7 @@ transpose: transpose$1
 /**
  * Creates a new identity mat4
  *
- * @returns {mat4} a new 4x4 matrix
+ * @returns {mat4<DefaultArrayType>} a new 4x4 matrix
  */
 function create$5() {
   var out = new ARRAY_TYPE(16);
@@ -2800,7 +2852,7 @@ function create$5() {
  * Creates a new mat4 initialized with values from an existing matrix
  *
  * @param {ReadonlyMat4} a matrix to clone
- * @returns {mat4} a new 4x4 matrix
+ * @returns {mat4<DefaultArrayType>} a new 4x4 matrix
  */
 function clone$6(a) {
   var out = new ARRAY_TYPE(16);
@@ -2826,9 +2878,10 @@ function clone$6(a) {
 /**
  * Copy the values from one mat4 to another
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the source matrix
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function copy$5(out, a) {
   out[0] = a[0];
@@ -2869,7 +2922,7 @@ function copy$5(out, a) {
  * @param {Number} m31 Component in column 3, row 1 position (index 13)
  * @param {Number} m32 Component in column 3, row 2 position (index 14)
  * @param {Number} m33 Component in column 3, row 3 position (index 15)
- * @returns {mat4} A new mat4
+ * @returns {mat4<DefaultArrayType>} A new mat4
  */
 function fromValues$5(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33) {
   var out = new ARRAY_TYPE(16);
@@ -2895,7 +2948,8 @@ function fromValues$5(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23
 /**
  * Set the components of a mat4 to the given values
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {Number} m00 Component in column 0, row 0 position (index 0)
  * @param {Number} m01 Component in column 0, row 1 position (index 1)
  * @param {Number} m02 Component in column 0, row 2 position (index 2)
@@ -2912,7 +2966,7 @@ function fromValues$5(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23
  * @param {Number} m31 Component in column 3, row 1 position (index 13)
  * @param {Number} m32 Component in column 3, row 2 position (index 14)
  * @param {Number} m33 Component in column 3, row 3 position (index 15)
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function set$5(out, m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33) {
   out[0] = m00;
@@ -2937,8 +2991,9 @@ function set$5(out, m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, 
 /**
  * Set a mat4 to the identity matrix
  *
- * @param {mat4} out the receiving matrix
- * @returns {mat4} out
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
+ * @returns {Mat4.Result<T>} out
  */
 function identity$2(out) {
   out[0] = 1;
@@ -2963,9 +3018,10 @@ function identity$2(out) {
 /**
  * Transpose the values of a mat4
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the source matrix
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function transpose(out, a) {
   // If we are transposing ourselves we can skip a few steps but have to cache some values
@@ -3012,9 +3068,10 @@ function transpose(out, a) {
 /**
  * Inverts a mat4
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the source matrix
- * @returns {mat4 | null} out, or null if source matrix is not invertible
+ * @returns {Mat4.Result<T> | null} out, or null if source matrix is not invertible
  */
 function invert$2(out, a) {
   var a00 = a[0],
@@ -3074,9 +3131,10 @@ function invert$2(out, a) {
 /**
  * Calculates the adjugate of a mat4
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the source matrix
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function adjoint(out, a) {
   var a00 = a[0],
@@ -3167,10 +3225,11 @@ function determinant(a) {
 /**
  * Multiplies two mat4s
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the first operand
  * @param {ReadonlyMat4} b the second operand
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function multiply$5(out, a, b) {
   var a00 = a[0],
@@ -3229,10 +3288,11 @@ function multiply$5(out, a, b) {
 /**
  * Translate a mat4 by the given vector
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to translate
  * @param {ReadonlyVec3} v vector to translate by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function translate$2(out, a, v) {
   var x = v[0],
@@ -3282,10 +3342,11 @@ function translate$2(out, a, v) {
 /**
  * Scales the mat4 by the dimensions in the given vec3 not using vectorization
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to scale
  * @param {ReadonlyVec3} v the vec3 to scale the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  **/
 function scale$5(out, a, v) {
   var x = v[0],
@@ -3313,11 +3374,12 @@ function scale$5(out, a, v) {
 /**
  * Rotates a mat4 by the given angle around the given axis
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
  * @param {ReadonlyVec3} axis the axis to rotate around
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function rotate$1(out, a, rad, axis) {
   var x = axis[0],
@@ -3391,10 +3453,11 @@ function rotate$1(out, a, rad, axis) {
 /**
  * Rotates a matrix by the given angle around the X axis
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function rotateX$3(out, a, rad) {
   var s = Math.sin(rad);
@@ -3434,10 +3497,11 @@ function rotateX$3(out, a, rad) {
 /**
  * Rotates a matrix by the given angle around the Y axis
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function rotateY$3(out, a, rad) {
   var s = Math.sin(rad);
@@ -3477,10 +3541,11 @@ function rotateY$3(out, a, rad) {
 /**
  * Rotates a matrix by the given angle around the Z axis
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to rotate
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function rotateZ$3(out, a, rad) {
   var s = Math.sin(rad);
@@ -3524,9 +3589,10 @@ function rotateZ$3(out, a, rad) {
  *     mat4.identity(dest);
  *     mat4.translate(dest, dest, vec);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {ReadonlyVec3} v Translation vector
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromTranslation$1(out, v) {
   out[0] = 1;
@@ -3555,9 +3621,10 @@ function fromTranslation$1(out, v) {
  *     mat4.identity(dest);
  *     mat4.scale(dest, dest, vec);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {ReadonlyVec3} v Scaling vector
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromScaling(out, v) {
   out[0] = v[0];
@@ -3586,10 +3653,11 @@ function fromScaling(out, v) {
  *     mat4.identity(dest);
  *     mat4.rotate(dest, dest, rad, axis);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
  * @param {ReadonlyVec3} axis the axis to rotate around
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromRotation$1(out, rad, axis) {
   var x = axis[0],
@@ -3635,9 +3703,10 @@ function fromRotation$1(out, rad, axis) {
  *     mat4.identity(dest);
  *     mat4.rotateX(dest, dest, rad);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromXRotation(out, rad) {
   var s = Math.sin(rad);
@@ -3670,9 +3739,10 @@ function fromXRotation(out, rad) {
  *     mat4.identity(dest);
  *     mat4.rotateY(dest, dest, rad);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromYRotation(out, rad) {
   var s = Math.sin(rad);
@@ -3705,9 +3775,10 @@ function fromYRotation(out, rad) {
  *     mat4.identity(dest);
  *     mat4.rotateZ(dest, dest, rad);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {Number} rad the angle to rotate the matrix by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromZRotation(out, rad) {
   var s = Math.sin(rad);
@@ -3743,10 +3814,11 @@ function fromZRotation(out, rad) {
  *     mat4.fromQuat(quatMat, quat);
  *     mat4.multiply(dest, dest, quatMat);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {quat} q Rotation quaternion
  * @param {ReadonlyVec3} v Translation vector
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromRotationTranslation$1(out, q, v) {
   // Quaternion math
@@ -3790,7 +3862,7 @@ function fromRotationTranslation$1(out, q, v) {
  *
  * @param {mat4} out Matrix
  * @param {ReadonlyQuat2} a Dual Quaternion
- * @returns {mat4} mat4 receiving operation result
+ * @returns {mat4<DefaultArrayType>} mat4 receiving operation result
  */
 function fromQuat2(out, a) {
   var translation = new ARRAY_TYPE(3);
@@ -3916,11 +3988,12 @@ function getRotation(out, mat) {
 /**
  * Decomposes a transformation matrix into its rotation, translation
  * and scale components. Returns only the rotation component
+ * 
  * @param  {quat} out_r Quaternion to receive the rotation component
  * @param  {vec3} out_t Vector to receive the translation vector
  * @param  {vec3} out_s Vector to receive the scaling factor
  * @param  {ReadonlyMat4} mat Matrix to be decomposed (input)
- * @returns {quat} out_r
+ * @returns {quat<DefaultArrayType>} out_r
  */
 function decompose(out_r, out_t, out_s, mat) {
   out_t[0] = mat[12];
@@ -3991,11 +4064,12 @@ function decompose(out_r, out_t, out_s, mat) {
  *     mat4.multiply(dest, dest, quatMat);
  *     mat4.scale(dest, dest, scale)
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {quat} q Rotation quaternion
  * @param {ReadonlyVec3} v Translation vector
  * @param {ReadonlyVec3} s Scaling vector
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromRotationTranslationScale(out, q, v, s) {
   // Quaternion math
@@ -4050,12 +4124,13 @@ function fromRotationTranslationScale(out, q, v, s) {
  *     mat4.scale(dest, dest, scale)
  *     mat4.translate(dest, dest, negativeOrigin);
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {quat} q Rotation quaternion
  * @param {ReadonlyVec3} v Translation vector
  * @param {ReadonlyVec3} s Scaling vector
  * @param {ReadonlyVec3} o The origin vector around which to scale and rotate
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromRotationTranslationScaleOrigin(out, q, v, s, o) {
   // Quaternion math
@@ -4112,10 +4187,11 @@ function fromRotationTranslationScaleOrigin(out, q, v, s, o) {
 /**
  * Calculates a 4x4 matrix from the given quaternion
  *
- * @param {mat4} out mat4 receiving operation result
+ * @template {mat4} T
+ * @param {T} out mat4 receiving operation result
  * @param {ReadonlyQuat} q Quaternion to create matrix from
  *
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function fromQuat(out, q) {
   var x = q[0],
@@ -4156,6 +4232,7 @@ function fromQuat(out, q) {
 /**
  * Generates a frustum matrix with the given bounds
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {Number} left Left bound of the frustum
  * @param {Number} right Right bound of the frustum
@@ -4163,7 +4240,7 @@ function fromQuat(out, q) {
  * @param {Number} top Top bound of the frustum
  * @param {Number} near Near bound of the frustum
  * @param {Number} far Far bound of the frustum
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function frustum(out, left, right, bottom, top, near, far) {
   var rl = 1 / (right - left);
@@ -4194,12 +4271,13 @@ function frustum(out, left, right, bottom, top, near, far) {
  * which matches WebGL/OpenGL's clip volume.
  * Passing null/undefined/no value for far will generate infinite projection matrix.
  *
- * @param {mat4} out mat4 frustum matrix will be written into
+ * @template {mat4} T
+ * @param {T} out mat4 frustum matrix will be written into
  * @param {number} fovy Vertical field of view in radians
  * @param {number} aspect Aspect ratio. typically viewport width/height
  * @param {number} near Near bound of the frustum
  * @param {number} far Far bound of the frustum, can be null or Infinity
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function perspectiveNO(out, fovy, aspect, near, far) {
   var f = 1.0 / Math.tan(fovy / 2);
@@ -4240,12 +4318,13 @@ var perspective = perspectiveNO;
  * which matches WebGPU/Vulkan/DirectX/Metal's clip volume.
  * Passing null/undefined/no value for far will generate infinite projection matrix.
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {number} fovy Vertical field of view in radians
  * @param {number} aspect Aspect ratio. typically viewport width/height
  * @param {number} near Near bound of the frustum
  * @param {number} far Far bound of the frustum, can be null or Infinity
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function perspectiveZO(out, fovy, aspect, near, far) {
   var f = 1.0 / Math.tan(fovy / 2);
@@ -4279,11 +4358,12 @@ function perspectiveZO(out, fovy, aspect, near, far) {
  * This is primarily useful for generating projection matrices to be used
  * with the still experiemental WebVR API.
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {Object} fov Object containing the following values: upDegrees, downDegrees, leftDegrees, rightDegrees
  * @param {number} near Near bound of the frustum
  * @param {number} far Far bound of the frustum
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function perspectiveFromFieldOfView(out, fov, near, far) {
   var upTan = Math.tan(fov.upDegrees * Math.PI / 180.0);
@@ -4316,6 +4396,7 @@ function perspectiveFromFieldOfView(out, fov, near, far) {
  * The near/far clip planes correspond to a normalized device coordinate Z range of [-1, 1],
  * which matches WebGL/OpenGL's clip volume.
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {number} left Left bound of the frustum
  * @param {number} right Right bound of the frustum
@@ -4323,7 +4404,7 @@ function perspectiveFromFieldOfView(out, fov, near, far) {
  * @param {number} top Top bound of the frustum
  * @param {number} near Near bound of the frustum
  * @param {number} far Far bound of the frustum
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function orthoNO(out, left, right, bottom, top, near, far) {
   var lr = 1 / (left - right);
@@ -4359,6 +4440,7 @@ var ortho = orthoNO;
  * The near/far clip planes correspond to a normalized device coordinate Z range of [0, 1],
  * which matches WebGPU/Vulkan/DirectX/Metal's clip volume.
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {number} left Left bound of the frustum
  * @param {number} right Right bound of the frustum
@@ -4366,7 +4448,7 @@ var ortho = orthoNO;
  * @param {number} top Top bound of the frustum
  * @param {number} near Near bound of the frustum
  * @param {number} far Far bound of the frustum
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function orthoZO(out, left, right, bottom, top, near, far) {
   var lr = 1 / (left - right);
@@ -4395,11 +4477,12 @@ function orthoZO(out, left, right, bottom, top, near, far) {
  * Generates a look-at matrix with the given eye position, focal point, and up axis.
  * If you want a matrix that actually makes an object look at another object, you should use targetTo instead.
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {ReadonlyVec3} eye Position of the viewer
  * @param {ReadonlyVec3} center Point the viewer is looking at
  * @param {ReadonlyVec3} up vec3 pointing up
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function lookAt(out, eye, center, up) {
   var x0, x1, x2, y0, y1, y2, z0, z1, z2, len;
@@ -4472,11 +4555,12 @@ function lookAt(out, eye, center, up) {
 /**
  * Generates a matrix that makes something look at something else.
  *
+ * @template {mat4} T
  * @param {mat4} out mat4 frustum matrix will be written into
  * @param {ReadonlyVec3} eye Position of the viewer
  * @param {ReadonlyVec3} target Point the viewer is looking at
  * @param {ReadonlyVec3} up vec3 pointing up
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function targetTo(out, eye, target, up) {
   var eyex = eye[0],
@@ -4547,10 +4631,11 @@ function frob(a) {
 /**
  * Adds two mat4's
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the first operand
  * @param {ReadonlyMat4} b the second operand
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function add$5(out, a, b) {
   out[0] = a[0] + b[0];
@@ -4575,10 +4660,11 @@ function add$5(out, a, b) {
 /**
  * Subtracts matrix b from matrix a
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the first operand
  * @param {ReadonlyMat4} b the second operand
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function subtract$3(out, a, b) {
   out[0] = a[0] - b[0];
@@ -4603,10 +4689,11 @@ function subtract$3(out, a, b) {
 /**
  * Multiply each element of the matrix by a scalar.
  *
- * @param {mat4} out the receiving matrix
+ * @template {mat4} T
+ * @param {T} out the receiving matrix
  * @param {ReadonlyMat4} a the matrix to scale
  * @param {Number} b amount to scale the matrix's elements by
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function multiplyScalar(out, a, b) {
   out[0] = a[0] * b;
@@ -4631,11 +4718,12 @@ function multiplyScalar(out, a, b) {
 /**
  * Adds two mat4's after multiplying each element of the second operand by a scalar value.
  *
- * @param {mat4} out the receiving vector
+ * @template {mat4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyMat4} a the first operand
  * @param {ReadonlyMat4} b the second operand
  * @param {Number} scale the amount to scale b's elements by before adding
- * @returns {mat4} out
+ * @returns {Mat4.Result<T>} out
  */
 function multiplyScalarAndAdd(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -4787,7 +4875,7 @@ transpose: transpose
 /**
  * Creates a new, empty vec3
  *
- * @returns {vec3} a new 3D vector
+ * @returns {vec3<DefaultArrayType>} a new 3D vector
  */
 function create$4() {
   var out = new ARRAY_TYPE(3);
@@ -4803,7 +4891,7 @@ function create$4() {
  * Creates a new vec3 initialized with values from an existing vector
  *
  * @param {ReadonlyVec3} a vector to clone
- * @returns {vec3} a new 3D vector
+ * @returns {vec3<DefaultArrayType>} a new 3D vector
  */
 function clone$5(a) {
   var out = new ARRAY_TYPE(3);
@@ -4832,7 +4920,7 @@ function length$4(a) {
  * @param {Number} x X component
  * @param {Number} y Y component
  * @param {Number} z Z component
- * @returns {vec3} a new 3D vector
+ * @returns {vec3<DefaultArrayType>} a new 3D vector
  */
 function fromValues$4(x, y, z) {
   var out = new ARRAY_TYPE(3);
@@ -4845,9 +4933,10 @@ function fromValues$4(x, y, z) {
 /**
  * Copy the values from one vec3 to another
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the source vector
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function copy$4(out, a) {
   out[0] = a[0];
@@ -4859,11 +4948,12 @@ function copy$4(out, a) {
 /**
  * Set the components of a vec3 to the given values
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {Number} x X component
  * @param {Number} y Y component
  * @param {Number} z Z component
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function set$4(out, x, y, z) {
   out[0] = x;
@@ -4875,10 +4965,11 @@ function set$4(out, x, y, z) {
 /**
  * Adds two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function add$4(out, a, b) {
   out[0] = a[0] + b[0];
@@ -4890,10 +4981,11 @@ function add$4(out, a, b) {
 /**
  * Subtracts vector b from vector a
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function subtract$2(out, a, b) {
   out[0] = a[0] - b[0];
@@ -4905,10 +4997,11 @@ function subtract$2(out, a, b) {
 /**
  * Multiplies two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function multiply$4(out, a, b) {
   out[0] = a[0] * b[0];
@@ -4920,10 +5013,11 @@ function multiply$4(out, a, b) {
 /**
  * Divides two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function divide$2(out, a, b) {
   out[0] = a[0] / b[0];
@@ -4935,9 +5029,10 @@ function divide$2(out, a, b) {
 /**
  * Math.ceil the components of a vec3
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a vector to ceil
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function ceil$2(out, a) {
   out[0] = Math.ceil(a[0]);
@@ -4949,9 +5044,10 @@ function ceil$2(out, a) {
 /**
  * Math.floor the components of a vec3
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a vector to floor
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function floor$2(out, a) {
   out[0] = Math.floor(a[0]);
@@ -4963,10 +5059,11 @@ function floor$2(out, a) {
 /**
  * Returns the minimum of two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function min$2(out, a, b) {
   out[0] = Math.min(a[0], b[0]);
@@ -4978,10 +5075,11 @@ function min$2(out, a, b) {
 /**
  * Returns the maximum of two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function max$2(out, a, b) {
   out[0] = Math.max(a[0], b[0]);
@@ -4993,9 +5091,10 @@ function max$2(out, a, b) {
 /**
  * symmetric round the components of a vec3
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a vector to round
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function round$2(out, a) {
   out[0] = round$3(a[0]);
@@ -5007,10 +5106,11 @@ function round$2(out, a) {
 /**
  * Scales a vec3 by a scalar number
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the vector to scale
  * @param {Number} b amount to scale the vector by
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function scale$4(out, a, b) {
   out[0] = a[0] * b;
@@ -5022,11 +5122,12 @@ function scale$4(out, a, b) {
 /**
  * Adds two vec3's after scaling the second operand by a scalar value
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
  * @param {Number} scale the amount to scale b by before adding
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function scaleAndAdd$2(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -5079,9 +5180,10 @@ function squaredLength$4(a) {
 /**
  * Negates the components of a vec3
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a vector to negate
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function negate$2(out, a) {
   out[0] = -a[0];
@@ -5093,9 +5195,10 @@ function negate$2(out, a) {
 /**
  * Returns the inverse of the components of a vec3
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a vector to invert
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function inverse$2(out, a) {
   out[0] = 1.0 / a[0];
@@ -5107,9 +5210,10 @@ function inverse$2(out, a) {
 /**
  * Normalize a vec3
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a vector to normalize
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function normalize$4(out, a) {
   var x = a[0];
@@ -5140,10 +5244,11 @@ function dot$5(a, b) {
 /**
  * Computes the cross product of two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function cross$2(out, a, b) {
   var ax = a[0],
@@ -5161,11 +5266,12 @@ function cross$2(out, a, b) {
 /**
  * Performs a linear interpolation between two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function lerp$5(out, a, b, t) {
   var ax = a[0];
@@ -5180,11 +5286,12 @@ function lerp$5(out, a, b, t) {
 /**
  * Performs a spherical linear interpolation between two vec3's
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function slerp$1(out, a, b, t) {
   var angle = Math.acos(Math.min(Math.max(dot$5(a, b), -1), 1));
@@ -5200,13 +5307,14 @@ function slerp$1(out, a, b, t) {
 /**
  * Performs a hermite interpolation with two control points
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
  * @param {ReadonlyVec3} c the third operand
  * @param {ReadonlyVec3} d the fourth operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function hermite(out, a, b, c, d, t) {
   var factorTimes2 = t * t;
@@ -5223,13 +5331,14 @@ function hermite(out, a, b, c, d, t) {
 /**
  * Performs a bezier interpolation with two control points
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the first operand
  * @param {ReadonlyVec3} b the second operand
  * @param {ReadonlyVec3} c the third operand
  * @param {ReadonlyVec3} d the fourth operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function bezier$1(out, a, b, c, d, t) {
   var inverseFactor = 1 - t;
@@ -5248,9 +5357,10 @@ function bezier$1(out, a, b, c, d, t) {
 /**
  * Generates a random vector with the given scale
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {Number} [scale] Length of the resulting vector. If omitted, a unit vector will be returned
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function random$3(out, scale) {
   scale = scale === undefined ? 1.0 : scale;
@@ -5267,10 +5377,11 @@ function random$3(out, scale) {
  * Transforms the vec3 with a mat4.
  * 4th vector component is implicitly '1'
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the vector to transform
  * @param {ReadonlyMat4} m matrix to transform with
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function transformMat4$2(out, a, m) {
   var x = a[0],
@@ -5287,10 +5398,11 @@ function transformMat4$2(out, a, m) {
 /**
  * Transforms the vec3 with a mat3.
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the vector to transform
  * @param {ReadonlyMat3} m the 3x3 matrix to transform with
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function transformMat3$1(out, a, m) {
   var x = a[0],
@@ -5306,10 +5418,11 @@ function transformMat3$1(out, a, m) {
  * Transforms the vec3 with a quat
  * Can also be used for dual quaternions. (Multiply it with the real part)
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec3} a the vector to transform
  * @param {ReadonlyQuat} q normalized quaternion to transform with
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function transformQuat$1(out, a, q) {
   // Fast Vector Rotation using Quaternions by Robert Eisele
@@ -5342,11 +5455,12 @@ function transformQuat$1(out, a, q) {
 
 /**
  * Rotate a 3D vector around the x-axis
- * @param {vec3} out The receiving vec3
+ * @template {vec3} T
+ * @param {T} out The receiving vec3
  * @param {ReadonlyVec3} a The vec3 point to rotate
  * @param {ReadonlyVec3} b The origin of the rotation
  * @param {Number} rad The angle of rotation in radians
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function rotateX$2(out, a, b, rad) {
   var p = [],
@@ -5370,11 +5484,12 @@ function rotateX$2(out, a, b, rad) {
 
 /**
  * Rotate a 3D vector around the y-axis
- * @param {vec3} out The receiving vec3
+ * @template {vec3} T
+ * @param {T} out The receiving vec3
  * @param {ReadonlyVec3} a The vec3 point to rotate
  * @param {ReadonlyVec3} b The origin of the rotation
  * @param {Number} rad The angle of rotation in radians
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function rotateY$2(out, a, b, rad) {
   var p = [],
@@ -5398,11 +5513,12 @@ function rotateY$2(out, a, b, rad) {
 
 /**
  * Rotate a 3D vector around the z-axis
- * @param {vec3} out The receiving vec3
+ * @template {vec3} T
+ * @param {T} out The receiving vec3
  * @param {ReadonlyVec3} a The vec3 point to rotate
  * @param {ReadonlyVec3} b The origin of the rotation
  * @param {Number} rad The angle of rotation in radians
- * @returns {vec3} out
+ * @returns {Vec3.Result<T>} out
  */
 function rotateZ$2(out, a, b, rad) {
   var p = [],
@@ -5445,8 +5561,9 @@ function angle$1(a, b) {
 /**
  * Set the components of a vec3 to zero
  *
- * @param {vec3} out the receiving vector
- * @returns {vec3} out
+ * @template {vec3} T
+ * @param {T} out the receiving vector
+ * @returns {Vec3.Result<T>} out
  */
 function zero$2(out) {
   out[0] = 0.0;
@@ -5631,12 +5748,12 @@ zero: zero$2
 /**
  * 4 Dimensional Vector
  * @module vec4
- */
+*/
 
 /**
  * Creates a new, empty vec4
  *
- * @returns {vec4} a new 4D vector
+ * @returns {vec4<DefaultArrayType>} a new 4D vector
  */
 function create$3() {
   var out = new ARRAY_TYPE(4);
@@ -5653,7 +5770,7 @@ function create$3() {
  * Creates a new vec4 initialized with values from an existing vector
  *
  * @param {ReadonlyVec4} a vector to clone
- * @returns {vec4} a new 4D vector
+ * @returns {vec4<DefaultArrayType>} a new 4D vector
  */
 function clone$4(a) {
   var out = new ARRAY_TYPE(4);
@@ -5671,7 +5788,7 @@ function clone$4(a) {
  * @param {Number} y Y component
  * @param {Number} z Z component
  * @param {Number} w W component
- * @returns {vec4} a new 4D vector
+ * @returns {vec4<DefaultArrayType>} a new 4D vector
  */
 function fromValues$3(x, y, z, w) {
   var out = new ARRAY_TYPE(4);
@@ -5685,9 +5802,10 @@ function fromValues$3(x, y, z, w) {
 /**
  * Copy the values from one vec4 to another
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the source vector
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function copy$3(out, a) {
   out[0] = a[0];
@@ -5700,12 +5818,13 @@ function copy$3(out, a) {
 /**
  * Set the components of a vec4 to the given values
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {Number} x X component
  * @param {Number} y Y component
  * @param {Number} z Z component
  * @param {Number} w W component
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function set$3(out, x, y, z, w) {
   out[0] = x;
@@ -5718,10 +5837,11 @@ function set$3(out, x, y, z, w) {
 /**
  * Adds two vec4's
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function add$3(out, a, b) {
   out[0] = a[0] + b[0];
@@ -5734,10 +5854,11 @@ function add$3(out, a, b) {
 /**
  * Subtracts vector b from vector a
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function subtract$1(out, a, b) {
   out[0] = a[0] - b[0];
@@ -5750,10 +5871,11 @@ function subtract$1(out, a, b) {
 /**
  * Multiplies two vec4's
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function multiply$3(out, a, b) {
   out[0] = a[0] * b[0];
@@ -5766,10 +5888,11 @@ function multiply$3(out, a, b) {
 /**
  * Divides two vec4's
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function divide$1(out, a, b) {
   out[0] = a[0] / b[0];
@@ -5782,9 +5905,10 @@ function divide$1(out, a, b) {
 /**
  * Math.ceil the components of a vec4
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a vector to ceil
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function ceil$1(out, a) {
   out[0] = Math.ceil(a[0]);
@@ -5797,9 +5921,10 @@ function ceil$1(out, a) {
 /**
  * Math.floor the components of a vec4
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a vector to floor
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function floor$1(out, a) {
   out[0] = Math.floor(a[0]);
@@ -5812,10 +5937,11 @@ function floor$1(out, a) {
 /**
  * Returns the minimum of two vec4's
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function min$1(out, a, b) {
   out[0] = Math.min(a[0], b[0]);
@@ -5828,10 +5954,11 @@ function min$1(out, a, b) {
 /**
  * Returns the maximum of two vec4's
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function max$1(out, a, b) {
   out[0] = Math.max(a[0], b[0]);
@@ -5844,9 +5971,10 @@ function max$1(out, a, b) {
 /**
  * symmetric round the components of a vec4
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a vector to round
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function round$1(out, a) {
   out[0] = round$3(a[0]);
@@ -5859,10 +5987,11 @@ function round$1(out, a) {
 /**
  * Scales a vec4 by a scalar number
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the vector to scale
  * @param {Number} b amount to scale the vector by
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function scale$3(out, a, b) {
   out[0] = a[0] * b;
@@ -5875,11 +6004,12 @@ function scale$3(out, a, b) {
 /**
  * Adds two vec4's after scaling the second operand by a scalar value
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
  * @param {Number} scale the amount to scale b by before adding
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function scaleAndAdd$1(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -5950,9 +6080,10 @@ function squaredLength$3(a) {
 /**
  * Negates the components of a vec4
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a vector to negate
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function negate$1(out, a) {
   out[0] = -a[0];
@@ -5965,9 +6096,10 @@ function negate$1(out, a) {
 /**
  * Returns the inverse of the components of a vec4
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a vector to invert
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function inverse$1(out, a) {
   out[0] = 1.0 / a[0];
@@ -5980,9 +6112,10 @@ function inverse$1(out, a) {
 /**
  * Normalize a vec4
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a vector to normalize
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function normalize$3(out, a) {
   var x = a[0];
@@ -6014,11 +6147,12 @@ function dot$4(a, b) {
 /**
  * Returns the cross-product of three vectors in a 4-dimensional space
  *
- * @param {ReadonlyVec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} u the first vector
  * @param {ReadonlyVec4} v the second vector
  * @param {ReadonlyVec4} w the third vector
- * @returns {vec4} result
+ * @returns {Vec4.Result<T>} result
  */
 function cross$1(out, u, v, w) {
   var A = v[0] * w[1] - v[1] * w[0],
@@ -6041,11 +6175,12 @@ function cross$1(out, u, v, w) {
 /**
  * Performs a linear interpolation between two vec4's
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the first operand
  * @param {ReadonlyVec4} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function lerp$4(out, a, b, t) {
   var ax = a[0];
@@ -6062,9 +6197,10 @@ function lerp$4(out, a, b, t) {
 /**
  * Generates a random vector with the given scale
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {Number} [scale] Length of the resulting vector. If omitted, a unit vector will be returned
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function random$2(out, scale) {
   scale = scale === undefined ? 1.0 : scale;
@@ -6094,10 +6230,11 @@ function random$2(out, scale) {
 /**
  * Transforms the vec4 with a mat4.
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the vector to transform
  * @param {ReadonlyMat4} m matrix to transform with
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function transformMat4$1(out, a, m) {
   var x = a[0],
@@ -6114,10 +6251,11 @@ function transformMat4$1(out, a, m) {
 /**
  * Transforms the vec4 with a quat
  *
- * @param {vec4} out the receiving vector
+ * @template {vec4} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec4} a the vector to transform
  * @param {ReadonlyQuat} q normalized quaternion to transform with
- * @returns {vec4} out
+ * @returns {Vec4.Result<T>} out
  */
 function transformQuat(out, a, q) {
   // Fast Vector Rotation using Quaternions by Robert Eisele
@@ -6152,8 +6290,9 @@ function transformQuat(out, a, q) {
 /**
  * Set the components of a vec4 to zero
  *
- * @param {vec4} out the receiving vector
- * @returns {vec4} out
+ * @template {vec4} T
+ * @param {T} out the receiving vector
+ * @returns {Vec4.Result<T>} out
  */
 function zero$1(out) {
   out[0] = 0.0;
@@ -6340,7 +6479,7 @@ zero: zero$1
 /**
  * Creates a new identity quat
  *
- * @returns {quat} a new quaternion
+ * @returns {Quat.Result<DefaultArrayType>} a new quaternion
  */
 function create$2() {
   var out = new ARRAY_TYPE(4);
@@ -6356,8 +6495,9 @@ function create$2() {
 /**
  * Set a quat to the identity quaternion
  *
- * @param {quat} out the receiving quaternion
- * @returns {quat} out
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
+ * @returns {Quat.Result<T>} out
  */
 function identity$1(out) {
   out[0] = 0;
@@ -6371,10 +6511,11 @@ function identity$1(out) {
  * Sets a quat from the given angle and rotation axis,
  * then returns it.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyVec3} axis the axis around which to rotate
  * @param {Number} rad the angle in radians
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  **/
 function setAxisAngle(out, axis, rad) {
   rad = rad * 0.5;
@@ -6430,10 +6571,11 @@ function getAngle(a, b) {
 /**
  * Multiplies two quat's
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a the first operand
  * @param {ReadonlyQuat} b the second operand
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function multiply$2(out, a, b) {
   var ax = a[0],
@@ -6454,10 +6596,11 @@ function multiply$2(out, a, b) {
 /**
  * Rotates a quaternion by the given angle about the X axis
  *
- * @param {quat} out quat receiving operation result
+ * @template {quat} T
+ * @param {T} out quat receiving operation result
  * @param {ReadonlyQuat} a quat to rotate
  * @param {number} rad angle (in radians) to rotate
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function rotateX$1(out, a, rad) {
   rad *= 0.5;
@@ -6477,10 +6620,11 @@ function rotateX$1(out, a, rad) {
 /**
  * Rotates a quaternion by the given angle about the Y axis
  *
- * @param {quat} out quat receiving operation result
+ * @template {quat} T
+ * @param {T} out quat receiving operation result
  * @param {ReadonlyQuat} a quat to rotate
  * @param {number} rad angle (in radians) to rotate
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function rotateY$1(out, a, rad) {
   rad *= 0.5;
@@ -6500,10 +6644,11 @@ function rotateY$1(out, a, rad) {
 /**
  * Rotates a quaternion by the given angle about the Z axis
  *
- * @param {quat} out quat receiving operation result
+ * @template {quat} T
+ * @param {T} out quat receiving operation result
  * @param {ReadonlyQuat} a quat to rotate
  * @param {number} rad angle (in radians) to rotate
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function rotateZ$1(out, a, rad) {
   rad *= 0.5;
@@ -6525,9 +6670,10 @@ function rotateZ$1(out, a, rad) {
  * Assumes that quaternion is 1 unit in length.
  * Any existing W component will be ignored.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quat to calculate W component of
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function calculateW(out, a) {
   var x = a[0],
@@ -6543,9 +6689,10 @@ function calculateW(out, a) {
 /**
  * Calculate the exponential of a unit quaternion.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quat to calculate the exponential of
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function exp(out, a) {
   var x = a[0],
@@ -6565,9 +6712,10 @@ function exp(out, a) {
 /**
  * Calculate the natural logarithm of a unit quaternion.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quat to calculate the exponential of
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function ln(out, a) {
   var x = a[0],
@@ -6586,10 +6734,11 @@ function ln(out, a) {
 /**
  * Calculate the scalar power of a unit quaternion.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quat to calculate the exponential of
  * @param {Number} b amount to scale the quaternion by
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function pow(out, a, b) {
   ln(out, a);
@@ -6601,11 +6750,12 @@ function pow(out, a, b) {
 /**
  * Performs a spherical linear interpolation between two quat
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a the first operand
  * @param {ReadonlyQuat} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function slerp(out, a, b, t) {
   // benchmarks:
@@ -6654,8 +6804,9 @@ function slerp(out, a, b, t) {
 /**
  * Generates a random unit quaternion
  *
- * @param {quat} out the receiving quaternion
- * @returns {quat} out
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
+ * @returns {Quat.Result<T>} out
  */
 function random$1(out) {
   // Implementation of http://planning.cs.uiuc.edu/node198.html
@@ -6675,9 +6826,10 @@ function random$1(out) {
 /**
  * Calculates the inverse of a quat
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quat to calculate inverse of
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function invert$1(out, a) {
   var a0 = a[0],
@@ -6700,9 +6852,10 @@ function invert$1(out, a) {
  * Calculates the conjugate of a quat
  * If the quaternion is normalized, this function is faster than quat.inverse and produces the same result.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quat to calculate conjugate of
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 function conjugate$1(out, a) {
   out[0] = -a[0];
@@ -6718,9 +6871,10 @@ function conjugate$1(out, a) {
  * NOTE: The resultant quaternion is not normalized, so you should be sure
  * to renormalize the quaternion yourself where necessary.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyMat3} m rotation matrix
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 function fromMat3(out, m) {
@@ -6756,12 +6910,13 @@ function fromMat3(out, m) {
 /**
  * Creates a quaternion from the given euler angle x, y, z using the provided intrinsic order for the conversion.
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {Number} x Angle to rotate around X axis in degrees.
  * @param {Number} y Angle to rotate around Y axis in degrees.
  * @param {Number} z Angle to rotate around Z axis in degrees.
  * @param {'xyz'|'xzy'|'yxz'|'yzx'|'zxy'|'zyx'} order Intrinsic order for conversion, default is zyx.
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 function fromEuler(out, x, y, z) {
@@ -6833,7 +6988,7 @@ function str$2(a) {
  * Creates a new quat initialized with values from an existing quaternion
  *
  * @param {ReadonlyQuat} a quaternion to clone
- * @returns {quat} a new quaternion
+ * @returns {Quat.Result<DefaultArrayType>} a new quaternion
  * @function
  */
 var clone$3 = clone$4;
@@ -6845,7 +7000,7 @@ var clone$3 = clone$4;
  * @param {Number} y Y component
  * @param {Number} z Z component
  * @param {Number} w W component
- * @returns {quat} a new quaternion
+ * @returns {Quat.Result<DefaultArrayType>} a new quaternion
  * @function
  */
 var fromValues$2 = fromValues$3;
@@ -6853,9 +7008,10 @@ var fromValues$2 = fromValues$3;
 /**
  * Copy the values from one quat to another
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a the source quaternion
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 var copy$2 = copy$3;
@@ -6863,12 +7019,13 @@ var copy$2 = copy$3;
 /**
  * Set the components of a quat to the given values
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {Number} x X component
  * @param {Number} y Y component
  * @param {Number} z Z component
  * @param {Number} w W component
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 var set$2 = set$3;
@@ -6876,10 +7033,11 @@ var set$2 = set$3;
 /**
  * Adds two quat's
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a the first operand
  * @param {ReadonlyQuat} b the second operand
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 var add$2 = add$3;
@@ -6893,10 +7051,11 @@ var mul$2 = multiply$2;
 /**
  * Scales a quat by a scalar number
  *
- * @param {quat} out the receiving vector
+ * @template {quat} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyQuat} a the vector to scale
  * @param {Number} b amount to scale the vector by
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 var scale$2 = scale$3;
@@ -6914,11 +7073,12 @@ var dot$3 = dot$4;
 /**
  * Performs a linear interpolation between two quat's
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a the first operand
  * @param {ReadonlyQuat} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 var lerp$3 = lerp$4;
@@ -6955,9 +7115,10 @@ var sqrLen$2 = squaredLength$2;
 /**
  * Normalize a quat
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a quaternion to normalize
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  * @function
  */
 var normalize$2 = normalize$3;
@@ -6990,10 +7151,11 @@ function equals$3(a, b) {
  *
  * Both vectors are assumed to be unit length.
  *
- * @param {quat} out the receiving quaternion.
+ * @template {quat} T
+ * @param {T} out the receiving quaternion.
  * @param {ReadonlyVec3} a the initial vector
  * @param {ReadonlyVec3} b the destination vector
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 var rotationTo = function () {
   var tmpvec3 = create$4();
@@ -7027,13 +7189,14 @@ var rotationTo = function () {
 /**
  * Performs a spherical linear interpolation with two control points
  *
- * @param {quat} out the receiving quaternion
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} a the first operand
  * @param {ReadonlyQuat} b the second operand
  * @param {ReadonlyQuat} c the third operand
  * @param {ReadonlyQuat} d the fourth operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 var sqlerp = function () {
   var temp1 = create$2();
@@ -7051,10 +7214,12 @@ var sqlerp = function () {
  * axes. Each axis is a vec3 and is expected to be unit length and
  * perpendicular to all other specified axes.
  *
+ * @template {quat} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyVec3} view  the vector representing the viewing direction
  * @param {ReadonlyVec3} right the vector representing the local "right" direction
  * @param {ReadonlyVec3} up    the vector representing the local "up" direction
- * @returns {quat} out
+ * @returns {Quat.Result<T>} out
  */
 var setAxes = function () {
   var matr = create$6();
@@ -7126,7 +7291,7 @@ str: str$2
 /**
  * Creates a new identity dual quat
  *
- * @returns {quat2} a new dual quaternion [real -> rotation, dual -> translation]
+ * @returns {quat2<DefaultArrayType>} a new dual quaternion [real -> rotation, dual -> translation]
  */
 function create$1() {
   var dq = new ARRAY_TYPE(8);
@@ -7147,7 +7312,7 @@ function create$1() {
  * Creates a new quat initialized with values from an existing quaternion
  *
  * @param {ReadonlyQuat2} a dual quaternion to clone
- * @returns {quat2} new dual quaternion
+ * @returns {quat2<DefaultArrayType>} new dual quaternion
  * @function
  */
 function clone$2(a) {
@@ -7174,7 +7339,7 @@ function clone$2(a) {
  * @param {Number} y2 Y component
  * @param {Number} z2 Z component
  * @param {Number} w2 W component
- * @returns {quat2} new dual quaternion
+ * @returns {quat2<DefaultArrayType>} new dual quaternion
  * @function
  */
 function fromValues$1(x1, y1, z1, w1, x2, y2, z2, w2) {
@@ -7200,7 +7365,7 @@ function fromValues$1(x1, y1, z1, w1, x2, y2, z2, w2) {
  * @param {Number} x2 X component (translation)
  * @param {Number} y2 Y component (translation)
  * @param {Number} z2 Z component (translation)
- * @returns {quat2} new dual quaternion
+ * @returns {quat2<DefaultArrayType>} new dual quaternion
  * @function
  */
 function fromRotationTranslationValues(x1, y1, z1, w1, x2, y2, z2) {
@@ -7222,10 +7387,11 @@ function fromRotationTranslationValues(x1, y1, z1, w1, x2, y2, z2) {
 /**
  * Creates a dual quat from a quaternion and a translation
  *
- * @param {ReadonlyQuat2} dual quaternion receiving operation result
+ * @template {quat2} T
+ * @param {T} out dual quaternion receiving operation result
  * @param {ReadonlyQuat} q a normalized quaternion
  * @param {ReadonlyVec3} t translation vector
- * @returns {quat2} dual quaternion receiving operation result
+ * @returns {Quat2.Result<T>} dual quaternion receiving operation result
  * @function
  */
 function fromRotationTranslation(out, q, t) {
@@ -7250,9 +7416,10 @@ function fromRotationTranslation(out, q, t) {
 /**
  * Creates a dual quat from a translation
  *
- * @param {ReadonlyQuat2} dual quaternion receiving operation result
+ * @template {quat2} T
+ * @param {T} out dual quaternion receiving operation result
  * @param {ReadonlyVec3} t translation vector
- * @returns {quat2} dual quaternion receiving operation result
+ * @returns {Quat2.Result<T>} dual quaternion receiving operation result
  * @function
  */
 function fromTranslation(out, t) {
@@ -7270,9 +7437,10 @@ function fromTranslation(out, t) {
 /**
  * Creates a dual quat from a quaternion
  *
- * @param {ReadonlyQuat2} dual quaternion receiving operation result
+ * @template {quat2} T
+ * @param {T} out dual quaternion receiving operation result
  * @param {ReadonlyQuat} q the quaternion
- * @returns {quat2} dual quaternion receiving operation result
+ * @returns {Quat2.Result<T>} dual quaternion receiving operation result
  * @function
  */
 function fromRotation(out, q) {
@@ -7290,9 +7458,10 @@ function fromRotation(out, q) {
 /**
  * Creates a new dual quat from a matrix (4x4)
  *
- * @param {quat2} out the dual quaternion
+ * @template {quat2} T
+ * @param {T} out the dual quaternion
  * @param {ReadonlyMat4} a the matrix
- * @returns {quat2} dual quat receiving operation result
+ * @returns {Quat2.Result<T>} dual quat receiving operation result
  * @function
  */
 function fromMat4(out, a) {
@@ -7308,9 +7477,10 @@ function fromMat4(out, a) {
 /**
  * Copy the values from one dual quat to another
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the source dual quaternion
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 function copy$1(out, a) {
@@ -7328,8 +7498,9 @@ function copy$1(out, a) {
 /**
  * Set a dual quat to the identity dual quaternion
  *
- * @param {quat2} out the receiving quaternion
- * @returns {quat2} out
+ * @template {quat2} T
+ * @param {T} out the receiving quaternion
+ * @returns {Quat2.Result<T>} out
  */
 function identity(out) {
   out[0] = 0;
@@ -7346,7 +7517,8 @@ function identity(out) {
 /**
  * Set the components of a dual quat to the given values
  *
- * @param {quat2} out the receiving quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving quaternion
  * @param {Number} x1 X component
  * @param {Number} y1 Y component
  * @param {Number} z1 Z component
@@ -7355,7 +7527,7 @@ function identity(out) {
  * @param {Number} y2 Y component
  * @param {Number} z2 Z component
  * @param {Number} w2 W component
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 function set$1(out, x1, y1, z1, w1, x2, y2, z2, w2) {
@@ -7395,9 +7567,10 @@ function getDual(out, a) {
 /**
  * Set the real component of a dual quat to the given quaternion
  *
- * @param {quat2} out the receiving quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} q a quaternion representing the real part
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 var setReal = copy$2;
@@ -7405,9 +7578,10 @@ var setReal = copy$2;
 /**
  * Set the dual component of a dual quat to the given quaternion
  *
- * @param {quat2} out the receiving quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat} q a quaternion representing the dual part
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 function setDual(out, q) {
@@ -7442,10 +7616,11 @@ function getTranslation(out, a) {
 /**
  * Translates a dual quat by the given vector
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the dual quaternion to translate
  * @param {ReadonlyVec3} v vector to translate by
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function translate$1(out, a, v) {
   var ax1 = a[0],
@@ -7473,10 +7648,11 @@ function translate$1(out, a, v) {
 /**
  * Rotates a dual quat around the X axis
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the dual quaternion to rotate
  * @param {number} rad how far should the rotation be
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function rotateX(out, a, rad) {
   var bx = -a[0],
@@ -7506,10 +7682,11 @@ function rotateX(out, a, rad) {
 /**
  * Rotates a dual quat around the Y axis
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the dual quaternion to rotate
  * @param {number} rad how far should the rotation be
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function rotateY(out, a, rad) {
   var bx = -a[0],
@@ -7539,10 +7716,11 @@ function rotateY(out, a, rad) {
 /**
  * Rotates a dual quat around the Z axis
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the dual quaternion to rotate
  * @param {number} rad how far should the rotation be
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function rotateZ(out, a, rad) {
   var bx = -a[0],
@@ -7572,10 +7750,11 @@ function rotateZ(out, a, rad) {
 /**
  * Rotates a dual quat by a given quaternion (a * q)
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the dual quaternion to rotate
  * @param {ReadonlyQuat} q quaternion to rotate by
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function rotateByQuatAppend(out, a, q) {
   var qx = q[0],
@@ -7604,10 +7783,11 @@ function rotateByQuatAppend(out, a, q) {
 /**
  * Rotates a dual quat by a given quaternion (q * a)
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat} q quaternion to rotate by
  * @param {ReadonlyQuat2} a the dual quaternion to rotate
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function rotateByQuatPrepend(out, q, a) {
   var qx = q[0],
@@ -7636,11 +7816,12 @@ function rotateByQuatPrepend(out, q, a) {
 /**
  * Rotates a dual quat around a given axis. Does the normalisation automatically
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the dual quaternion to rotate
  * @param {ReadonlyVec3} axis the axis to rotate around
  * @param {Number} rad how far the rotation should be
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function rotateAroundAxis(out, a, axis, rad) {
   //Special case for rad = 0
@@ -7676,10 +7857,11 @@ function rotateAroundAxis(out, a, axis, rad) {
 /**
  * Adds two dual quat's
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the first operand
  * @param {ReadonlyQuat2} b the second operand
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 function add$1(out, a, b) {
@@ -7697,10 +7879,11 @@ function add$1(out, a, b) {
 /**
  * Multiplies two dual quat's
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a the first operand
  * @param {ReadonlyQuat2} b the second operand
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function multiply$1(out, a, b) {
   var ax0 = a[0],
@@ -7739,10 +7922,11 @@ var mul$1 = multiply$1;
 /**
  * Scales a dual quat by a scalar number
  *
- * @param {quat2} out the receiving dual quat
+ * @template {quat2} T
+ * @param {T} out the receiving dual quat
  * @param {ReadonlyQuat2} a the dual quat to scale
  * @param {Number} b amount to scale the dual quat by
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 function scale$1(out, a, b) {
@@ -7771,11 +7955,12 @@ var dot$2 = dot$3;
  * Performs a linear interpolation between two dual quats's
  * NOTE: The resulting dual quaternions won't always be normalized (The error is most noticeable when t = 0.5)
  *
- * @param {quat2} out the receiving dual quat
+ * @template {quat2} T
+ * @param {T} out the receiving dual quat
  * @param {ReadonlyQuat2} a the first operand
  * @param {ReadonlyQuat2} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function lerp$2(out, a, b, t) {
   var mt = 1 - t;
@@ -7794,9 +7979,10 @@ function lerp$2(out, a, b, t) {
 /**
  * Calculates the inverse of a dual quat. If they are normalized, conjugate is cheaper
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a dual quat to calculate inverse of
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function invert(out, a) {
   var sqlen = squaredLength$1(a);
@@ -7815,9 +8001,10 @@ function invert(out, a) {
  * Calculates the conjugate of a dual quat
  * If the dual quaternion is normalized, this function is faster than quat2.inverse and produces the same result.
  *
- * @param {quat2} out the receiving quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving quaternion
  * @param {ReadonlyQuat2} a quat to calculate conjugate of
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  */
 function conjugate(out, a) {
   out[0] = -a[0];
@@ -7864,9 +8051,10 @@ var sqrLen$1 = squaredLength$1;
 /**
  * Normalize a dual quat
  *
- * @param {quat2} out the receiving dual quaternion
+ * @template {quat2} T
+ * @param {T} out the receiving dual quaternion
  * @param {ReadonlyQuat2} a dual quaternion to normalize
- * @returns {quat2} out
+ * @returns {Quat2.Result<T>} out
  * @function
  */
 function normalize$1(out, a) {
@@ -7993,7 +8181,7 @@ translate: translate$1
 /**
  * Creates a new, empty vec2
  *
- * @returns {vec2} a new 2D vector
+ * @returns {vec2<DefaultArrayType>} a new 2D vector
  */
 function create() {
   var out = new ARRAY_TYPE(2);
@@ -8008,7 +8196,7 @@ function create() {
  * Creates a new vec2 initialized with values from an existing vector
  *
  * @param {ReadonlyVec2} a vector to clone
- * @returns {vec2} a new 2D vector
+ * @returns {vec2<DefaultArrayType>} a new 2D vector
  */
 function clone$1(a) {
   var out = new ARRAY_TYPE(2);
@@ -8022,7 +8210,7 @@ function clone$1(a) {
  *
  * @param {Number} x X component
  * @param {Number} y Y component
- * @returns {vec2} a new 2D vector
+ * @returns {vec2<DefaultArrayType>} a new 2D vector
  */
 function fromValues(x, y) {
   var out = new ARRAY_TYPE(2);
@@ -8034,9 +8222,10 @@ function fromValues(x, y) {
 /**
  * Copy the values from one vec2 to another
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the source vector
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function copy(out, a) {
   out[0] = a[0];
@@ -8047,10 +8236,11 @@ function copy(out, a) {
 /**
  * Set the components of a vec2 to the given values
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {Number} x X component
  * @param {Number} y Y component
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function set(out, x, y) {
   out[0] = x;
@@ -8061,10 +8251,11 @@ function set(out, x, y) {
 /**
  * Adds two vec2's
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function add(out, a, b) {
   out[0] = a[0] + b[0];
@@ -8075,10 +8266,11 @@ function add(out, a, b) {
 /**
  * Subtracts vector b from vector a
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function subtract(out, a, b) {
   out[0] = a[0] - b[0];
@@ -8089,10 +8281,11 @@ function subtract(out, a, b) {
 /**
  * Multiplies two vec2's
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function multiply(out, a, b) {
   out[0] = a[0] * b[0];
@@ -8103,10 +8296,11 @@ function multiply(out, a, b) {
 /**
  * Divides two vec2's
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function divide(out, a, b) {
   out[0] = a[0] / b[0];
@@ -8117,9 +8311,10 @@ function divide(out, a, b) {
 /**
  * Math.ceil the components of a vec2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a vector to ceil
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function ceil(out, a) {
   out[0] = Math.ceil(a[0]);
@@ -8130,9 +8325,10 @@ function ceil(out, a) {
 /**
  * Math.floor the components of a vec2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a vector to floor
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function floor(out, a) {
   out[0] = Math.floor(a[0]);
@@ -8143,10 +8339,11 @@ function floor(out, a) {
 /**
  * Returns the minimum of two vec2's
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function min(out, a, b) {
   out[0] = Math.min(a[0], b[0]);
@@ -8157,10 +8354,11 @@ function min(out, a, b) {
 /**
  * Returns the maximum of two vec2's
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function max(out, a, b) {
   out[0] = Math.max(a[0], b[0]);
@@ -8171,9 +8369,10 @@ function max(out, a, b) {
 /**
  * symmetric round the components of a vec2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a vector to round
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function round(out, a) {
   out[0] = round$3(a[0]);
@@ -8184,10 +8383,11 @@ function round(out, a) {
 /**
  * Scales a vec2 by a scalar number
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the vector to scale
  * @param {Number} b amount to scale the vector by
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function scale(out, a, b) {
   out[0] = a[0] * b;
@@ -8198,11 +8398,12 @@ function scale(out, a, b) {
 /**
  * Adds two vec2's after scaling the second operand by a scalar value
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
  * @param {Number} scale the amount to scale b by before adding
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function scaleAndAdd(out, a, b, scale) {
   out[0] = a[0] + b[0] * scale;
@@ -8263,9 +8464,10 @@ function squaredLength(a) {
 /**
  * Negates the components of a vec2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a vector to negate
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function negate(out, a) {
   out[0] = -a[0];
@@ -8276,9 +8478,10 @@ function negate(out, a) {
 /**
  * Returns the inverse of the components of a vec2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a vector to invert
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function inverse(out, a) {
   out[0] = 1.0 / a[0];
@@ -8289,9 +8492,10 @@ function inverse(out, a) {
 /**
  * Normalize a vec2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a vector to normalize
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function normalize(out, a) {
   var x = a[0],
@@ -8321,10 +8525,11 @@ function dot$1(a, b) {
  * Computes the cross product of two vec2's
  * Note that the cross product must by definition produce a 3D vector
  *
- * @param {vec3} out the receiving vector
+ * @template {vec3} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
- * @returns {vec3} out
+ * @returns {Vec2.Result<T>} out
  */
 function cross(out, a, b) {
   var z = a[0] * b[1] - a[1] * b[0];
@@ -8336,11 +8541,12 @@ function cross(out, a, b) {
 /**
  * Performs a linear interpolation between two vec2's
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the first operand
  * @param {ReadonlyVec2} b the second operand
  * @param {Number} t interpolation amount, in the range [0-1], between the two inputs
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function lerp$1(out, a, b, t) {
   var ax = a[0],
@@ -8353,9 +8559,10 @@ function lerp$1(out, a, b, t) {
 /**
  * Generates a random vector with the given scale
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {Number} [scale] Length of the resulting vector. If omitted, a unit vector will be returned
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function random(out, scale) {
   scale = scale === undefined ? 1.0 : scale;
@@ -8368,10 +8575,11 @@ function random(out, scale) {
 /**
  * Transforms the vec2 with a mat2
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the vector to transform
  * @param {ReadonlyMat2} m matrix to transform with
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function transformMat2(out, a, m) {
   var x = a[0],
@@ -8384,10 +8592,11 @@ function transformMat2(out, a, m) {
 /**
  * Transforms the vec2 with a mat2d
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the vector to transform
  * @param {ReadonlyMat2d} m matrix to transform with
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function transformMat2d(out, a, m) {
   var x = a[0],
@@ -8401,10 +8610,11 @@ function transformMat2d(out, a, m) {
  * Transforms the vec2 with a mat3
  * 3rd vector component is implicitly '1'
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the vector to transform
  * @param {ReadonlyMat3} m matrix to transform with
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function transformMat3(out, a, m) {
   var x = a[0],
@@ -8419,10 +8629,11 @@ function transformMat3(out, a, m) {
  * 3rd vector component is implicitly '0'
  * 4th vector component is implicitly '1'
  *
- * @param {vec2} out the receiving vector
+ * @template {vec2} T
+ * @param {T} out the receiving vector
  * @param {ReadonlyVec2} a the vector to transform
  * @param {ReadonlyMat4} m matrix to transform with
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function transformMat4(out, a, m) {
   var x = a[0];
@@ -8434,11 +8645,12 @@ function transformMat4(out, a, m) {
 
 /**
  * Rotate a 2D vector
- * @param {vec2} out The receiving vec2
+ * @template {vec2} T
+ * @param {T} out The receiving vec2
  * @param {ReadonlyVec2} a The vec2 point to rotate
  * @param {ReadonlyVec2} b The origin of the rotation
  * @param {Number} rad The angle of rotation in radians
- * @returns {vec2} out
+ * @returns {Vec2.Result<T>} out
  */
 function rotate(out, a, b, rad) {
   //Translate point to the origin
@@ -8485,8 +8697,9 @@ function signedAngle(a, b) {
 /**
  * Set the components of a vec2 to zero
  *
- * @param {vec2} out the receiving vector
- * @returns {vec2} out
+ * @template {vec2} T
+ * @param {T} out the receiving vector
+ * @returns {Vec2.Result<T>} out
  */
 function zero(out) {
   out[0] = 0.0;

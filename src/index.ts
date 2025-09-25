@@ -3,7 +3,7 @@ import {Map, type MapOptions, type WebGLContextAttributesWithType} from './ui/ma
 import {Camera} from './ui/camera';
 import {NavigationControl, type NavigationControlOptions} from './ui/control/navigation_control';
 import {GeolocateControl, type GeolocateControlOptions} from './ui/control/geolocate_control';
-import {AttributionControl, type AttributionControlOptions} from './ui/control/attribution_control';
+import {AttributionControl, defaultAttributionControlOptions, type AttributionControlOptions} from './ui/control/attribution_control';
 import {LogoControl, type LogoControlOptions} from './ui/control/logo_control';
 import {ScaleControl, type ScaleControlOptions, type Unit} from './ui/control/scale_control';
 import {FullscreenControl, type FullscreenControlOptions} from './ui/control/fullscreen_control';
@@ -21,7 +21,7 @@ import {type AddProtocolAction, config} from './util/config';
 import {rtlMainThreadPluginFactory} from './source/rtl_text_plugin_main_thread';
 import {WorkerPool} from './util/worker_pool';
 import {prewarm, clearPrewarmedResources} from './util/global_worker_pool';
-import {AJAXError, type ExpiryData, type GetResourceResponse, type RequestParameters} from './util/ajax';
+import {AJAXError, getJSON, type ExpiryData, type GetResourceResponse, type RequestParameters} from './util/ajax';
 import {GeoJSONSource, type SetClusterOptions} from './source/geojson_source';
 import {CanvasSource, type CanvasSourceSpecification} from './source/canvas_source';
 import {type CanonicalTileRange, type Coordinates, ImageSource, type UpdateImageOptions} from './source/image_source';
@@ -50,27 +50,45 @@ import type {ControlPosition, IControl} from './ui/control/control';
 import type {CustomRenderMethod, CustomLayerInterface, CustomRenderMethodInput} from './style/style_layer/custom_style_layer';
 import type {AnimationOptions, CameraForBoundsOptions, CameraOptions, CameraUpdateTransformFunction, CenterZoomBearing, EaseToOptions, FitBoundsOptions, FlyToOptions, JumpToOptions, PointLike} from './ui/camera';
 import type {DistributiveKeys, DistributiveOmit, GeoJSONFeature, MapGeoJSONFeature} from './util/vectortile_to_geojson';
-import type {Handler, HandlerResult} from './ui/handler_manager';
-import type {Complete, RequireAtLeastOne, Subscription} from './util/util';
-import type {CalculateTileZoomFunction, CoveringTilesOptions} from './geo/projection/covering_tiles';
+import {HandlerManager, type Handler, type HandlerResult} from './ui/handler_manager';
+import {extend, isImageBitmap, pick, uniqueId, warnOnce, type Complete, type RequireAtLeastOne, type Subscription} from './util/util';
+import {coveringTiles, createCalculateTileZoomFunction, type CalculateTileZoomFunction, type CoveringTilesOptions} from './geo/projection/covering_tiles';
 import type {StyleImage, StyleImageData, StyleImageInterface, StyleImageMetadata, TextFit} from './style/style_image';
 import type {StyleLayer} from './style/style_layer';
 import type {Tile} from './source/tile';
 import type {GeoJSONFeatureDiff, GeoJSONFeatureId, GeoJSONSourceDiff} from './source/geojson_source_diff';
 import type {QueryRenderedFeaturesOptions, QuerySourceFeatureOptions} from './source/query_features';
-import type {RequestTransformFunction, ResourceType} from './util/request_manager';
-import type {OverscaledTileID} from './source/tile_id';
+import {RequestManager, ResourceType, type RequestTransformFunction} from './util/request_manager';
+import {CanonicalTileID, type OverscaledTileID} from './source/tile_id';
 import type {PositionAnchor} from './ui/anchor';
 import type {ProjectionData} from './geo/projection/projection_data';
 import type {WorkerTileResult} from './source/worker_source';
 import type {Actor, IActor} from './util/actor';
 import type {Bucket} from './data/bucket';
 import type {CollisionBoxArray} from './data/array_types.g';
-import type {AlphaImage} from './util/image';
+import {RGBAImage, type AlphaImage} from './util/image';
 import type {GlyphPosition, GlyphPositions} from './render/glyph_atlas';
 import type {ImageAtlas} from './render/image_atlas';
 import type {StyleGlyph} from './style/style_glyph';
 import type {FeatureIndex} from './data/feature_index';
+import { Painter } from './render/painter';
+import { TaskID, TaskQueue } from './util/task_queue';
+import { defaultLocale } from './ui/default_locale';
+import { PerformanceMarkers, PerformanceUtils } from './util/performance';
+import { ImageRequest } from './util/image_request';
+import { DOM } from './util/dom';
+import { webpSupported } from './util/webp_supported';
+import { ITransform } from './geo/transform_interface';
+import { ICameraHelper } from './geo/projection/camera_helper';
+import { MercatorTransform } from './geo/projection/mercator_transform';
+import { MercatorCameraHelper } from './geo/projection/mercator_camera_helper';
+import { browser } from './util/browser';
+import { EvaluationParameters } from './style/evaluation_parameters';
+import { isAbortError } from './util/abort_error';
+import { isFramebufferNotCompleteError } from './util/framebuffer_error';
+import { RenderToTexture } from './render/render_to_texture';
+import { Terrain } from './render/terrain';
+import { throttle } from './util/throttle';
 const version = packageJSON.version;
 
 export type * from '@maplibre/maplibre-gl-style-spec';
@@ -196,8 +214,44 @@ function setWorkerUrl(value: string) { config.WORKER_URL = value; }
 function importScriptInWorkers(workerUrl: string) { return getGlobalDispatcher().broadcast(MessageType.importScript, workerUrl); }
 
 export {
-    Map,
+    browser,
     Camera,
+    CanonicalTileID,
+    defaultAttributionControlOptions,
+    defaultLocale,
+    DOM,
+    EvaluationParameters,
+    extend,
+    getJSON,
+    HandlerManager,
+    ImageRequest,
+    isAbortError,
+    isFramebufferNotCompleteError,
+    MercatorCameraHelper,
+    MercatorTransform,
+    Painter,
+    PerformanceMarkers,
+    PerformanceUtils,
+    RequestManager,
+    ResourceType,
+    TaskQueue,
+    uniqueId,
+    warnOnce,
+    webpSupported,
+    type ICameraHelper,
+    type ITransform,
+    coveringTiles,
+    createCalculateTileZoomFunction,
+    RGBAImage,
+    RenderToTexture,
+    Terrain,
+    isImageBitmap,
+    pick,
+    throttle,
+    packageJSON,
+    type TaskID,
+    //
+    Map,
     NavigationControl,
     GeolocateControl,
     AttributionControl,
@@ -312,7 +366,6 @@ export {
     type RequestParameters,
     type RequestResponseMessageMap,
     type WorkerTileResult,
-    type ResourceType,
     type Dispatcher,
     type Actor,
     type IActor,

@@ -101,6 +101,9 @@ export declare class AJAXError extends Error {
 	 */
 	constructor(status: number, statusText: string, url: string, body: Blob);
 }
+export declare const getJSON: <T>(requestParameters: RequestParameters, abortController: AbortController) => Promise<{
+	data: T;
+} & ExpiryData>;
 /**
  * This method type is used to register a protocol handler.
  * Use the abort controller for aborting requests.
@@ -701,7 +704,10 @@ export declare class MercatorCoordinate implements IMercatorCoordinate {
 	 */
 	meterInMercatorCoordinateUnits(): number;
 }
-declare class CanonicalTileID implements ICanonicalTileID {
+/**
+ * A canonical way to define a tile ID
+ */
+export declare class CanonicalTileID implements ICanonicalTileID {
 	z: number;
 	x: number;
 	y: number;
@@ -836,7 +842,12 @@ type CrossfadeParameters = {
 	toScale: number;
 	t: number;
 };
-declare class EvaluationParameters implements GlobalProperties {
+/**
+ * @internal
+ * A parameter that can be evaluated to a value.
+ * It's main purpose is a parameter to expression `evaluate` methods.
+ */
+export declare class EvaluationParameters implements GlobalProperties {
 	zoom: number;
 	now: number;
 	fadeDuration: number;
@@ -1013,7 +1024,11 @@ export declare class AlphaImage {
 	clone(): AlphaImage;
 	static copy(srcImg: AlphaImage, dstImg: AlphaImage, srcPt: Point2D, dstPt: Point2D, size: Size): void;
 }
-declare class RGBAImage {
+/**
+ * An object to store image data not premultiplied, because ImageData is not premultiplied.
+ * UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
+ */
+export declare class RGBAImage {
 	width: number;
 	height: number;
 	/**
@@ -2444,6 +2459,20 @@ type CoveringTilesOptionsInternal = CoveringTilesOptions & {
  * @return the desired zoom level for this tile. May not be an integer.
  */
 export type CalculateTileZoomFunction = (requestedCenterZoom: number, distanceToTile2D: number, distanceToTileZ: number, distanceToCenter3D: number, cameraVerticalFOV: number) => number;
+export declare function createCalculateTileZoomFunction(maxZoomLevelsOnScreen: number, tileCountMaxMinRatio: number): CalculateTileZoomFunction;
+/**
+ * Returns a list of tiles that optimally covers the screen. Adapted for globe projection.
+ * Correctly handles LOD when moving over the antimeridian.
+ * @param transform - The transform instance.
+ * @param frustum - The covering frustum.
+ * @param plane - The clipping plane used by globe transform, or null.
+ * @param cameraCoord - The x, y, z position of the camera in MercatorCoordinates.
+ * @param centerCoord - The x, y, z position of the center point in MercatorCoordinates.
+ * @param options - Additional coveringTiles options.
+ * @param details - Interface to define required helper functions.
+ * @returns A list of tile coordinates, ordered by ascending distance from camera.
+ */
+export declare function coveringTiles(transform: IReadonlyTransform, options: CoveringTilesOptionsInternal): OverscaledTileID[];
 /**
  * The `Source` interface must be implemented by each source type, including "core" types (`vector`, `raster`,
  * `video`, etc.) and all custom, third-party types.
@@ -3325,7 +3354,7 @@ export declare const enum ResourceType {
  * It is used just before executing the relevant request.
  */
 export type RequestTransformFunction = (url: string, resourceType?: ResourceType) => RequestParameters | undefined;
-declare class RequestManager {
+export declare class RequestManager {
 	_transformRequestFn: RequestTransformFunction | null;
 	constructor(transformRequestFn?: RequestTransformFunction | null);
 	transformRequest(url: string, type: ResourceType): RequestParameters;
@@ -3400,7 +3429,11 @@ declare class RenderPool {
 	freeAllObjects(): void;
 	isFull(): boolean;
 }
-declare class RenderToTexture {
+/**
+ * @internal
+ * A helper class to help define what should be rendered to texture and how
+ */
+export declare class RenderToTexture {
 	painter: Painter;
 	terrain: Terrain;
 	pool: RenderPool;
@@ -3476,7 +3509,11 @@ type RenderOptions = {
 	isRenderingToTexture: boolean;
 	isRenderingGlobe: boolean;
 };
-declare class Painter {
+/**
+ * @internal
+ * Initialize a new painter object.
+ */
+export declare class Painter {
 	context: Context;
 	transform: IReadonlyTransform;
 	renderToTexture: RenderToTexture;
@@ -3721,7 +3758,41 @@ type TerrainData = {
 	depthTexture: WebGLTexture;
 	tile: Tile;
 };
-declare class Terrain {
+/**
+ * @internal
+ * This is the main class which handles most of the 3D Terrain logic. It has the following topics:
+ *
+ * 1. loads raster-dem tiles via the internal sourceCache this.sourceCache
+ * 2. creates a depth-framebuffer, which is used to calculate the visibility of coordinates
+ * 3. creates a coords-framebuffer, which is used the get to tile-coordinate for a screen-pixel
+ * 4. stores all render-to-texture tiles in the this.sourceCache._tiles
+ * 5. calculates the elevation for a specific tile-coordinate
+ * 6. creates a terrain-mesh
+ *
+ * A note about the GPU resource-usage:
+ *
+ * Framebuffers:
+ *
+ * - one for the depth & coords framebuffer with the size of the map-div.
+ * - one for rendering a tile to texture with the size of tileSize (= 512x512).
+ *
+ * Textures:
+ *
+ * - one texture for an empty raster-dem tile with size 1x1
+ * - one texture for an empty depth-buffer, when terrain is disabled with size 1x1
+ * - one texture for an each loaded raster-dem with size of the source.tileSize
+ * - one texture for the coords-framebuffer with the size of the map-div.
+ * - one texture for the depth-framebuffer with the size of the map-div.
+ * - one texture for the encoded tile-coords with the size 2*tileSize (=1024x1024)
+ * - finally for each render-to-texture tile (= this._tiles) a set of textures
+ * for each render stack (The stack-concept is documented in painter.ts).
+ *
+ * Normally there exists 1-3 Textures per tile, depending on the stylesheet.
+ * Each Textures has the size 2*tileSize (= 1024x1024). Also there exists a
+ * cache of the last 150 newest rendered tiles.
+ *
+ */
+export declare class Terrain {
 	/**
 	 * The style this terrain corresponds to
 	 */
@@ -4510,7 +4581,13 @@ interface IReadonlyTransform extends ITransformGetters {
 	 */
 	getFastPathSimpleProjectionMatrix(tileID: OverscaledTileID): mat4 | undefined;
 }
-interface ITransform extends IReadonlyTransform, ITransformMutators {
+/**
+ * @internal
+ * The transform stores everything needed to project or otherwise transform points on a map,
+ * including most of the map's view state - center, zoom, pitch, etc.
+ * A transform is cloneable, which is used when a given map state must be retained for multiple frames, mostly during symbol placement.
+ */
+export interface ITransform extends IReadonlyTransform, ITransformMutators {
 }
 type QueryParameters = {
 	scale: number;
@@ -4826,7 +4903,7 @@ declare class CollisionIndex {
 	getPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): number;
 	isOffscreen(x1: number, y1: number, x2: number, y2: number): boolean;
 	isInsideGrid(x1: number, y1: number, x2: number, y2: number): boolean;
-	getViewportMatrix(): mat4;
+	getViewportMatrix(): any;
 	/**
 	 * Applies all layout+paint properties of the given box in order to find as good approximation of its screen-space bounding box as possible.
 	 */
@@ -7315,6 +7392,44 @@ export declare class Actor implements IActor {
 	remove(): void;
 }
 /**
+ * Given a destination object and optionally many source objects,
+ * copy all properties from the source objects into the destination.
+ * The last source object given overrides properties from previous
+ * source objects.
+ *
+ * @param dest - destination object
+ * @param sources - sources from which properties are pulled
+ */
+export declare function extend<T extends {}, U>(dest: T, source: U): T & U;
+export declare function extend<T extends {}, U, V>(dest: T, source1: U, source2: V): T & U & V;
+export declare function extend<T extends {}, U, V, W>(dest: T, source1: U, source2: V, source3: W): T & U & V & W;
+export declare function extend(dest: object, ...sources: Array<any>): any;
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+/**
+ * Given an object and a number of properties as strings, return version
+ * of that object with only those properties.
+ *
+ * @param src - the object
+ * @param properties - an array of property names chosen
+ * to appear on the resulting object.
+ * @returns object with limited properties.
+ * @example
+ * ```ts
+ * let foo = { name: 'Charlie', age: 10 };
+ * let justName = pick(foo, ['name']); // justName = { name: 'Charlie' }
+ * ```
+ */
+export declare function pick<T extends object>(src: T, properties: Array<KeysOfUnion<T>>): Partial<T>;
+/**
+ * Return a unique numeric id, starting at 1 and incrementing with
+ * each call.
+ *
+ * @returns unique numeric id.
+ */
+export declare function uniqueId(): number;
+export declare function warnOnce(message: string): void;
+export declare function isImageBitmap(image: any): image is ImageBitmap;
+/**
  * Allows to unsubscribe from events without the need to store the method reference.
  */
 export interface Subscription {
@@ -7526,13 +7641,13 @@ export declare class DragPanHandler {
 	 */
 	isActive(): boolean;
 }
-type TaskID = number;
+export type TaskID = number;
 type Task = {
 	callback: (timeStamp: number) => void;
 	id: TaskID;
 	cancelled: boolean;
 };
-declare class TaskQueue {
+export declare class TaskQueue {
 	_queue: Array<Task>;
 	_id: TaskID;
 	_cleared: boolean;
@@ -7591,7 +7706,11 @@ type FlyToHandlerResult = {
 	targetCenter: LngLat;
 	pixelPathLength: number;
 };
-interface ICameraHelper {
+/**
+ * @internal
+ * Contains projection-specific functions related to camera controls, easeTo, flyTo, inertia, etc.
+ */
+export interface ICameraHelper {
 	get useGlobeControls(): boolean;
 	handlePanInertia(pan: Point, transform: IReadonlyTransform): {
 		easingCenter: LngLat;
@@ -8586,7 +8705,7 @@ type EventsInProgress = {
 	rotate?: EventInProgress;
 	drag?: EventInProgress;
 };
-declare class HandlerManager {
+export declare class HandlerManager {
 	_map: Map$1;
 	_el: HTMLElement;
 	_handlers: Array<{
@@ -9437,6 +9556,7 @@ export type AttributionControlOptions = {
 	 */
 	customAttribution?: string | Array<string>;
 };
+export declare const defaultAttributionControlOptions: AttributionControlOptions;
 /**
  * An `AttributionControl` control presents the map's attribution information. By default, the attribution control is expanded (regardless of map width).
  * @group Markers and Controls
@@ -9475,7 +9595,7 @@ export declare class AttributionControl implements IControl {
 	_updateCompact: () => void;
 	_updateCompactMinimize: () => void;
 }
-declare const defaultLocale: {
+export declare const defaultLocale: {
 	"AttributionControl.ToggleAttribution": string;
 	"AttributionControl.MapFeedback": string;
 	"FullscreenControl.Enter": string;
@@ -14216,6 +14336,333 @@ export type IndicesType = "32bit" | "16bit" | undefined;
  * @returns Typed arrays of the mesh vertices and indices.
  */
 export declare function createTileMesh(options: CreateTileMeshOptions, forceIndicesSize?: IndicesType): TileMesh;
+type PerformanceMetrics = {
+	loadTime: number;
+	fullLoadTime: number;
+	fps: number;
+	percentDroppedFrames: number;
+	totalFrames: number;
+};
+export declare enum PerformanceMarkers {
+	create = "create",
+	load = "load",
+	fullLoad = "fullLoad"
+}
+export declare const PerformanceUtils: {
+	mark(marker: PerformanceMarkers): void;
+	frame(timestamp: number): void;
+	clearMetrics(): void;
+	getPerformanceMetrics(): PerformanceMetrics;
+};
+type ImageQueueThrottleControlCallback = () => boolean;
+/**
+ * By default, the image queue is self driven, meaning as soon as one requested item is processed,
+ * it will move on to next one as quickly as it can while limiting
+ * the number of concurrent requests to MAX_PARALLEL_IMAGE_REQUESTS. The default behavior
+ * ensures that static views of the map can be rendered with minimal delay.
+ *
+ * However, the default behavior can prevent dynamic views of the map from rendering
+ * smoothly in that many requests can finish in one render frame, putting too much pressure on GPU.
+ *
+ * When the view of the map is moving dynamically, smoother frame rates can be achieved
+ * by throttling the number of items processed by the queue per frame. This can be
+ * accomplished by using {@link addThrottleControl} to allow the caller to
+ * use a lambda function to determine when the queue should be throttled (e.g. when isMoving())
+ * and manually calling {@link processQueue} in the render loop.
+ */
+export declare namespace ImageRequest {
+	/**
+	 * Reset the image request queue, removing all pending requests.
+	 */
+	const resetRequestQueue: () => void;
+	/**
+	 * Install a callback to control when image queue throttling is desired.
+	 * (e.g. when the map view is moving)
+	 * @param callback - The callback function to install
+	 * @returns handle that identifies the installed callback.
+	 */
+	const addThrottleControl: (callback: ImageQueueThrottleControlCallback) => number;
+	/**
+	 * Remove a previously installed callback by passing in the handle returned
+	 * by {@link addThrottleControl}.
+	 * @param callbackHandle - The handle for the callback to remove.
+	 */
+	const removeThrottleControl: (callbackHandle: number) => void;
+	/**
+	 * Request to load an image.
+	 * @param requestParameters - Request parameters.
+	 * @param abortController - allows to abort the request.
+	 * @param supportImageRefresh - `true`, if the image request need to support refresh based on cache headers.
+	 * @returns - A promise resolved when the image is loaded.
+	 */
+	const getImage: (requestParameters: RequestParameters, abortController: AbortController, supportImageRefresh?: boolean) => Promise<GetResourceResponse<HTMLImageElement | ImageBitmap | null>>;
+}
+export declare class DOM {
+	private static readonly docStyle;
+	private static userSelect;
+	private static selectProp;
+	private static transformProp;
+	private static testProp;
+	static create<K extends keyof HTMLElementTagNameMap>(tagName: K, className?: string, container?: HTMLElement): HTMLElementTagNameMap[K];
+	static createNS(namespaceURI: string, tagName: string): Element;
+	static disableDrag(): void;
+	static enableDrag(): void;
+	static setTransform(el: HTMLElement, value: string): void;
+	static addEventListener(target: HTMLElement | Window | Document, type: string, callback: EventListenerOrEventListenerObject, options?: {
+		passive?: boolean;
+		capture?: boolean;
+	}): void;
+	static removeEventListener(target: HTMLElement | Window | Document, type: string, callback: EventListenerOrEventListenerObject, options?: {
+		passive?: boolean;
+		capture?: boolean;
+	}): void;
+	private static suppressClickInternal;
+	static suppressClick(): void;
+	private static getScale;
+	private static getPoint;
+	static mousePos(el: HTMLElement, e: MouseEvent | Touch): Point;
+	static touchPos(el: HTMLElement, touches: TouchList): Point[];
+	static mouseButton(e: MouseEvent): number;
+	static remove(node: HTMLElement): void;
+	/**
+	 * Sanitize an HTML string - this might not be enough to prevent all XSS attacks
+	 * Base on https://javascriptsource.com/sanitize-an-html-string-to-reduce-the-risk-of-xss-attacks/
+	 * (c) 2021 Chris Ferdinandi, MIT License, https://gomakethings.com
+	 */
+	static sanitize(str: string): string;
+	/**
+	 * Check if the attribute is potentially dangerous
+	 */
+	private static isPossiblyDangerous;
+	/**
+	 * Remove dangerous stuff from the HTML document's nodes
+	 * @param html - The HTML document
+	 */
+	private static clean;
+	/**
+	 * Remove potentially dangerous attributes from an element
+	 * @param elem - The element
+	 */
+	private static removeAttributes;
+}
+export declare const webpSupported: {
+	supported: boolean;
+	testSupport: typeof testSupport;
+};
+declare function testSupport(gl: WebGLRenderingContext | WebGL2RenderingContext): void;
+export declare class MercatorTransform implements ITransform {
+	private _helper;
+	get pixelsToClipSpaceMatrix(): mat4;
+	get clipSpaceToPixelsMatrix(): mat4;
+	get pixelsToGLUnits(): [
+		number,
+		number
+	];
+	get centerOffset(): Point;
+	get size(): Point;
+	get rotationMatrix(): mat2;
+	get centerPoint(): Point;
+	get pixelsPerMeter(): number;
+	setMinZoom(zoom: number): void;
+	setMaxZoom(zoom: number): void;
+	setMinPitch(pitch: number): void;
+	setMaxPitch(pitch: number): void;
+	setRenderWorldCopies(renderWorldCopies: boolean): void;
+	setBearing(bearing: number): void;
+	setPitch(pitch: number): void;
+	setRoll(roll: number): void;
+	setFov(fov: number): void;
+	setZoom(zoom: number): void;
+	setCenter(center: LngLat): void;
+	setElevation(elevation: number): void;
+	setMinElevationForCurrentTile(elevation: number): void;
+	setPadding(padding: PaddingOptions): void;
+	interpolatePadding(start: PaddingOptions, target: PaddingOptions, t: number): void;
+	isPaddingEqual(padding: PaddingOptions): boolean;
+	resize(width: number, height: number, constrain?: boolean): void;
+	getMaxBounds(): LngLatBounds;
+	setMaxBounds(bounds?: LngLatBounds): void;
+	overrideNearFarZ(nearZ: number, farZ: number): void;
+	clearNearFarZOverride(): void;
+	getCameraQueryGeometry(queryGeometry: Point[]): Point[];
+	get tileSize(): number;
+	get tileZoom(): number;
+	get scale(): number;
+	get worldSize(): number;
+	get width(): number;
+	get height(): number;
+	get lngRange(): [
+		number,
+		number
+	];
+	get latRange(): [
+		number,
+		number
+	];
+	get minZoom(): number;
+	get maxZoom(): number;
+	get zoom(): number;
+	get center(): LngLat;
+	get minPitch(): number;
+	get maxPitch(): number;
+	get pitch(): number;
+	get pitchInRadians(): number;
+	get roll(): number;
+	get rollInRadians(): number;
+	get bearing(): number;
+	get bearingInRadians(): number;
+	get fov(): number;
+	get fovInRadians(): number;
+	get elevation(): number;
+	get minElevationForCurrentTile(): number;
+	get padding(): PaddingOptions;
+	get unmodified(): boolean;
+	get renderWorldCopies(): boolean;
+	get cameraToCenterDistance(): number;
+	get nearZ(): number;
+	get farZ(): number;
+	get autoCalculateNearFarZ(): boolean;
+	setTransitionState(_value: number, _error: number): void;
+	private _cameraPosition;
+	private _mercatorMatrix;
+	private _projectionMatrix;
+	private _viewProjMatrix;
+	private _invViewProjMatrix;
+	private _invProjMatrix;
+	private _alignedProjMatrix;
+	private _pixelMatrix;
+	private _pixelMatrix3D;
+	private _pixelMatrixInverse;
+	private _fogMatrix;
+	private _posMatrixCache;
+	private _alignedPosMatrixCache;
+	private _fogMatrixCacheF32;
+	private _coveringTilesDetailsProvider;
+	constructor(minZoom?: number, maxZoom?: number, minPitch?: number, maxPitch?: number, renderWorldCopies?: boolean);
+	clone(): ITransform;
+	apply(that: IReadonlyTransform, constrain?: boolean, forceOverrideZ?: boolean): void;
+	get cameraPosition(): vec3;
+	get projectionMatrix(): mat4;
+	get modelViewProjectionMatrix(): mat4;
+	get inverseProjectionMatrix(): mat4;
+	get mercatorMatrix(): mat4;
+	getVisibleUnwrappedCoordinates(tileID: CanonicalTileID): Array<UnwrappedTileID>;
+	getCameraFrustum(): Frustum;
+	getClippingPlane(): vec4 | null;
+	getCoveringTilesDetailsProvider(): CoveringTilesDetailsProvider;
+	recalculateZoomAndCenter(terrain?: Terrain): void;
+	setLocationAtPoint(lnglat: LngLat, point: Point): void;
+	locationToScreenPoint(lnglat: LngLat, terrain?: Terrain): Point;
+	screenPointToLocation(p: Point, terrain?: Terrain): LngLat;
+	screenPointToMercatorCoordinate(p: Point, terrain?: Terrain): MercatorCoordinate;
+	screenPointToMercatorCoordinateAtZ(p: Point, mercatorZ?: number): MercatorCoordinate;
+	/**
+	 * Given a coordinate, return the screen point that corresponds to it
+	 * @param coord - the coordinates
+	 * @param elevation - the elevation
+	 * @param pixelMatrix - the pixel matrix
+	 * @returns screen point
+	 */
+	coordinatePoint(coord: MercatorCoordinate, elevation?: number, pixelMatrix?: mat4): Point;
+	getBounds(): LngLatBounds;
+	isPointOnMapSurface(p: Point, terrain?: Terrain): boolean;
+	/**
+	 * Calculate the posMatrix that, given a tile coordinate, would be used to display the tile on a map.
+	 * This function is specific to the mercator projection.
+	 * @param tileID - the tile ID
+	 * @param aligned - whether to use a pixel-aligned matrix variant, intended for rendering raster tiles
+	 * @param useFloat32 - when true, returns a float32 matrix instead of float64. Use float32 for matrices that are passed to shaders, use float64 for everything else.
+	 */
+	calculatePosMatrix(tileID: UnwrappedTileID | OverscaledTileID, aligned?: boolean, useFloat32?: boolean): mat4;
+	calculateFogMatrix(unwrappedTileID: UnwrappedTileID): mat4;
+	/**
+	 * This mercator implementation returns center lngLat and zoom to ensure that:
+	 *
+	 * 1) everything beyond the bounds is excluded
+	 * 2) a given lngLat is as near the center as possible
+	 *
+	 * Bounds are those set by maxBounds or North & South "Poles" and, if only 1 globe is displayed, antimeridian.
+	 */
+	getConstrained(lngLat: LngLat, zoom: number): {
+		center: LngLat;
+		zoom: number;
+	};
+	calculateCenterFromCameraLngLatAlt(lnglat: LngLatLike, alt: number, bearing?: number, pitch?: number): {
+		center: LngLat;
+		elevation: number;
+		zoom: number;
+	};
+	_calculateNearFarZIfNeeded(cameraToSeaLevelDistance: number, limitedPitchRadians: number, offset: Point): void;
+	_calcMatrices(): void;
+	private _clearMatrixCaches;
+	maxPitchScaleFactor(): number;
+	getCameraPoint(): Point;
+	getCameraAltitude(): number;
+	getCameraLngLat(): LngLat;
+	lngLatToCameraDepth(lngLat: LngLat, elevation: number): number;
+	getProjectionData(params: ProjectionDataParams): ProjectionData;
+	isLocationOccluded(_: LngLat): boolean;
+	getPixelScale(): number;
+	getCircleRadiusCorrection(): number;
+	getPitchedTextCorrection(_textAnchorX: number, _textAnchorY: number, _tileID: UnwrappedTileID): number;
+	transformLightDirection(dir: vec3): vec3;
+	getRayDirectionFromPixel(_p: Point): vec3;
+	projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation: (x: number, y: number) => number): PointProjection;
+	populateCache(coords: Array<OverscaledTileID>): void;
+	getMatrixForModel(location: LngLatLike, altitude?: number): mat4;
+	getProjectionDataForCustomLayer(applyGlobeMatrix?: boolean): ProjectionData;
+	getFastPathSimpleProjectionMatrix(tileID: OverscaledTileID): mat4;
+}
+/**
+ * @internal
+ */
+export declare class MercatorCameraHelper implements ICameraHelper {
+	get useGlobeControls(): boolean;
+	handlePanInertia(pan: Point, transform: IReadonlyTransform): {
+		easingCenter: LngLat;
+		easingOffset: Point;
+	};
+	handleMapControlsRollPitchBearingZoom(deltas: MapControlsDeltas, tr: ITransform): void;
+	handleMapControlsPan(deltas: MapControlsDeltas, tr: ITransform, preZoomAroundLoc: LngLat): void;
+	cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult;
+	handleJumpToCenterZoom(tr: ITransform, options: {
+		zoom?: number;
+		center?: LngLatLike;
+	}): void;
+	handleEaseTo(tr: ITransform, options: EaseToHandlerOptions): EaseToHandlerResult;
+	handleFlyTo(tr: ITransform, options: FlyToHandlerOptions): FlyToHandlerResult;
+}
+/** */
+export declare const browser: {
+	/**
+	 * Provides a function that outputs milliseconds: either performance.now()
+	 * or a fallback to Date.now()
+	 */
+	now: any;
+	frame(abortController: AbortController, fn: (paintStartTimestamp: number) => void, reject: (error: Error) => void): void;
+	frameAsync(abortController: AbortController): Promise<number>;
+	getImageData(img: HTMLImageElement | ImageBitmap, padding?: number): ImageData;
+	getImageCanvasContext(img: HTMLImageElement | ImageBitmap): CanvasRenderingContext2D;
+	resolveURL(path: string): any;
+	hardwareConcurrency: number;
+	readonly prefersReducedMotion: boolean;
+};
+/**
+ * Check if an error is an abort error
+ * @param error - An error object
+ * @returns - true if the error is an abort error
+ */
+export declare function isAbortError(error: Error): boolean;
+/**
+ * Check if an error is a framebuffer not complete error
+ * @param error - An error object
+ * @returns - true if the error is a framebuffer not complete error
+ */
+export declare function isFramebufferNotCompleteError(error: Error): boolean;
+/**
+ * Throttle the given function to run at most every `period` milliseconds.
+ */
+export declare function throttle<T extends (...args: any) => void>(fn: T, time: number): (...args: Parameters<T>) => ReturnType<typeof setTimeout>;
 /**
  * Sets the map's [RTL text plugin](https://www.mapbox.com/mapbox-gl-js/plugins/#mapbox-gl-rtl-text).
  * Necessary for supporting the Arabic and Hebrew languages, which are written right-to-left.
