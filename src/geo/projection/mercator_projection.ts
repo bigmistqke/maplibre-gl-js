@@ -34,11 +34,11 @@ export class MercatorProjection implements Projection {
     }
 
     get shaderPreludeCode(): PreparedShader {
-        return registry.shader['projectionMercator'];
+        return registry.shader.projectionMercator;
     }
 
     get vertexShaderPreludeCode(): string {
-        return registry.shader['projectionMercator'].vertexSource;
+        return registry.shader.projectionMercator.vertexSource;
     }
 
     get subdivisionGranularity(): SubdivisionGranularitySetting {

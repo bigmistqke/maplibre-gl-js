@@ -135,7 +135,7 @@ export class FullscreenControl extends Evented implements IControl {
 
         if (this._fullscreen) {
             this.fire(new Event('fullscreenstart'));
-            this._prevCooperativeGesturesEnabled = this._map.cooperativeGestures?.isEnabled() ?? false;
+            this._prevCooperativeGesturesEnabled = !!(this._map.cooperativeGestures?.isEnabled());
             this._map.cooperativeGestures?.disable();
         } else {
             this.fire(new Event('fullscreenend'));

@@ -7,7 +7,6 @@ import {RasterBoundsArray, PosArray, TriangleIndexArray, LineStripIndexArray} fr
 import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
 import {type ProgramConfiguration} from '../data/program_configuration';
-import {createCrossTileSymbolIndex} from '../symbol/symbol_registry';
 import {registry} from '../registry';
 import {Program} from './program';
 import {programUniforms} from './program/program_uniforms';
@@ -41,6 +40,7 @@ import type {RenderToTexture} from './render_to_texture';
 import type {ProjectionData} from '../geo/projection/projection_data';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
+import type {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
 
@@ -106,7 +106,7 @@ export class Painter {
     id: string;
     _showOverdrawInspector: boolean;
     cache: {[_: string]: Program<any>};
-    crossTileSymbolIndex: any; // Optional: CrossTileSymbolIndex (only if symbols registered)
+    crossTileSymbolIndex?: CrossTileSymbolIndex;
     symbolFadeChange: number;
     debugOverlayTexture: Texture;
     debugOverlayCanvas: HTMLCanvasElement;
@@ -128,7 +128,7 @@ export class Painter {
         this.numSublayers = SourceCache.maxUnderzooming + SourceCache.maxOverzooming + 1;
         this.depthEpsilon = 1 / Math.pow(2, 16);
 
-        this.crossTileSymbolIndex = createCrossTileSymbolIndex();
+        this.crossTileSymbolIndex = registry.symbol.CrossTileSymbolIndex ? new registry.symbol.CrossTileSymbolIndex() : undefined;
     }
 
     /*
@@ -694,7 +694,7 @@ export class Painter {
 
         const projection = this.style.projection;
 
-        const projectionPrelude = forceSimpleProjection ? registry.shader['projectionMercator'] : projection.shaderPreludeCode;
+        const projectionPrelude = forceSimpleProjection ? registry.shader.projectionMercator : projection.shaderPreludeCode;
         const projectionDefine = forceSimpleProjection ? MercatorShaderDefine : projection.shaderDefine;
         const projectionKey = `/${forceSimpleProjection ? MercatorShaderVariantKey : projection.shaderVariantName}`;
 

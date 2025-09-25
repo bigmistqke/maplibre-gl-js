@@ -283,7 +283,7 @@ export class HandlerManager {
     }
 
     isZooming() {
-        return !!this._eventsInProgress.zoom || (this._map.scrollZoom?.isZooming() ?? false);
+        return !!(this._eventsInProgress.zoom || this._map.scrollZoom?.isZooming());
     }
     isRotating() {
         return !!this._eventsInProgress.rotate;

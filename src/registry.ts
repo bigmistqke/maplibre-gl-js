@@ -1,10 +1,52 @@
-import type {SourceClass} from './source/source';
-import type {StyleLayerClass, StyleLayer} from './style/style_layer';
 import type {HandlerFactory} from './ui/handler_manager';
-import type {DrawFunction} from './render/draw_registry';
 import type {PreparedShader} from './shaders/shaders';
-import type {CrossTileSymbolIndexConstructor, PauseablePlacementConstructor} from './symbol/symbol_registry';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {StyleLayer} from './style/style_layer';
+import type {Painter, RenderOptions} from './render/painter';
+import type {SourceCache} from './source/source_cache';
+import type {OverscaledTileID} from './source/tile_id';
+
+/**
+ * Draw function type - handles rendering for a specific layer type
+ */
+export type DrawFunction = (
+    painter: Painter,
+    sourceCache: SourceCache,
+    layer: StyleLayer,
+    coords: Array<OverscaledTileID>,
+    renderOptions: RenderOptions
+) => void;
+
+/**
+ * Symbol system function type for lazy initialization
+ */
+export type PerformSymbolLayoutFunction = (args: any) => void;
+
+// Source types
+import type {CanvasSource} from './source/canvas_source';
+import type {GeoJSONSource} from './source/geojson_source';
+import type {ImageSource} from './source/image_source';
+import type {RasterDEMTileSource} from './source/raster_dem_tile_source';
+import type {RasterTileSource} from './source/raster_tile_source';
+import type {VectorTileSource} from './source/vector_tile_source';
+import type {VideoSource} from './source/video_source';
+
+// Layer types
+import type {BackgroundStyleLayer} from './style/style_layer/background_style_layer';
+import type {CircleStyleLayer} from './style/style_layer/circle_style_layer';
+import type {ColorReliefStyleLayer} from './style/style_layer/color_relief_style_layer';
+import type {FillExtrusionStyleLayer} from './style/style_layer/fill_extrusion_style_layer';
+import type {FillStyleLayer} from './style/style_layer/fill_style_layer';
+import type {HeatmapStyleLayer} from './style/style_layer/heatmap_style_layer';
+import type {HillshadeStyleLayer} from './style/style_layer/hillshade_style_layer';
+import type {LineStyleLayer} from './style/style_layer/line_style_layer';
+import type {RasterStyleLayer} from './style/style_layer/raster_style_layer';
+import type {SymbolStyleLayer} from './style/style_layer/symbol_style_layer';
+
+// Symbol types
+import type {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
+import type {PauseablePlacement} from './style/pauseable_placement';
+import type {SymbolBucket} from './data/bucket/symbol_bucket';
 
 /**
  * Layer factory function type for registry
@@ -16,29 +58,29 @@ export type LayerFactory = (layer: LayerSpecification, globalState: Record<strin
  * Source registry type with specific source type keys
  */
 export interface SourceRegistry {
-    canvas?: SourceClass;
-    geojson?: SourceClass;
-    image?: SourceClass;
-    'raster-dem'?: SourceClass;
-    raster?: SourceClass;
-    vector?: SourceClass;
-    video?: SourceClass;
+    canvas?: typeof CanvasSource;
+    geojson?: typeof GeoJSONSource;
+    image?: typeof ImageSource;
+    'raster-dem'?: typeof RasterDEMTileSource;
+    raster?: typeof RasterTileSource;
+    vector?: typeof VectorTileSource;
+    video?: typeof VideoSource;
 };
 
 /**
  * Layer registry type with specific layer type keys
  */
 export interface LayerRegistry {
-    background?: StyleLayerClass;
-    circle?: StyleLayerClass;
-    'color-relief'?: StyleLayerClass;
-    'fill-extrusion'?: StyleLayerClass;
-    fill?: StyleLayerClass;
-    heatmap?: StyleLayerClass;
-    hillshade?: StyleLayerClass;
-    line?: StyleLayerClass;
-    raster?: StyleLayerClass;
-    symbol?: StyleLayerClass;
+    background?: typeof BackgroundStyleLayer;
+    circle?: typeof CircleStyleLayer;
+    'color-relief'?: typeof ColorReliefStyleLayer;
+    'fill-extrusion'?: typeof FillExtrusionStyleLayer;
+    fill?: typeof FillStyleLayer;
+    heatmap?: typeof HeatmapStyleLayer;
+    hillshade?: typeof HillshadeStyleLayer;
+    line?: typeof LineStyleLayer;
+    raster?: typeof RasterStyleLayer;
+    symbol?: typeof SymbolStyleLayer;
 };
 
 /**
@@ -128,8 +170,10 @@ export interface ShaderRegistry {
  * Symbol dependencies registry type
  */
 export interface SymbolRegistry {
-    CrossTileSymbolIndex?: CrossTileSymbolIndexConstructor;
-    PauseablePlacement?: PauseablePlacementConstructor;
+    SymbolBucket?: typeof SymbolBucket;
+    CrossTileSymbolIndex?: typeof CrossTileSymbolIndex;
+    PauseablePlacement?: typeof PauseablePlacement;
+    performSymbolLayout?: PerformSymbolLayoutFunction;
 };
 
 /**

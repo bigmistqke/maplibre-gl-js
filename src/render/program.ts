@@ -63,7 +63,7 @@ export class Program<Us extends UniformBindings> {
         const dynamicAttrInfo = configuration ? configuration.getBinderAttributes() : [];
         const allAttrInfo = staticAttrInfo.concat(dynamicAttrInfo);
 
-        const prelude = registry.shader['prelude'];
+        const prelude = registry.shader.prelude;
         const preludeUniformsInfo = prelude.staticUniforms ? getTokenizedAttributesAndUniforms(prelude.staticUniforms) : [];
         const projectionPreludeUniformsInfo = projectionPrelude.staticUniforms ? getTokenizedAttributesAndUniforms(projectionPrelude.staticUniforms) : [];
         const staticUniformsInfo = source.staticUniforms ? getTokenizedAttributesAndUniforms(source.staticUniforms) : [];

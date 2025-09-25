@@ -1,5 +1,4 @@
 import {clamp} from '../util/util';
-
 import {browser} from '../util/browser';
 import {StencilMode} from '../gl/stencil_mode';
 import {DepthMode} from '../gl/depth_mode';
@@ -8,6 +7,7 @@ import {rasterUniformValues} from './program/raster_program';
 import {EXTENT} from '../data/extent';
 import {coveringZoomLevel} from '../geo/projection/covering_tiles';
 import Point from '@mapbox/point-geometry';
+import {registry} from '../registry';
 
 import type {Painter, RenderOptions} from './painter';
 import type {SourceCache} from '../source/source_cache';
@@ -45,9 +45,9 @@ export function drawRaster(painter: Painter, sourceCache: SourceCache, layer: Ra
     // This approach also avoids pixel shader overdraw, as any pixel is drawn at most once.
 
     // Stencil mask and two-pass is not used for ImageSource sources regardless of projection.
-    if ('tileCoords' in source && 'flippedWindingOrder' in source) {
+    if (source instanceof registry.source.image) {
         // Image source - no stencil is used
-        drawTiles(painter, sourceCache, layer, tileIDs, null, false, false, (source as any).tileCoords, (source as any).flippedWindingOrder, isRenderingToTexture);
+        drawTiles(painter, sourceCache, layer, tileIDs, null, false, false, source.tileCoords, source.flippedWindingOrder, isRenderingToTexture);
     } else if (useSubdivision) {
         // Two-pass rendering
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);

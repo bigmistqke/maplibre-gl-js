@@ -66,11 +66,11 @@ export class VerticalPerspectiveProjection implements Projection {
     }
 
     get shaderPreludeCode(): PreparedShader {
-        return registry.shader['projectionGlobe'];
+        return registry.shader.projectionGlobe;
     }
 
     get vertexShaderPreludeCode(): string {
-        return registry.shader['projectionMercator'].vertexSource;
+        return registry.shader.projectionMercator.vertexSource;
     }
 
     get subdivisionGranularity(): SubdivisionGranularitySetting {

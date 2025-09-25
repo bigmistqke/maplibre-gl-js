@@ -25,8 +25,10 @@ import {HillshadeStyleLayer} from './style/style_layer/hillshade_style_layer';
 import {LineStyleLayer} from './style/style_layer/line_style_layer';
 import {RasterStyleLayer} from './style/style_layer/raster_style_layer';
 import {SymbolStyleLayer} from './style/style_layer/symbol_style_layer';
+import {SymbolBucket} from './data/bucket/symbol_bucket';
 import {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
 import {PauseablePlacement} from './style/pauseable_placement';
+import {performSymbolLayout} from './symbol/symbol_layout';
 
 // Handlers
 import {BoxZoomHandler} from './ui/handler/box_zoom';
@@ -156,8 +158,10 @@ registry.layer = {
 
 // ===== REGISTER SYMBOL DEPENDENCIES =====
 registry.symbol = {
+    SymbolBucket,
     CrossTileSymbolIndex,
     PauseablePlacement,
+    performSymbolLayout,
 };
 
 // ===== REGISTER HANDLERS =====

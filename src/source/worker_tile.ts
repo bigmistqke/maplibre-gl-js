@@ -9,6 +9,7 @@ import {ImageAtlas} from '../render/image_atlas';
 import {GlyphAtlas} from '../render/glyph_atlas';
 import {EvaluationParameters} from '../style/evaluation_parameters';
 import {OverscaledTileID} from './tile_id';
+import {registry} from '../registry';
 
 import type {Bucket} from '../data/bucket';
 import type {IActor} from '../util/actor';
@@ -163,13 +164,10 @@ export class WorkerTile {
 
         for (const key in buckets) {
             const bucket = buckets[key];
-            // Duck typing: check for symbolInstances property unique to SymbolBucket
-            if ('symbolInstances' in bucket) {
-                // Dynamically import performSymbolLayout only if symbols are used
-                const {performSymbolLayout} = await import('../symbol/symbol_layout');
+            if (registry.symbol.SymbolBucket && bucket instanceof registry.symbol.SymbolBucket) {
                 recalculateLayers(bucket.layers, this.zoom, availableImages);
-                performSymbolLayout({
-                    bucket: bucket as any,
+                registry.symbol.performSymbolLayout?.({
+                    bucket,
                     glyphMap,
                     glyphPositions: glyphAtlas.positions,
                     imageMap: iconMap,
