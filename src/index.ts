@@ -16,7 +16,7 @@ import {LngLat, type LngLatLike} from './geo/lng_lat';
 import {LngLatBounds, type LngLatBoundsLike} from './geo/lng_lat_bounds';
 import Point from '@mapbox/point-geometry';
 import {MercatorCoordinate} from './geo/mercator_coordinate';
-import {Evented, type ErrorEvent, Event, type Listener} from './util/evented';
+import {Evented, ErrorEvent, Event, type Listener} from './util/evented';
 import {type AddProtocolAction, config} from './util/config';
 import {rtlMainThreadPluginFactory} from './source/rtl_text_plugin_main_thread';
 import {WorkerPool} from './util/worker_pool';
@@ -71,24 +71,24 @@ import type {GlyphPosition, GlyphPositions} from './render/glyph_atlas';
 import type {ImageAtlas} from './render/image_atlas';
 import type {StyleGlyph} from './style/style_glyph';
 import type {FeatureIndex} from './data/feature_index';
-import { Painter } from './render/painter';
-import { TaskID, TaskQueue } from './util/task_queue';
-import { defaultLocale } from './ui/default_locale';
-import { PerformanceMarkers, PerformanceUtils } from './util/performance';
-import { ImageRequest } from './util/image_request';
-import { DOM } from './util/dom';
-import { webpSupported } from './util/webp_supported';
-import { ITransform } from './geo/transform_interface';
-import { ICameraHelper } from './geo/projection/camera_helper';
-import { MercatorTransform } from './geo/projection/mercator_transform';
-import { MercatorCameraHelper } from './geo/projection/mercator_camera_helper';
-import { browser } from './util/browser';
-import { EvaluationParameters } from './style/evaluation_parameters';
-import { isAbortError } from './util/abort_error';
-import { isFramebufferNotCompleteError } from './util/framebuffer_error';
-import { RenderToTexture } from './render/render_to_texture';
-import { Terrain } from './render/terrain';
-import { throttle } from './util/throttle';
+import {Painter} from './render/painter';
+import {type TaskID, TaskQueue} from './util/task_queue';
+import {defaultLocale} from './ui/default_locale';
+import {PerformanceMarkers, PerformanceUtils} from './util/performance';
+import {ImageRequest} from './util/image_request';
+import {DOM} from './util/dom';
+import {webpSupported} from './util/webp_supported';
+import {type ITransform} from './geo/transform_interface';
+import {type ICameraHelper} from './geo/projection/camera_helper';
+import {MercatorTransform} from './geo/projection/mercator_transform';
+import {MercatorCameraHelper} from './geo/projection/mercator_camera_helper';
+import {browser} from './util/browser';
+import {EvaluationParameters} from './style/evaluation_parameters';
+import {isAbortError} from './util/abort_error';
+import {isFramebufferNotCompleteError} from './util/framebuffer_error';
+import {RenderToTexture} from './render/render_to_texture';
+import {Terrain} from './render/terrain';
+import {throttle} from './util/throttle';
 const version = packageJSON.version;
 
 export type * from '@maplibre/maplibre-gl-style-spec';
@@ -217,9 +217,12 @@ export {
     browser,
     Camera,
     CanonicalTileID,
+    coveringTiles,
+    createCalculateTileZoomFunction,
     defaultAttributionControlOptions,
     defaultLocale,
     DOM,
+    ErrorEvent,
     EvaluationParameters,
     extend,
     getJSON,
@@ -227,28 +230,26 @@ export {
     ImageRequest,
     isAbortError,
     isFramebufferNotCompleteError,
+    isImageBitmap,
     MercatorCameraHelper,
     MercatorTransform,
+    packageJSON,
     Painter,
     PerformanceMarkers,
     PerformanceUtils,
+    pick,
+    RenderToTexture,
     RequestManager,
     ResourceType,
+    RGBAImage,
     TaskQueue,
+    Terrain,
+    throttle,
     uniqueId,
     warnOnce,
     webpSupported,
     type ICameraHelper,
     type ITransform,
-    coveringTiles,
-    createCalculateTileZoomFunction,
-    RGBAImage,
-    RenderToTexture,
-    Terrain,
-    isImageBitmap,
-    pick,
-    throttle,
-    packageJSON,
     type TaskID,
     //
     Map,
@@ -403,7 +404,6 @@ export {
     type MapEventType,
     type MapDataEvent,
     type MapContextEvent,
-    type ErrorEvent,
     type GeoJSONFeature,
     type CoveringTilesOptions,
     setRTLTextPlugin,

@@ -69077,6 +69077,7 @@ function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadca
 
 exports.AJAXError = performance$1.AJAXError;
 exports.CanonicalTileID = performance$1.CanonicalTileID;
+exports.ErrorEvent = performance$1.ErrorEvent;
 exports.EvaluationParameters = performance$1.EvaluationParameters;
 exports.Event = performance$1.Event;
 exports.Evented = performance$1.Evented;

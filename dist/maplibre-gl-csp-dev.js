@@ -66593,6 +66593,7 @@ exports.DoubleClickZoomHandler = DoubleClickZoomHandler;
 exports.DragPanHandler = DragPanHandler;
 exports.DragRotateHandler = DragRotateHandler;
 exports.EdgeInsets = EdgeInsets;
+exports.ErrorEvent = ErrorEvent;
 exports.EvaluationParameters = EvaluationParameters;
 exports.Event = Event;
 exports.Evented = Evented;
