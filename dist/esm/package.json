@@ -63,7 +63,14 @@
         "./shader/terrain": "./dist/esm/src/register/shader/terrain.js",
         "./shader/projection-error-measurement": "./dist/esm/src/register/shader/projection-error-measurement.js",
         "./shader/atmosphere": "./dist/esm/src/register/shader/atmosphere.js",
-        "./shader/sky": "./dist/esm/src/register/shader/sky.js"
+        "./shader/sky": "./dist/esm/src/register/shader/sky.js",
+        "./source/vector": "./dist/esm/src/register/source/vector.js",
+        "./source/raster": "./dist/esm/src/register/source/raster.js",
+        "./source/raster-dem": "./dist/esm/src/register/source/raster-dem.js",
+        "./source/geojson": "./dist/esm/src/register/source/geojson.js",
+        "./source/image": "./dist/esm/src/register/source/image.js",
+        "./source/video": "./dist/esm/src/register/source/video.js",
+        "./source/canvas": "./dist/esm/src/register/source/canvas.js"
     },
     "license": "BSD-3-Clause",
     "homepage": "https://maplibre.org/",

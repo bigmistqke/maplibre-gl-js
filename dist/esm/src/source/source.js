@@ -7,13 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { VectorTileSource } from '../source/vector_tile_source';
-import { RasterTileSource } from '../source/raster_tile_source';
-import { RasterDEMTileSource } from '../source/raster_dem_tile_source';
-import { GeoJSONSource } from '../source/geojson_source';
-import { VideoSource } from '../source/video_source';
-import { ImageSource } from '../source/image_source';
-import { CanvasSource } from '../source/canvas_source';
+import { getSource } from './source_registry';
 const registeredSources = {};
 export const create = (id, specification, dispatcher, eventedParent) => {
     const Class = getSourceType(specification.type);
@@ -24,23 +18,8 @@ export const create = (id, specification, dispatcher, eventedParent) => {
     return source;
 };
 const getSourceType = (name) => {
-    switch (name) {
-        case 'geojson':
-            return GeoJSONSource;
-        case 'image':
-            return ImageSource;
-        case 'raster':
-            return RasterTileSource;
-        case 'raster-dem':
-            return RasterDEMTileSource;
-        case 'vector':
-            return VectorTileSource;
-        case 'video':
-            return VideoSource;
-        case 'canvas':
-            return CanvasSource;
-    }
-    return registeredSources[name];
+    var _a;
+    return (_a = getSource(name)) !== null && _a !== void 0 ? _a : registeredSources[name];
 };
 const setSourceType = (name, type) => {
     registeredSources[name] = type;

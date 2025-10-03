@@ -1,3 +1,10 @@
+import './register/source/vector';
+import './register/source/raster';
+import './register/source/raster-dem';
+import './register/source/geojson';
+import './register/source/image';
+import './register/source/video';
+import './register/source/canvas';
 import './register/layer/background';
 import './register/layer/circle';
 import './register/layer/fill';
