@@ -1,5 +1,3 @@
-import './style/layers';
-import './render/draws';
 import packageJSON from '../package.json' with { type: 'json' };
 import { Map } from './ui/map';
 import { Camera } from './ui/camera';

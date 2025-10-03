@@ -253,20 +253,20 @@ export class Painter {
         return this.currentLayer < this.opaquePassCutoff;
     }
     render(style, options) {
-        var _a, _b;
+        var _a, _b, _c, _d;
         this.style = style;
         this.options = options;
         this.lineAtlas = style.lineAtlas;
         this.imageManager = style.imageManager;
         this.glyphManager = style.glyphManager;
-        this.symbolFadeChange = style.placement.symbolFadeChange(browser.now());
+        this.symbolFadeChange = (_b = (_a = style.placement) === null || _a === void 0 ? void 0 : _a.symbolFadeChange(browser.now())) !== null && _b !== void 0 ? _b : 1;
         this.imageManager.beginFrame();
         const layerIds = this.style._order;
         const sourceCaches = this.style.sourceCaches;
         const coordsAscending = {};
         const coordsDescending = {};
         const coordsDescendingSymbol = {};
-        const renderOptions = { isRenderingToTexture: false, isRenderingGlobe: ((_a = style.projection) === null || _a === void 0 ? void 0 : _a.transitionState) > 0 };
+        const renderOptions = { isRenderingToTexture: false, isRenderingGlobe: ((_c = style.projection) === null || _c === void 0 ? void 0 : _c.transitionState) > 0 };
         for (const id in sourceCaches) {
             const sourceCache = sourceCaches[id];
             if (sourceCache.used) {
@@ -299,7 +299,7 @@ export class Painter {
                 continue;
             this.renderLayer(this, sourceCaches[layer.source], layer, coords, renderOptions);
         }
-        (_b = this.style.projection) === null || _b === void 0 ? void 0 : _b.updateGPUdependent({
+        (_d = this.style.projection) === null || _d === void 0 ? void 0 : _d.updateGPUdependent({
             context: this.context,
             useProgram: (name) => this.useProgram(name)
         });
