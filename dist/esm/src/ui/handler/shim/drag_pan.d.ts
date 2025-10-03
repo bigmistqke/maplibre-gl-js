@@ -8,10 +8,10 @@ export type DragPanOptions = {
 };
 export declare class DragPanHandler {
     _el: HTMLElement;
-    _mousePan: MousePanHandler;
-    _touchPan: TouchPanHandler;
+    _mousePan?: MousePanHandler;
+    _touchPan?: TouchPanHandler;
     _inertiaOptions: DragPanOptions | boolean;
-    constructor(el: HTMLElement, mousePan: MousePanHandler, touchPan: TouchPanHandler);
+    constructor(el: HTMLElement, mousePan?: MousePanHandler, touchPan?: TouchPanHandler);
     enable(options?: DragPanOptions | boolean): void;
     disable(): void;
     isEnabled(): boolean;

@@ -5,21 +5,25 @@ export class DragPanHandler {
         this._touchPan = touchPan;
     }
     enable(options) {
+        var _a, _b;
         this._inertiaOptions = options || {};
-        this._mousePan.enable();
-        this._touchPan.enable();
+        (_a = this._mousePan) === null || _a === void 0 ? void 0 : _a.enable();
+        (_b = this._touchPan) === null || _b === void 0 ? void 0 : _b.enable();
         this._el.classList.add('maplibregl-touch-drag-pan');
     }
     disable() {
-        this._mousePan.disable();
-        this._touchPan.disable();
+        var _a, _b;
+        (_a = this._mousePan) === null || _a === void 0 ? void 0 : _a.disable();
+        (_b = this._touchPan) === null || _b === void 0 ? void 0 : _b.disable();
         this._el.classList.remove('maplibregl-touch-drag-pan');
     }
     isEnabled() {
-        return this._mousePan.isEnabled() && this._touchPan.isEnabled();
+        var _a, _b;
+        return !!(((_a = this._mousePan) === null || _a === void 0 ? void 0 : _a.isEnabled()) && ((_b = this._touchPan) === null || _b === void 0 ? void 0 : _b.isEnabled()));
     }
     isActive() {
-        return this._mousePan.isActive() || this._touchPan.isActive();
+        var _a, _b;
+        return !!(((_a = this._mousePan) === null || _a === void 0 ? void 0 : _a.isActive()) || ((_b = this._touchPan) === null || _b === void 0 ? void 0 : _b.isActive()));
     }
 }
 //# sourceMappingURL=drag_pan.js.map

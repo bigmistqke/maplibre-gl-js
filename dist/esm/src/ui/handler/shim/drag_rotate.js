@@ -7,22 +7,26 @@ export class DragRotateHandler {
         this._mouseRoll = mouseRoll;
     }
     enable() {
-        this._mouseRotate.enable();
+        var _a, _b, _c;
+        (_a = this._mouseRotate) === null || _a === void 0 ? void 0 : _a.enable();
         if (this._pitchWithRotate)
-            this._mousePitch.enable();
+            (_b = this._mousePitch) === null || _b === void 0 ? void 0 : _b.enable();
         if (this._rollEnabled)
-            this._mouseRoll.enable();
+            (_c = this._mouseRoll) === null || _c === void 0 ? void 0 : _c.enable();
     }
     disable() {
-        this._mouseRotate.disable();
-        this._mousePitch.disable();
-        this._mouseRoll.disable();
+        var _a, _b, _c;
+        (_a = this._mouseRotate) === null || _a === void 0 ? void 0 : _a.disable();
+        (_b = this._mousePitch) === null || _b === void 0 ? void 0 : _b.disable();
+        (_c = this._mouseRoll) === null || _c === void 0 ? void 0 : _c.disable();
     }
     isEnabled() {
-        return this._mouseRotate.isEnabled() && (!this._pitchWithRotate || this._mousePitch.isEnabled()) && (!this._rollEnabled || this._mouseRoll.isEnabled());
+        var _a, _b, _c;
+        return !!(((_a = this._mouseRotate) === null || _a === void 0 ? void 0 : _a.isEnabled()) && (!this._pitchWithRotate || ((_b = this._mousePitch) === null || _b === void 0 ? void 0 : _b.isEnabled())) && (!this._rollEnabled || ((_c = this._mouseRoll) === null || _c === void 0 ? void 0 : _c.isEnabled())));
     }
     isActive() {
-        return this._mouseRotate.isActive() || this._mousePitch.isActive() || this._mouseRoll.isActive();
+        var _a, _b, _c;
+        return !!(((_a = this._mouseRotate) === null || _a === void 0 ? void 0 : _a.isActive()) || ((_b = this._mousePitch) === null || _b === void 0 ? void 0 : _b.isActive()) || ((_c = this._mouseRoll) === null || _c === void 0 ? void 0 : _c.isActive()));
     }
 }
 //# sourceMappingURL=drag_rotate.js.map

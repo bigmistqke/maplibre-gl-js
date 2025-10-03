@@ -4,18 +4,22 @@ export class DoubleClickZoomHandler {
         this._tapZoom = TapZoom;
     }
     enable() {
-        this._clickZoom.enable();
-        this._tapZoom.enable();
+        var _a, _b;
+        (_a = this._clickZoom) === null || _a === void 0 ? void 0 : _a.enable();
+        (_b = this._tapZoom) === null || _b === void 0 ? void 0 : _b.enable();
     }
     disable() {
-        this._clickZoom.disable();
-        this._tapZoom.disable();
+        var _a, _b;
+        (_a = this._clickZoom) === null || _a === void 0 ? void 0 : _a.disable();
+        (_b = this._tapZoom) === null || _b === void 0 ? void 0 : _b.disable();
     }
     isEnabled() {
-        return this._clickZoom.isEnabled() && this._tapZoom.isEnabled();
+        var _a, _b;
+        return !!(((_a = this._clickZoom) === null || _a === void 0 ? void 0 : _a.isEnabled()) && ((_b = this._tapZoom) === null || _b === void 0 ? void 0 : _b.isEnabled()));
     }
     isActive() {
-        return this._clickZoom.isActive() || this._tapZoom.isActive();
+        var _a, _b;
+        return !!(((_a = this._clickZoom) === null || _a === void 0 ? void 0 : _a.isActive()) || ((_b = this._tapZoom) === null || _b === void 0 ? void 0 : _b.isActive()));
     }
 }
 //# sourceMappingURL=dblclick_zoom.js.map

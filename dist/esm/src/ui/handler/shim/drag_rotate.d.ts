@@ -4,12 +4,12 @@ export type DragRotateHandlerOptions = {
     rollEnabled: boolean;
 };
 export declare class DragRotateHandler {
-    _mouseRotate: MouseRotateHandler;
-    _mousePitch: MousePitchHandler;
-    _mouseRoll: MouseRollHandler;
+    _mouseRotate?: MouseRotateHandler;
+    _mousePitch?: MousePitchHandler;
+    _mouseRoll?: MouseRollHandler;
     _pitchWithRotate: boolean;
     _rollEnabled: boolean;
-    constructor(options: DragRotateHandlerOptions, mouseRotate: MouseRotateHandler, mousePitch: MousePitchHandler, mouseRoll: MouseRollHandler);
+    constructor(options: DragRotateHandlerOptions, mouseRotate?: MouseRotateHandler, mousePitch?: MousePitchHandler, mouseRoll?: MouseRollHandler);
     enable(): void;
     disable(): void;
     isEnabled(): boolean;

@@ -2,12 +2,12 @@ import type { TwoFingersTouchZoomHandler, TwoFingersTouchRotateHandler, AroundCe
 import type { TapDragZoomHandler } from '../tap_drag_zoom';
 export declare class TwoFingersTouchZoomRotateHandler {
     _el: HTMLElement;
-    _touchZoom: TwoFingersTouchZoomHandler;
-    _touchRotate: TwoFingersTouchRotateHandler;
-    _tapDragZoom: TapDragZoomHandler;
+    _touchZoom?: TwoFingersTouchZoomHandler;
+    _touchRotate?: TwoFingersTouchRotateHandler;
+    _tapDragZoom?: TapDragZoomHandler;
     _rotationDisabled: boolean;
     _enabled: boolean;
-    constructor(el: HTMLElement, touchZoom: TwoFingersTouchZoomHandler, touchRotate: TwoFingersTouchRotateHandler, tapDragZoom: TapDragZoomHandler);
+    constructor(el: HTMLElement, touchZoom?: TwoFingersTouchZoomHandler, touchRotate?: TwoFingersTouchRotateHandler, tapDragZoom?: TapDragZoomHandler);
     enable(options?: AroundCenterOptions | boolean | null): void;
     disable(): void;
     isEnabled(): boolean;
