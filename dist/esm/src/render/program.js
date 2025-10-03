@@ -1,5 +1,5 @@
 import { transpileVertexShaderToWebGL1, transpileFragmentShaderToWebGL1 } from '../shaders/shaders';
-import { getShaders } from '../shaders/shader_registry';
+import { getShader } from '../shaders/shader_registry';
 import { VertexArrayObject } from './vertex_array_object';
 import { isWebGL2 } from '../gl/webgl2';
 import { terrainPreludeUniforms } from './program/terrain_program';
@@ -16,13 +16,13 @@ function getTokenizedAttributesAndUniforms(array) {
 }
 export class Program {
     constructor(context, source, configuration, fixedUniforms, showOverdrawInspector, hasTerrain, projectionPrelude, projectionDefine, extraDefines = []) {
-        var _a;
         const gl = context.gl;
         this.program = gl.createProgram();
         const staticAttrInfo = getTokenizedAttributesAndUniforms(source.staticAttributes);
         const dynamicAttrInfo = configuration ? configuration.getBinderAttributes() : [];
         const allAttrInfo = staticAttrInfo.concat(dynamicAttrInfo);
-        const preludeUniformsInfo = ((_a = getShaders().prelude) === null || _a === void 0 ? void 0 : _a.staticUniforms) ? getTokenizedAttributesAndUniforms(getShaders().prelude.staticUniforms) : [];
+        const prelude = getShader('prelude');
+        const preludeUniformsInfo = prelude.staticUniforms ? getTokenizedAttributesAndUniforms(prelude.staticUniforms) : [];
         const projectionPreludeUniformsInfo = projectionPrelude.staticUniforms ? getTokenizedAttributesAndUniforms(projectionPrelude.staticUniforms) : [];
         const staticUniformsInfo = source.staticUniforms ? getTokenizedAttributesAndUniforms(source.staticUniforms) : [];
         const dynamicUniformsInfo = configuration ? configuration.getBinderUniforms() : [];
@@ -48,8 +48,8 @@ export class Program {
         if (extraDefines) {
             defines.push(...extraDefines);
         }
-        let fragmentSource = defines.concat(getShaders().prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource).join('\n');
-        let vertexSource = defines.concat(getShaders().prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource).join('\n');
+        let fragmentSource = defines.concat(prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource).join('\n');
+        let vertexSource = defines.concat(prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource).join('\n');
         if (!isWebGL2(gl)) {
             fragmentSource = transpileFragmentShaderToWebGL1(fragmentSource);
             vertexSource = transpileVertexShaderToWebGL1(vertexSource);

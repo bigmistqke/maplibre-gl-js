@@ -7,7 +7,7 @@ import { RasterBoundsArray, PosArray, TriangleIndexArray, LineStripIndexArray } 
 import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
 import { createCrossTileSymbolIndex } from '../symbol/symbol_registry';
-import { getShaders } from '../shaders/shader_registry';
+import { getShader } from '../shaders/shader_registry';
 import { Program } from './program';
 import { programUniforms } from './program/program_uniforms';
 import { Context } from '../gl/context';
@@ -411,7 +411,7 @@ export class Painter {
         this.cache = this.cache || {};
         const useTerrain = !!this.style.map.terrain;
         const projection = this.style.projection;
-        const projectionPrelude = forceSimpleProjection ? getShaders().projectionMercator : projection.shaderPreludeCode;
+        const projectionPrelude = forceSimpleProjection ? getShader('projectionMercator') : projection.shaderPreludeCode;
         const projectionDefine = forceSimpleProjection ? MercatorShaderDefine : projection.shaderDefine;
         const projectionKey = `/${forceSimpleProjection ? MercatorShaderVariantKey : projection.shaderVariantName}`;
         const configurationKey = (programConfiguration ? programConfiguration.cacheKey : '');
@@ -420,8 +420,7 @@ export class Painter {
         const definesKey = (defines ? `/${defines.join('/')}` : '');
         const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
         if (!this.cache[key]) {
-            const registryShaders = getShaders();
-            const shader = registryShaders[name];
+            const shader = getShader(name);
             this.cache[key] = new Program(this.context, shader, programConfiguration, programUniforms[name], this._showOverdrawInspector, useTerrain, projectionPrelude, projectionDefine, defines);
         }
         return this.cache[key];
