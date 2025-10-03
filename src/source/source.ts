@@ -1,11 +1,5 @@
-import {VectorTileSource} from '../source/vector_tile_source';
-import {RasterTileSource} from '../source/raster_tile_source';
-import {RasterDEMTileSource} from '../source/raster_dem_tile_source';
-import {GeoJSONSource} from '../source/geojson_source';
-import {VideoSource} from '../source/video_source';
-import {ImageSource} from '../source/image_source';
-import {CanvasSource} from '../source/canvas_source';
 import {type Dispatcher} from '../util/dispatcher';
+import {getSource} from './source_registry';
 
 import type {SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Event, Evented} from '../util/evented';
@@ -154,23 +148,8 @@ export const create = (id: string, specification: SourceSpecification | CanvasSo
 };
 
 const getSourceType = (name: string): SourceClass => {
-    switch (name) {
-        case 'geojson':
-            return GeoJSONSource;
-        case 'image':
-            return ImageSource;
-        case 'raster':
-            return RasterTileSource;
-        case 'raster-dem':
-            return RasterDEMTileSource;
-        case 'vector':
-            return VectorTileSource;
-        case 'video':
-            return VideoSource;
-        case 'canvas':
-            return CanvasSource;
-    }
-    return registeredSources[name];
+    // Try registry first (tree-shakeable), then custom sources
+    return getSource(name) ?? registeredSources[name];
 };
 
 const setSourceType = (name: string, type: SourceClass) => {

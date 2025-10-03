@@ -3,8 +3,17 @@
  * For tree-shaking, use 'maplibre-gl/core' and import specific handlers/layers.
  */
 
-// Register all core layers, draws, handlers, and symbols
+// Register all core layers, draws, handlers, sources, and symbols
 // These must be imported first to prevent race conditions
+// Sources
+import './register/source/vector';
+import './register/source/raster';
+import './register/source/raster-dem';
+import './register/source/geojson';
+import './register/source/image';
+import './register/source/video';
+import './register/source/canvas';
+// Layers
 import './register/layer/background';
 import './register/layer/circle';
 import './register/layer/fill';
