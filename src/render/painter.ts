@@ -8,7 +8,7 @@ import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
 import {type ProgramConfiguration} from '../data/program_configuration';
 import {createCrossTileSymbolIndex} from '../symbol/symbol_registry';
-import {getShaders} from '../shaders/shader_registry';
+import {getShader} from '../shaders/shader_registry';
 import {Program} from './program';
 import {programUniforms} from './program/program_uniforms';
 import {Context} from '../gl/context';
@@ -695,7 +695,7 @@ export class Painter {
 
         const projection = this.style.projection;
 
-        const projectionPrelude = forceSimpleProjection ? getShaders().projectionMercator : projection.shaderPreludeCode;
+        const projectionPrelude = forceSimpleProjection ? getShader('projectionMercator') : projection.shaderPreludeCode;
         const projectionDefine = forceSimpleProjection ? MercatorShaderDefine : projection.shaderDefine;
         const projectionKey = `/${forceSimpleProjection ? MercatorShaderVariantKey : projection.shaderVariantName}`;
 
@@ -707,8 +707,7 @@ export class Painter {
         const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
 
         if (!this.cache[key]) {
-            const registryShaders = getShaders();
-            const shader = registryShaders[name];
+            const shader = getShader(name);
             this.cache[key] = new Program(
                 this.context,
                 shader,

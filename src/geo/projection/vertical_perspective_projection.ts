@@ -7,7 +7,7 @@ import {mercatorYfromLat} from '../mercator_coordinate';
 import {SubdivisionGranularityExpression, SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
 import type {Projection, ProjectionGPUContext, TileMeshUsage} from './projection';
 import {type PreparedShader} from '../../shaders/shaders';
-import {getShaders} from '../../shaders/shader_registry';
+import {getShader} from '../../shaders/shader_registry';
 import {ProjectionErrorMeasurement} from './globe_projection_error_measurement';
 import {createTileMeshWithBuffers, type CreateTileMeshOptions} from '../../util/create_tile_mesh';
 import {type EvaluationParameters} from '../../style/evaluation_parameters';
@@ -66,11 +66,11 @@ export class VerticalPerspectiveProjection implements Projection {
     }
 
     get shaderPreludeCode(): PreparedShader {
-        return getShaders().projectionGlobe;
+        return getShader('projectionGlobe');
     }
 
     get vertexShaderPreludeCode(): string {
-        return getShaders().projectionMercator.vertexSource;
+        return getShader('projectionMercator').vertexSource;
     }
 
     get subdivisionGranularity(): SubdivisionGranularitySetting {
