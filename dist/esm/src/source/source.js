@@ -11,6 +11,10 @@ import { getSource } from './source_registry';
 const registeredSources = {};
 export const create = (id, specification, dispatcher, eventedParent) => {
     const Class = getSourceType(specification.type);
+    if (!Class) {
+        console.warn(`Source type '${specification.type}' is not registered. Import the corresponding source module to enable it.`);
+        return null;
+    }
     const source = new Class(id, specification, dispatcher, eventedParent);
     if (source.id !== id) {
         throw new Error(`Expected Source id to be ${id} instead of ${source.id}`);

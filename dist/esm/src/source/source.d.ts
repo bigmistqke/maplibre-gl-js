@@ -34,6 +34,6 @@ export interface Source {
 export type SourceClass = {
     new (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented): Source;
 };
-export declare const create: (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) => Source;
+export declare const create: (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) => Source | null;
 export declare const addSourceType: (name: string, SourceType: SourceClass) => Promise<void>;
 //# sourceMappingURL=source.d.ts.map

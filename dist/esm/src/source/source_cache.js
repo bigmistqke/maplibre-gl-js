@@ -32,9 +32,13 @@ export class SourceCache extends Evented {
             this._sourceErrored = false;
         });
         this.on('error', () => {
-            this._sourceErrored = this._source.loaded();
+            var _a;
+            this._sourceErrored = (_a = this._source) === null || _a === void 0 ? void 0 : _a.loaded();
         });
         this._source = createSource(id, options, dispatcher, this);
+        if (!this._source) {
+            return;
+        }
         this._tiles = {};
         this._cache = new TileCache(0, (tile) => this._unloadTile(tile));
         this._timers = {};
