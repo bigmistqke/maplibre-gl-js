@@ -135,9 +135,14 @@ export type SourceClass = {
  * @param dispatcher - A {@link Dispatcher} instance, which can be used to send messages to the workers.
  * @returns a newly created source
  */
-export const create = (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented): Source => {
+export const create = (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented): Source | null => {
 
     const Class = getSourceType(specification.type);
+    if (!Class) {
+        console.warn(`Source type '${specification.type}' is not registered. Import the corresponding source module to enable it.`);
+        return null;
+    }
+
     const source = new Class(id, specification, dispatcher, eventedParent);
 
     if (source.id !== id) {
