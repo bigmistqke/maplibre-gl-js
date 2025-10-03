@@ -473,6 +473,7 @@ export class Style extends Evented {
         this._serializedLayers = null;
         for (const layer of dereferencedLayers) {
             const styledLayer = createStyleLayer(layer, this._globalState);
+            if (!styledLayer) continue; // Skip if layer type not registered
             styledLayer.setEventedParent(this, {layer: {id: layer.id}});
             this._layers[layer.id] = styledLayer;
         }
@@ -1069,6 +1070,7 @@ export class Style extends Evented {
                 `layers.${id}`, layerObject, {arrayIndex: -1}, options)) return;
 
             layer = createStyleLayer(layerObject as LayerSpecification | CustomLayerInterface, this._globalState);
+            if (!layer) return; // Skip if layer type not registered
             this._validateLayer(layer);
 
             layer.setEventedParent(this, {layer: {id}});

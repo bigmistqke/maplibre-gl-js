@@ -1,3 +1,9 @@
+// Register core layer types (excluding symbols - user must opt-in)
+import './style/layers';
+
+// Register core draw functions (excluding symbols - user must opt-in)
+import './render/draws';
+
 import packageJSON from '../package.json' with {type: 'json'};
 import {Map, type MapOptions, type WebGLContextAttributesWithType} from './ui/map';
 import {Camera} from './ui/camera';
