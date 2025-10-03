@@ -1,14 +1,15 @@
 import {registerHandler} from '../handler_manager';
-import {TapZoomHandler} from '../handler/tap_zoom';
-import {ClickZoomHandler} from '../handler/click_zoom';
+import type {TapZoomHandler} from '../handler/tap_zoom';
+import type {ClickZoomHandler} from '../handler/click_zoom';
 import {DoubleClickZoomHandler} from '../handler/shim/dblclick_zoom';
 
 registerHandler('doubleClickZoom', (map, options, manager) => {
-    const tapZoom = new TapZoomHandler(map);
-    const clickZoom = new ClickZoomHandler(map);
+    // Get handlers from registry if available
+    const clickZoom = manager._handlersById['clickZoom'] as ClickZoomHandler | undefined;
+    const tapZoom = manager._handlersById['tapZoom'] as TapZoomHandler | undefined;
+
     map.doubleClickZoom = new DoubleClickZoomHandler(clickZoom, tapZoom);
-    manager._add('tapZoom', tapZoom);
-    manager._add('clickZoom', clickZoom);
+
     if (options.interactive && options.doubleClickZoom) {
         map.doubleClickZoom.enable();
     }
