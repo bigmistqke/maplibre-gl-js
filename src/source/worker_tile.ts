@@ -1,8 +1,6 @@
 import {FeatureIndex} from '../data/feature_index';
-import {performSymbolLayout} from '../symbol/symbol_layout';
 import {CollisionBoxArray} from '../data/array_types.g';
 import {DictionaryCoder} from '../util/dictionary_coder';
-import {SymbolBucket} from '../data/bucket/symbol_bucket';
 import {LineBucket} from '../data/bucket/line_bucket';
 import {FillBucket} from '../data/bucket/fill_bucket';
 import {FillExtrusionBucket} from '../data/bucket/fill_extrusion_bucket';
@@ -165,10 +163,13 @@ export class WorkerTile {
 
         for (const key in buckets) {
             const bucket = buckets[key];
-            if (bucket instanceof SymbolBucket) {
+            // Duck typing: check for symbolInstances property unique to SymbolBucket
+            if ('symbolInstances' in bucket) {
+                // Dynamically import performSymbolLayout only if symbols are used
+                const {performSymbolLayout} = await import('../symbol/symbol_layout');
                 recalculateLayers(bucket.layers, this.zoom, availableImages);
                 performSymbolLayout({
-                    bucket,
+                    bucket: bucket as any,
                     glyphMap,
                     glyphPositions: glyphAtlas.positions,
                     imageMap: iconMap,

@@ -3,7 +3,6 @@ import {deserialize as deserializeBucket} from '../data/bucket';
 import '../data/feature_index';
 import {GeoJSONFeature} from '../util/vectortile_to_geojson';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
-import {SymbolBucket} from '../data/bucket/symbol_bucket';
 import {CollisionBoxArray} from '../data/array_types.g';
 import {Texture} from '../render/texture';
 import {browser} from '../util/browser';
@@ -182,10 +181,11 @@ export class Tile {
         this.hasSymbolBuckets = false;
         for (const id in this.buckets) {
             const bucket = this.buckets[id];
-            if (bucket instanceof SymbolBucket) {
+            // Duck typing: check for symbolInstances property unique to SymbolBucket
+            if ('symbolInstances' in bucket) {
                 this.hasSymbolBuckets = true;
                 if (justReloaded) {
-                    bucket.justReloaded = true;
+                    (bucket as any).justReloaded = true;
                 } else {
                     break;
                 }
@@ -196,12 +196,11 @@ export class Tile {
         if (this.hasSymbolBuckets) {
             for (const id in this.buckets) {
                 const bucket = this.buckets[id];
-                if (bucket instanceof SymbolBucket) {
-                    if (bucket.hasRTLText) {
-                        this.hasRTLText = true;
-                        rtlMainThreadPluginFactory().lazyLoad();
-                        break;
-                    }
+                // Duck typing: check for symbolInstances property unique to SymbolBucket
+                if ('symbolInstances' in bucket && (bucket as any).hasRTLText) {
+                    this.hasRTLText = true;
+                    rtlMainThreadPluginFactory().lazyLoad();
+                    break;
                 }
             }
         }

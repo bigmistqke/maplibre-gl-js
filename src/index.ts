@@ -3,13 +3,7 @@
  * For tree-shaking, use 'maplibre-gl/core' and import specific handlers/layers.
  */
 
-// Register all core layer types
-import './style/layers';
-
-// Register all core draw functions
-import './render/draws';
-
-// Register symbol layer (for backward compatibility)
+// Register symbol layer
 import './style/layers/symbol';
 
 // Register all default handlers for full bundle

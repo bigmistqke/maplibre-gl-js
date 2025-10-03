@@ -22,10 +22,9 @@ import {latest as styleSpec, derefLayers, emptyStyle, diff as diffStyles, type D
 import {getGlobalWorkerPool} from '../util/global_worker_pool';
 import {rtlMainThreadPluginFactory} from '../source/rtl_text_plugin_main_thread';
 import {RTLPluginLoadedEventName} from '../source/rtl_text_plugin_status';
-import {PauseablePlacement} from './pauseable_placement';
 import {ZoomHistory} from './zoom_history';
-import {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 import {validateCustomStyleLayer} from './style_layer/custom_style_layer';
+import {createCrossTileSymbolIndex, createPauseablePlacement} from '../symbol/symbol_registry';
 import type {MapGeoJSONFeature} from '../util/vectortile_to_geojson';
 import type Point from '@mapbox/point-geometry';
 
@@ -231,9 +230,9 @@ export class Style extends Evented {
     // image ids of all images loaded (sprite + user)
     _availableImages: Array<string>;
     _globalState: Record<string, any>;
-    crossTileSymbolIndex: CrossTileSymbolIndex;
-    pauseablePlacement: PauseablePlacement;
-    placement: Placement;
+    crossTileSymbolIndex: any; // Optional: CrossTileSymbolIndex (only if symbols registered)
+    pauseablePlacement: any; // Optional: PauseablePlacement (only if symbols registered)
+    placement: any; // Optional: Placement (only if symbols registered)
     z: number;
 
     constructor(map: Map, options: StyleOptions = {}) {
@@ -252,7 +251,7 @@ export class Style extends Evented {
         const glyphLang = map._container?.lang || (typeof document !== 'undefined' && document.documentElement?.lang) || undefined;
         this.glyphManager = new GlyphManager(map._requestManager, options.localIdeographFontFamily, glyphLang);
         this.lineAtlas = new LineAtlas(256, 512);
-        this.crossTileSymbolIndex = new CrossTileSymbolIndex();
+        // crossTileSymbolIndex will be initialized lazily if symbols are used
 
         this._spritesImagesIds = {};
         this._layers = {};
@@ -1766,6 +1765,30 @@ export class Style extends Evented {
 
         const layerTiles = {};
 
+        // Check if any symbol layers exist
+        let hasSymbolLayers = false;
+        for (const layerID of this._order) {
+            const styleLayer = this._layers[layerID];
+            if (styleLayer.type === 'symbol') {
+                hasSymbolLayers = true;
+                break;
+            }
+        }
+
+        // Early return if no symbol layers
+        if (!hasSymbolLayers) {
+            return false;
+        }
+
+        // Lazy-initialize CrossTileSymbolIndex if needed
+        if (!this.crossTileSymbolIndex) {
+            this.crossTileSymbolIndex = createCrossTileSymbolIndex();
+            if (!this.crossTileSymbolIndex) {
+                // Symbol system not registered, skip placement
+                return false;
+            }
+        }
+
         for (const layerID of this._order) {
             const styleLayer = this._layers[layerID];
             if (styleLayer.type !== 'symbol') continue;
@@ -1791,7 +1814,11 @@ export class Style extends Evented {
         forceFullPlacement = forceFullPlacement || this._layerOrderChanged || fadeDuration === 0;
 
         if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(browser.now(), transform.zoom))) {
-            this.pauseablePlacement = new PauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
+            this.pauseablePlacement = createPauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
+            if (!this.pauseablePlacement) {
+                // Symbol system not registered, skip placement
+                return false;
+            }
             this._layerOrderChanged = false;
         }
 

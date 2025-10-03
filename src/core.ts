@@ -1,7 +1,4 @@
-// Register core layer types (excluding symbols - user must opt-in)
 import './style/layers';
-
-// Register core draw functions (excluding symbols - user must opt-in)
 import './render/draws';
 
 import packageJSON from '../package.json' with {type: 'json'};
