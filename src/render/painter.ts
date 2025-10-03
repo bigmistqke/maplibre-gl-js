@@ -9,6 +9,7 @@ import posAttributes from '../data/pos_attributes';
 import {type ProgramConfiguration} from '../data/program_configuration';
 import {createCrossTileSymbolIndex} from '../symbol/symbol_registry';
 import {shaders} from '../shaders/shaders';
+import {getShaders} from '../shaders/shader_registry';
 import {Program} from './program';
 import {programUniforms} from './program/program_uniforms';
 import {Context} from '../gl/context';
@@ -707,9 +708,12 @@ export class Painter {
         const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
 
         if (!this.cache[key]) {
+            // Use registry (tree-shakeable) if available, fallback to static shaders
+            const registryShaders = getShaders();
+            const shader = registryShaders[name] ?? shaders[name];
             this.cache[key] = new Program(
                 this.context,
-                shaders[name],
+                shader,
                 programConfiguration,
                 programUniforms[name],
                 this._showOverdrawInspector,

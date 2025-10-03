@@ -23,6 +23,16 @@ import './register/draw/hillshade';
 import './register/draw/line';
 import './register/draw/raster';
 import './register/symbol';
+// Shaders
+import './register/shader/background';
+import './register/shader/circle';
+import './register/shader/fill';
+import './register/shader/fill-extrusion';
+import './register/shader/heatmap';
+import './register/shader/hillshade';
+import './register/shader/line';
+import './register/shader/raster';
+import './register/shader/symbol';
 // Low-level handlers (dependencies for composite handlers)
 import './register/handlers/mouse-rotate';
 import './register/handlers/mouse-pitch';

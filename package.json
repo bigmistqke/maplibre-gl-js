@@ -44,7 +44,16 @@
     "./handlers/touch-pitch": "./dist/esm/src/register/handlers/touch-pitch.js",
     "./handlers/touch-rotate": "./dist/esm/src/register/handlers/touch-rotate.js",
     "./handlers/touch-zoom": "./dist/esm/src/register/handlers/touch-zoom.js",
-    "./handlers/touch-zoom-rotate": "./dist/esm/src/register/handlers/touch-zoom-rotate.js"
+    "./handlers/touch-zoom-rotate": "./dist/esm/src/register/handlers/touch-zoom-rotate.js",
+    "./shader/background": "./dist/esm/src/register/shader/background.js",
+    "./shader/circle": "./dist/esm/src/register/shader/circle.js",
+    "./shader/fill": "./dist/esm/src/register/shader/fill.js",
+    "./shader/fill-extrusion": "./dist/esm/src/register/shader/fill-extrusion.js",
+    "./shader/heatmap": "./dist/esm/src/register/shader/heatmap.js",
+    "./shader/hillshade": "./dist/esm/src/register/shader/hillshade.js",
+    "./shader/line": "./dist/esm/src/register/shader/line.js",
+    "./shader/raster": "./dist/esm/src/register/shader/raster.js",
+    "./shader/symbol": "./dist/esm/src/register/shader/symbol.js"
   },
   "license": "BSD-3-Clause",
   "homepage": "https://maplibre.org/",
