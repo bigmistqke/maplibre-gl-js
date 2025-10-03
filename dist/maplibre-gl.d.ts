@@ -7598,11 +7598,11 @@ export type DragPanOptions = {
  */
 export declare class DragPanHandler {
 	_el: HTMLElement;
-	_mousePan: MousePanHandler;
-	_touchPan: TouchPanHandler;
+	_mousePan?: MousePanHandler;
+	_touchPan?: TouchPanHandler;
 	_inertiaOptions: DragPanOptions | boolean;
 	/** @internal */
-	constructor(el: HTMLElement, mousePan: MousePanHandler, touchPan: TouchPanHandler);
+	constructor(el: HTMLElement, mousePan?: MousePanHandler, touchPan?: TouchPanHandler);
 	/**
 	 * Enables the "drag to pan" interaction.
 	 *
@@ -9941,13 +9941,13 @@ type DragRotateHandlerOptions = {
  * @group Handlers
  */
 export declare class DragRotateHandler {
-	_mouseRotate: MouseRotateHandler;
-	_mousePitch: MousePitchHandler;
-	_mouseRoll: MouseRollHandler;
+	_mouseRotate?: MouseRotateHandler;
+	_mousePitch?: MousePitchHandler;
+	_mouseRoll?: MouseRollHandler;
 	_pitchWithRotate: boolean;
 	_rollEnabled: boolean;
 	/** @internal */
-	constructor(options: DragRotateHandlerOptions, mouseRotate: MouseRotateHandler, mousePitch: MousePitchHandler, mouseRoll: MouseRollHandler);
+	constructor(options: DragRotateHandlerOptions, mouseRotate?: MouseRotateHandler, mousePitch?: MousePitchHandler, mouseRoll?: MouseRollHandler);
 	/**
 	 * Enables the "drag to rotate" interaction.
 	 *
@@ -10175,10 +10175,10 @@ declare class TapZoomHandler implements Handler {
  * @group Handlers
  */
 export declare class DoubleClickZoomHandler {
-	_clickZoom: ClickZoomHandler;
-	_tapZoom: TapZoomHandler;
+	_clickZoom?: ClickZoomHandler;
+	_tapZoom?: TapZoomHandler;
 	/** @internal */
-	constructor(clickZoom: ClickZoomHandler, TapZoom: TapZoomHandler);
+	constructor(clickZoom?: ClickZoomHandler, TapZoom?: TapZoomHandler);
 	/**
 	 * Enables the "double click to zoom" interaction.
 	 *
@@ -10242,13 +10242,13 @@ declare class TapDragZoomHandler implements Handler {
  */
 export declare class TwoFingersTouchZoomRotateHandler {
 	_el: HTMLElement;
-	_touchZoom: TwoFingersTouchZoomHandler;
-	_touchRotate: TwoFingersTouchRotateHandler;
-	_tapDragZoom: TapDragZoomHandler;
+	_touchZoom?: TwoFingersTouchZoomHandler;
+	_touchRotate?: TwoFingersTouchRotateHandler;
+	_tapDragZoom?: TapDragZoomHandler;
 	_rotationDisabled: boolean;
 	_enabled: boolean;
 	/** @internal */
-	constructor(el: HTMLElement, touchZoom: TwoFingersTouchZoomHandler, touchRotate: TwoFingersTouchRotateHandler, tapDragZoom: TapDragZoomHandler);
+	constructor(el: HTMLElement, touchZoom?: TwoFingersTouchZoomHandler, touchRotate?: TwoFingersTouchRotateHandler, tapDragZoom?: TapDragZoomHandler);
 	/**
 	 * Enables the "pinch to rotate and zoom" interaction.
 	 *
@@ -10691,49 +10691,58 @@ declare class Map$1 extends Camera {
 	/**
 	 * The map's {@link ScrollZoomHandler}, which implements zooming in and out with a scroll wheel or trackpad.
 	 * Find more details and examples using `scrollZoom` in the {@link ScrollZoomHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	scrollZoom: ScrollZoomHandler;
+	scrollZoom?: ScrollZoomHandler;
 	/**
 	 * The map's {@link BoxZoomHandler}, which implements zooming using a drag gesture with the Shift key pressed.
 	 * Find more details and examples using `boxZoom` in the {@link BoxZoomHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	boxZoom: BoxZoomHandler;
+	boxZoom?: BoxZoomHandler;
 	/**
 	 * The map's {@link DragRotateHandler}, which implements rotating the map while dragging with the right
 	 * mouse button or with the Control key pressed. Find more details and examples using `dragRotate`
 	 * in the {@link DragRotateHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	dragRotate: DragRotateHandler;
+	dragRotate?: DragRotateHandler;
 	/**
 	 * The map's {@link DragPanHandler}, which implements dragging the map with a mouse or touch gesture.
 	 * Find more details and examples using `dragPan` in the {@link DragPanHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	dragPan: DragPanHandler;
+	dragPan?: DragPanHandler;
 	/**
 	 * The map's {@link KeyboardHandler}, which allows the user to zoom, rotate, and pan the map using keyboard
 	 * shortcuts. Find more details and examples using `keyboard` in the {@link KeyboardHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	keyboard: KeyboardHandler;
+	keyboard?: KeyboardHandler;
 	/**
 	 * The map's {@link DoubleClickZoomHandler}, which allows the user to zoom by double clicking.
 	 * Find more details and examples using `doubleClickZoom` in the {@link DoubleClickZoomHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	doubleClickZoom: DoubleClickZoomHandler;
+	doubleClickZoom?: DoubleClickZoomHandler;
 	/**
 	 * The map's {@link TwoFingersTouchZoomRotateHandler}, which allows the user to zoom or rotate the map with touch gestures.
 	 * Find more details and examples using `touchZoomRotate` in the {@link TwoFingersTouchZoomRotateHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	touchZoomRotate: TwoFingersTouchZoomRotateHandler;
+	touchZoomRotate?: TwoFingersTouchZoomRotateHandler;
 	/**
 	 * The map's {@link TwoFingersTouchPitchHandler}, which allows the user to pitch the map with touch gestures.
 	 * Find more details and examples using `touchPitch` in the {@link TwoFingersTouchPitchHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	touchPitch: TwoFingersTouchPitchHandler;
+	touchPitch?: TwoFingersTouchPitchHandler;
 	/**
 	 * The map's {@link CooperativeGesturesHandler}, which allows the user to see cooperative gesture info when user tries to zoom in/out.
 	 * Find more details and examples using `cooperativeGestures` in the {@link CooperativeGesturesHandler} section.
+	 * Will be undefined if the handler was not registered.
 	 */
-	cooperativeGestures: CooperativeGesturesHandler;
+	cooperativeGestures?: CooperativeGesturesHandler;
 	/**
 	 * The map's property which determines whether to cancel, or retain, tiles from the current viewport which are still loading but which belong to a farther (smaller) zoom level than the current one.
 	 * * If `true`, when zooming in, tiles which didn't manage to load for previous zoom levels will become canceled. This might save some computing resources for slower devices, but the map details might appear more abruptly at the end of the zoom.
@@ -14663,120 +14672,15 @@ export declare function isFramebufferNotCompleteError(error: Error): boolean;
  * Throttle the given function to run at most every `period` milliseconds.
  */
 export declare function throttle<T extends (...args: any) => void>(fn: T, time: number): (...args: Parameters<T>) => ReturnType<typeof setTimeout>;
-/**
- * Sets the map's [RTL text plugin](https://www.mapbox.com/mapbox-gl-js/plugins/#mapbox-gl-rtl-text).
- * Necessary for supporting the Arabic and Hebrew languages, which are written right-to-left.
- *
- * @param pluginURL - URL pointing to the Mapbox RTL text plugin source.
- * @param lazy - If set to `true`, maplibre will defer loading the plugin until rtl text is encountered,
- * rtl text will then be rendered only after the plugin finishes loading.
- * @example
- * ```ts
- * setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', false);
- * ```
- * @see [Add support for right-to-left scripts](https://maplibre.org/maplibre-gl-js/docs/examples/mapbox-gl-rtl-text/)
- */
 export declare function setRTLTextPlugin(pluginURL: string, lazy: boolean): Promise<void>;
-/**
- * Gets the map's [RTL text plugin](https://www.mapbox.com/mapbox-gl-js/plugins/#mapbox-gl-rtl-text) status.
- * The status can be `unavailable` (i.e. not requested or removed), `loading`, `loaded` or `error`.
- * If the status is `loaded` and the plugin is requested again, an error will be thrown.
- *
- * @example
- * ```ts
- * const pluginStatus = getRTLTextPluginStatus();
- * ```
- */
 export declare function getRTLTextPluginStatus(): string;
-/**
- * Returns the package version of the library
- * @returns Package version of the library
- */
 export declare function getVersion(): string;
-/**
- * Gets the number of web workers instantiated on a page with GL JS maps.
- * By default, workerCount is 1 except for Safari browser where it is set to half the number of CPU cores (capped at 3).
- * Make sure to set this property before creating any map instances for it to have effect.
- *
- * @returns Number of workers currently configured.
- * @example
- * ```ts
- * const workerCount = getWorkerCount()
- * ```
- */
 export declare function getWorkerCount(): number;
-/**
- * Sets the number of web workers instantiated on a page with GL JS maps.
- * By default, workerCount is 1 except for Safari browser where it is set to half the number of CPU cores (capped at 3).
- * Make sure to set this property before creating any map instances for it to have effect.
- *
- * @example
- * ```ts
- * setWorkerCount(2);
- * ```
- */
 export declare function setWorkerCount(count: number): void;
-/**
- * Gets and sets the maximum number of images (raster tiles, sprites, icons) to load in parallel,
- * which affects performance in raster-heavy maps. 16 by default.
- *
- * @returns Number of parallel requests currently configured.
- * @example
- * ```ts
- * getMaxParallelImageRequests();
- * ```
- */
 export declare function getMaxParallelImageRequests(): number;
-/**
- * Sets the maximum number of images (raster tiles, sprites, icons) to load in parallel,
- * which affects performance in raster-heavy maps. 16 by default.
- *
- * @example
- * ```ts
- * setMaxParallelImageRequests(10);
- * ```
- */
 export declare function setMaxParallelImageRequests(numRequests: number): void;
-/**
- * Gets the worker url
- * @returns The worker url
- */
 export declare function getWorkerUrl(): string;
-/**
- * Sets the worker url
- */
 export declare function setWorkerUrl(value: string): void;
-/**
- * Allows loading javascript code in the worker thread.
- * *Note* that since this is using some very internal classes and flows it is considered experimental and can break at any point.
- *
- * It can be useful for the following examples:
- * 1. Using `self.addProtocol` in the worker thread - note that you might need to also register the protocol on the main thread.
- * 2. Using `self.registerWorkerSource(workerSource: WorkerSource)` to register a worker source, which should come with `addSourceType` usually.
- * 3. using `self.actor.registerMessageHandler` to override some internal worker operations
- * @param workerUrl - the worker url e.g. a url of a javascript file to load in the worker
- * @returns
- *
- * @example
- * ```ts
- * // below is an example of sending a js file to the worker to load the method there
- * // Note that you'll need to call the global function `addProtocol` in the worker to register the protocol there.
- * // add-protocol-worker.js
- * async function loadFn(params, abortController) {
- *     const t = await fetch(`https://${params.url.split("://")[1]}`);
- *     if (t.status == 200) {
- *         const buffer = await t.arrayBuffer();
- *         return {data: buffer}
- *     } else {
- *         throw new Error(`Tile fetch error: ${t.statusText}`);
- *     }
- * }
- * self.addProtocol('custom', loadFn);
- *
- * // main.js
- * importScriptInWorkers('add-protocol-worker.js');
- * ```
- */
 export declare function importScriptInWorkers(workerUrl: string): Promise<void[]>;
 export type * from "@maplibre/maplibre-gl-style-spec";
 

@@ -1,3 +1,12 @@
+import './handlers/mouse-rotate';
+import './handlers/mouse-pitch';
+import './handlers/mouse-roll';
+import './handlers/mouse-pan';
+import './handlers/touch-pan';
+import './handlers/click-zoom';
+import './handlers/tap-zoom';
+import './handlers/touch-rotate';
+import './handlers/touch-zoom';
 import './handlers/box-zoom';
 import './handlers/cooperative-gestures';
 import './handlers/double-click-zoom';
