@@ -151,7 +151,8 @@ export class TwoFingersTouchPitchHandler extends TwoFingersTouchHandler {
         }
     }
     _move(points, center, e) {
-        if (this._map.cooperativeGestures.isEnabled() && this._currentTouchCount < 3) {
+        var _a;
+        if (((_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.isEnabled()) && this._currentTouchCount < 3) {
             return;
         }
         const vectorA = points[0].sub(this._lastPoints[0]);

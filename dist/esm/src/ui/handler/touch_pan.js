@@ -12,17 +12,19 @@ export class TouchPanHandler {
         this._sum = new Point(0, 0);
     }
     _shouldBePrevented(touchesCount) {
-        const minTouches = this._map.cooperativeGestures.isEnabled() ? 2 : 1;
+        var _a;
+        const minTouches = ((_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.isEnabled()) ? 2 : 1;
         return touchesCount < minTouches;
     }
     touchstart(e, points, mapTouches) {
         return this._calculateTransform(e, points, mapTouches);
     }
     touchmove(e, points, mapTouches) {
+        var _a;
         if (!this._active)
             return;
         if (this._shouldBePrevented(mapTouches.length)) {
-            this._map.cooperativeGestures.notifyGestureBlocked('touch_pan', e);
+            (_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.notifyGestureBlocked('touch_pan', e);
             return;
         }
         e.preventDefault();

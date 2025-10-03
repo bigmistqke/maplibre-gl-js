@@ -52,7 +52,8 @@ export class ScrollZoomHandler {
         this._enabled = false;
     }
     _shouldBePrevented(e) {
-        if (!this._map.cooperativeGestures.isEnabled()) {
+        var _a;
+        if (!((_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.isEnabled())) {
             return false;
         }
         const isTrackpadPinch = e.ctrlKey;
@@ -60,10 +61,11 @@ export class ScrollZoomHandler {
         return !isBypassed;
     }
     wheel(e) {
+        var _a;
         if (!this.isEnabled())
             return;
         if (this._shouldBePrevented(e)) {
-            this._map.cooperativeGestures.notifyGestureBlocked('wheel_zoom', e);
+            (_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.notifyGestureBlocked('wheel_zoom', e);
             return;
         }
         let value = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? e.deltaY * 40 : e.deltaY;

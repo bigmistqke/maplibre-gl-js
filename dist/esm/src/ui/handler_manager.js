@@ -311,6 +311,7 @@ export class HandlerManager {
         this._fireEvents(combinedEventsInProgress, deactivatedHandlers, true);
     }
     _fireEvents(newEventsInProgress, deactivatedHandlers, allowEndAnimation) {
+        var _a;
         const wasMoving = isMoving(this._eventsInProgress);
         const nowMoving = isMoving(newEventsInProgress);
         const startEvents = {};
@@ -360,7 +361,7 @@ export class HandlerManager {
         }
         if (allowEndAnimation && finishedMoving) {
             this._updatingCamera = true;
-            const inertialEase = this._inertia._onMoveEnd(this._map.dragPan._inertiaOptions);
+            const inertialEase = this._inertia._onMoveEnd((_a = this._map.dragPan) === null || _a === void 0 ? void 0 : _a._inertiaOptions);
             const shouldSnapToNorth = bearing => bearing !== 0 && -this._bearingSnap < bearing && bearing < this._bearingSnap;
             if (inertialEase && (inertialEase.essential || !browser.prefersReducedMotion)) {
                 if (shouldSnapToNorth(inertialEase.bearing || this._map.getBearing())) {
