@@ -105,7 +105,7 @@ export const shaders = {
     atmosphere: prepare(atmosphereFrag, atmosphereVert),
     sky: prepare(skyFrag, skyVert),
 };
-function prepare(fragmentSource, vertexSource) {
+export function prepare(fragmentSource, vertexSource) {
     const re = /#pragma mapbox: ([\w]+) ([\w]+) ([\w]+) ([\w]+)/g;
     const vertexAttributes = vertexSource.match(/in ([\w]+) ([\w]+)/g);
     const fragmentUniforms = fragmentSource.match(/uniform ([\w]+) ([\w]+)([\s]*)([\w]*)/g);

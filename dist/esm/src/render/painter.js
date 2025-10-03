@@ -8,6 +8,7 @@ import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
 import { createCrossTileSymbolIndex } from '../symbol/symbol_registry';
 import { shaders } from '../shaders/shaders';
+import { getShaders } from '../shaders/shader_registry';
 import { Program } from './program';
 import { programUniforms } from './program/program_uniforms';
 import { Context } from '../gl/context';
@@ -408,6 +409,7 @@ export class Painter {
         return !imagePosA || !imagePosB;
     }
     useProgram(name, programConfiguration, forceSimpleProjection = false, defines = []) {
+        var _a;
         this.cache = this.cache || {};
         const useTerrain = !!this.style.map.terrain;
         const projection = this.style.projection;
@@ -420,7 +422,9 @@ export class Painter {
         const definesKey = (defines ? `/${defines.join('/')}` : '');
         const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
         if (!this.cache[key]) {
-            this.cache[key] = new Program(this.context, shaders[name], programConfiguration, programUniforms[name], this._showOverdrawInspector, useTerrain, projectionPrelude, projectionDefine, defines);
+            const registryShaders = getShaders();
+            const shader = (_a = registryShaders[name]) !== null && _a !== void 0 ? _a : shaders[name];
+            this.cache[key] = new Program(this.context, shader, programConfiguration, programUniforms[name], this._showOverdrawInspector, useTerrain, projectionPrelude, projectionDefine, defines);
         }
         return this.cache[key];
     }
