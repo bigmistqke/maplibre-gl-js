@@ -50,6 +50,12 @@ export class Program {
         }
         const fragmentParts = [prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource].filter(s => s);
         const vertexParts = [prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource].filter(s => s);
+        if (!source.fragmentSource || !source.vertexSource) {
+            this.failedToCreate = true;
+            this.attributes = {};
+            this.numAttributes = 0;
+            return;
+        }
         let fragmentSource = defines.concat(fragmentParts).join('\n');
         let vertexSource = defines.concat(vertexParts).join('\n');
         if (!isWebGL2(gl)) {

@@ -1,7 +1,7 @@
 const shaderRegistry = {};
 export const noopShader = {
-    fragmentSource: '',
-    vertexSource: '',
+    fragmentSource: undefined,
+    vertexSource: undefined,
     staticAttributes: [],
     staticUniforms: []
 };

@@ -95,6 +95,14 @@ export class Program<Us extends UniformBindings> {
         const fragmentParts = [prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource].filter(s => s);
         const vertexParts = [prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource].filter(s => s);
 
+        // If either vertex or fragment shader is missing, create noop program
+        if (!source.fragmentSource || !source.vertexSource) {
+            this.failedToCreate = true;
+            this.attributes = {};
+            this.numAttributes = 0;
+            return;
+        }
+
         let fragmentSource = defines.concat(fragmentParts).join('\n');
         let vertexSource = defines.concat(vertexParts).join('\n');
 

@@ -1,6 +1,6 @@
 export type PreparedShader = {
-    fragmentSource: string;
-    vertexSource: string;
+    fragmentSource: string | undefined;
+    vertexSource: string | undefined;
     staticAttributes: Array<string>;
     staticUniforms: Array<string>;
 };
