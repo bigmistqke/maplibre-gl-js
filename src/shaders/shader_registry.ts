@@ -10,8 +10,8 @@ const shaderRegistry: Record<string, PreparedShader> = {};
  * Noop shader fallback when a shader is not registered
  */
 export const noopShader: PreparedShader = {
-    fragmentSource: 'void main() {}',
-    vertexSource: 'void main() {}',
+    fragmentSource: '',
+    vertexSource: '',
     staticAttributes: [],
     staticUniforms: []
 };
