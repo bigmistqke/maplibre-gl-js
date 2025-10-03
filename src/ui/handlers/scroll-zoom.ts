@@ -1,0 +1,10 @@
+import {registerHandler} from '../handler_manager';
+import {ScrollZoomHandler} from '../handler/scroll_zoom';
+
+registerHandler('scrollZoom', (map, options, manager) => {
+    const scrollZoom = map.scrollZoom = new ScrollZoomHandler(map, () => manager._triggerRenderFrame());
+    manager._add('scrollZoom', scrollZoom, ['mousePan']);
+    if (options.interactive && options.scrollZoom) {
+        map.scrollZoom.enable(options.scrollZoom);
+    }
+});

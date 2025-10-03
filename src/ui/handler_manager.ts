@@ -3,20 +3,6 @@ import {DOM} from '../util/dom';
 import {type Map, type CompleteMapOptions} from './map';
 import {HandlerInertia} from './handler_inertia';
 import {MapEventHandler, BlockableMapEventHandler} from './handler/map_event';
-import {BoxZoomHandler} from './handler/box_zoom';
-import {TapZoomHandler} from './handler/tap_zoom';
-import {generateMouseRotationHandler, generateMousePitchHandler, generateMousePanHandler, generateMouseRollHandler} from './handler/mouse';
-import {TouchPanHandler} from './handler/touch_pan';
-import {TwoFingersTouchZoomHandler, TwoFingersTouchRotateHandler, TwoFingersTouchPitchHandler} from './handler/two_fingers_touch';
-import {KeyboardHandler} from './handler/keyboard';
-import {ScrollZoomHandler} from './handler/scroll_zoom';
-import {DoubleClickZoomHandler} from './handler/shim/dblclick_zoom';
-import {ClickZoomHandler} from './handler/click_zoom';
-import {TapDragZoomHandler} from './handler/tap_drag_zoom';
-import {DragPanHandler} from './handler/shim/drag_pan';
-import {DragRotateHandler} from './handler/shim/drag_rotate';
-import {TwoFingersTouchZoomRotateHandler} from './handler/shim/two_fingers_touch';
-import {CooperativeGesturesHandler} from './handler/cooperative_gestures';
 import {extend, isPointableEvent, isTouchableEvent, isTouchableOrPointableType} from '../util/util';
 import {browser} from '../util/browser';
 import Point from '@mapbox/point-geometry';
@@ -110,6 +96,31 @@ export type HandlerResult = {
      */
     noInertia?: boolean;
 };
+
+/**
+ * Handler factory function type for registry
+ * Factory receives map, options, and manager, and should call manager._add() to register handlers
+ */
+export type HandlerFactory = (map: Map, options: CompleteMapOptions, manager: HandlerManager) => void;
+
+/**
+ * Global handler registry for tree-shaking
+ */
+const handlerRegistry = new globalThis.Map<string, HandlerFactory>();
+
+/**
+ * Register a handler factory
+ */
+export function registerHandler(name: string, factory: HandlerFactory): void {
+    handlerRegistry.set(name, factory);
+}
+
+/**
+ * Get a handler factory from registry
+ */
+export function getHandlerFactory(name: string): HandlerFactory | undefined {
+    return handlerRegistry.get(name);
+}
 
 export type EventInProgress = {
     handlerName: string;
@@ -221,81 +232,37 @@ export class HandlerManager {
 
     _addDefaultHandlers(options: CompleteMapOptions) {
         const map = this._map;
-        const el = map.getCanvasContainer();
+
+        // Always add core event handlers
         this._add('mapEvent', new MapEventHandler(map, options));
-
-        const boxZoom = map.boxZoom = new BoxZoomHandler(map, options);
-        this._add('boxZoom', boxZoom);
-        if (options.interactive && options.boxZoom) {
-            boxZoom.enable();
-        }
-
-        const cooperativeGestures = map.cooperativeGestures = new CooperativeGesturesHandler(map, options.cooperativeGestures);
-        this._add('cooperativeGestures', cooperativeGestures);
-        if (options.cooperativeGestures) {
-            cooperativeGestures.enable();
-        }
-
-        const tapZoom = new TapZoomHandler(map);
-        const clickZoom = new ClickZoomHandler(map);
-        map.doubleClickZoom = new DoubleClickZoomHandler(clickZoom, tapZoom);
-        this._add('tapZoom', tapZoom);
-        this._add('clickZoom', clickZoom);
-        if (options.interactive && options.doubleClickZoom) {
-            map.doubleClickZoom.enable();
-        }
-
-        const tapDragZoom = new TapDragZoomHandler();
-        this._add('tapDragZoom', tapDragZoom);
-
-        const touchPitch = map.touchPitch = new TwoFingersTouchPitchHandler(map);
-        this._add('touchPitch', touchPitch);
-        if (options.interactive && options.touchPitch) {
-            map.touchPitch.enable(options.touchPitch);
-        }
-        const getCenter = () => map.project(map.getCenter());
-        const mouseRotate = generateMouseRotationHandler(options, getCenter);
-        const mousePitch = generateMousePitchHandler(options);
-        const mouseRoll = generateMouseRollHandler(options, getCenter);
-        map.dragRotate = new DragRotateHandler(options, mouseRotate, mousePitch, mouseRoll);
-        this._add('mouseRotate', mouseRotate, ['mousePitch']);
-        this._add('mousePitch', mousePitch, ['mouseRotate', 'mouseRoll']);
-        this._add('mouseRoll', mouseRoll, ['mousePitch']);
-        if (options.interactive && options.dragRotate) {
-            map.dragRotate.enable();
-        }
-
-        const mousePan = generateMousePanHandler(options);
-        const touchPan = new TouchPanHandler(options, map);
-        map.dragPan = new DragPanHandler(el, mousePan, touchPan);
-        this._add('mousePan', mousePan);
-        this._add('touchPan', touchPan, ['touchZoom', 'touchRotate']);
-        if (options.interactive && options.dragPan) {
-            map.dragPan.enable(options.dragPan);
-        }
-
-        const touchRotate = new TwoFingersTouchRotateHandler();
-        const touchZoom = new TwoFingersTouchZoomHandler();
-        map.touchZoomRotate = new TwoFingersTouchZoomRotateHandler(el, touchZoom, touchRotate, tapDragZoom);
-        this._add('touchRotate', touchRotate, ['touchPan', 'touchZoom']);
-        this._add('touchZoom', touchZoom, ['touchPan', 'touchRotate']);
-        if (options.interactive && options.touchZoomRotate) {
-            map.touchZoomRotate.enable(options.touchZoomRotate);
-        }
-
-        const scrollZoom = map.scrollZoom = new ScrollZoomHandler(map, () => this._triggerRenderFrame());
-        this._add('scrollZoom', scrollZoom, ['mousePan']);
-        if (options.interactive && options.scrollZoom) {
-            map.scrollZoom.enable(options.scrollZoom);
-        }
-
-        const keyboard = map.keyboard = new KeyboardHandler(map);
-        this._add('keyboard', keyboard);
-        if (options.interactive && options.keyboard) {
-            map.keyboard.enable();
-        }
-
         this._add('blockableMapEvent', new BlockableMapEventHandler(map));
+
+        // Add handlers from registry
+        // Order matters for some composite handlers, so we use specific order
+        const handlerNames = [
+            'boxZoom',
+            'cooperativeGestures',
+            'doubleClickZoom', // This will also register tapZoom and clickZoom
+            'tapDragZoom',
+            'touchPitch',
+            'dragRotate', // This will also register mouseRotate, mousePitch, mouseRoll
+            'dragPan', // This will also register mousePan and touchPan
+            'touchZoomRotate', // This will also register touchZoom and touchRotate
+            'scrollZoom',
+            'keyboard'
+        ];
+
+        for (const name of handlerNames) {
+            const factory = handlerRegistry.get(name);
+            if (factory) {
+                try {
+                    factory(map, options, this);
+                } catch (e) {
+                    // Handler not available, skip it
+                    console.warn(`Handler '${name}' failed to initialize:`, e);
+                }
+            }
+        }
     }
 
     _add(handlerName: string, handler: Handler, allowed?: Array<string>) {

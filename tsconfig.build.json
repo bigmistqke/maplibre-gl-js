@@ -8,7 +8,7 @@
     "noEmit": false,
     "module": "ESNext",
     "target": "ES2016",
-    "moduleResulation": "Bundler",
+    "moduleResolution": "Bundler",
     "strict": false,
     "removeComments": true
   },
