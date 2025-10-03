@@ -1,3 +1,5 @@
+import './style/layers';
+import './render/draws';
 import packageJSON from '../package.json';
 import { Map, type MapOptions, type WebGLContextAttributesWithType } from './ui/map';
 import { Camera } from './ui/camera';

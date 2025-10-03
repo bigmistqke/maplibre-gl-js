@@ -215,6 +215,8 @@ export class Style extends Evented {
         this._serializedLayers = null;
         for (const layer of dereferencedLayers) {
             const styledLayer = createStyleLayer(layer, this._globalState);
+            if (!styledLayer)
+                continue;
             styledLayer.setEventedParent(this, { layer: { id: layer.id } });
             this._layers[layer.id] = styledLayer;
         }
@@ -661,6 +663,8 @@ export class Style extends Evented {
             if (this._validate(validateStyle.layer, `layers.${id}`, layerObject, { arrayIndex: -1 }, options))
                 return;
             layer = createStyleLayer(layerObject, this._globalState);
+            if (!layer)
+                return;
             this._validateLayer(layer);
             layer.setEventedParent(this, { layer: { id } });
         }
