@@ -23,7 +23,7 @@ import './register/draw/hillshade';
 import './register/draw/line';
 import './register/draw/raster';
 import './register/symbol';
-// Shaders
+// Shaders - layer-specific
 import './register/shader/background';
 import './register/shader/circle';
 import './register/shader/fill';
@@ -33,6 +33,17 @@ import './register/shader/hillshade';
 import './register/shader/line';
 import './register/shader/raster';
 import './register/shader/symbol';
+// Shaders - utility
+import './register/shader/prelude';
+import './register/shader/projection';
+import './register/shader/clipping-mask';
+import './register/shader/collision';
+import './register/shader/debug';
+import './register/shader/depth';
+import './register/shader/terrain';
+import './register/shader/projection-error-measurement';
+import './register/shader/atmosphere';
+import './register/shader/sky';
 // Low-level handlers (dependencies for composite handlers)
 import './register/handlers/mouse-rotate';
 import './register/handlers/mouse-pitch';

@@ -53,7 +53,17 @@
     "./shader/hillshade": "./dist/esm/src/register/shader/hillshade.js",
     "./shader/line": "./dist/esm/src/register/shader/line.js",
     "./shader/raster": "./dist/esm/src/register/shader/raster.js",
-    "./shader/symbol": "./dist/esm/src/register/shader/symbol.js"
+    "./shader/symbol": "./dist/esm/src/register/shader/symbol.js",
+    "./shader/prelude": "./dist/esm/src/register/shader/prelude.js",
+    "./shader/projection": "./dist/esm/src/register/shader/projection.js",
+    "./shader/clipping-mask": "./dist/esm/src/register/shader/clipping-mask.js",
+    "./shader/collision": "./dist/esm/src/register/shader/collision.js",
+    "./shader/debug": "./dist/esm/src/register/shader/debug.js",
+    "./shader/depth": "./dist/esm/src/register/shader/depth.js",
+    "./shader/terrain": "./dist/esm/src/register/shader/terrain.js",
+    "./shader/projection-error-measurement": "./dist/esm/src/register/shader/projection-error-measurement.js",
+    "./shader/atmosphere": "./dist/esm/src/register/shader/atmosphere.js",
+    "./shader/sky": "./dist/esm/src/register/shader/sky.js"
   },
   "license": "BSD-3-Clause",
   "homepage": "https://maplibre.org/",

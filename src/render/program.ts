@@ -1,4 +1,5 @@
-import {type PreparedShader, shaders, transpileVertexShaderToWebGL1, transpileFragmentShaderToWebGL1} from '../shaders/shaders';
+import {type PreparedShader, transpileVertexShaderToWebGL1, transpileFragmentShaderToWebGL1} from '../shaders/shaders';
+import {getShaders} from '../shaders/shader_registry';
 import {type ProgramConfiguration} from '../data/program_configuration';
 import {VertexArrayObject} from './vertex_array_object';
 import {type Context} from '../gl/context';
@@ -62,7 +63,7 @@ export class Program<Us extends UniformBindings> {
         const dynamicAttrInfo = configuration ? configuration.getBinderAttributes() : [];
         const allAttrInfo = staticAttrInfo.concat(dynamicAttrInfo);
 
-        const preludeUniformsInfo = shaders.prelude.staticUniforms ? getTokenizedAttributesAndUniforms(shaders.prelude.staticUniforms) : [];
+        const preludeUniformsInfo = getShaders().prelude?.staticUniforms ? getTokenizedAttributesAndUniforms(getShaders().prelude.staticUniforms) : [];
         const projectionPreludeUniformsInfo = projectionPrelude.staticUniforms ? getTokenizedAttributesAndUniforms(projectionPrelude.staticUniforms) : [];
         const staticUniformsInfo = source.staticUniforms ? getTokenizedAttributesAndUniforms(source.staticUniforms) : [];
         const dynamicUniformsInfo = configuration ? configuration.getBinderUniforms() : [];
@@ -90,8 +91,8 @@ export class Program<Us extends UniformBindings> {
             defines.push(...extraDefines);
         }
 
-        let fragmentSource = defines.concat(shaders.prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource).join('\n');
-        let vertexSource = defines.concat(shaders.prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource).join('\n');
+        let fragmentSource = defines.concat(getShaders().prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource).join('\n');
+        let vertexSource = defines.concat(getShaders().prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource).join('\n');
 
         if (!isWebGL2(gl)) {
             fragmentSource = transpileFragmentShaderToWebGL1(fragmentSource);
