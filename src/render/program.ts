@@ -92,8 +92,11 @@ export class Program<Us extends UniformBindings> {
             defines.push(...extraDefines);
         }
 
-        let fragmentSource = defines.concat(prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource).join('\n');
-        let vertexSource = defines.concat(prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource).join('\n');
+        const fragmentParts = [prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource].filter(s => s);
+        const vertexParts = [prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource].filter(s => s);
+
+        let fragmentSource = defines.concat(fragmentParts).join('\n');
+        let vertexSource = defines.concat(vertexParts).join('\n');
 
         if (!isWebGL2(gl)) {
             fragmentSource = transpileFragmentShaderToWebGL1(fragmentSource);
