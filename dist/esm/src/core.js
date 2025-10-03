@@ -22,15 +22,12 @@ import { rtlMainThreadPluginFactory } from './source/rtl_text_plugin_main_thread
 import { WorkerPool } from './util/worker_pool';
 import { prewarm, clearPrewarmedResources } from './util/global_worker_pool';
 import { AJAXError, getJSON } from './util/ajax';
-import { GeoJSONSource } from './source/geojson_source';
-import { CanvasSource } from './source/canvas_source';
-import { ImageSource } from './source/image_source';
-import { RasterDEMTileSource } from './source/raster_dem_tile_source';
-import { RasterTileSource } from './source/raster_tile_source';
-import { VectorTileSource } from './source/vector_tile_source';
-import { VideoSource } from './source/video_source';
 import { addSourceType } from './source/source';
 import { addProtocol, removeProtocol } from './source/protocol_crud';
+import { getSource } from './source/source_registry';
+import { getLayerFactory } from './style/layer_type_registry';
+import { getDrawFunction } from './render/draw_registry';
+import { getShader } from './shaders/shader_registry';
 import { getGlobalDispatcher } from './util/dispatcher';
 import { EdgeInsets } from './geo/edge_insets';
 import { MapWheelEvent, MapTouchEvent, MapMouseEvent } from './ui/events';
@@ -82,5 +79,5 @@ function setMaxParallelImageRequests(numRequests) { config.MAX_PARALLEL_IMAGE_RE
 function getWorkerUrl() { return config.WORKER_URL; }
 function setWorkerUrl(value) { config.WORKER_URL = value; }
 function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadcast("IS", workerUrl); }
-export { browser, Camera, CanonicalTileID, coveringTiles, createCalculateTileZoomFunction, defaultAttributionControlOptions, defaultLocale, DOM, ErrorEvent, EvaluationParameters, extend, getJSON, HandlerManager, ImageRequest, isAbortError, isFramebufferNotCompleteError, isImageBitmap, MercatorCameraHelper, MercatorTransform, packageJSON, Painter, PerformanceMarkers, PerformanceUtils, pick, RenderToTexture, RequestManager, RGBAImage, TaskQueue, Terrain, throttle, uniqueId, warnOnce, webpSupported, Map, NavigationControl, GeolocateControl, AttributionControl, LogoControl, ScaleControl, FullscreenControl, TerrainControl, GlobeControl, Hash, Popup, Marker, Style, LngLat, LngLatBounds, Point, MercatorCoordinate, Evented, Event, AJAXError, config, CanvasSource, GeoJSONSource, ImageSource, RasterDEMTileSource, RasterTileSource, VectorTileSource, VideoSource, EdgeInsets, BoxZoomHandler, DragRotateHandler, DragPanHandler, ScrollZoomHandler, TwoFingersTouchZoomRotateHandler, CooperativeGesturesHandler, DoubleClickZoomHandler, KeyboardHandler, TwoFingersTouchZoomHandler, TwoFingersTouchRotateHandler, TwoFingersTouchPitchHandler, MapWheelEvent, MapTouchEvent, MapMouseEvent, setRTLTextPlugin, getRTLTextPluginStatus, prewarm, clearPrewarmedResources, getVersion, getWorkerCount, setWorkerCount, getMaxParallelImageRequests, setMaxParallelImageRequests, getWorkerUrl, setWorkerUrl, addProtocol, removeProtocol, addSourceType, importScriptInWorkers, createTileMesh };
+export { browser, Camera, CanonicalTileID, coveringTiles, createCalculateTileZoomFunction, defaultAttributionControlOptions, defaultLocale, DOM, ErrorEvent, EvaluationParameters, extend, getJSON, HandlerManager, ImageRequest, isAbortError, isFramebufferNotCompleteError, isImageBitmap, MercatorCameraHelper, MercatorTransform, packageJSON, Painter, PerformanceMarkers, PerformanceUtils, pick, RenderToTexture, RequestManager, RGBAImage, TaskQueue, Terrain, throttle, uniqueId, warnOnce, webpSupported, Map, NavigationControl, GeolocateControl, AttributionControl, LogoControl, ScaleControl, FullscreenControl, TerrainControl, GlobeControl, Hash, Popup, Marker, Style, LngLat, LngLatBounds, Point, MercatorCoordinate, Evented, Event, AJAXError, config, EdgeInsets, BoxZoomHandler, DragRotateHandler, DragPanHandler, ScrollZoomHandler, TwoFingersTouchZoomRotateHandler, CooperativeGesturesHandler, DoubleClickZoomHandler, KeyboardHandler, TwoFingersTouchZoomHandler, TwoFingersTouchRotateHandler, TwoFingersTouchPitchHandler, MapWheelEvent, MapTouchEvent, MapMouseEvent, setRTLTextPlugin, getRTLTextPluginStatus, prewarm, clearPrewarmedResources, getVersion, getWorkerCount, setWorkerCount, getMaxParallelImageRequests, setMaxParallelImageRequests, getWorkerUrl, setWorkerUrl, addProtocol, removeProtocol, addSourceType, importScriptInWorkers, getSource, getLayerFactory, getDrawFunction, getShader, createTileMesh };
 //# sourceMappingURL=core.js.map
