@@ -26,7 +26,10 @@
         "./handlers/click-zoom": "./dist/esm/src/ui/handlers/click-zoom.js",
         "./handlers/tap-zoom": "./dist/esm/src/ui/handlers/tap-zoom.js",
         "./handlers/touch-rotate": "./dist/esm/src/ui/handlers/touch-rotate.js",
-        "./handlers/touch-zoom": "./dist/esm/src/ui/handlers/touch-zoom.js"
+        "./handlers/touch-zoom": "./dist/esm/src/ui/handlers/touch-zoom.js",
+        "./style/layers": "./dist/esm/src/style/layers.js",
+        "./render/draws": "./dist/esm/src/render/draws.js",
+        "./layers/symbol": "./dist/esm/src/style/layers/symbol.js"
     },
     "license": "BSD-3-Clause",
     "homepage": "https://maplibre.org/",

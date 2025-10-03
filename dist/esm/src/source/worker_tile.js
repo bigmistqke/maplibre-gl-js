@@ -8,10 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { FeatureIndex } from '../data/feature_index';
-import { performSymbolLayout } from '../symbol/symbol_layout';
 import { CollisionBoxArray } from '../data/array_types.g';
 import { DictionaryCoder } from '../util/dictionary_coder';
-import { SymbolBucket } from '../data/bucket/symbol_bucket';
 import { LineBucket } from '../data/bucket/line_bucket';
 import { FillBucket } from '../data/bucket/fill_bucket';
 import { FillExtrusionBucket } from '../data/bucket/fill_extrusion_bucket';
@@ -123,10 +121,11 @@ export class WorkerTile {
             const imageAtlas = new ImageAtlas(iconMap, patternMap);
             for (const key in buckets) {
                 const bucket = buckets[key];
-                if (bucket instanceof SymbolBucket) {
+                if ('symbolInstances' in bucket) {
+                    const { performSymbolLayout } = yield import('../symbol/symbol_layout');
                     recalculateLayers(bucket.layers, this.zoom, availableImages);
                     performSymbolLayout({
-                        bucket,
+                        bucket: bucket,
                         glyphMap,
                         glyphPositions: glyphAtlas.positions,
                         imageMap: iconMap,

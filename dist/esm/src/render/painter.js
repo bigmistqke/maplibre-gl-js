@@ -6,7 +6,7 @@ import { SegmentVector } from '../data/segment';
 import { RasterBoundsArray, PosArray, TriangleIndexArray, LineStripIndexArray } from '../data/array_types.g';
 import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
-import { CrossTileSymbolIndex } from '../symbol/cross_tile_symbol_index';
+import { createCrossTileSymbolIndex } from '../symbol/symbol_registry';
 import { shaders } from '../shaders/shaders';
 import { Program } from './program';
 import { programUniforms } from './program/program_uniforms';
@@ -35,7 +35,7 @@ export class Painter {
         this.setup();
         this.numSublayers = SourceCache.maxUnderzooming + SourceCache.maxOverzooming + 1;
         this.depthEpsilon = 1 / Math.pow(2, 16);
-        this.crossTileSymbolIndex = new CrossTileSymbolIndex();
+        this.crossTileSymbolIndex = createCrossTileSymbolIndex();
     }
     resize(width, height, pixelRatio) {
         this.width = Math.floor(width * pixelRatio);

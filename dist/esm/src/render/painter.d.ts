@@ -2,7 +2,6 @@ import { mat4 } from 'gl-matrix';
 import { SourceCache } from '../source/source_cache';
 import { SegmentVector } from '../data/segment';
 import { type ProgramConfiguration } from '../data/program_configuration';
-import { CrossTileSymbolIndex } from '../symbol/cross_tile_symbol_index';
 import { Program } from './program';
 import { Context } from '../gl/context';
 import { DepthMode } from '../gl/depth_mode';
@@ -83,7 +82,7 @@ export declare class Painter {
     cache: {
         [_: string]: Program<any>;
     };
-    crossTileSymbolIndex: CrossTileSymbolIndex;
+    crossTileSymbolIndex: any;
     symbolFadeChange: number;
     debugOverlayTexture: Texture;
     debugOverlayCanvas: HTMLCanvasElement;

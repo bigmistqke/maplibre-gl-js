@@ -27,10 +27,9 @@ import { latest as styleSpec, derefLayers, emptyStyle, diff as diffStyles } from
 import { getGlobalWorkerPool } from '../util/global_worker_pool';
 import { rtlMainThreadPluginFactory } from '../source/rtl_text_plugin_main_thread';
 import { RTLPluginLoadedEventName } from '../source/rtl_text_plugin_status';
-import { PauseablePlacement } from './pauseable_placement';
 import { ZoomHistory } from './zoom_history';
-import { CrossTileSymbolIndex } from '../symbol/cross_tile_symbol_index';
 import { validateCustomStyleLayer } from './style_layer/custom_style_layer';
+import { createCrossTileSymbolIndex, createPauseablePlacement } from '../symbol/symbol_registry';
 const emitValidationErrors = (evented, errors) => _emitValidationErrors(evented, errors && errors.filter(error => error.identifier !== 'source.canvas'));
 import { createProjectionFromName } from '../geo/projection/projection_factory';
 const empty = emptyStyle();
@@ -59,7 +58,6 @@ export class Style extends Evented {
         const glyphLang = ((_a = map._container) === null || _a === void 0 ? void 0 : _a.lang) || (typeof document !== 'undefined' && ((_b = document.documentElement) === null || _b === void 0 ? void 0 : _b.lang)) || undefined;
         this.glyphManager = new GlyphManager(map._requestManager, options.localIdeographFontFamily, glyphLang);
         this.lineAtlas = new LineAtlas(256, 512);
-        this.crossTileSymbolIndex = new CrossTileSymbolIndex();
         this._spritesImagesIds = {};
         this._layers = {};
         this._order = [];
@@ -1167,6 +1165,23 @@ export class Style extends Evented {
         let symbolBucketsChanged = false;
         let placementCommitted = false;
         const layerTiles = {};
+        let hasSymbolLayers = false;
+        for (const layerID of this._order) {
+            const styleLayer = this._layers[layerID];
+            if (styleLayer.type === 'symbol') {
+                hasSymbolLayers = true;
+                break;
+            }
+        }
+        if (!hasSymbolLayers) {
+            return false;
+        }
+        if (!this.crossTileSymbolIndex) {
+            this.crossTileSymbolIndex = createCrossTileSymbolIndex();
+            if (!this.crossTileSymbolIndex) {
+                return false;
+            }
+        }
         for (const layerID of this._order) {
             const styleLayer = this._layers[layerID];
             if (styleLayer.type !== 'symbol')
@@ -1183,7 +1198,10 @@ export class Style extends Evented {
         this.crossTileSymbolIndex.pruneUnusedLayers(this._order);
         forceFullPlacement = forceFullPlacement || this._layerOrderChanged || fadeDuration === 0;
         if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(browser.now(), transform.zoom))) {
-            this.pauseablePlacement = new PauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
+            this.pauseablePlacement = createPauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
+            if (!this.pauseablePlacement) {
+                return false;
+            }
             this._layerOrderChanged = false;
         }
         if (this.pauseablePlacement.isDone()) {
