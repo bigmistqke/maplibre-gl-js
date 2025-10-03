@@ -1,6 +1,6 @@
 import { registerHandler } from '../handler_manager';
 import { generateMousePanHandler } from '../handler/mouse';
-registerHandler('mousePan', (map, options, manager) => {
+registerHandler('mousePan', (_map, options, manager) => {
     const mousePan = generateMousePanHandler(options);
     manager._add('mousePan', mousePan);
 });

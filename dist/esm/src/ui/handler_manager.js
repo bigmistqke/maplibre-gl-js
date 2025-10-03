@@ -133,6 +133,15 @@ export class HandlerManager {
         this._add('mapEvent', new MapEventHandler(map, options));
         this._add('blockableMapEvent', new BlockableMapEventHandler(map));
         const handlerNames = [
+            'mouseRotate',
+            'mousePitch',
+            'mouseRoll',
+            'mousePan',
+            'touchPan',
+            'clickZoom',
+            'tapZoom',
+            'touchRotate',
+            'touchZoom',
             'boxZoom',
             'cooperativeGestures',
             'doubleClickZoom',

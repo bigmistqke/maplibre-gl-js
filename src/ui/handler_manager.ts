@@ -238,16 +238,27 @@ export class HandlerManager {
         this._add('blockableMapEvent', new BlockableMapEventHandler(map));
 
         // Add handlers from registry
-        // Order matters for some composite handlers, so we use specific order
+        // Order matters: low-level handlers must be registered before composite handlers that depend on them
         const handlerNames = [
+            // Low-level handlers (dependencies)
+            'mouseRotate',
+            'mousePitch',
+            'mouseRoll',
+            'mousePan',
+            'touchPan',
+            'clickZoom',
+            'tapZoom',
+            'touchRotate',
+            'touchZoom',
+            // Composite handlers
             'boxZoom',
             'cooperativeGestures',
-            'doubleClickZoom', // This will also register tapZoom and clickZoom
+            'doubleClickZoom',
             'tapDragZoom',
             'touchPitch',
-            'dragRotate', // This will also register mouseRotate, mousePitch, mouseRoll
-            'dragPan', // This will also register mousePan and touchPan
-            'touchZoomRotate', // This will also register touchZoom and touchRotate
+            'dragRotate',
+            'dragPan',
+            'touchZoomRotate',
             'scrollZoom',
             'keyboard'
         ];
