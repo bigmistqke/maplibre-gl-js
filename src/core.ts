@@ -22,13 +22,9 @@ import {rtlMainThreadPluginFactory} from './source/rtl_text_plugin_main_thread';
 import {WorkerPool} from './util/worker_pool';
 import {prewarm, clearPrewarmedResources} from './util/global_worker_pool';
 import {AJAXError, getJSON, type ExpiryData, type GetResourceResponse, type RequestParameters} from './util/ajax';
-import {GeoJSONSource, type SetClusterOptions} from './source/geojson_source';
-import {CanvasSource, type CanvasSourceSpecification} from './source/canvas_source';
-import {type CanonicalTileRange, type Coordinates, ImageSource, type UpdateImageOptions} from './source/image_source';
-import {RasterDEMTileSource} from './source/raster_dem_tile_source';
-import {RasterTileSource} from './source/raster_tile_source';
-import {VectorTileSource} from './source/vector_tile_source';
-import {VideoSource} from './source/video_source';
+import type {SetClusterOptions} from './source/geojson_source';
+import type {CanvasSourceSpecification} from './source/canvas_source';
+import type {CanonicalTileRange, Coordinates, UpdateImageOptions} from './source/image_source';
 import {type Source, type SourceClass, addSourceType} from './source/source';
 import {addProtocol, removeProtocol} from './source/protocol_crud';
 import {type Dispatcher, getGlobalDispatcher} from './util/dispatcher';
@@ -168,13 +164,6 @@ export {
     Event,
     AJAXError,
     config,
-    CanvasSource,
-    GeoJSONSource,
-    ImageSource,
-    RasterDEMTileSource,
-    RasterTileSource,
-    VectorTileSource,
-    VideoSource,
     EdgeInsets,
     BoxZoomHandler,
     DragRotateHandler,

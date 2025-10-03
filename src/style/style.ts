@@ -1017,7 +1017,7 @@ export class Style extends Evented {
         this._checkLoaded();
 
         if (this.sourceCaches[id] === undefined) throw new Error(`There is no source with this ID=${id}`);
-        const geojsonSource: GeoJSONSource = (this.sourceCaches[id].getSource() as any);
+        const geojsonSource: GeoJSONSource = this.sourceCaches[id].getSource() as any;
         if (geojsonSource.type !== 'geojson') throw new Error(`geojsonSource.type is ${geojsonSource.type}, which is !== 'geojson`);
 
         geojsonSource.setData(data);

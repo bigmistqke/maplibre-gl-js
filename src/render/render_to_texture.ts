@@ -8,7 +8,6 @@ import {type Terrain} from './terrain';
 import {RenderPool} from '../gl/render_pool';
 import {type Texture} from './texture';
 import type {StyleLayer} from '../style/style_layer';
-import {ImageSource} from '../source/image_source';
 
 /**
  * lookup table which layers should rendered to texture
@@ -90,7 +89,7 @@ export class RenderToTexture {
             this._coordsAscending[id] = {};
             const tileIDs = style.sourceCaches[id].getVisibleCoordinates();
             const source = style.sourceCaches[id].getSource();
-            const terrainTileRanges = source instanceof ImageSource ? source.terrainTileRanges : null;
+            const terrainTileRanges = 'terrainTileRanges' in source ? (source as any).terrainTileRanges : null;
             for (const tileID of tileIDs) {
                 const keys = this.terrain.sourceCache.getTerrainCoords(tileID, terrainTileRanges);
                 for (const key in keys) {
