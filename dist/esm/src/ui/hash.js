@@ -16,11 +16,12 @@ export class Hash {
             return hash.split('/');
         };
         this._onHashChange = () => {
+            var _a, _b, _c, _d;
             const hash = this._getCurrentHash();
             if (!this._isValidHash(hash)) {
                 return false;
             }
-            const bearing = this._map.dragRotate.isEnabled() && this._map.touchZoomRotate.isEnabled() ? +(hash[3] || 0) : this._map.getBearing();
+            const bearing = ((_b = (_a = this._map.dragRotate) === null || _a === void 0 ? void 0 : _a.isEnabled()) !== null && _b !== void 0 ? _b : false) && ((_d = (_c = this._map.touchZoomRotate) === null || _c === void 0 ? void 0 : _c.isEnabled()) !== null && _d !== void 0 ? _d : false) ? +(hash[3] || 0) : this._map.getBearing();
             this._map.jumpTo({
                 center: [+hash[2], +hash[1]],
                 zoom: +hash[0],

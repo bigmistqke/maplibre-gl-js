@@ -178,7 +178,8 @@ export class HandlerManager {
         return false;
     }
     isZooming() {
-        return !!this._eventsInProgress.zoom || this._map.scrollZoom.isZooming();
+        var _a, _b;
+        return !!this._eventsInProgress.zoom || ((_b = (_a = this._map.scrollZoom) === null || _a === void 0 ? void 0 : _a.isZooming()) !== null && _b !== void 0 ? _b : false);
     }
     isRotating() {
         return !!this._eventsInProgress.rotate;
