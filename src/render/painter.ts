@@ -465,7 +465,7 @@ export class Painter {
         this.imageManager = style.imageManager;
         this.glyphManager = style.glyphManager;
 
-        this.symbolFadeChange = style.placement.symbolFadeChange(browser.now());
+        this.symbolFadeChange = style.placement?.symbolFadeChange(browser.now()) ?? 1;
 
         this.imageManager.beginFrame();
 

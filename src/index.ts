@@ -3,11 +3,13 @@
  * For tree-shaking, use 'maplibre-gl/core' and import specific handlers/layers.
  */
 
-// Register symbol layer
-import './style/layers/symbol';
 
-// Register all default handlers for full bundle
-import './ui/handlers';
+// Register all core layers, draws, handlers, and symbols
+// These must be imported first to prevent race conditions
+import './register/layers';
+import './register/draws';
+import './register/symbol';
+import './register/handlers';
 
 // Re-export everything from core
 export * from './core';
