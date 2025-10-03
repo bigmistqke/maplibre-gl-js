@@ -17,7 +17,16 @@
     "./handlers/drag-pan": "./dist/esm/src/ui/handlers/drag-pan.js",
     "./handlers/touch-zoom-rotate": "./dist/esm/src/ui/handlers/touch-zoom-rotate.js",
     "./handlers/scroll-zoom": "./dist/esm/src/ui/handlers/scroll-zoom.js",
-    "./handlers/keyboard": "./dist/esm/src/ui/handlers/keyboard.js"
+    "./handlers/keyboard": "./dist/esm/src/ui/handlers/keyboard.js",
+    "./handlers/mouse-rotate": "./dist/esm/src/ui/handlers/mouse-rotate.js",
+    "./handlers/mouse-pitch": "./dist/esm/src/ui/handlers/mouse-pitch.js",
+    "./handlers/mouse-roll": "./dist/esm/src/ui/handlers/mouse-roll.js",
+    "./handlers/mouse-pan": "./dist/esm/src/ui/handlers/mouse-pan.js",
+    "./handlers/touch-pan": "./dist/esm/src/ui/handlers/touch-pan.js",
+    "./handlers/click-zoom": "./dist/esm/src/ui/handlers/click-zoom.js",
+    "./handlers/tap-zoom": "./dist/esm/src/ui/handlers/tap-zoom.js",
+    "./handlers/touch-rotate": "./dist/esm/src/ui/handlers/touch-rotate.js",
+    "./handlers/touch-zoom": "./dist/esm/src/ui/handlers/touch-zoom.js"
   },
   "license": "BSD-3-Clause",
   "homepage": "https://maplibre.org/",
