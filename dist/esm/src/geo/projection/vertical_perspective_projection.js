@@ -2,7 +2,7 @@ import { browser } from '../../util/browser';
 import { easeCubicInOut, lerp } from '../../util/util';
 import { mercatorYfromLat } from '../mercator_coordinate';
 import { SubdivisionGranularityExpression, SubdivisionGranularitySetting } from '../../render/subdivision_granularity_settings';
-import { shaders } from '../../shaders/shaders';
+import { getShaders } from '../../shaders/shader_registry';
 import { ProjectionErrorMeasurement } from './globe_projection_error_measurement';
 import { createTileMeshWithBuffers } from '../../util/create_tile_mesh';
 export const VerticalPerspectiveShaderDefine = '#define GLOBE';
@@ -41,10 +41,10 @@ export class VerticalPerspectiveProjection {
         return VerticalPerspectiveShaderDefine;
     }
     get shaderPreludeCode() {
-        return shaders.projectionGlobe;
+        return getShaders().projectionGlobe;
     }
     get vertexShaderPreludeCode() {
-        return shaders.projectionMercator.vertexSource;
+        return getShaders().projectionMercator.vertexSource;
     }
     get subdivisionGranularity() {
         return granularitySettingsGlobe;
