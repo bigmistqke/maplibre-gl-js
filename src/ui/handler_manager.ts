@@ -104,25 +104,6 @@ export type HandlerResult = {
  */
 export type HandlerFactory = (map: Map, options: CompleteMapOptions, manager: HandlerManager) => void;
 
-/**
- * Global handler registry for tree-shaking
- */
-const handlerRegistry = new globalThis.Map<string, HandlerFactory>();
-
-/**
- * Register a handler factory
- */
-export function registerHandler(name: string, factory: HandlerFactory): void {
-    handlerRegistry.set(name, factory);
-}
-
-/**
- * Get a handler factory from registry
- */
-export function getHandlerFactory(name: string): HandlerFactory | undefined {
-    return handlerRegistry.get(name);
-}
-
 export type EventInProgress = {
     handlerName: string;
     originalEvent: Event;
