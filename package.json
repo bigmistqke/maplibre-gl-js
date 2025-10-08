@@ -31,7 +31,7 @@
     "@types/supercluster": "^7.1.3",
     "earcut": "^3.0.2",
     "geojson-vt": "^4.0.2",
-    "gl-matrix": "https://api.github.com/repos/bigmistqke/gl-matrix/tarball/51266836a0525b4bdc374e94c9a0dd089e136111",
+    "gl-matrix": "https://api.github.com/repos/bigmistqke/gl-matrix/tarball/fd1d4c84a5f67cf74d070fbf017e4e376f4f30de",
     "kdbush": "^4.0.2",
     "murmurhash-js": "^1.0.0",
     "pbf": "^4.0.1",
@@ -168,7 +168,6 @@
     "codegen": "run-p --print-label generate-dist-package generate-style-code generate-struct-arrays generate-shaders && npm run generate-typings",
     "benchmark": "node --no-warnings --loader ts-node/esm test/bench/run-benchmarks.ts",
     "gl-stats": "node --no-warnings --loader ts-node/esm test/bench/gl-stats.ts",
-    "prepare": "npm run codegen",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.dist.json",
     "tsnode": "node --experimental-loader=ts-node/esm --no-warnings"
   },
