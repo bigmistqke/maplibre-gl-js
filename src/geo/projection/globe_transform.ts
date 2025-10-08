@@ -5,7 +5,7 @@ import {lerp} from '../../util/util';
 
 import type {LngLat, LngLatLike,} from '../lng_lat';
 import type {OverscaledTileID, UnwrappedTileID, CanonicalTileID} from '../../source/tile_id';
-import type {vec3, Tuple} from 'gl-matrix';
+import type {Vec3, Tuple} from 'gl-matrix';
 import type Point from '@mapbox/point-geometry';
 import type {MercatorCoordinate} from '../mercator_coordinate';
 import type {LngLatBounds} from '../lng_lat_bounds';
@@ -295,7 +295,7 @@ export class GlobeTransform implements ITransform {
         return this.currentTransform.isLocationOccluded(location);
     }
 
-    public transformLightDirection(dir: vec3): Float32Array | Tuple.Vec3 {
+    public transformLightDirection(dir: Vec3): Float32Array | Tuple.Vec3 {
         return this.currentTransform.transformLightDirection(dir);
     }
 

@@ -1,7 +1,7 @@
 import {StyleLayer} from '../style_layer';
 import type {Map} from '../../ui/map';
-import {type mat4} from 'gl-matrix';
-import {type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {Mat4} from 'gl-matrix';
+import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {ProjectionData} from '../../geo/projection/projection_data';
 
 /**
@@ -29,13 +29,13 @@ export type CustomRenderMethodInput = {
     * represents the matrix converting from world space to clip space
     * https://learnopengl.com/Getting-started/Coordinate-Systems
     * **/
-    modelViewProjectionMatrix: mat4;
+    modelViewProjectionMatrix: Mat4;
     /**
     * projection matrix
     * represents the matrix converting from view space to clip space
     * https://learnopengl.com/Getting-started/Coordinate-Systems
     */
-    projectionMatrix: mat4;
+    projectionMatrix: Mat4;
     /**
      * Data required for picking and compiling a custom shader for the current projection.
      */

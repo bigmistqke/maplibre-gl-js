@@ -1,11 +1,17 @@
 import Point from '@mapbox/point-geometry';
 import UnitBezier from '@mapbox/unitbezier';
 import {isOffscreenCanvasDistorted} from './offscreen_canvas_distorted';
+import {pixelsToTileUnits} from '../source/pixels_to_tile_units';
+import * as mat3 from 'gl-matrix/mat3';
+import * as mat4 from 'gl-matrix/mat4';
+import * as vec3 from 'gl-matrix/vec3';
+import * as vec2 from 'gl-matrix/vec2';
+import * as quat from 'gl-matrix/quat';
+
 import type {Size} from './image';
 import type {WorkerGlobalScopeInterface} from './web_worker';
-import {mat3, mat4, quat, type Tuple, vec2, vec3, type vec4} from 'gl-matrix';
-import {pixelsToTileUnits} from '../source/pixels_to_tile_units';
-import {type OverscaledTileID} from '../source/tile_id';
+import type {Quat, Tuple, Vec3, Vec4} from 'gl-matrix';
+import type {OverscaledTileID} from '../source/tile_id';
 import type {Event} from './evented';
 
 /**
@@ -79,8 +85,8 @@ export function translatePosition(
  * @returns Signed distance of the point from the plane. Positive distances are in the half space where the plane normal points to, negative otherwise.
  */
 export function pointPlaneSignedDistance(
-    plane: vec4 | [number, number, number, number],
-    point: vec3 | [number, number, number]
+    plane: Vec4 | [number, number, number, number],
+    point: Vec3 | [number, number, number]
 ): number {
     return plane[0] * point[0] + plane[1] * point[1] + plane[2] * point[2] + plane[3];
 }
@@ -89,7 +95,7 @@ export function pointPlaneSignedDistance(
  * Finds an intersection points of three planes. Returns `null` if no such (single) point exists.
  * The planes *must* be in Hessian normal form - their xyz components must form a unit vector.
  */
-export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4): Tuple.Vec3 | null {
+export function threePlaneIntersection(plane0: Vec4, plane1: Vec4, plane2: Vec4): Tuple.Vec3 | null {
     // https://mathworld.wolfram.com/Plane-PlaneIntersection.html
     const det = mat3.determinant([
         plane0[0], plane0[1], plane0[2],
@@ -116,7 +122,7 @@ export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4)
  * Returns a negative value if the ray is pointing away from the plane.
  * Direction does not need to be normalized.
  */
-export function rayPlaneIntersection(origin: vec3, direction: vec3, plane: vec4): number | null {
+export function rayPlaneIntersection(origin: Vec3, direction: Vec3, plane: Vec4): number | null {
     const dotOriginPlane = origin[0] * plane[0] + origin[1] * plane[1] + origin[2] * plane[2];
     const dotDirectionPlane = direction[0] * plane[0] + direction[1] * plane[1] + direction[2] * plane[2];
     if (dotDirectionPlane === 0) {
@@ -976,7 +982,7 @@ export function rollPitchBearingEqual(a: RollPitchBearing, b: RollPitchBearing):
  * @param rotation - The rotation quaternion
  * @returns roll, pitch, and bearing angles in degrees
  */
-export function getRollPitchBearing(rotation: quat): RollPitchBearing {
+export function getRollPitchBearing(rotation: Quat): RollPitchBearing {
     const m: Float64Array = new Float64Array(9);
     mat3.fromQuat(m, rotation);
 
@@ -1010,7 +1016,7 @@ export function getAngleDelta(lastPoint: Point, currentPoint: Point, center: Poi
  * @param bearing - Bearing angle in degrees
  * @returns The rotation quaternion
  */
-export function rollPitchBearingToQuat(roll: number, pitch: number, bearing: number): quat {
+export function rollPitchBearingToQuat(roll: number, pitch: number, bearing: number): Quat {
     const rotation = new Float64Array(4);
     quat.fromEuler(rotation, roll, pitch - 90.0, bearing);
     return rotation;

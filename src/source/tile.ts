@@ -28,7 +28,7 @@ import type {Framebuffer} from '../gl/framebuffer';
 import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {LayerFeatureStates} from './source_state';
 import type Point from '@mapbox/point-geometry';
-import type {mat4} from 'gl-matrix';
+import type {Mat4} from 'gl-matrix';
 import type {VectorTileLayer} from '@mapbox/vector-tile';
 import type {ExpiryData} from '../util/ajax';
 import type {QueryRenderedFeaturesOptionsStrict, QuerySourceFeatureOptionsStrict} from './query_features';
@@ -75,7 +75,7 @@ export class Tile {
 
     neighboringTiles: any;
     dem: DEMData;
-    demMatrix: mat4;
+    demMatrix: Mat4;
     aborted: boolean;
     needsHillshadePrepare: boolean;
     needsTerrainPrepare: boolean;
@@ -287,7 +287,7 @@ export class Tile {
         params: Pick<QueryRenderedFeaturesOptionsStrict, 'filter' | 'layers' | 'availableImages'> | undefined,
         transform: IReadonlyTransform,
         maxPitchScaleFactor: number,
-        pixelPosMatrix: mat4,
+        pixelPosMatrix: Mat4,
         getElevation: undefined | ((x: number, y: number) => number)
     ): QueryResults {
         if (!this.latestFeatureIndex || !this.latestFeatureIndex.rawTileData)

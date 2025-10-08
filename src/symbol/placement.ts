@@ -1,28 +1,27 @@
 import {CollisionIndex, viewportPadding} from './collision_index';
-import type {FeatureKey, PlacedBox, PlacedCircles} from './collision_index';
 import {EXTENT} from '../data/extent';
 import * as symbolSize from './symbol_size';
 import * as projection from './projection';
 import {getAnchorJustification} from './symbol_layout';
 import {getAnchorAlignment, WritingMode} from './shaping';
-import {type mat4} from 'gl-matrix';
 import {pixelsToTileUnits} from '../source/pixels_to_tile_units';
 import Point from '@mapbox/point-geometry';
+import {getOverlapMode, type OverlapMode} from '../style/style_layer/overlap_mode';
+import {translatePosition, warnOnce} from '../util/util';
+import {type TextAnchor, TextAnchorEnum} from '../style/style_layer/variable_text_anchor';
+
+import type {FeatureKey, PlacedBox, PlacedCircles} from './collision_index';
+import type {PossiblyEvaluated} from '../style/properties';
 import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
 import type {StyleLayer} from '../style/style_layer';
-import {type PossiblyEvaluated} from '../style/properties';
 import type {SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated} from '../style/style_layer/symbol_style_layer_properties.g';
-import {getOverlapMode, type OverlapMode} from '../style/style_layer/overlap_mode';
-
 import type {Tile} from '../source/tile';
-import {type SymbolBucket, type CollisionArrays, type SingleCollisionBox} from '../data/bucket/symbol_bucket';
-
+import type {SymbolBucket, CollisionArrays, SingleCollisionBox} from '../data/bucket/symbol_bucket';
+import type {Mat4} from 'gl-matrix';
 import type {CollisionBoxArray, CollisionVertexArray, SymbolInstance, TextAnchorOffset} from '../data/array_types.g';
 import type {FeatureIndex} from '../data/feature_index';
 import type {OverscaledTileID, UnwrappedTileID} from '../source/tile_id';
-import {type Terrain} from '../render/terrain';
-import {translatePosition, warnOnce} from '../util/util';
-import {type TextAnchor, TextAnchorEnum} from '../style/style_layer/variable_text_anchor';
+import type {Terrain} from '../render/terrain';
 
 class OpacityState {
     opacity: number;
@@ -155,7 +154,7 @@ type TileLayerParameters = {
     translationText: [number, number];
     translationIcon: [number, number];
     unwrappedTileID: UnwrappedTileID;
-    pitchedLabelPlaneMatrix: mat4;
+    pitchedLabelPlaneMatrix: Mat4;
     scale: number;
     textPixelRatio: number;
     holdingForFade: boolean;
@@ -334,7 +333,7 @@ export class Placement {
         translationIcon: [number, number],
         iconBox?: SingleCollisionBox | null,
         getElevation?: (x: number, y: number) => number,
-        simpleProjectionMatrix?: mat4,
+        simpleProjectionMatrix?: Mat4,
     ): {
         shift: Point;
         placedGlyphBoxes: PlacedBox;

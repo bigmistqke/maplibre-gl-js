@@ -1,11 +1,14 @@
-import {quat, type Tuple, vec3, type vec4} from 'gl-matrix';
-import {type Frustum} from './frustum';
 import {IntersectionResult, type IBoundingVolume} from './bounding_volume';
+import * as quat from 'gl-matrix/quat';
+import * as vec3 from 'gl-matrix/vec3';
+
+import type {Frustum} from './frustum';
+import type {Tuple, Vec4, Vec3} from 'gl-matrix';
 
 /**
  * A general convex bounding volume, defined by a set of points.
  */
-export class ConvexVolume<TPoints extends vec3[] = vec3[], TPlanes extends vec4[] = vec4[], TMin extends vec3 = vec3, TMax extends vec3 = vec3> implements IBoundingVolume {
+export class ConvexVolume<TPoints extends Vec3[] = Vec3[], TPlanes extends Vec4[] = Vec4[], TMin extends Vec3 = Vec3, TMax extends Vec3 = Vec3> implements IBoundingVolume {
     // Precomputed AABB for rejecting frustum intersection.
     min: TMin;
     max: TMax;
@@ -36,7 +39,7 @@ export class ConvexVolume<TPoints extends vec3[] = vec3[], TPlanes extends vec4[
      * @param min - The AABB's min point.
      * @param max - The AABB's max point.
      */
-    public static fromAabb<TMin extends vec3, TMax extends vec3>(min: TMin, max: TMax): ConvexVolume<Tuple.Vec3[], Tuple.Vec4[], TMin, TMax> {
+    public static fromAabb<TMin extends Vec3, TMax extends Vec3>(min: TMin, max: TMax): ConvexVolume<Tuple.Vec3[], Tuple.Vec4[], TMin, TMax> {
         const points: Tuple.Vec3[] = [];
         for (let i = 0; i < 8; i++) {
             points.push([
@@ -61,7 +64,7 @@ export class ConvexVolume<TPoints extends vec3[] = vec3[], TPlanes extends vec4[
      * @param halfSize - The half-size of the OBB in each axis. The box will extend by this value in each direction for the given axis.
      * @param angles - The rotation of the box. Euler angles, in degrees.
      */
-    public static fromCenterSizeAngles(center: vec3, halfSize: vec3, angles: vec3): ConvexVolume<Tuple.Vec3[], Tuple.Vec4[], Tuple.Vec3, Tuple.Vec3> {
+    public static fromCenterSizeAngles(center: Vec3, halfSize: Vec3, angles: Vec3): ConvexVolume<Tuple.Vec3[], Tuple.Vec4[], Tuple.Vec3, Tuple.Vec3> {
         const q = quat.fromEuler([], angles[0], angles[1], angles[2]);
         const axisX = vec3.transformQuat([], [halfSize[0], 0, 0], q);
         const axisY = vec3.transformQuat([], [0, halfSize[1], 0], q);
@@ -154,7 +157,7 @@ export class ConvexVolume<TPoints extends vec3[] = vec3[], TPlanes extends vec4[
     /**
      * Performs an intersection test with a halfspace.
      */
-    intersectsPlane(plane: vec4): IntersectionResult {
+    intersectsPlane(plane: Vec4): IntersectionResult {
         const pointCount = this.points.length;
         let positivePoints = 0;
         for (let i = 0; i < pointCount; i++) {

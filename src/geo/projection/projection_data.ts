@@ -1,4 +1,4 @@
-import type {mat4} from 'gl-matrix';
+import type {Mat4} from 'gl-matrix';
 import type {OverscaledTileID} from '../../source/tile_id';
 
 /**
@@ -11,7 +11,7 @@ export type ProjectionData = {
      * for globe projection, it projects a unit sphere planet to screen.
      * Uniform name: `u_projection_matrix`.
      */
-    mainMatrix: mat4;
+    mainMatrix: Mat4;
     /**
      * The extent of current tile in the mercator square.
      * Used by globe projection.
@@ -43,7 +43,7 @@ export type ProjectionData = {
      * Used by globe projection to fall back to mercator projection in an animated way.
      * Uniform name: `u_projection_fallback_matrix`.
      */
-    fallbackMatrix: mat4;
+    fallbackMatrix: Mat4;
 };
 
 /**

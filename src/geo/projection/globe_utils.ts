@@ -1,7 +1,9 @@
-import {type ReadonlyVec4, vec3} from 'gl-matrix';
+import * as vec3 from 'gl-matrix/vec3';
 import {clamp, createVec3f64, lerp, MAX_VALID_LATITUDE, mod, remapSaturate, scaleZoom, wrap} from '../../util/util';
 import {LngLat} from '../lng_lat';
 import {EXTENT} from '../../data/extent';
+
+import type {ReadonlyVec4, Vec3} from 'gl-matrix';
 import type Point from '@mapbox/point-geometry';
 
 export function getGlobeCircumferencePixels(transform: {worldSize: number; center: {lat: number}}): number {
@@ -92,7 +94,7 @@ export function getGlobeRadiusPixels(worldSize: number, latitudeDegrees: number)
  * Given a 3D point on the surface of a unit sphere, returns its angular coordinates in degrees.
  * The input vector must be normalized.
  */
-export function sphereSurfacePointToCoordinates(surface: vec3): LngLat {
+export function sphereSurfacePointToCoordinates(surface: Vec3): LngLat {
     const latRadians = Math.asin(surface[1]);
     const latDegrees = latRadians / Math.PI * 180.0;
     const lengthXZ = Math.sqrt(surface[0] * surface[0] + surface[2] * surface[2]);
@@ -115,7 +117,7 @@ export function sphereSurfacePointToCoordinates(surface: vec3): LngLat {
  * @param horizonPlane - The plane that passes through visible horizon in Ax + By + Cz + D = 0 format where mag(A,B,C)=1
  * @returns the center point and radius of the disc that passes through the entire visible horizon
  */
-export function horizonPlaneToCenterAndRadius(horizonPlane: ReadonlyVec4): { center: vec3; radius: number } {
+export function horizonPlaneToCenterAndRadius(horizonPlane: ReadonlyVec4): { center: Vec3; radius: number } {
     const center = createVec3f64();
     center[0] = horizonPlane[0] * -horizonPlane[3];
     center[1] = horizonPlane[1] * -horizonPlane[3];
@@ -140,7 +142,7 @@ export function horizonPlaneToCenterAndRadius(horizonPlane: ReadonlyVec4): { cen
  * @param point - Point inside or outside the sphere
  * @returns A 3d vector of the point on the sphere closest to `point`
  */
-export function clampToSphere(center: vec3, radius: number, point: vec3) {
+export function clampToSphere(center: Vec3, radius: number, point: Vec3) {
     const relativeToCenter = createVec3f64();
     vec3.sub(relativeToCenter, point, center);
     const clamped = createVec3f64();

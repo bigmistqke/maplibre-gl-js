@@ -3,7 +3,9 @@ import Point from '@mapbox/point-geometry';
 import {arraysIntersect, bezier, clamp, clone, deepEqual, easeCubicInOut, extend, filterObject, findLineIntersection, isCounterClockwise, isPowerOfTwo, keysDifference, mapObject, nextPowerOfTwo, parseCacheControl, pick, readImageDataUsingOffscreenCanvas, readImageUsingVideoFrame, uniqueId, wrap, mod, distanceOfAnglesRadians, distanceOfAnglesDegrees, differenceOfAnglesRadians, differenceOfAnglesDegrees, solveQuadratic, remapSaturate, radiansToDegrees, degreesToRadians, rollPitchBearingToQuat, getRollPitchBearing, getAngleDelta, scaleZoom, zoomScale, threePlaneIntersection, pointPlaneSignedDistance} from './util';
 import {Canvas} from 'canvas';
 import {expectToBeCloseToArray} from './test/util';
-import {vec3, type vec4} from 'gl-matrix';
+import * as vec3 from 'gl-matrix/vec3';
+
+import type {Vec3, Vec4} from 'gl-matrix';
 
 describe('util', () => {
     expect(easeCubicInOut(0)).toBe(0);
@@ -533,9 +535,9 @@ describe('util scaleZoom and zoomScale relation', () => {
 describe('threePlaneIntersection', () => {
     const precision = 10;
 
-    function createPlane(origin: number[], direction: number[]): vec4 {
-        const normalized = vec3.normalize([], direction as vec3);
-        const dist = vec3.dot(normalized, origin as vec3);
+    function createPlane(origin: number[], direction: number[]): Vec4 {
+        const normalized = vec3.normalize([], direction as Vec3);
+        const dist = vec3.dot(normalized, origin as Vec3);
         return [normalized[0], normalized[1], normalized[2], -dist];
     }
 
@@ -545,22 +547,22 @@ describe('threePlaneIntersection', () => {
         // Plane direction is normalized
         expect(vec3.length([plane[0], plane[1], plane[2]])).toBeCloseTo(1, precision);
         // Plane behaves as expected around the origin point
-        expect(pointPlaneSignedDistance(plane, origin as vec3)).toBe(0);
-        expect(pointPlaneSignedDistance(plane, [-4 + 1, 5 + 2, -6 + 3] as vec3)).toBeGreaterThan(0);
-        expect(pointPlaneSignedDistance(plane, [-4 - 1, 5 - 2, -6 - 3] as vec3)).toBeLessThan(0);
+        expect(pointPlaneSignedDistance(plane, origin as Vec3)).toBe(0);
+        expect(pointPlaneSignedDistance(plane, [-4 + 1, 5 + 2, -6 + 3] as Vec3)).toBeGreaterThan(0);
+        expect(pointPlaneSignedDistance(plane, [-4 - 1, 5 - 2, -6 - 3] as Vec3)).toBeLessThan(0);
     });
 
     test('three orthogonal planes at origin', () => {
-        const plane1 = [1, 0, 0, 0] as vec4;
-        const plane2 = [0, 1, 0, 0] as vec4;
-        const plane3 = [0, 0, 1, 0] as vec4;
+        const plane1 = [1, 0, 0, 0] as Vec4;
+        const plane2 = [0, 1, 0, 0] as Vec4;
+        const plane3 = [0, 0, 1, 0] as Vec4;
         expectToBeCloseToArray([...threePlaneIntersection(plane1, plane2, plane3)], [0, 0, 0], precision);
     });
 
     test('three translated orthogonal planes', () => {
-        const plane1 = [1, 0, 0, -3] as vec4;
-        const plane2 = [0, 1, 0, -4] as vec4;
-        const plane3 = [0, 0, 1, -5] as vec4;
+        const plane1 = [1, 0, 0, -3] as Vec4;
+        const plane2 = [0, 1, 0, -4] as Vec4;
+        const plane3 = [0, 0, 1, -5] as Vec4;
         expectToBeCloseToArray([...threePlaneIntersection(plane1, plane2, plane3)], [3, 4, 5], precision);
     });
 

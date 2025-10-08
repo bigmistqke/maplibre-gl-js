@@ -1,5 +1,5 @@
 import {describe, test, expect} from 'vitest';
-import {type mat4} from 'gl-matrix';
+import {Mat4, type mat4} from 'gl-matrix';
 import {type Context} from '../gl/context';
 import {
     Uniform1i,
@@ -115,7 +115,7 @@ describe('Uniform Binding', () => {
         } as any as Context;
 
         const u = new UniformMatrix4f(context, 0);
-        const ident = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] as mat4;
+        const ident = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] as Mat4;
         expect(u.current).toEqual(new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
         u.set(ident);
         expect(u.current).toEqual(ident);

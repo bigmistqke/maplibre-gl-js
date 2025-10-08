@@ -1,25 +1,27 @@
-
-import {type Tile} from '../source/tile';
-import {mat4, type Tuple, vec2} from 'gl-matrix';
 import {OverscaledTileID} from '../source/tile_id';
 import {RGBAImage} from '../util/image';
 import {warnOnce} from '../util/util';
 import {Pos3dArray, TriangleIndexArray} from '../data/array_types.g';
 import pos3dAttributes from '../data/pos3d_attributes';
 import {SegmentVector} from '../data/segment';
-import {type Painter} from './painter';
 import {Texture} from '../render/texture';
-import type {Framebuffer} from '../gl/framebuffer';
-import type Point from '@mapbox/point-geometry';
 import {MercatorCoordinate} from '../geo/mercator_coordinate';
 import {TerrainSourceCache} from '../source/terrain_source_cache';
-import {type SourceCache} from '../source/source_cache';
 import {EXTENT} from '../data/extent';
-import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
-import {type LngLat, earthRadius} from '../geo/lng_lat';
 import {Mesh} from './mesh';
 import {isInBoundsForZoomLngLat} from '../util/world_bounds';
 import {NORTH_POLE_Y, SOUTH_POLE_Y} from './subdivision';
+import * as vec2 from 'gl-matrix/vec2';
+import * as mat4 from 'gl-matrix/mat4';
+import {type LngLat, earthRadius} from '../geo/lng_lat';
+
+import type {Tile} from '../source/tile';
+import type {Painter} from './painter';
+import type {Framebuffer} from '../gl/framebuffer';
+import type Point from '@mapbox/point-geometry';
+import type {SourceCache} from '../source/source_cache';
+import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {Mat4, Tuple} from 'gl-matrix';
 
 /**
  * @internal
@@ -29,7 +31,7 @@ export type TerrainData = {
     'u_depth': number;
     'u_terrain': number;
     'u_terrain_dim': number;
-    'u_terrain_matrix': mat4;
+    'u_terrain_matrix': Mat4;
     'u_terrain_unpack': number[];
     'u_terrain_exaggeration': number;
     texture: WebGLTexture;
@@ -134,7 +136,7 @@ export class Terrain {
      * as of overzooming of raster-dem tiles in high zoomlevels, this cache contains
      * matrices to transform from vector-tile coords to raster-dem-tile coords.
      */
-    _demMatrixCache: {[_: string]: { matrix: mat4; coord: OverscaledTileID }};
+    _demMatrixCache: {[_: string]: { matrix: Mat4; coord: OverscaledTileID }};
 
     constructor(painter: Painter, sourceCache: SourceCache, options: TerrainSpecification) {
         this.painter = painter;

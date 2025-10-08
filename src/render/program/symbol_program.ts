@@ -4,7 +4,7 @@ import {extend} from '../../util/util';
 import type {Context} from '../../gl/context';
 import type {Painter} from '../painter';
 import type {UniformValues, UniformLocations} from '../uniform_binding';
-import {type mat4} from 'gl-matrix';
+import type {Mat4} from 'gl-matrix';
 
 export type SymbolIconUniformsType = {
     'u_is_size_zoom_constant': Uniform1i;
@@ -165,8 +165,8 @@ const symbolIconUniformValues = (
     isAlongLine: boolean,
     isVariableAnchor: boolean,
     painter: Painter,
-    labelPlaneMatrix: mat4,
-    glCoordMatrix: mat4,
+    labelPlaneMatrix: Mat4,
+    glCoordMatrix: Mat4,
     translation: [number, number],
     isText: boolean,
     texSize: [number, number],
@@ -208,8 +208,8 @@ const symbolSDFUniformValues = (
     isAlongLine: boolean,
     isVariableAnchor: boolean,
     painter: Painter,
-    labelPlaneMatrix: mat4,
-    glCoordMatrix: mat4,
+    labelPlaneMatrix: Mat4,
+    glCoordMatrix: Mat4,
     translation: [number, number],
     isText: boolean,
     texSize: [number, number],
@@ -238,8 +238,8 @@ const symbolTextAndIconUniformValues = (
     isAlongLine: boolean,
     isVariableAnchor: boolean,
     painter: Painter,
-    labelPlaneMatrix: mat4,
-    glCoordMatrix: mat4,
+    labelPlaneMatrix: Mat4,
+    glCoordMatrix: Mat4,
     translation: [number, number],
     texSizeSDF: [number, number],
     texSizeIcon: [number, number],

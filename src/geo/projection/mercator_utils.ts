@@ -1,4 +1,4 @@
-import {mat4} from 'gl-matrix';
+import * as mat4 from 'gl-matrix/mat4';
 import {EXTENT} from '../../data/extent';
 import {clamp, degreesToRadians, MAX_VALID_LATITUDE, zoomScale} from '../../util/util';
 import {MercatorCoordinate, mercatorXfromLng, mercatorYfromLat, mercatorZfromAltitude} from '../mercator_coordinate';

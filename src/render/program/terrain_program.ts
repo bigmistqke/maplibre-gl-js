@@ -5,11 +5,12 @@ import {
     UniformMatrix4f,
     UniformColor
 } from '../uniform_binding';
+import {Color} from '@maplibre/maplibre-gl-style-spec';
+
 import type {Context} from '../../gl/context';
 import type {UniformValues, UniformLocations} from '../../render/uniform_binding';
-import {type Sky} from '../../style/sky';
-import {Color} from '@maplibre/maplibre-gl-style-spec';
-import {type mat4} from 'gl-matrix';
+import type {Sky} from '../../style/sky';
+import type {Mat4} from 'gl-matrix';
 
 export type TerrainPreludeUniformsType = {
     'u_depth': Uniform1i;
@@ -75,7 +76,7 @@ const terrainCoordsUniforms = (context: Context, locations: UniformLocations): T
 
 const terrainUniformValues = (
     eleDelta: number,
-    fogMatrix: mat4,
+    fogMatrix: Mat4,
     sky: Sky,
     pitch: number,
     isGlobeMode: boolean): UniformValues<TerrainUniformsType> => ({

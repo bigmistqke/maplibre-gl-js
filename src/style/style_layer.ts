@@ -23,7 +23,7 @@ import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {CustomLayerInterface} from './style_layer/custom_style_layer';
 import type {Map} from '../ui/map';
 import type {StyleSetterOptions} from './style';
-import {type mat4} from 'gl-matrix';
+import type {Mat4, mat4} from 'gl-matrix';
 import type {VectorTileFeature} from '@mapbox/vector-tile';
 import type {UnwrappedTileID} from '../source/tile_id';
 
@@ -64,7 +64,7 @@ export type QueryIntersectsFeatureParams = {
      * The matrix to convert from tile coordinates to pixel coordinates.
      * The pixel coordinates are relative to the center of the screen.
      */
-    pixelPosMatrix: mat4;
+    pixelPosMatrix: Mat4;
     /**
      * The unwrapped tile ID for the tile being queried.
      */

@@ -1,4 +1,3 @@
-import {mat4, vec3, type Tuple, vec4} from 'gl-matrix';
 import {TransformHelper} from '../transform_helper';
 import {LngLat, type LngLatLike, earthRadius} from '../lng_lat';
 import {angleToRotateBetweenVectors2D, clamp, createIdentityMat4f32, createIdentityMat4f64, createMat4f64, createVec3f64, createVec4f64, differenceOfAnglesDegrees, distanceOfAnglesRadians, MAX_VALID_LATITUDE, pointPlaneSignedDistance, warnOnce} from '../../util/util';
@@ -10,7 +9,11 @@ import {tileCoordinatesToMercatorCoordinates} from './mercator_utils';
 import {angularCoordinatesToSurfaceVector, clampToSphere, getGlobeRadiusPixels, getZoomAdjustment, horizonPlaneToCenterAndRadius, mercatorCoordinatesToAngularCoordinatesRadians, projectTileCoordinatesToSphere, sphereSurfacePointToCoordinates} from './globe_utils';
 import {GlobeCoveringTilesDetailsProvider} from './globe_covering_tiles_details_provider';
 import {Frustum} from '../../util/primitives/frustum';
+import * as mat4 from 'gl-matrix/mat4';
+import * as vec3 from 'gl-matrix/vec3';
+import * as vec4 from 'gl-matrix/vec4';
 
+import type {Tuple, Vec3, Vec4} from 'gl-matrix';
 import type {Terrain} from '../../render/terrain';
 import type {PointProjection} from '../../symbol/projection';
 import type {IReadonlyTransform, ITransform} from '../transform_interface';
@@ -358,7 +361,7 @@ export class VerticalPerspectiveTransform implements ITransform {
         vectorCtoCamY /= vectorCtoCamLength;
 
         // Note the swizzled components
-        const planeVector: vec3 = [0, vectorCtoCamX, vectorCtoCamY];
+        const planeVector: Vec3 = [0, vectorCtoCamX, vectorCtoCamY];
         // Apply transforms - lat, lng and angle (NOT pitch - already accounted for, as it affects the tangent plane)
         vec3.rotateZ(planeVector, planeVector, [0, 0, 0], -this.bearingInRadians);
         vec3.rotateX(planeVector, planeVector, [0, 0, 0], -1 * this.center.lat * Math.PI / 180.0);
@@ -373,7 +376,7 @@ export class VerticalPerspectiveTransform implements ITransform {
         return !this.isSurfacePointVisible(angularCoordinatesToSurfaceVector(location));
     }
 
-    public transformLightDirection(dir: vec3): Tuple.Vec3 {
+    public transformLightDirection(dir: Vec3): Tuple.Vec3 {
         const sphereX = this._helper._center.lng * Math.PI / 180.0;
         const sphereY = this._helper._center.lat * Math.PI / 180.0;
 
@@ -420,7 +423,7 @@ export class VerticalPerspectiveTransform implements ITransform {
         const spherePos = projectTileCoordinatesToSphere(x, y, canonical.x, canonical.y, canonical.z);
         const elevation = getElevation ? getElevation(x, y) : 0.0;
         const vectorMultiplier = 1.0 + elevation / earthRadius;
-        const pos: vec4 = [spherePos[0] * vectorMultiplier, spherePos[1] * vectorMultiplier, spherePos[2] * vectorMultiplier, 1];
+        const pos: Vec4 = [spherePos[0] * vectorMultiplier, spherePos[1] * vectorMultiplier, spherePos[2] * vectorMultiplier, 1];
         vec4.transformMat4(pos, pos, this._globeViewProjMatrixNoCorrection);
 
         // Also check whether the point projects to the backfacing side of the sphere.
@@ -773,7 +776,7 @@ export class VerticalPerspectiveTransform implements ITransform {
      * Projects a given vector on the surface of a unit sphere (or possible above the surface)
      * and returns its coordinates on screen in pixels.
      */
-    private _projectSurfacePointToScreen(pos: vec3): Point {
+    private _projectSurfacePointToScreen(pos: Vec3): Point {
         const projected = createVec4f64();
         vec4.transformMat4(projected, [...pos, 1], this._globeViewProjMatrixNoCorrection);
         projected[0] /= projected[3];
@@ -835,7 +838,7 @@ export class VerticalPerspectiveTransform implements ITransform {
      * For a given point on the unit sphere of the planet, returns whether it is visible from
      * camera's position (not taking into account camera rotation at all).
      */
-    private isSurfacePointVisible(p: vec3): boolean {
+    private isSurfacePointVisible(p: Vec3): boolean {
         const plane = this._cachedClippingPlane;
         // dot(position on sphere, occlusion plane equation)
         const dotResult = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
@@ -846,7 +849,7 @@ export class VerticalPerspectiveTransform implements ITransform {
      * Returns whether surface point is visible on screen.
      * It must both project to a pixel in screen bounds and not be occluded by the planet.
      */
-    private isSurfacePointOnScreen(vec: vec3): boolean {
+    private isSurfacePointOnScreen(vec: Vec3): boolean {
         if (!this.isSurfacePointVisible(vec)) {
             return false;
         }
@@ -870,7 +873,7 @@ export class VerticalPerspectiveTransform implements ITransform {
      * @param origin - The ray origin.
      * @param direction - The normalized ray direction.
      */
-    private rayPlanetIntersection(origin: vec3, direction: vec3): RaySphereIntersection {
+    private rayPlanetIntersection(origin: Vec3, direction: Vec3): RaySphereIntersection {
         const originDotDirection = vec3.dot(origin, direction);
         const planetRadiusSquared = 1.0; // planet is a unit sphere, so its radius squared is 1
 

@@ -1,12 +1,11 @@
 import {browser} from '../util/browser';
-import {mat4} from 'gl-matrix';
+import * as mat4 from 'gl-matrix/mat4';
 import {SourceCache} from '../source/source_cache';
 import {EXTENT} from '../data/extent';
 import {SegmentVector} from '../data/segment';
 import {RasterBoundsArray, PosArray, TriangleIndexArray, LineStripIndexArray} from '../data/array_types.g';
 import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
-import {type ProgramConfiguration} from '../data/program_configuration';
 import {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 import {shaders} from '../shaders/shaders';
 import {Program} from './program';
@@ -31,11 +30,25 @@ import {drawBackground} from './draw_background';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
 import {drawDepth, drawCoords} from './draw_terrain';
-import {type OverscaledTileID} from '../source/tile_id';
 import {drawSky, drawAtmosphere} from './draw_sky';
 import {Mesh} from './mesh';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection';
+import {coveringTiles} from '../geo/projection/covering_tiles';
+import {isSymbolStyleLayer} from '../style/style_layer/symbol_style_layer';
+import {isCircleStyleLayer} from '../style/style_layer/circle_style_layer';
+import {isHeatmapStyleLayer} from '../style/style_layer/heatmap_style_layer';
+import {isLineStyleLayer} from '../style/style_layer/line_style_layer';
+import {isFillStyleLayer} from '../style/style_layer/fill_style_layer';
+import {isFillExtrusionStyleLayer} from '../style/style_layer/fill_extrusion_style_layer';
+import {isHillshadeStyleLayer} from '../style/style_layer/hillshade_style_layer';
+import {isColorReliefStyleLayer} from '../style/style_layer/color_relief_style_layer';
+import {isRasterStyleLayer} from '../style/style_layer/raster_style_layer';
+import {isBackgroundStyleLayer} from '../style/style_layer/background_style_layer';
+import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
+import type {ProgramConfiguration} from '../data/program_configuration';
+import type {OverscaledTileID} from '../source/tile_id';
+import type {Mat4} from 'gl-matrix';
 import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {Style} from '../style/style';
 import type {StyleLayer} from '../style/style_layer';
@@ -49,18 +62,6 @@ import type {DepthRangeType, DepthMaskType, DepthFuncType} from '../gl/types';
 import type {ResolvedImage} from '@maplibre/maplibre-gl-style-spec';
 import type {RenderToTexture} from './render_to_texture';
 import type {ProjectionData} from '../geo/projection/projection_data';
-import {coveringTiles} from '../geo/projection/covering_tiles';
-import {isSymbolStyleLayer} from '../style/style_layer/symbol_style_layer';
-import {isCircleStyleLayer} from '../style/style_layer/circle_style_layer';
-import {isHeatmapStyleLayer} from '../style/style_layer/heatmap_style_layer';
-import {isLineStyleLayer} from '../style/style_layer/line_style_layer';
-import {isFillStyleLayer} from '../style/style_layer/fill_style_layer';
-import {isFillExtrusionStyleLayer} from '../style/style_layer/fill_extrusion_style_layer';
-import {isHillshadeStyleLayer} from '../style/style_layer/hillshade_style_layer';
-import {isColorReliefStyleLayer} from '../style/style_layer/color_relief_style_layer';
-import {isRasterStyleLayer} from '../style/style_layer/raster_style_layer';
-import {isBackgroundStyleLayer} from '../style/style_layer/background_style_layer';
-import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
 
@@ -133,7 +134,7 @@ export class Painter {
     // this object stores the current camera-matrix and the last render time
     // of the terrain-facilitators. e.g. depth & coords framebuffers
     // every time the camera-matrix changes the terrain-facilitators will be redrawn.
-    terrainFacilitator: {dirty: boolean; matrix: mat4; renderTime: number};
+    terrainFacilitator: {dirty: boolean; matrix: Mat4; renderTime: number};
 
     constructor(gl: WebGLRenderingContext | WebGL2RenderingContext, transform: IReadonlyTransform) {
         this.context = new Context(gl);

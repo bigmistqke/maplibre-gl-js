@@ -5,9 +5,11 @@ import {
     Uniform2f,
     Uniform3f
 } from '../uniform_binding';
-import {mat3, type Tuple, vec3} from 'gl-matrix';
 import {extend} from '../../util/util';
+import * as mat3 from 'gl-matrix/mat3';
+import * as vec3 from 'gl-matrix/vec3';
 
+import type {Tuple} from 'gl-matrix';
 import type {Context} from '../../gl/context';
 import type {Painter} from '../painter';
 import type {OverscaledTileID} from '../../source/tile_id';

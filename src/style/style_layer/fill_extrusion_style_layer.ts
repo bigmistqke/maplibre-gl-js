@@ -1,12 +1,13 @@
 import {type QueryIntersectsFeatureParams, StyleLayer} from '../style_layer';
-
 import {FillExtrusionBucket} from '../../data/bucket/fill_extrusion_bucket';
 import {polygonIntersectsPolygon, polygonIntersectsMultiPolygon} from '../../util/intersection_tests';
 import {translateDistance, translate} from '../query_utils';
 import properties, {type FillExtrusionPaintPropsPossiblyEvaluated} from './fill_extrusion_style_layer_properties.g';
-import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
-import {type mat4, type Tuple, vec4} from 'gl-matrix';
+import * as vec4 from 'gl-matrix/vec4';
+
 import Point from '@mapbox/point-geometry';
+import type {Transitionable, Transitioning, PossiblyEvaluated} from '../properties';
+import type {Mat4, Tuple} from 'gl-matrix';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {BucketParameters} from '../../data/bucket';
 import type {FillExtrusionPaintProps} from './fill_extrusion_style_layer_properties.g';
@@ -164,7 +165,7 @@ function checkIntersection(projectedBase: Array<Array<Point3D>>, projectedTop: A
  * different points can only be done once. This produced a measurable
  * performance improvement.
  */
-function projectExtrusion(geometry: Array<Array<Point>>, zBase: number, zTop: number, m: mat4): [Array<Array<Point3D>>, Array<Array<Point3D>>] {
+function projectExtrusion(geometry: Array<Array<Point>>, zBase: number, zTop: number, m: Mat4): [Array<Array<Point3D>>, Array<Array<Point3D>>] {
     const projectedBase = [] as Array<Array<Point3D>>;
     const projectedTop = [] as Array<Array<Point3D>>;
     const baseXZ = m[8] * zBase;
@@ -212,7 +213,7 @@ function projectExtrusion(geometry: Array<Array<Point>>, zBase: number, zTop: nu
     return [projectedBase, projectedTop];
 }
 
-function projectQueryGeometry(queryGeometry: Array<Point>, pixelPosMatrix: mat4, z: number) {
+function projectQueryGeometry(queryGeometry: Array<Point>, pixelPosMatrix: Mat4, z: number) {
     const projectedQueryGeometry = [];
     for (const p of queryGeometry) {
         const v: Tuple.Vec4 = [p.x, p.y, z, 1];

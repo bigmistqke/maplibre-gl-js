@@ -1,23 +1,21 @@
 import Point from '@mapbox/point-geometry';
 import {clipLine} from './clip_line';
 import {PathInterpolator} from './path_interpolator';
-
 import * as intersectionTests from '../util/intersection_tests';
 import {GridIndex} from './grid_index';
-import {mat4, type Tuple, vec4} from 'gl-matrix';
 import ONE_EM from '../symbol/one_em';
-
-import type {IReadonlyTransform} from '../geo/transform_interface';
-import type {SingleCollisionBox} from '../data/bucket/symbol_bucket';
-import type {
-    GlyphOffsetArray,
-    SymbolLineVertexArray
-} from '../data/array_types.g';
-import type {OverlapMode} from '../style/style_layer/overlap_mode';
-import {type OverscaledTileID, type UnwrappedTileID} from '../source/tile_id';
+import * as mat4 from 'gl-matrix/mat4';
+import * as vec4 from 'gl-matrix/vec4';
 import {type PointProjection, type SymbolProjectionContext, getTileSkewVectors, pathSlicedToLongestUnoccluded, placeFirstAndLastGlyph, projectPathSpecialProjection, xyTransformMat4} from '../symbol/projection';
 import {clamp, getAABB} from '../util/util';
 import {Bounds} from '../geo/bounds';
+
+import type {Mat4, Tuple} from 'gl-matrix';
+import type {IReadonlyTransform} from '../geo/transform_interface';
+import type {SingleCollisionBox} from '../data/bucket/symbol_bucket';
+import type {GlyphOffsetArray, SymbolLineVertexArray} from '../data/array_types.g';
+import type {OverlapMode} from '../style/style_layer/overlap_mode';
+import type {OverscaledTileID, UnwrappedTileID} from '../source/tile_id';
 
 // When a symbol crosses the edge that causes it to be included in
 // collision detection, it will cause changes in the symbols around
@@ -111,7 +109,7 @@ export class CollisionIndex {
         collisionGroupPredicate?: (key: FeatureKey) => boolean,
         getElevation?: (x: number, y: number) => number,
         shift?: Point,
-        simpleProjectionMatrix?: mat4,
+        simpleProjectionMatrix?: Mat4,
     ): PlacedBox {
         const x = collisionBox.anchorPointX + translation[0];
         const y = collisionBox.anchorPointY + translation[1];
@@ -189,7 +187,7 @@ export class CollisionIndex {
         glyphOffsetArray: GlyphOffsetArray,
         fontSize: number,
         unwrappedTileID: UnwrappedTileID,
-        pitchedLabelPlaneMatrix: mat4,
+        pitchedLabelPlaneMatrix: Mat4,
         showCollisionCircles: boolean,
         pitchWithMap: boolean,
         collisionGroupPredicate: (key: FeatureKey) => boolean,
@@ -436,7 +434,7 @@ export class CollisionIndex {
         }
     }
 
-    projectAndGetPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number, simpleProjectionMatrix?: mat4) {
+    projectAndGetPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number, simpleProjectionMatrix?: Mat4) {
         if (simpleProjectionMatrix) {
             // This branch is a fast-path for mercator transform.
             // The code here is a copy of MercatorTransform.projectTileCoordinates, slightly modified for extra performance.
@@ -511,7 +509,7 @@ export class CollisionIndex {
         projectedPoint: {x: number; y: number; perspectiveRatio: number; signedDistanceFromCamera: number},
         getElevation?: (x: number, y: number) => number,
         shift?: Point,
-        simpleProjectionMatrix?: mat4,
+        simpleProjectionMatrix?: Mat4,
     ): ProjectedBox {
         // These vectors are valid both for screen space viewport-rotation-aligned texts and for pitch-align: map texts that are map-rotation-aligned.
         let vecEastX = 1;

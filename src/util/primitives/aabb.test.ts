@@ -1,8 +1,10 @@
 import {describe, test, expect} from 'vitest';
-import {vec3, type vec4} from 'gl-matrix';
 import {Aabb} from './aabb';
 import {IntersectionResult} from './bounding_volume';
 import {createTestCameraFrustum} from '../test/util';
+import * as vec3 from 'gl-matrix/vec3';
+
+import type {Vec4} from 'gl-matrix';
 
 describe('aabb', () => {
     test('Create an aabb', () => {
@@ -88,7 +90,7 @@ describe('aabb', () => {
     });
 
     test('Aabb fully inside a half-space', () => {
-        const plane: vec4 = [1, 0, 0, 6];
+        const plane: Vec4 = [1, 0, 0, 6];
 
         const aabbList = [
             new Aabb(vec3.fromValues(-6, 0, 0), vec3.fromValues(-5.5, 0, 0)),
@@ -102,7 +104,7 @@ describe('aabb', () => {
     });
 
     test('Aabb intersecting a half-space', () => {
-        const plane: vec4 = [1, 0, -10, 5.75];
+        const plane: Vec4 = [1, 0, -10, 5.75];
 
         const aabbList = [
             new Aabb(vec3.fromValues(-6, 0, 0), vec3.fromValues(-5.5, 0, 0)),
@@ -116,7 +118,7 @@ describe('aabb', () => {
     });
 
     test('No intersection between aabb and half-space', () => {
-        const plane: vec4 = [1, 0, 0, -8];
+        const plane: Vec4 = [1, 0, 0, -8];
 
         const aabbList = [
             new Aabb(vec3.fromValues(-6, 0, 0), vec3.fromValues(-5.5, 0, 0)),

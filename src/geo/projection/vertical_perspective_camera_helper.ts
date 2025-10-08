@@ -3,10 +3,11 @@ import {cameraBoundsWarning, type CameraForBoxAndBearingHandlerResult, type Ease
 import {LngLat, type LngLatLike} from '../lng_lat';
 import {angularCoordinatesToSurfaceVector, computeGlobePanCenter, getGlobeRadiusPixels, getZoomAdjustment, globeDistanceOfLocationsPixels, interpolateLngLatForGlobe} from './globe_utils';
 import {clamp, createVec3f64, differenceOfAnglesDegrees, MAX_VALID_LATITUDE, remapSaturate, rollPitchBearingEqual, scaleZoom, warnOnce, zoomScale} from '../../util/util';
-import {type mat4, vec3} from 'gl-matrix';
 import {normalizeCenter} from '../transform_helper';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
+import * as vec3 from 'gl-matrix/vec3';
 
+import type {Mat4, Vec3} from 'gl-matrix';
 import type {IReadonlyTransform, ITransform} from '../transform_interface';
 import type {CameraForBoundsOptions} from '../../ui/camera';
 import type {LngLatBounds} from '../lng_lat_bounds';
@@ -411,7 +412,7 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
      * @param targetValue - The target clip space value in the specified dimension to which the queried vector must project.
      * @returns How much to scale the globe.
      */
-    private static solveVectorScale(vector: vec3, toCenter: vec3, projection: mat4, targetDimension: 'x' | 'y', targetValue: number): number | null {
+    private static solveVectorScale(vector: Vec3, toCenter: Vec3, projection: Mat4, targetDimension: 'x' | 'y', targetValue: number): number | null {
         // We want to compute how much to scale the sphere in order for the input `vector` to project to `targetValue` in the given `targetDimension` (X or Y).
         const k = targetValue;
         const columnXorY = targetDimension === 'x' ?

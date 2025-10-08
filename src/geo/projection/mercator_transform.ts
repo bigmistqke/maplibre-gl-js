@@ -2,7 +2,9 @@ import {LngLat, type LngLatLike} from '../lng_lat';
 import {MercatorCoordinate, mercatorXfromLng, mercatorYfromLat, mercatorZfromAltitude} from '../mercator_coordinate';
 import Point from '@mapbox/point-geometry';
 import {wrap, clamp, createIdentityMat4f64, createMat4f64, degreesToRadians, createIdentityMat4f32, zoomScale, scaleZoom} from '../../util/util';
-import {mat4, type Tuple, vec3, vec4} from 'gl-matrix';
+import * as vec3 from 'gl-matrix/vec3';
+import * as vec4 from 'gl-matrix/vec4';
+import * as mat4 from 'gl-matrix/mat4';
 import {UnwrappedTileID, OverscaledTileID, type CanonicalTileID, calculateTileKey} from '../../source/tile_id';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 import {type PointProjection, xyTransformMat4} from '../../symbol/projection';
@@ -13,6 +15,7 @@ import {TransformHelper} from '../transform_helper';
 import {MercatorCoveringTilesDetailsProvider} from './mercator_covering_tiles_details_provider';
 import {Frustum} from '../../util/primitives/frustum';
 
+import type {Tuple, Vec3, Mat4} from 'gl-matrix';
 import type {Terrain} from '../../render/terrain';
 import type {IReadonlyTransform, ITransform} from '../transform_interface';
 import type {PaddingOptions} from '../edge_insets';
@@ -373,7 +376,7 @@ export class MercatorTransform implements ITransform {
      * @param pixelMatrix - the pixel matrix
      * @returns screen point
      */
-    coordinatePoint(coord: MercatorCoordinate, elevation: number = 0, pixelMatrix: mat4 = this._pixelMatrix): Point {
+    coordinatePoint(coord: MercatorCoordinate, elevation: number = 0, pixelMatrix: Mat4 = this._pixelMatrix): Point {
         const p: Tuple.Vec4 = [coord.x * this.worldSize, coord.y * this.worldSize, elevation, 1];
         vec4.transformMat4(p, p, pixelMatrix);
         return new Point(p[0] / p[3], p[1] / p[3]);
@@ -722,7 +725,7 @@ export class MercatorTransform implements ITransform {
         const mercatorTileCoordinates = this._helper.getMercatorTileCoordinates(overscaledTileID);
         const tilePosMatrix = overscaledTileID ? this.calculatePosMatrix(overscaledTileID, aligned, true) : null;
 
-        let mainMatrix: mat4;
+        let mainMatrix: Mat4;
         if (overscaledTileID && overscaledTileID.terrainRttPosMatrix32f && applyTerrainMatrix) {
             mainMatrix = overscaledTileID.terrainRttPosMatrix32f;
         } else if (tilePosMatrix) {
@@ -755,7 +758,7 @@ export class MercatorTransform implements ITransform {
         return 1.0;
     }
 
-    transformLightDirection(dir: vec3): Float32Array {
+    transformLightDirection(dir: Vec3): Float32Array {
         return vec3.clone(dir);
     }
 

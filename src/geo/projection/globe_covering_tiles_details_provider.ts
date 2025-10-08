@@ -2,14 +2,16 @@ import {EXTENT} from '../../data/extent';
 import {projectTileCoordinatesToSphere} from './globe_utils';
 import {BoundingVolumeCache} from '../../util/primitives/bounding_volume_cache';
 import {coveringZoomLevel, type CoveringTilesOptionsInternal} from './covering_tiles';
-import {type Tuple, vec3} from 'gl-matrix';
-import type {IReadonlyTransform} from '../transform_interface';
-import type {MercatorCoordinate} from '../mercator_coordinate';
-import type {CoveringTilesDetailsProvider} from './covering_tiles_details_provider';
 import {OverscaledTileID} from '../../source/tile_id';
 import {earthRadius} from '../lng_lat';
 import {ConvexVolume} from '../../util/primitives/convex_volume';
 import {threePlaneIntersection} from '../../util/util';
+import * as vec3 from 'gl-matrix/vec3';
+
+import type {Tuple, Vec3} from 'gl-matrix';
+import type {IReadonlyTransform} from '../transform_interface';
+import type {MercatorCoordinate} from '../mercator_coordinate';
+import type {CoveringTilesDetailsProvider} from './covering_tiles_details_provider';
 
 /**
  * Computes distance of a point to a tile in an arbitrary axis.
@@ -296,7 +298,7 @@ export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsPr
     }
 }
 
-function findAxisMinMax(axis: vec3, points: vec3[]) {
+function findAxisMinMax(axis: Vec3, points: Vec3[]) {
     let min = +Infinity;
     let max = -Infinity;
     for (const c of points) {

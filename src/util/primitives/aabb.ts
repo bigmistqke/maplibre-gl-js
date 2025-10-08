@@ -1,8 +1,10 @@
-import {type Tuple, vec3, type vec4} from 'gl-matrix';
-import {type Frustum} from './frustum';
 import {IntersectionResult, type IBoundingVolume} from './bounding_volume';
+import * as vec3 from 'gl-matrix/vec3';
 
-export class Aabb<TMin extends vec3 = vec3, TMax extends vec3 = vec3> implements IBoundingVolume {
+import type {Tuple, Vec3, Vec4} from 'gl-matrix';
+import type {Frustum} from './frustum';
+
+export class Aabb<TMin extends Vec3 = Vec3, TMax extends Vec3 = Vec3> implements IBoundingVolume {
     min: TMin;
     max: TMax;
     center: Tuple.Vec3;
@@ -70,7 +72,7 @@ export class Aabb<TMin extends vec3 = vec3, TMax extends vec3 = vec3> implements
     /**
      * Performs a halfspace-aabb intersection test.
      */
-    intersectsPlane(plane: vec4): IntersectionResult {
+    intersectsPlane(plane: Vec4): IntersectionResult {
         let distMin = plane[3];
         let distMax = plane[3];
         for (let i = 0; i < 3; i++) {

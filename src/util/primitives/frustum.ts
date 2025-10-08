@@ -1,12 +1,15 @@
-import {type mat4, type Tuple, vec3, vec4} from 'gl-matrix';
 import {Aabb} from './aabb';
 import {pointPlaneSignedDistance, rayPlaneIntersection} from '../util';
+import * as vec3 from 'gl-matrix/vec3';
+import * as vec4 from 'gl-matrix/vec4';
+
+import type {Mat4, Tuple, Vec3, Vec4} from 'gl-matrix';
 
 export class Frustum {
 
-    constructor(public points: vec4[], public planes: vec4[], public aabb: Aabb) { }
+    constructor(public points: Vec4[], public planes: Vec4[], public aabb: Aabb) { }
 
-    public static fromInvProjectionMatrix(invProj: mat4, worldSize: number = 1, zoom: number = 0, horizonPlane?: vec4, flippedNearFar?: boolean): Frustum {
+    public static fromInvProjectionMatrix(invProj: Mat4, worldSize: number = 1, zoom: number = 0, horizonPlane?: Vec4, flippedNearFar?: boolean): Frustum {
         const clipSpaceCorners = [
             [-1, 1, -1, 1],
             [1, 1, -1, 1],
@@ -68,7 +71,7 @@ export class Frustum {
     }
 }
 
-function unprojectClipSpacePoint(point: vec4 | number[], invProj: mat4, worldSize: number, scale: number): Tuple.Vec4 {
+function unprojectClipSpacePoint(point: Vec4 | number[], invProj: Mat4, worldSize: number, scale: number): Tuple.Vec4 {
     const v = vec4.transformMat4([], point, invProj);
     const s = 1.0 / v[3] / worldSize * scale;
     return vec4.mul(v, v, [s, s, 1.0 / v[3], s]);
@@ -81,7 +84,7 @@ function unprojectClipSpacePoint(point: vec4 | number[], invProj: mat4, worldSiz
  * @param nearPlanePointsIndices - Which indices in the `frustumCoords` form the near plane.
  * @param horizonPlane - The horizon plane.
  */
-function adjustFarPlaneByHorizonPlane(frustumCoords: vec4[], nearPlanePointsIndices: number[], horizonPlane: vec4, flippedNearFar: boolean): void {
+function adjustFarPlaneByHorizonPlane(frustumCoords: Vec4[], nearPlanePointsIndices: number[], horizonPlane: Vec4, flippedNearFar: boolean): void {
     // For each of the 4 edges from near to far plane,
     // we find at which distance these edges intersect the given clipping plane,
     // select the maximal value from these distances and then we move
@@ -93,7 +96,7 @@ function adjustFarPlaneByHorizonPlane(frustumCoords: vec4[], nearPlanePointsIndi
 
     let maxDist = 0;
     const cornerRayLengths: number[] = [];
-    const cornerRayNormalizedDirections: vec3[] = [];
+    const cornerRayNormalizedDirections: Vec3[] = [];
     for (let i = 0; i < 4; i++) {
         const dir = vec3.sub([] , frustumCoords[i + farPlanePointsOffset], frustumCoords[i + nearPlanePointsOffset]);
         const len = vec3.length(dir);
@@ -131,7 +134,7 @@ function adjustFarPlaneByHorizonPlane(frustumCoords: vec4[], nearPlanePointsIndi
             frustumCoords[i + nearPlanePointsOffset][1] + cornerRayNormalizedDirections[i][1] * targetLength,
             frustumCoords[i + nearPlanePointsOffset][2] + cornerRayNormalizedDirections[i][2] * targetLength,
             1,
-        ] as vec4;
+        ] as Vec4;
         frustumCoords[i + farPlanePointsOffset] = newPoint;
     }
 }
@@ -141,10 +144,10 @@ function adjustFarPlaneByHorizonPlane(frustumCoords: vec4[], nearPlanePointsIndi
  * @param frustumCoords - Points of the frustum.
  * @param nearPlanePointsIndices - Which indices in the `frustumCoords` form the near plane.
  */
-function getNormalizedNearPlane(frustumCoords: vec4[], nearPlanePointsIndices: number[]): vec4 {
+function getNormalizedNearPlane(frustumCoords: Vec4[], nearPlanePointsIndices: number[]): Vec4 {
     const nearPlaneA = vec3.sub([], frustumCoords[nearPlanePointsIndices[0]], frustumCoords[nearPlanePointsIndices[1]]);
     const nearPlaneB = vec3.sub([], frustumCoords[nearPlanePointsIndices[2]], frustumCoords[nearPlanePointsIndices[1]]);
-    const nearPlaneNormalized = [0, 0, 0, 0] as vec4;
+    const nearPlaneNormalized = [0, 0, 0, 0] as Vec4;
     vec3.normalize(nearPlaneNormalized, vec3.cross([], nearPlaneA, nearPlaneB));
     nearPlaneNormalized[3] = -vec3.dot(nearPlaneNormalized, frustumCoords[nearPlanePointsIndices[0]]);
     return nearPlaneNormalized;
@@ -153,7 +156,7 @@ function getNormalizedNearPlane(frustumCoords: vec4[], nearPlanePointsIndices: n
 /**
  * Returns the ideal distance between the frustum's near and far plane so that the far plane only lies as far as the horizon.
  */
-function getIdealNearFarPlaneDistance(horizonPlane: vec4, nearPlaneNormalized: vec4): number | null {
+function getIdealNearFarPlaneDistance(horizonPlane: Vec4, nearPlaneNormalized: Vec4): number | null {
     // Normalize the horizon plane to unit direction
     const horizonPlaneLen = vec3.len(horizonPlane);
     const normalizedHorizonPlane = vec4.scale([], horizonPlane, 1 / horizonPlaneLen);

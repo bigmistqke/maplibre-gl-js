@@ -7,9 +7,9 @@ import {OverscaledTileID, UnwrappedTileID} from '../../../src/source/tile_id';
 import {SingleCollisionBox} from '../../../src/data/bucket/symbol_bucket';
 import {EXTENT} from '../../../src/data/extent';
 import {MercatorTransform} from '../../../src/geo/projection/mercator_transform';
-import {mat4} from 'gl-matrix';
-import {GlobeProjection} from '../../../src/geo/projection/globe_projection';
 import {GlobeTransform} from '../../../src/geo/projection/globe_transform';
+
+import type {Mat4} from 'gl-matrix';
 
 type TestSymbol = {
     collisionBox: SingleCollisionBox;
@@ -21,7 +21,7 @@ type TestSymbol = {
     rotateWithMap: boolean;
     translation: [number, number];
     shift?: Point;
-    simpleProjectionMatrix?: mat4;
+    simpleProjectionMatrix?: Mat4;
 }
 
 // For this benchmark we need a deterministic random number generator. This function provides one.

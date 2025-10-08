@@ -1,18 +1,15 @@
 import Point from '@mapbox/point-geometry';
 import {drawCollisionDebug} from './draw_collision_debug';
-
+import * as mat4 from 'gl-matrix/mat4';
 import {SegmentVector} from '../data/segment';
 import {pixelsToTileUnits} from '../source/pixels_to_tile_units';
 import {type EvaluatedZoomSize, evaluateSizeForFeature, evaluateSizeForZoom} from '../symbol/symbol_size';
-import {mat4} from 'gl-matrix';
 import {StencilMode} from '../gl/stencil_mode';
 import {DepthMode} from '../gl/depth_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
 import {addDynamicAttributes} from '../data/bucket/symbol_bucket';
-
 import {getAnchorAlignment, WritingMode} from '../symbol/shaping';
 import ONE_EM from '../symbol/one_em';
-
 import {
     type SymbolIconUniformsType,
     symbolIconUniformValues,
@@ -20,10 +17,10 @@ import {
     symbolTextAndIconUniformValues
 } from './program/symbol_program';
 
+import type {Mat4} from 'gl-matrix';
 import type {Painter, RenderOptions} from './painter';
 import type {SourceCache} from '../source/source_cache';
 import type {SymbolStyleLayer} from '../style/style_layer/symbol_style_layer';
-
 import type {Texture, TextureFilter} from '../render/texture';
 import type {OverscaledTileID, UnwrappedTileID} from '../source/tile_id';
 import type {UniformValues} from './uniform_binding';
@@ -195,7 +192,7 @@ function updateVariableAnchorsForBucket(
     pitchWithMap: boolean,
     variableOffsets: {[_ in CrossTileID]: VariableOffset},
     transform: IReadonlyTransform,
-    pitchedLabelPlaneMatrix: mat4,
+    pitchedLabelPlaneMatrix: Mat4,
     tileScale: number,
     size: EvaluatedZoomSize,
     updateTextFitIcon: boolean,
@@ -304,7 +301,7 @@ function drawLayerSymbols(
     pitchAlignment: SymbolLayerSpecification['layout']['text-pitch-alignment'],
     keepUpright: boolean,
     stencilMode: StencilMode,
-    colorMode: Readonly<ColorMode>, 
+    colorMode: Readonly<ColorMode>,
     isRenderingToTexture: boolean) {
 
     const context = painter.context;

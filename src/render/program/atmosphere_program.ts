@@ -1,6 +1,7 @@
-import type {Context} from '../../gl/context';
 import {type UniformValues, type UniformLocations, Uniform1f, Uniform3f, UniformMatrix4f} from '../uniform_binding';
-import {type mat4, type vec3} from 'gl-matrix';
+
+import type {Context} from '../../gl/context';
+import type {Mat4, Vec3} from 'gl-matrix';
 
 export type atmosphereUniformsType = {
     'u_sun_pos': Uniform3f;
@@ -19,11 +20,11 @@ const atmosphereUniforms = (context: Context, locations: UniformLocations): atmo
 });
 
 const atmosphereUniformValues = (
-    sunPos: vec3,
+    sunPos: Vec3,
     atmosphereBlend: number,
-    globePosition: vec3,
+    globePosition: Vec3,
     globeRadius: number,
-    invProjMatrix: mat4,
+    invProjMatrix: Mat4,
 ): UniformValues<atmosphereUniformsType> => ({
     'u_sun_pos': sunPos,
     'u_atmosphere_blend': atmosphereBlend,

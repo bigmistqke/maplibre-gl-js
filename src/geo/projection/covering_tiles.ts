@@ -1,8 +1,9 @@
 import {OverscaledTileID} from '../../source/tile_id';
-import {vec2, type vec4} from 'gl-matrix';
 import {MercatorCoordinate} from '../mercator_coordinate';
 import {degreesToRadians, scaleZoom} from '../../util/util';
+import * as vec2 from 'gl-matrix/vec2';
 
+import type {Vec4} from 'gl-matrix';
 import type {IReadonlyTransform} from '../transform_interface';
 import type {Terrain} from '../../render/terrain';
 import type {Frustum} from '../../util/primitives/frustum';
@@ -79,7 +80,7 @@ export type CalculateTileZoomFunction = (requestedCenterZoom: number,
  * A simple/heuristic function that returns whether the tile is visible under the current transform.
  * @returns an {@link IntersectionResult}.
  */
-export function isTileVisible(frustum: Frustum, tileBoundingVolume: IBoundingVolume, plane?: vec4): IntersectionResult {
+export function isTileVisible(frustum: Frustum, tileBoundingVolume: IBoundingVolume, plane?: Vec4): IntersectionResult {
     const frustumTest = tileBoundingVolume.intersectsFrustum(frustum);
     if (!plane || frustumTest === IntersectionResult.None) {
         return frustumTest;
@@ -188,7 +189,7 @@ export function coveringTiles(transform: IReadonlyTransform, options: CoveringTi
     cameraCoord.z = centerCoord.z + Math.cos(transform.pitchInRadians) * transform.cameraToCenterDistance / transform.worldSize;
     const detailsProvider = transform.getCoveringTilesDetailsProvider();
     const allowVariableZoom = detailsProvider.allowVariableZoom(transform, options);
-    
+
     const desiredZ = coveringZoomLevel(transform, options);
     const minZoom = options.minzoom || 0;
     const maxZoom = options.maxzoom !== undefined ? options.maxzoom : transform.maxZoom;

@@ -11,7 +11,7 @@ import {type IReadonlyTransform, type ITransform} from '../../geo/transform_inte
 import {type Style} from '../../style/style';
 import {type Terrain} from '../../render/terrain';
 import {Frustum} from '../primitives/frustum';
-import {mat4} from 'gl-matrix';
+import * as mat4 from 'gl-matrix/mat4';
 
 export class StubMap extends Evented {
     style: Style;

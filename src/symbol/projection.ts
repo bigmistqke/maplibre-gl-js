@@ -1,8 +1,12 @@
 import Point from '@mapbox/point-geometry';
-import {mat2, mat4, type Tuple, vec2, vec4} from 'gl-matrix';
 import * as symbolSize from './symbol_size';
 import {addDynamicAttributes} from '../data/bucket/symbol_bucket';
+import * as mat2 from 'gl-matrix/mat2';
+import * as mat4 from 'gl-matrix/mat4';
+import * as vec4 from 'gl-matrix/vec4';
+import * as vec2 from 'gl-matrix/vec2';
 
+import type {Mat4, Tuple, Vec2, Vec4} from 'gl-matrix';
 import type {Painter} from '../render/painter';
 import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {SymbolBucket} from '../data/bucket/symbol_bucket';
@@ -138,7 +142,7 @@ export function getGlCoordMatrix(
     }
 }
 
-export function getTileSkewVectors(transform: IReadonlyTransform): {vecEast: vec2; vecSouth: vec2} {
+export function getTileSkewVectors(transform: IReadonlyTransform): {vecEast: Vec2; vecSouth: Vec2} {
     const cosRoll = Math.cos(transform.rollInRadians);
     const sinRoll = Math.sin(transform.rollInRadians);
     const cosPitch = Math.cos(transform.pitchInRadians);
@@ -170,7 +174,7 @@ export function getTileSkewVectors(transform: IReadonlyTransform): {vecEast: vec
  * Projects a point using a specified matrix, including the perspective divide.
  * Uses a fast path if `getElevation` is undefined.
  */
-export function projectWithMatrix(x: number, y: number, matrix: mat4, getElevation?: (x: number, y: number) => number): PointProjection {
+export function projectWithMatrix(x: number, y: number, matrix: Mat4, getElevation?: (x: number, y: number) => number): PointProjection {
     let pos: Tuple.Vec4;
     if (getElevation) { // slow because of handle z-index
         pos = [x, y, getElevation(x, y), 1];
@@ -208,8 +212,8 @@ function isVisible(p: Point,
 export function updateLineLabels(bucket: SymbolBucket,
     painter: Painter,
     isText: boolean,
-    pitchedLabelPlaneMatrix: mat4,
-    pitchedLabelPlaneMatrixInverse: mat4,
+    pitchedLabelPlaneMatrix: Mat4,
+    pitchedLabelPlaneMatrixInverse: Mat4,
     pitchWithMap: boolean,
     keepUpright: boolean,
     rotateToLine: boolean,
@@ -402,7 +406,7 @@ type GlyphLinePlacementResult = OrientationChangeType & {
 
 type GlyphLinePlacementArgs = {
     projectionContext: SymbolProjectionContext;
-    pitchedLabelPlaneMatrixInverse: mat4;
+    pitchedLabelPlaneMatrixInverse: Mat4;
     symbol: any; // PlacedSymbolStruct
     fontSize: number;
     flip: boolean;
@@ -578,7 +582,7 @@ export type SymbolProjectionContext = {
     /**
      * Matrix for transforming from pixels (symbol shaping) to potentially rotated tile units (pitched map label plane).
      */
-    pitchedLabelPlaneMatrix: mat4;
+    pitchedLabelPlaneMatrix: Mat4;
     /**
      * Function to get elevation at a point
      * @param x - the x coordinate
@@ -676,7 +680,7 @@ export function projectTileCoordinatesToLabelPlane(x: number, y: number, project
     return projection;
 }
 
-function projectFromLabelPlaneToClipSpace(x: number, y: number, projectionContext: SymbolProjectionContext, pitchedLabelPlaneMatrixInverse: mat4): {x: number; y: number} {
+function projectFromLabelPlaneToClipSpace(x: number, y: number, projectionContext: SymbolProjectionContext, pitchedLabelPlaneMatrixInverse: Mat4): {x: number; y: number} {
     if (projectionContext.pitchWithMap) {
         const pos: Tuple.Vec4 = [x, y, 0, 1];
         vec4.transformMat4(pos, pos, pitchedLabelPlaneMatrixInverse);
@@ -914,7 +918,7 @@ export function hideGlyphs(num: number, dynamicLayoutVertexArray: SymbolDynamicL
 
 // For line label layout, we're not using z output and our w input is always 1
 // This custom matrix transformation ignores those components to make projection faster
-export function xyTransformMat4(out: vec4, a: vec4, m: mat4) {
+export function xyTransformMat4(out: Vec4, a: Vec4, m: Mat4) {
     const x = a[0], y = a[1];
     out[0] = m[0] * x + m[4] * y + m[12];
     out[1] = m[1] * x + m[5] * y + m[13];

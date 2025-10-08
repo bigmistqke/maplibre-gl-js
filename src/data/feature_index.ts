@@ -17,8 +17,8 @@ import {type SourceFeatureState} from '../source/source_state';
 import {polygonIntersectsBox} from '../util/intersection_tests';
 import {PossiblyEvaluated} from '../style/properties';
 import {FeatureIndexArray} from './array_types.g';
-import {type mat4} from 'gl-matrix';
 
+import type {Mat4} from 'gl-matrix';
 import type {StyleLayer} from '../style/style_layer';
 import type {FeatureFilter, FeatureState, FilterSpecification, PromoteIdSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {IReadonlyTransform} from '../geo/transform_interface';
@@ -26,7 +26,7 @@ import {Bounds} from '../geo/bounds';
 
 type QueryParameters = {
     scale: number;
-    pixelPosMatrix: mat4;
+    pixelPosMatrix: Mat4;
     transform: IReadonlyTransform;
     tileSize: number;
     queryGeometry: Array<Point>;

@@ -2,7 +2,7 @@ import type {LngLat, LngLatLike} from './lng_lat';
 import type {LngLatBounds} from './lng_lat_bounds';
 import type {MercatorCoordinate} from './mercator_coordinate';
 import type Point from '@mapbox/point-geometry';
-import type {vec3, Tuple} from 'gl-matrix';
+import type {Vec3, Tuple} from 'gl-matrix';
 import type {UnwrappedTileID, OverscaledTileID, CanonicalTileID} from '../source/tile_id';
 import type {PaddingOptions} from './edge_insets';
 import type {Terrain} from '../render/terrain';
@@ -454,7 +454,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param dir - The light direction.
      * @returns A new vector with the transformed light direction.
      */
-    transformLightDirection(dir: vec3): Float32Array | Tuple.Vec3;
+    transformLightDirection(dir: Vec3): Float32Array | Tuple.Vec3;
 
     /**
      * @internal

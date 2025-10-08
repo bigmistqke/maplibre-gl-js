@@ -1,4 +1,4 @@
-import {mat4} from 'gl-matrix';
+import * as mat4 from 'gl-matrix/mat4';
 import type Point from '@mapbox/point-geometry';
 import type {SourceCache} from './source_cache';
 import type {StyleLayer} from '../style/style_layer';
