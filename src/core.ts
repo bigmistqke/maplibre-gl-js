@@ -1,4 +1,5 @@
 import packageJSON from '../package.json' with {type: 'json'};
+export {registry} from './registry';
 import {Map, type MapOptions, type WebGLContextAttributesWithType} from './ui/map';
 import {Camera} from './ui/camera';
 import {NavigationControl, type NavigationControlOptions} from './ui/control/navigation_control';
@@ -27,10 +28,6 @@ import type {CanvasSourceSpecification} from './source/canvas_source';
 import type {CanonicalTileRange, Coordinates, UpdateImageOptions} from './source/image_source';
 import {type Source, type SourceClass, addSourceType} from './source/source';
 import {addProtocol, removeProtocol} from './source/protocol_crud';
-import {getSource} from './source/source_registry';
-import {getLayerFactory} from './style/layer_type_registry';
-import {getDrawFunction} from './render/draw_registry';
-import {getShader} from './shaders/shader_registry';
 import {type Dispatcher, getGlobalDispatcher} from './util/dispatcher';
 import {EdgeInsets, type PaddingOptions} from './geo/edge_insets';
 import {type MapTerrainEvent, type MapStyleImageMissingEvent, type MapStyleDataEvent, type MapSourceDataEvent, type MapLibreZoomEvent, type MapLibreEvent, type MapLayerTouchEvent, type MapLayerMouseEvent, type MapLayerEventType, type MapEventType, type MapDataEvent, type MapContextEvent, MapWheelEvent, MapTouchEvent, MapMouseEvent, type MapSourceDataType, type MapProjectionEvent} from './ui/events';
@@ -309,10 +306,5 @@ export {
     removeProtocol,
     addSourceType,
     importScriptInWorkers,
-    // Registry getters for tree-shaking
-    getSource,
-    getLayerFactory,
-    getDrawFunction,
-    getShader,
     createTileMesh
 };

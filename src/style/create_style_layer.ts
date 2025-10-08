@@ -1,5 +1,5 @@
 import {CustomStyleLayer, type CustomLayerInterface} from './style_layer/custom_style_layer';
-import {getLayerFactory} from './layer_type_registry';
+import {registry} from '../registry';
 import {warnOnce} from '../util/util';
 
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -9,10 +9,10 @@ export function createStyleLayer(layer: LayerSpecification | CustomLayerInterfac
         return new CustomStyleLayer(layer, globalState);
     }
 
-    // Try to get factory from registry
-    const factory = getLayerFactory(layer.type);
-    if (factory) {
-        return factory(layer as LayerSpecification, globalState);
+    // Try to get layer class from registry
+    const LayerClass = registry.layer[layer.type];
+    if (LayerClass) {
+        return new LayerClass(layer as LayerSpecification, globalState);
     }
 
     // Warn if layer type not registered

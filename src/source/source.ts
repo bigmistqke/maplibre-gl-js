@@ -1,5 +1,5 @@
 import {type Dispatcher} from '../util/dispatcher';
-import {getSource} from './source_registry';
+import {registry} from '../registry';
 
 import type {SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Event, Evented} from '../util/evented';
@@ -8,8 +8,6 @@ import type {Tile} from './tile';
 import type {OverscaledTileID, CanonicalTileID} from './tile_id';
 import type {CanvasSourceSpecification} from '../source/canvas_source';
 import {type CalculateTileZoomFunction} from '../geo/projection/covering_tiles';
-
-const registeredSources = {} as {[key:string]: SourceClass};
 
 /**
  * The `Source` interface must be implemented by each source type, including "core" types (`vector`, `raster`,
@@ -153,12 +151,11 @@ export const create = (id: string, specification: SourceSpecification | CanvasSo
 };
 
 const getSourceType = (name: string): SourceClass => {
-    // Try registry first (tree-shakeable), then custom sources
-    return getSource(name) ?? registeredSources[name];
+    return registry.source[name];
 };
 
 const setSourceType = (name: string, type: SourceClass) => {
-    registeredSources[name] = type;
+    registry.source[name] = type;
 };
 
 /**

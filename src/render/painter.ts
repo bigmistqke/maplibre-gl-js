@@ -8,7 +8,7 @@ import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
 import {type ProgramConfiguration} from '../data/program_configuration';
 import {createCrossTileSymbolIndex} from '../symbol/symbol_registry';
-import {getShader} from '../shaders/shader_registry';
+import {registry} from '../registry';
 import {Program} from './program';
 import {programUniforms} from './program/program_uniforms';
 import {Context} from '../gl/context';
@@ -18,7 +18,6 @@ import {ColorMode} from '../gl/color_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
 import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
-import {getDrawFunction} from './draw_registry';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
 import {drawDepth, drawCoords} from './draw_terrain';
@@ -647,7 +646,7 @@ export class Painter {
         }
 
         // Use registry for all layer types
-        const drawFn = getDrawFunction(layer.type);
+        const drawFn = registry.drawFunction[layer.type];
         if (drawFn) {
             drawFn(painter, sourceCache, layer, coords, renderOptions);
         }
@@ -695,7 +694,7 @@ export class Painter {
 
         const projection = this.style.projection;
 
-        const projectionPrelude = forceSimpleProjection ? getShader('projectionMercator') : projection.shaderPreludeCode;
+        const projectionPrelude = forceSimpleProjection ? registry.shader['projectionMercator'] : projection.shaderPreludeCode;
         const projectionDefine = forceSimpleProjection ? MercatorShaderDefine : projection.shaderDefine;
         const projectionKey = `/${forceSimpleProjection ? MercatorShaderVariantKey : projection.shaderVariantName}`;
 
@@ -707,7 +706,7 @@ export class Painter {
         const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
 
         if (!this.cache[key]) {
-            const shader = getShader(name);
+            const shader = registry.shader[name];
             this.cache[key] = new Program(
                 this.context,
                 shader,

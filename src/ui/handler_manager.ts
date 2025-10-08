@@ -7,6 +7,7 @@ import {extend, isPointableEvent, isTouchableEvent, isTouchableOrPointableType} 
 import {browser} from '../util/browser';
 import Point from '@mapbox/point-geometry';
 import {type MapControlsDeltas} from '../geo/projection/camera_helper';
+import {registry} from '../registry';
 
 const isMoving = (p: EventsInProgress) => p.zoom || p.drag || p.roll || p.pitch || p.rotate;
 
@@ -264,7 +265,7 @@ export class HandlerManager {
         ];
 
         for (const name of handlerNames) {
-            const factory = handlerRegistry.get(name);
+            const factory = registry.handler[name];
             if (factory) {
                 try {
                     factory(map, options, this);
