@@ -1,9 +1,16 @@
 import type {SourceClass} from './source/source';
-import type {StyleLayerClass} from './style/style_layer';
+import type {StyleLayerClass, StyleLayer} from './style/style_layer';
 import type {HandlerFactory} from './ui/handler_manager';
 import type {DrawFunction} from './render/draw_registry';
 import type {PreparedShader} from './shaders/shaders';
 import type {CrossTileSymbolIndexConstructor, PauseablePlacementConstructor} from './symbol/symbol_registry';
+import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+
+/**
+ * Layer factory function type for registry
+ * Factory receives layer spec and global state, returns a StyleLayer instance
+ */
+export type LayerFactory = (layer: LayerSpecification, globalState: Record<string, any>) => StyleLayer;
 
 /**
  * Source registry type with specific source type keys
