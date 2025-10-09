@@ -1,4 +1,3 @@
-import type {HandlerFactory} from './ui/handler_manager';
 import type {PreparedShader} from './shaders/shaders';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {StyleLayer} from './style/style_layer';
@@ -84,31 +83,6 @@ export interface LayerRegistry {
 };
 
 /**
- * Handler registry type with specific handler keys
- */
-export interface HandlerRegistry {
-    mousePan?: HandlerFactory;
-    mousePitch?: HandlerFactory;
-    mouseRoll?: HandlerFactory;
-    mouseRotate?: HandlerFactory;
-    touchPan?: HandlerFactory;
-    touchRotate?: HandlerFactory;
-    touchZoom?: HandlerFactory;
-    clickZoom?: HandlerFactory;
-    tapZoom?: HandlerFactory;
-    tapDragZoom?: HandlerFactory;
-    boxZoom?: HandlerFactory;
-    cooperativeGestures?: HandlerFactory;
-    doubleClickZoom?: HandlerFactory;
-    dragPan?: HandlerFactory;
-    dragRotate?: HandlerFactory;
-    touchZoomRotate?: HandlerFactory;
-    touchPitch?: HandlerFactory;
-    scrollZoom?: HandlerFactory;
-    keyboard?: HandlerFactory;
-};
-
-/**
  * Draw function registry type with specific layer type keys
  */
 export interface DrawFunctionRegistry {
@@ -178,12 +152,11 @@ export interface SymbolRegistry {
 
 /**
  * Global registries for tree-shaking
- * Set these to register sources, layers, handlers, draws, and shaders
+ * Set these to register sources, layers, draws, and shaders
  */
 export const registry = {
     source: {} as SourceRegistry,
     layer: {} as LayerRegistry,
-    handler: {} as HandlerRegistry,
     draw: {} as DrawFunctionRegistry,
     shader: {} as ShaderRegistry,
     symbol: {} as SymbolRegistry

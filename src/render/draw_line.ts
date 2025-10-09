@@ -28,7 +28,7 @@ export function drawLine(painter: Painter, sourceCache: SourceCache, layer: Line
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
     const colorMode = painter.colorModeForRenderPass();
-    
+
     const dasharray = layer.paint.get('line-dasharray');
     const patternProperty = layer.paint.get('line-pattern');
     const image = patternProperty.constantOr(1 as any);
@@ -78,7 +78,7 @@ export function drawLine(painter: Painter, sourceCache: SourceCache, layer: Line
         const pixelRatio = transform.getPixelScale();
 
         const uniformValues = image ? linePatternUniformValues(painter, tile, layer, pixelRatio, crossfade) :
-            dasharray ? lineSDFUniformValues(painter, tile, layer, pixelRatio, dasharray, crossfade) :
+            dasharray ? lineSDFUniformValues(painter, tile, layer, pixelRatio, dasharray as any, crossfade) :
                 gradient ? lineGradientUniformValues(painter, tile, layer, pixelRatio, bucket.lineClipsArray.length) :
                     lineUniformValues(painter, tile, layer, pixelRatio);
 
