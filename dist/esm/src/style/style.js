@@ -21,7 +21,6 @@ import { getJSON, getReferrer } from '../util/ajax';
 import { browser } from '../util/browser';
 import { Dispatcher } from '../util/dispatcher';
 import { validateStyle, emitValidationErrors as _emitValidationErrors } from './validate_style';
-import { queryRenderedFeatures, queryRenderedSymbols, querySourceFeatures } from '../source/query_features';
 import { SourceCache } from '../source/source_cache';
 import { latest as styleSpec, derefLayers, emptyStyle, diff as diffStyles } from '@maplibre/maplibre-gl-style-spec';
 import { getGlobalWorkerPool } from '../util/global_worker_pool';
@@ -29,9 +28,10 @@ import { rtlMainThreadPluginFactory } from '../source/rtl_text_plugin_main_threa
 import { RTLPluginLoadedEventName } from '../source/rtl_text_plugin_status';
 import { ZoomHistory } from './zoom_history';
 import { validateCustomStyleLayer } from './style_layer/custom_style_layer';
-import { createCrossTileSymbolIndex, createPauseablePlacement } from '../symbol/symbol_registry';
-const emitValidationErrors = (evented, errors) => _emitValidationErrors(evented, errors && errors.filter(error => error.identifier !== 'source.canvas'));
+import { registry } from '../registry';
+import { queryRenderedFeatures, queryRenderedSymbols, querySourceFeatures } from '../source/query_features';
 import { createProjectionFromName } from '../geo/projection/projection_factory';
+const emitValidationErrors = (evented, errors) => _emitValidationErrors(evented, errors && errors.filter(error => error.identifier !== 'source.canvas'));
 const empty = emptyStyle();
 export class Style extends Evented {
     constructor(map, options = {}) {
@@ -1162,26 +1162,15 @@ export class Style extends Evented {
         }
     }
     _updatePlacement(transform, showCollisionBoxes, fadeDuration, crossSourceCollisions, forceFullPlacement = false) {
-        let symbolBucketsChanged = false;
-        let placementCommitted = false;
-        const layerTiles = {};
-        let hasSymbolLayers = false;
-        for (const layerID of this._order) {
-            const styleLayer = this._layers[layerID];
-            if (styleLayer.type === 'symbol') {
-                hasSymbolLayers = true;
-                break;
-            }
-        }
-        if (!hasSymbolLayers) {
+        if (!registry.symbol.CrossTileSymbolIndex || !registry.symbol.PauseablePlacement || !this._order.some(id => this._layers[id].type === 'symbol')) {
             return false;
         }
         if (!this.crossTileSymbolIndex) {
-            this.crossTileSymbolIndex = createCrossTileSymbolIndex();
-            if (!this.crossTileSymbolIndex) {
-                return false;
-            }
+            this.crossTileSymbolIndex = new registry.symbol.CrossTileSymbolIndex();
         }
+        let symbolBucketsChanged = false;
+        let placementCommitted = false;
+        const layerTiles = {};
         for (const layerID of this._order) {
             const styleLayer = this._layers[layerID];
             if (styleLayer.type !== 'symbol')
@@ -1198,10 +1187,7 @@ export class Style extends Evented {
         this.crossTileSymbolIndex.pruneUnusedLayers(this._order);
         forceFullPlacement = forceFullPlacement || this._layerOrderChanged || fadeDuration === 0;
         if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(browser.now(), transform.zoom))) {
-            this.pauseablePlacement = createPauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
-            if (!this.pauseablePlacement) {
-                return false;
-            }
+            this.pauseablePlacement = new registry.symbol.PauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
             this._layerOrderChanged = false;
         }
         if (this.pauseablePlacement.isDone()) {

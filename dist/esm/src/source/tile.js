@@ -1,5 +1,6 @@
 import { uniqueId, parseCacheControl } from '../util/util';
 import { deserialize as deserializeBucket } from '../data/bucket';
+import { registry } from '../registry';
 import '../data/feature_index';
 import { GeoJSONFeature } from '../util/vectortile_to_geojson';
 import { featureFilter } from '@maplibre/maplibre-gl-style-spec';
@@ -66,26 +67,28 @@ export class Tile {
         this.collisionBoxArray = data.collisionBoxArray;
         this.buckets = deserializeBucket(data.buckets, painter === null || painter === void 0 ? void 0 : painter.style);
         this.hasSymbolBuckets = false;
-        for (const id in this.buckets) {
-            const bucket = this.buckets[id];
-            if ('symbolInstances' in bucket) {
-                this.hasSymbolBuckets = true;
-                if (justReloaded) {
-                    bucket.justReloaded = true;
-                }
-                else {
-                    break;
-                }
-            }
-        }
-        this.hasRTLText = false;
-        if (this.hasSymbolBuckets) {
+        if (registry.symbol.SymbolBucket) {
             for (const id in this.buckets) {
                 const bucket = this.buckets[id];
-                if ('symbolInstances' in bucket && bucket.hasRTLText) {
-                    this.hasRTLText = true;
-                    rtlMainThreadPluginFactory().lazyLoad();
-                    break;
+                if (bucket instanceof registry.symbol.SymbolBucket) {
+                    this.hasSymbolBuckets = true;
+                    if (justReloaded) {
+                        bucket.justReloaded = true;
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+            this.hasRTLText = false;
+            if (this.hasSymbolBuckets) {
+                for (const id in this.buckets) {
+                    const bucket = this.buckets[id];
+                    if (bucket instanceof registry.symbol.SymbolBucket && bucket.hasRTLText) {
+                        this.hasRTLText = true;
+                        rtlMainThreadPluginFactory().lazyLoad();
+                        break;
+                    }
                 }
             }
         }

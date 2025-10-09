@@ -7,8 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { getSource } from './source_registry';
-const registeredSources = {};
+import { registry } from '../registry';
 export const create = (id, specification, dispatcher, eventedParent) => {
     const Class = getSourceType(specification.type);
     if (!Class) {
@@ -22,11 +21,10 @@ export const create = (id, specification, dispatcher, eventedParent) => {
     return source;
 };
 const getSourceType = (name) => {
-    var _a;
-    return (_a = getSource(name)) !== null && _a !== void 0 ? _a : registeredSources[name];
+    return registry.source[name];
 };
 const setSourceType = (name, type) => {
-    registeredSources[name] = type;
+    registry.source[name] = type;
 };
 export const addSourceType = (name, SourceType) => __awaiter(void 0, void 0, void 0, function* () {
     if (getSourceType(name)) {

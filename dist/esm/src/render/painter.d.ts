@@ -22,6 +22,7 @@ import type { IndexBuffer } from '../gl/index_buffer';
 import type { DepthRangeType, DepthMaskType, DepthFuncType } from '../gl/types';
 import type { ResolvedImage } from '@maplibre/maplibre-gl-style-spec';
 import type { RenderToTexture } from './render_to_texture';
+import type { CrossTileSymbolIndex } from '../symbol/cross_tile_symbol_index';
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
 type PainterOptions = {
     showOverdrawInspector: boolean;
@@ -82,7 +83,7 @@ export declare class Painter {
     cache: {
         [_: string]: Program<any>;
     };
-    crossTileSymbolIndex: any;
+    crossTileSymbolIndex?: CrossTileSymbolIndex;
     symbolFadeChange: number;
     debugOverlayTexture: Texture;
     debugOverlayCanvas: HTMLCanvasElement;

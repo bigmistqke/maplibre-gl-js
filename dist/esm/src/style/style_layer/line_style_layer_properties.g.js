@@ -1,5 +1,5 @@
 import { latest as styleSpec } from '@maplibre/maplibre-gl-style-spec';
-import { Properties, DataConstantProperty, DataDrivenProperty, CrossFadedDataDrivenProperty, CrossFadedProperty, ColorRampProperty } from '../properties';
+import { Properties, DataConstantProperty, DataDrivenProperty, CrossFadedDataDrivenProperty, ColorRampProperty } from '../properties';
 let layout;
 const getLayout = () => layout = layout || new Properties({
     "line-cap": new DataConstantProperty(styleSpec["layout_line"]["line-cap"]),
@@ -18,7 +18,7 @@ const getPaint = () => paint = paint || new Properties({
     "line-gap-width": new DataDrivenProperty(styleSpec["paint_line"]["line-gap-width"]),
     "line-offset": new DataDrivenProperty(styleSpec["paint_line"]["line-offset"]),
     "line-blur": new DataDrivenProperty(styleSpec["paint_line"]["line-blur"]),
-    "line-dasharray": new CrossFadedProperty(styleSpec["paint_line"]["line-dasharray"]),
+    "line-dasharray": new CrossFadedDataDrivenProperty(styleSpec["paint_line"]["line-dasharray"]),
     "line-pattern": new CrossFadedDataDrivenProperty(styleSpec["paint_line"]["line-pattern"]),
     "line-gradient": new ColorRampProperty(styleSpec["paint_line"]["line-gradient"]),
 });

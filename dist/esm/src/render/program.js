@@ -1,5 +1,5 @@
 import { transpileVertexShaderToWebGL1, transpileFragmentShaderToWebGL1 } from '../shaders/shaders';
-import { getShader } from '../shaders/shader_registry';
+import { registry } from '../registry';
 import { VertexArrayObject } from './vertex_array_object';
 import { isWebGL2 } from '../gl/webgl2';
 import { terrainPreludeUniforms } from './program/terrain_program';
@@ -21,7 +21,7 @@ export class Program {
         const staticAttrInfo = getTokenizedAttributesAndUniforms(source.staticAttributes);
         const dynamicAttrInfo = configuration ? configuration.getBinderAttributes() : [];
         const allAttrInfo = staticAttrInfo.concat(dynamicAttrInfo);
-        const prelude = getShader('prelude');
+        const prelude = registry.shader.prelude;
         const preludeUniformsInfo = prelude.staticUniforms ? getTokenizedAttributesAndUniforms(prelude.staticUniforms) : [];
         const projectionPreludeUniformsInfo = projectionPrelude.staticUniforms ? getTokenizedAttributesAndUniforms(projectionPrelude.staticUniforms) : [];
         const staticUniformsInfo = source.staticUniforms ? getTokenizedAttributesAndUniforms(source.staticUniforms) : [];

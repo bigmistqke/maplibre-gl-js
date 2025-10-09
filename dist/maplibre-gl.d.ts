@@ -10,6 +10,14 @@ import KDBush from 'kdbush';
 import { PotpackBox } from 'potpack';
 import { ClusterProperties, Options as SuperclusterOptions } from 'supercluster';
 
+type PreparedShader = {
+	fragmentSource: string | undefined;
+	vertexSource: string | undefined;
+	staticAttributes: Array<string>;
+	staticUniforms: Array<string>;
+};
+/** Expand #pragmas to #ifdefs, extract attributes and uniforms */
+export declare function prepare(fragmentSource: string, vertexSource: string): PreparedShader;
 /**
  * A type used to store the tile's expiration date and cache control definition
  */
@@ -755,78 +763,116 @@ export declare class OverscaledTileID {
 	toString(): string;
 	getTilePoint(coord: MercatorCoordinate): Point;
 }
-/**
- * A listener method used as a callback to events
- */
-export type Listener = (a: any) => any;
-type Listeners = {
-	[_: string]: Array<Listener>;
+type Size = {
+	width: number;
+	height: number;
+};
+type Point2D = {
+	x: number;
+	y: number;
 };
 /**
- * The event class
+ * An image with alpha color value
  */
-declare class Event$1 {
-	readonly type: string;
-	constructor(type: string, data?: any);
-}
-interface ErrorLike {
-	message: string;
-}
-/**
- * An error event
- */
-declare class ErrorEvent$1 extends Event$1 {
-	error: ErrorLike;
-	constructor(error: ErrorLike, data?: any);
+export declare class AlphaImage {
+	width: number;
+	height: number;
+	data: Uint8Array;
+	constructor(size: Size, data?: Uint8Array | Uint8ClampedArray);
+	resize(size: Size): void;
+	clone(): AlphaImage;
+	static copy(srcImg: AlphaImage, dstImg: AlphaImage, srcPt: Point2D, dstPt: Point2D, size: Size): void;
 }
 /**
- * Methods mixed in to other classes for event capabilities.
- *
- * @group Event Related
+ * An object to store image data not premultiplied, because ImageData is not premultiplied.
+ * UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
  */
-export declare class Evented {
-	_listeners: Listeners;
-	_oneTimeListeners: Listeners;
-	_eventedParent: Evented;
-	_eventedParentData: any | (() => any);
+export declare class RGBAImage {
+	width: number;
+	height: number;
 	/**
-	 * Adds a listener to a specified event type.
-	 *
-	 * @param type - The event type to add a listen for.
-	 * @param listener - The function to be called when the event is fired.
-	 * The listener function is called with the data object passed to `fire`,
-	 * extended with `target` and `type` properties.
+	 * data must be a Uint8Array instead of Uint8ClampedArray because texImage2D does not support Uint8ClampedArray in all browsers.
 	 */
-	on(type: string, listener: Listener): Subscription;
+	data: Uint8Array;
+	constructor(size: Size, data?: Uint8Array | Uint8ClampedArray);
+	resize(size: Size): void;
+	replace(data: Uint8Array | Uint8ClampedArray, copy?: boolean): void;
+	clone(): RGBAImage;
+	static copy(srcImg: RGBAImage | ImageData, dstImg: RGBAImage, srcPt: Point2D, dstPt: Point2D, size: Size): void;
+	setPixel(row: number, col: number, value: Color): void;
+}
+type GlyphMetrics = {
+	width: number;
+	height: number;
+	left: number;
+	top: number;
+	advance: number;
 	/**
-	 * Removes a previously registered event listener.
-	 *
-	 * @param type - The event type to remove listeners for.
-	 * @param listener - The listener function to remove.
+	 * isDoubleResolution = true for 48px textures
 	 */
-	off(type: string, listener: Listener): this;
-	/**
-	 * Adds a listener that will be called only once to a specified event type.
-	 *
-	 * The listener will be called first time the event fires after the listener is registered.
-	 *
-	 * @param type - The event type to listen for.
-	 * @param listener - The function to be called when the event is fired the first time.
-	 * @returns `this` or a promise if a listener is not provided
-	 */
-	once(type: string, listener?: Listener): this | Promise<any>;
-	fire(event: Event$1 | string, properties?: any): this;
-	/**
-	 * Returns a true if this instance of Evented or any forwardeed instances of Evented have a listener for the specified type.
-	 *
-	 * @param type - The event type
-	 * @returns `true` if there is at least one registered listener for specified event type, `false` otherwise
-	 */
-	listens(type: string): boolean;
-	/**
-	 * Bubble all events fired by this instance of Evented to this parent instance of Evented.
-	 */
-	setEventedParent(parent?: Evented | null, data?: any | (() => any)): this;
+	isDoubleResolution?: boolean;
+};
+/**
+ * A style glyph type
+ */
+export type StyleGlyph = {
+	id: number;
+	bitmap: AlphaImage;
+	metrics: GlyphMetrics;
+};
+type Rect = {
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+};
+/**
+ * The glyph's position
+ */
+export type GlyphPosition = {
+	rect: Rect;
+	metrics: GlyphMetrics;
+};
+/**
+ * The glyphs' positions
+ */
+export type GlyphPositions = {
+	[_: string]: {
+		[_: number]: GlyphPosition;
+	};
+};
+/**
+ * A type of MapLibre resource.
+ */
+export declare const enum ResourceType {
+	Glyphs = "Glyphs",
+	Image = "Image",
+	Source = "Source",
+	SpriteImage = "SpriteImage",
+	SpriteJSON = "SpriteJSON",
+	Style = "Style",
+	Tile = "Tile",
+	Unknown = "Unknown"
+}
+/**
+ * This function is used to tranform a request.
+ * It is used just before executing the relevant request.
+ */
+export type RequestTransformFunction = (url: string, resourceType?: ResourceType) => RequestParameters | undefined;
+export declare class RequestManager {
+	_transformRequestFn: RequestTransformFunction | null;
+	constructor(transformRequestFn?: RequestTransformFunction | null);
+	transformRequest(url: string, type: ResourceType): RequestParameters;
+	setTransformRequest(transformRequest: RequestTransformFunction | null): void;
+}
+declare class IndexBuffer {
+	context: Context;
+	buffer: WebGLBuffer;
+	dynamicDraw: boolean;
+	constructor(context: Context, array: TriangleIndexArray | LineIndexArray | LineStripIndexArray, dynamicDraw?: boolean);
+	bind(): void;
+	updateData(array: StructArray): void;
+	destroy(): void;
 }
 declare class ZoomHistory {
 	lastZoom: number;
@@ -1004,226 +1050,6 @@ declare class Properties<Props> {
 	overridableProperties: Array<string>;
 	constructor(properties: Props);
 }
-type Size = {
-	width: number;
-	height: number;
-};
-type Point2D = {
-	x: number;
-	y: number;
-};
-/**
- * An image with alpha color value
- */
-export declare class AlphaImage {
-	width: number;
-	height: number;
-	data: Uint8Array;
-	constructor(size: Size, data?: Uint8Array | Uint8ClampedArray);
-	resize(size: Size): void;
-	clone(): AlphaImage;
-	static copy(srcImg: AlphaImage, dstImg: AlphaImage, srcPt: Point2D, dstPt: Point2D, size: Size): void;
-}
-/**
- * An object to store image data not premultiplied, because ImageData is not premultiplied.
- * UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
- */
-export declare class RGBAImage {
-	width: number;
-	height: number;
-	/**
-	 * data must be a Uint8Array instead of Uint8ClampedArray because texImage2D does not support Uint8ClampedArray in all browsers.
-	 */
-	data: Uint8Array;
-	constructor(size: Size, data?: Uint8Array | Uint8ClampedArray);
-	resize(size: Size): void;
-	replace(data: Uint8Array | Uint8ClampedArray, copy?: boolean): void;
-	clone(): RGBAImage;
-	static copy(srcImg: RGBAImage | ImageData, dstImg: RGBAImage, srcPt: Point2D, dstPt: Point2D, size: Size): void;
-	setPixel(row: number, col: number, value: Color): void;
-}
-type SpriteOnDemandStyleImage = {
-	width: number;
-	height: number;
-	x: number;
-	y: number;
-	context: CanvasRenderingContext2D;
-};
-/**
- * The style's image metadata
- */
-export type StyleImageData = {
-	data: RGBAImage;
-	version?: number;
-	hasRenderCallback?: boolean;
-	userImage?: StyleImageInterface;
-	spriteData?: SpriteOnDemandStyleImage;
-};
-/**
- * Enumeration of possible values for StyleImageMetadata.textFitWidth and textFitHeight.
- */
-export declare const enum TextFit {
-	/**
-	 * The image will be resized on the specified axis to tightly fit the content rectangle to target text.
-	 * This is the same as not being defined.
-	 */
-	stretchOrShrink = "stretchOrShrink",
-	/**
-	 * The image will be resized on the specified axis to fit the content rectangle to the target text, but will not
-	 * fall below the aspect ratio of the original content rectangle if the other axis is set to proportional.
-	 */
-	stretchOnly = "stretchOnly",
-	/**
-	 * The image will be resized on the specified axis to fit the content rectangle to the target text and
-	 * will resize the other axis to maintain the aspect ratio of the content rectangle.
-	 */
-	proportional = "proportional"
-}
-/**
- * The style's image metadata
- */
-export type StyleImageMetadata = {
-	/**
-	 * The ratio of pixels in the image to physical pixels on the screen
-	 */
-	pixelRatio: number;
-	/**
-	 * Whether the image should be interpreted as an SDF image
-	 */
-	sdf: boolean;
-	/**
-	 * If `icon-text-fit` is used in a layer with this image, this option defines the part(s) of the image that can be stretched horizontally.
-	 */
-	stretchX?: Array<[
-		number,
-		number
-	]>;
-	/**
-	 * If `icon-text-fit` is used in a layer with this image, this option defines the part(s) of the image that can be stretched vertically.
-	 */
-	stretchY?: Array<[
-		number,
-		number
-	]>;
-	/**
-	 * If `icon-text-fit` is used in a layer with this image, this option defines the part of the image that can be covered by the content in `text-field`.
-	 */
-	content?: [
-		number,
-		number,
-		number,
-		number
-	];
-	/**
-	 * If `icon-text-fit` is used in a layer with this image, this option defines constraints on the horizontal scaling of the image.
-	 */
-	textFitWidth?: TextFit;
-	/**
-	 * If `icon-text-fit` is used in a layer with this image, this option defines constraints on the vertical scaling of the image.
-	 */
-	textFitHeight?: TextFit;
-};
-/**
- * the style's image, including data and metedata
- */
-export type StyleImage = StyleImageData & StyleImageMetadata;
-/**
- * Interface for dynamically generated style images. This is a specification for
- * implementers to model: it is not an exported method or class.
- *
- * Images implementing this interface can be redrawn for every frame. They can be used to animate
- * icons and patterns or make them respond to user input. Style images can implement a
- * {@link StyleImageInterface.render} method. The method is called every frame and
- * can be used to update the image.
- *
- * @see [Add an animated icon to the map.](https://maplibre.org/maplibre-gl-js/docs/examples/add-image-animated/)
- *
- * @example
- * ```ts
- * let flashingSquare = {
- *     width: 64,
- *     height: 64,
- *     data: new Uint8Array(64 * 64 * 4),
- *
- *     onAdd: function(map) {
- *         this.map = map;
- *     },
- *
- *     render: function() {
- *         // keep repainting while the icon is on the map
- *         this.map.triggerRepaint();
- *
- *         // alternate between black and white based on the time
- *         let value = Math.round(Date.now() / 1000) % 2 === 0  ? 255 : 0;
- *
- *         // check if image needs to be changed
- *         if (value !== this.previousValue) {
- *             this.previousValue = value;
- *
- *             let bytesPerPixel = 4;
- *             for (let x = 0; x < this.width; x++) {
- *                 for (let y = 0; y < this.height; y++) {
- *                     let offset = (y * this.width + x) * bytesPerPixel;
- *                     this.data[offset + 0] = value;
- *                     this.data[offset + 1] = value;
- *                     this.data[offset + 2] = value;
- *                     this.data[offset + 3] = 255;
- *                 }
- *             }
- *
- *             // return true to indicate that the image changed
- *             return true;
- *         }
- *     }
- *  }
- *
- *  map.addImage('flashing_square', flashingSquare);
- * ```
- */
-export interface StyleImageInterface {
-	width: number;
-	height: number;
-	data: Uint8Array | Uint8ClampedArray;
-	/**
-	 * This method is called once before every frame where the icon will be used.
-	 * The method can optionally update the image's `data` member with a new image.
-	 *
-	 * If the method updates the image it must return `true` to commit the change.
-	 * If the method returns `false` or nothing the image is assumed to not have changed.
-	 *
-	 * If updates are infrequent it maybe easier to use {@link Map.updateImage} to update
-	 * the image instead of implementing this method.
-	 *
-	 * @returns `true` if this method updated the image. `false` if the image was not changed.
-	 */
-	render?: () => boolean;
-	/**
-	 * Optional method called when the layer has been added to the Map with {@link Map.addImage}.
-	 *
-	 * @param map - The Map this custom layer was just added to.
-	 */
-	onAdd?: (map: Map$1, id: string) => void;
-	/**
-	 * Optional method called when the icon is removed from the map with {@link Map.removeImage}.
-	 * This gives the image a chance to clean up resources and event listeners.
-	 */
-	onRemove?: () => void;
-}
-declare class IndexBuffer {
-	context: Context;
-	buffer: WebGLBuffer;
-	dynamicDraw: boolean;
-	constructor(context: Context, array: TriangleIndexArray | LineIndexArray | LineStripIndexArray, dynamicDraw?: boolean);
-	bind(): void;
-	updateData(array: StructArray): void;
-	destroy(): void;
-}
-type PreparedShader = {
-	fragmentSource: string;
-	vertexSource: string;
-	staticAttributes: Array<string>;
-	staticUniforms: Array<string>;
-};
 type SerializedFeaturePositionMap = {
 	ids: Float64Array;
 	positions: Uint32Array;
@@ -1329,23 +1155,117 @@ declare class SegmentVector {
 	destroy(): void;
 	static simpleSegment(vertexOffset: number, primitiveOffset: number, vertexLength: number, primitiveLength: number): SegmentVector;
 }
-declare class HeatmapBucket extends CircleBucket<HeatmapStyleLayer> {
-	layers: Array<HeatmapStyleLayer>;
+type SerializedGrid = {
+	buffer: ArrayBuffer;
+};
+declare class TransferableGridIndex {
+	cells: number[][];
+	arrayBuffer: ArrayBuffer;
+	d: number;
+	keys: number[];
+	bboxes: number[];
+	n: number;
+	extent: number;
+	padding: number;
+	scale: any;
+	uid: number;
+	min: number;
+	max: number;
+	constructor(extent: number | ArrayBuffer, n?: number, padding?: number);
+	insert(key: number, x1: number, y1: number, x2: number, y2: number): void;
+	_insertReadonly(): void;
+	_insertCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, uid: number): void;
+	query(x1: number, y1: number, x2: number, y2: number, intersectionTest?: Function): number[];
+	_queryCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, result: any, seenUids: any, intersectionTest: Function): void;
+	_forEachCell(x1: number, y1: number, x2: number, y2: number, fn: Function, arg1: any, arg2: any, intersectionTest: any): void;
+	_convertFromCellCoord(x: any): number;
+	_convertToCellCoord(x: any): number;
+	toArrayBuffer(): ArrayBuffer;
+	static serialize(grid: TransferableGridIndex, transferables?: Array<Transferable>): SerializedGrid;
+	static deserialize(serialized: SerializedGrid): TransferableGridIndex;
 }
-type HeatmapPaintProps = {
-	"heatmap-radius": DataDrivenProperty<number>;
-	"heatmap-weight": DataDrivenProperty<number>;
-	"heatmap-intensity": DataConstantProperty<number>;
-	"heatmap-color": ColorRampProperty;
-	"heatmap-opacity": DataConstantProperty<number>;
+declare class DictionaryCoder {
+	_stringToNumber: {
+		[_: string]: number;
+	};
+	_numberToString: Array<string>;
+	constructor(strings: Array<string>);
+	encode(string: string): number;
+	decode(n: number): string;
+}
+/**
+ * A helper for type to omit a property from a type
+ */
+export type DistributiveKeys<T> = T extends T ? keyof T : never;
+/**
+ * A helper for type to omit a property from a type
+ */
+export type DistributiveOmit<T, K extends DistributiveKeys<T>> = T extends unknown ? Omit<T, K> : never;
+/**
+ * An extended geojson feature used by the events to return data to the listener
+ */
+export type MapGeoJSONFeature = GeoJSONFeature & {
+	layer: DistributiveOmit<LayerSpecification, "source"> & {
+		source: string;
+	};
+	source: string;
+	sourceLayer?: string;
+	state: {
+		[key: string]: any;
+	};
 };
-type HeatmapPaintPropsPossiblyEvaluated = {
-	"heatmap-radius": PossiblyEvaluatedPropertyValue<number>;
-	"heatmap-weight": PossiblyEvaluatedPropertyValue<number>;
-	"heatmap-intensity": number;
-	"heatmap-color": ColorRampProperty;
-	"heatmap-opacity": number;
-};
+/**
+ * A geojson feature
+ */
+export declare class GeoJSONFeature {
+	type: "Feature";
+	_geometry: GeoJSON.Geometry;
+	properties: {
+		[name: string]: any;
+	};
+	id: number | string | undefined;
+	_vectorTileFeature: VectorTileFeature;
+	constructor(vectorTileFeature: VectorTileFeature, z: number, x: number, y: number, id: string | number | undefined);
+	get geometry(): GeoJSON.Geometry;
+	set geometry(g: GeoJSON.Geometry);
+	toJSON(): any;
+}
+type DEMEncoding = "mapbox" | "terrarium" | "custom";
+declare class DEMData {
+	uid: string | number;
+	data: Uint32Array;
+	stride: number;
+	dim: number;
+	min: number;
+	max: number;
+	redFactor: number;
+	greenFactor: number;
+	blueFactor: number;
+	baseShift: number;
+	/**
+	 * Constructs a `DEMData` object
+	 * @param uid - the tile's unique id
+	 * @param data - RGBAImage data has uniform 1px padding on all sides: square tile edge size defines stride
+	// and dim is calculated as stride - 2.
+	 * @param encoding - the encoding type of the data
+	 * @param redFactor - the red channel factor used to unpack the data, used for `custom` encoding only
+	 * @param greenFactor - the green channel factor used to unpack the data, used for `custom` encoding only
+	 * @param blueFactor - the blue channel factor used to unpack the data, used for `custom` encoding only
+	 * @param baseShift - the base shift used to unpack the data, used for `custom` encoding only
+	 */
+	constructor(uid: string | number, data: RGBAImage | ImageData, encoding: DEMEncoding, redFactor?: number, greenFactor?: number, blueFactor?: number, baseShift?: number);
+	get(x: number, y: number): number;
+	getUnpackVector(): number[];
+	_idx(x: number, y: number): number;
+	unpack(r: number, g: number, b: number): number;
+	pack(v: number): {
+		r: number;
+		g: number;
+		b: number;
+	};
+	getPixels(): RGBAImage;
+	backfillBorder(borderTile: DEMData, dx: number, dy: number): void;
+}
 type BlendFuncConstant = WebGLRenderingContextBase["ZERO"] | WebGLRenderingContextBase["ONE"] | WebGLRenderingContextBase["SRC_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_SRC_COLOR"] | WebGLRenderingContextBase["DST_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_DST_COLOR"] | WebGLRenderingContextBase["SRC_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_SRC_ALPHA"] | WebGLRenderingContextBase["DST_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_DST_ALPHA"] | WebGLRenderingContextBase["CONSTANT_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_CONSTANT_COLOR"] | WebGLRenderingContextBase["CONSTANT_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_CONSTANT_ALPHA"] | WebGLRenderingContextBase["BLEND_COLOR"];
 type BlendFuncType = [
 	BlendFuncConstant,
@@ -1575,97 +1495,6 @@ declare class Framebuffer {
 	depthAttachment: DepthAttachment;
 	constructor(context: Context, width: number, height: number, hasDepth: boolean, hasStencil: boolean);
 	destroy(): void;
-}
-declare class HeatmapStyleLayer extends StyleLayer {
-	heatmapFbos: Map<string, Framebuffer>;
-	colorRamp: RGBAImage;
-	colorRampTexture: Texture;
-	_transitionablePaint: Transitionable<HeatmapPaintProps>;
-	_transitioningPaint: Transitioning<HeatmapPaintProps>;
-	paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated>;
-	createBucket(options: any): HeatmapBucket;
-	constructor(layer: LayerSpecification, globalState: Record<string, any>);
-	_handleSpecialPaintPropertyUpdate(name: string): void;
-	_updateColorRamp(): void;
-	resize(): void;
-	queryRadius(bucket: Bucket): number;
-	queryIntersectsFeature({ queryGeometry, feature, featureState, geometry, transform, pixelsToTileUnits, unwrappedTileID, getElevation }: QueryIntersectsFeatureParams): boolean;
-	hasOffscreenPass(): boolean;
-}
-type SerializedGrid = {
-	buffer: ArrayBuffer;
-};
-declare class TransferableGridIndex {
-	cells: number[][];
-	arrayBuffer: ArrayBuffer;
-	d: number;
-	keys: number[];
-	bboxes: number[];
-	n: number;
-	extent: number;
-	padding: number;
-	scale: any;
-	uid: number;
-	min: number;
-	max: number;
-	constructor(extent: number | ArrayBuffer, n?: number, padding?: number);
-	insert(key: number, x1: number, y1: number, x2: number, y2: number): void;
-	_insertReadonly(): void;
-	_insertCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, uid: number): void;
-	query(x1: number, y1: number, x2: number, y2: number, intersectionTest?: Function): number[];
-	_queryCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, result: any, seenUids: any, intersectionTest: Function): void;
-	_forEachCell(x1: number, y1: number, x2: number, y2: number, fn: Function, arg1: any, arg2: any, intersectionTest: any): void;
-	_convertFromCellCoord(x: any): number;
-	_convertToCellCoord(x: any): number;
-	toArrayBuffer(): ArrayBuffer;
-	static serialize(grid: TransferableGridIndex, transferables?: Array<Transferable>): SerializedGrid;
-	static deserialize(serialized: SerializedGrid): TransferableGridIndex;
-}
-declare class DictionaryCoder {
-	_stringToNumber: {
-		[_: string]: number;
-	};
-	_numberToString: Array<string>;
-	constructor(strings: Array<string>);
-	encode(string: string): number;
-	decode(n: number): string;
-}
-/**
- * A helper for type to omit a property from a type
- */
-export type DistributiveKeys<T> = T extends T ? keyof T : never;
-/**
- * A helper for type to omit a property from a type
- */
-export type DistributiveOmit<T, K extends DistributiveKeys<T>> = T extends unknown ? Omit<T, K> : never;
-/**
- * An extended geojson feature used by the events to return data to the listener
- */
-export type MapGeoJSONFeature = GeoJSONFeature & {
-	layer: DistributiveOmit<LayerSpecification, "source"> & {
-		source: string;
-	};
-	source: string;
-	sourceLayer?: string;
-	state: {
-		[key: string]: any;
-	};
-};
-/**
- * A geojson feature
- */
-export declare class GeoJSONFeature {
-	type: "Feature";
-	_geometry: GeoJSON.Geometry;
-	properties: {
-		[name: string]: any;
-	};
-	id: number | string | undefined;
-	_vectorTileFeature: VectorTileFeature;
-	constructor(vectorTileFeature: VectorTileFeature, z: number, x: number, y: number, id: string | number | undefined);
-	get geometry(): GeoJSON.Geometry;
-	set geometry(g: GeoJSON.Geometry);
-	toJSON(): any;
 }
 /**
  * A {@link LngLatBounds} object, an array of {@link LngLatLike} objects in [sw, ne] order,
@@ -2785,46 +2614,208 @@ declare class SourceCache extends Evented {
 	 */
 	reloadTilesForDependencies(namespaces: Array<string>, keys: Array<string>): void;
 }
-type GlyphMetrics = {
+declare class DepthMode {
+	func: DepthFuncType;
+	mask: DepthMaskType;
+	range: DepthRangeType;
+	static ReadOnly: boolean;
+	static ReadWrite: boolean;
+	constructor(depthFunc: DepthFuncType, depthMask: DepthMaskType, depthRange: DepthRangeType);
+	static disabled: Readonly<DepthMode>;
+}
+declare class StencilMode {
+	test: StencilTestGL;
+	ref: number;
+	mask: number;
+	fail: StencilOpConstant;
+	depthFail: StencilOpConstant;
+	pass: StencilOpConstant;
+	constructor(test: StencilTestGL, ref: number, mask: number, fail: StencilOpConstant, depthFail: StencilOpConstant, pass: StencilOpConstant);
+	static disabled: Readonly<StencilMode>;
+}
+declare class ColorMode {
+	blendFunction: BlendFuncType;
+	blendColor: Color;
+	mask: ColorMaskType;
+	constructor(blendFunction: BlendFuncType, blendColor: Color, mask: ColorMaskType);
+	static Replace: BlendFuncType;
+	static disabled: Readonly<ColorMode>;
+	static unblended: Readonly<ColorMode>;
+	static alphaBlended: Readonly<ColorMode>;
+}
+declare class Mesh {
+	vertexBuffer: VertexBuffer;
+	indexBuffer: IndexBuffer;
+	segments: SegmentVector;
+	constructor(vertexBuffer: VertexBuffer, indexBuffer: IndexBuffer, segments: SegmentVector);
+	destroy(): void;
+}
+type DashEntry = {
+	y: number;
+	height: number;
+	width: number;
+};
+declare class LineAtlas {
 	width: number;
 	height: number;
-	left: number;
-	top: number;
-	advance: number;
-	/**
-	 * isDoubleResolution = true for 48px textures
-	 */
-	isDoubleResolution?: boolean;
-};
-/**
- * A style glyph type
- */
-export type StyleGlyph = {
-	id: number;
-	bitmap: AlphaImage;
-	metrics: GlyphMetrics;
-};
-type Rect = {
-	x: number;
-	y: number;
-	w: number;
-	h: number;
-};
-/**
- * The glyph's position
- */
-export type GlyphPosition = {
-	rect: Rect;
-	metrics: GlyphMetrics;
-};
-/**
- * The glyphs' positions
- */
-export type GlyphPositions = {
-	[_: string]: {
-		[_: number]: GlyphPosition;
+	nextRow: number;
+	bytes: number;
+	data: Uint8Array;
+	dashEntry: {
+		[_: string]: DashEntry;
 	};
+	dirty: boolean;
+	texture: WebGLTexture;
+	constructor(width: number, height: number);
+	/**
+	 * Get or create a dash line pattern.
+	 *
+	 * @param dasharray - the key (represented by numbers) to get the dash texture
+	 * @param round - whether to add circle caps in between dash segments
+	 * @returns position of dash texture in {@link DashEntry}
+	 */
+	getDash(dasharray: Array<number>, round: boolean): DashEntry;
+	getDashRanges(dasharray: Array<number>, lineAtlasWidth: number, stretch: number): any[];
+	addRoundDash(ranges: any, stretch: number, n: number): void;
+	addRegularDash(ranges: any): void;
+	addDash(dasharray: Array<number>, round: boolean): DashEntry;
+	bind(context: Context): void;
+}
+declare function loadGlyphRange(fontstack: string, range: number, urlTemplate: string, requestManager: RequestManager): Promise<{
+	[_: number]: StyleGlyph | null;
+}>;
+type Entry = {
+	glyphs: {
+		[id: number]: StyleGlyph | null;
+	};
+	requests: {
+		[range: number]: Promise<{
+			[_: number]: StyleGlyph | null;
+		}>;
+	};
+	ranges: {
+		[range: number]: boolean | null;
+	};
+	tinySDF?: TinySDF;
 };
+declare class GlyphManager {
+	requestManager: RequestManager;
+	localIdeographFontFamily: string | false;
+	entries: {
+		[stack: string]: Entry;
+	};
+	url: string;
+	lang?: string;
+	static loadGlyphRange: typeof loadGlyphRange;
+	static TinySDF: typeof TinySDF;
+	constructor(requestManager: RequestManager, localIdeographFontFamily?: string | false, lang?: string);
+	setURL(url?: string | null): void;
+	getGlyphs(glyphs: {
+		[stack: string]: Array<number>;
+	}): Promise<GetGlyphsResponse>;
+	_getAndCacheGlyphsPromise(stack: string, id: number): Promise<{
+		stack: string;
+		id: number;
+		glyph: StyleGlyph;
+	}>;
+	_doesCharSupportLocalGlyph(id: number): boolean;
+	_tinySDF(entry: Entry, stack: string, id: number): StyleGlyph;
+}
+type PoolObject = {
+	id: number;
+	fbo: Framebuffer;
+	texture: Texture;
+	stamp: number;
+	inUse: boolean;
+};
+declare class RenderPool {
+	private readonly _context;
+	private readonly _size;
+	private readonly _tileSize;
+	private _objects;
+	/**
+	 * An index array of recently used pool objects.
+	 * Items that are used recently are last in the array
+	 */
+	private _recentlyUsed;
+	private _stamp;
+	constructor(_context: Context, _size: number, _tileSize: number);
+	destruct(): void;
+	private _createObject;
+	getObjectForId(id: number): PoolObject;
+	useObject(obj: PoolObject): void;
+	stampObject(obj: PoolObject): void;
+	getOrCreateFreeObject(): PoolObject;
+	freeObject(obj: PoolObject): void;
+	freeAllObjects(): void;
+	isFull(): boolean;
+}
+/**
+ * @internal
+ * A helper class to help define what should be rendered to texture and how
+ */
+export declare class RenderToTexture {
+	painter: Painter;
+	terrain: Terrain;
+	pool: RenderPool;
+	/**
+	 * coordsAscending contains a list of all tiles which should be rendered for one render-to-texture tile
+	 * e.g. render 4 raster-tiles with size 256px to the 512px render-to-texture tile
+	 */
+	_coordsAscending: {
+		[_: string]: {
+			[_: string]: Array<OverscaledTileID>;
+		};
+	};
+	/**
+	 * create a string representation of all to tiles rendered to render-to-texture tiles
+	 * this string representation is used to check if tile should be re-rendered.
+	 */
+	_coordsAscendingStr: {
+		[_: string]: {
+			[_: string]: string;
+		};
+	};
+	/**
+	 * store for render-stacks
+	 * a render stack is a set of layers which should be rendered into one texture
+	 * every stylesheet can have multiple stacks. A new stack is created if layers which should
+	 * not rendered to texture sit between layers which should rendered to texture. e.g. hillshading or symbols
+	 */
+	_stacks: Array<Array<string>>;
+	/**
+	 * remember the previous processed layer to check if a new stack is needed
+	 */
+	_prevType: string;
+	/**
+	 * a list of tiles that can potentially rendered
+	 */
+	_renderableTiles: Array<Tile>;
+	/**
+	 * a list of tiles that should be rendered to screen in the next render-call
+	 */
+	_rttTiles: Array<Tile>;
+	/**
+	 * a list of all layer-ids which should be rendered
+	 */
+	_renderableLayerIds: Array<string>;
+	constructor(painter: Painter, terrain: Terrain);
+	destruct(): void;
+	getTexture(tile: Tile): Texture;
+	prepareForRender(style: Style, zoom: number): void;
+	/**
+	 * due that switching textures is relatively slow, the render
+	 * layer-by-layer context is not practicable. To bypass this problem
+	 * this lines of code stack all layers and later render all at once.
+	 * Because of the stylesheet possibility to mixing render-to-texture layers
+	 * and 'live'-layers (f.e. symbols) it is necessary to create more stacks. For example
+	 * a symbol-layer is in between of fill-layers.
+	 * @param layer - the layer to render
+	 * @param renderOptions - flags describing how to render the layer
+	 * @returns if true layer is rendered to texture, otherwise false
+	 */
+	renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean;
+}
 declare enum WritingMode {
 	none = 0,
 	horizontal = 1,
@@ -2995,7 +2986,7 @@ type SymbolPaintPropsPossiblyEvaluated = {
 	];
 	"text-translate-anchor": "map" | "viewport";
 };
-declare class SymbolStyleLayer extends StyleLayer {
+export declare class SymbolStyleLayer extends StyleLayer {
 	_unevaluatedLayout: Layout<SymbolLayoutProps>;
 	layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>;
 	_transitionablePaint: Transitionable<SymbolPaintProps>;
@@ -3124,7 +3115,38 @@ declare class CollisionBuffers {
 	upload(context: Context): void;
 	destroy(): void;
 }
-declare class SymbolBucket implements Bucket {
+/**
+ * @internal
+ * Unlike other buckets, which simply implement `addFeature` with type-specific
+ * logic for (essentially) triangulating feature geometries, SymbolBucket
+ * requires specialized behavior:
+ *
+ * 1. WorkerTile.parse(), the logical owner of the bucket creation process,
+ *    calls SymbolBucket.populate(), which resolves text and icon tokens on
+ *    each feature, adds each glyphs and symbols needed to the passed-in
+ *    collections options.glyphDependencies and options.iconDependencies, and
+ *    stores the feature data for use in subsequent step (this.features).
+ *
+ * 2. WorkerTile asynchronously requests from the main thread all of the glyphs
+ *    and icons needed (by this bucket and any others). When glyphs and icons
+ *    have been received, the WorkerTile creates a CollisionIndex and invokes:
+ *
+ * 3. performSymbolLayout(bucket, stacks, icons) perform texts shaping and
+ *    layout on a Symbol Bucket. This step populates:
+ *      `this.symbolInstances`: metadata on generated symbols
+ *      `this.collisionBoxArray`: collision data for use by foreground
+ *      `this.text`: SymbolBuffers for text symbols
+ *      `this.icons`: SymbolBuffers for icons
+ *      `this.iconCollisionBox`: Debug SymbolBuffers for icon collision boxes
+ *      `this.textCollisionBox`: Debug SymbolBuffers for text collision boxes
+ *    The results are sent to the foreground for rendering
+ *
+ * 4. placement.ts is run on the foreground,
+ *    and uses the CollisionIndex along with current camera settings to determine
+ *    which symbols can actually show on the map. Collided symbols are hidden
+ *    using a dynamic "OpacityVertexArray".
+ */
+export declare class SymbolBucket implements Bucket {
 	static MAX_GLYPHS: number;
 	static addDynamicAttributes: typeof addDynamicAttributes;
 	collisionBoxArray: CollisionBoxArray;
@@ -3256,7 +3278,7 @@ declare class CrossTileSymbolLayerIndex {
 		[k in string | number]: boolean;
 	}): boolean;
 }
-declare class CrossTileSymbolIndex {
+export declare class CrossTileSymbolIndex {
 	layerIndexes: {
 		[layerId: string]: CrossTileSymbolLayerIndex;
 	};
@@ -3268,232 +3290,6 @@ declare class CrossTileSymbolIndex {
 	constructor();
 	addLayer(styleLayer: StyleLayer, tiles: Array<Tile>, lng: number): boolean;
 	pruneUnusedLayers(usedLayers: Array<string>): void;
-}
-declare class DepthMode {
-	func: DepthFuncType;
-	mask: DepthMaskType;
-	range: DepthRangeType;
-	static ReadOnly: boolean;
-	static ReadWrite: boolean;
-	constructor(depthFunc: DepthFuncType, depthMask: DepthMaskType, depthRange: DepthRangeType);
-	static disabled: Readonly<DepthMode>;
-}
-declare class StencilMode {
-	test: StencilTestGL;
-	ref: number;
-	mask: number;
-	fail: StencilOpConstant;
-	depthFail: StencilOpConstant;
-	pass: StencilOpConstant;
-	constructor(test: StencilTestGL, ref: number, mask: number, fail: StencilOpConstant, depthFail: StencilOpConstant, pass: StencilOpConstant);
-	static disabled: Readonly<StencilMode>;
-}
-declare class ColorMode {
-	blendFunction: BlendFuncType;
-	blendColor: Color;
-	mask: ColorMaskType;
-	constructor(blendFunction: BlendFuncType, blendColor: Color, mask: ColorMaskType);
-	static Replace: BlendFuncType;
-	static disabled: Readonly<ColorMode>;
-	static unblended: Readonly<ColorMode>;
-	static alphaBlended: Readonly<ColorMode>;
-}
-declare class Mesh {
-	vertexBuffer: VertexBuffer;
-	indexBuffer: IndexBuffer;
-	segments: SegmentVector;
-	constructor(vertexBuffer: VertexBuffer, indexBuffer: IndexBuffer, segments: SegmentVector);
-	destroy(): void;
-}
-type DashEntry = {
-	y: number;
-	height: number;
-	width: number;
-};
-declare class LineAtlas {
-	width: number;
-	height: number;
-	nextRow: number;
-	bytes: number;
-	data: Uint8Array;
-	dashEntry: {
-		[_: string]: DashEntry;
-	};
-	dirty: boolean;
-	texture: WebGLTexture;
-	constructor(width: number, height: number);
-	/**
-	 * Get or create a dash line pattern.
-	 *
-	 * @param dasharray - the key (represented by numbers) to get the dash texture
-	 * @param round - whether to add circle caps in between dash segments
-	 * @returns position of dash texture in {@link DashEntry}
-	 */
-	getDash(dasharray: Array<number>, round: boolean): DashEntry;
-	getDashRanges(dasharray: Array<number>, lineAtlasWidth: number, stretch: number): any[];
-	addRoundDash(ranges: any, stretch: number, n: number): void;
-	addRegularDash(ranges: any): void;
-	addDash(dasharray: Array<number>, round: boolean): DashEntry;
-	bind(context: Context): void;
-}
-/**
- * A type of MapLibre resource.
- */
-export declare const enum ResourceType {
-	Glyphs = "Glyphs",
-	Image = "Image",
-	Source = "Source",
-	SpriteImage = "SpriteImage",
-	SpriteJSON = "SpriteJSON",
-	Style = "Style",
-	Tile = "Tile",
-	Unknown = "Unknown"
-}
-/**
- * This function is used to tranform a request.
- * It is used just before executing the relevant request.
- */
-export type RequestTransformFunction = (url: string, resourceType?: ResourceType) => RequestParameters | undefined;
-export declare class RequestManager {
-	_transformRequestFn: RequestTransformFunction | null;
-	constructor(transformRequestFn?: RequestTransformFunction | null);
-	transformRequest(url: string, type: ResourceType): RequestParameters;
-	setTransformRequest(transformRequest: RequestTransformFunction | null): void;
-}
-declare function loadGlyphRange(fontstack: string, range: number, urlTemplate: string, requestManager: RequestManager): Promise<{
-	[_: number]: StyleGlyph | null;
-}>;
-type Entry = {
-	glyphs: {
-		[id: number]: StyleGlyph | null;
-	};
-	requests: {
-		[range: number]: Promise<{
-			[_: number]: StyleGlyph | null;
-		}>;
-	};
-	ranges: {
-		[range: number]: boolean | null;
-	};
-	tinySDF?: TinySDF;
-};
-declare class GlyphManager {
-	requestManager: RequestManager;
-	localIdeographFontFamily: string | false;
-	entries: {
-		[stack: string]: Entry;
-	};
-	url: string;
-	lang?: string;
-	static loadGlyphRange: typeof loadGlyphRange;
-	static TinySDF: typeof TinySDF;
-	constructor(requestManager: RequestManager, localIdeographFontFamily?: string | false, lang?: string);
-	setURL(url?: string | null): void;
-	getGlyphs(glyphs: {
-		[stack: string]: Array<number>;
-	}): Promise<GetGlyphsResponse>;
-	_getAndCacheGlyphsPromise(stack: string, id: number): Promise<{
-		stack: string;
-		id: number;
-		glyph: StyleGlyph;
-	}>;
-	_doesCharSupportLocalGlyph(id: number): boolean;
-	_tinySDF(entry: Entry, stack: string, id: number): StyleGlyph;
-}
-type PoolObject = {
-	id: number;
-	fbo: Framebuffer;
-	texture: Texture;
-	stamp: number;
-	inUse: boolean;
-};
-declare class RenderPool {
-	private readonly _context;
-	private readonly _size;
-	private readonly _tileSize;
-	private _objects;
-	/**
-	 * An index array of recently used pool objects.
-	 * Items that are used recently are last in the array
-	 */
-	private _recentlyUsed;
-	private _stamp;
-	constructor(_context: Context, _size: number, _tileSize: number);
-	destruct(): void;
-	private _createObject;
-	getObjectForId(id: number): PoolObject;
-	useObject(obj: PoolObject): void;
-	stampObject(obj: PoolObject): void;
-	getOrCreateFreeObject(): PoolObject;
-	freeObject(obj: PoolObject): void;
-	freeAllObjects(): void;
-	isFull(): boolean;
-}
-/**
- * @internal
- * A helper class to help define what should be rendered to texture and how
- */
-export declare class RenderToTexture {
-	painter: Painter;
-	terrain: Terrain;
-	pool: RenderPool;
-	/**
-	 * coordsAscending contains a list of all tiles which should be rendered for one render-to-texture tile
-	 * e.g. render 4 raster-tiles with size 256px to the 512px render-to-texture tile
-	 */
-	_coordsAscending: {
-		[_: string]: {
-			[_: string]: Array<OverscaledTileID>;
-		};
-	};
-	/**
-	 * create a string representation of all to tiles rendered to render-to-texture tiles
-	 * this string representation is used to check if tile should be re-rendered.
-	 */
-	_coordsAscendingStr: {
-		[_: string]: {
-			[_: string]: string;
-		};
-	};
-	/**
-	 * store for render-stacks
-	 * a render stack is a set of layers which should be rendered into one texture
-	 * every stylesheet can have multiple stacks. A new stack is created if layers which should
-	 * not rendered to texture sit between layers which should rendered to texture. e.g. hillshading or symbols
-	 */
-	_stacks: Array<Array<string>>;
-	/**
-	 * remember the previous processed layer to check if a new stack is needed
-	 */
-	_prevType: string;
-	/**
-	 * a list of tiles that can potentially rendered
-	 */
-	_renderableTiles: Array<Tile>;
-	/**
-	 * a list of tiles that should be rendered to screen in the next render-call
-	 */
-	_rttTiles: Array<Tile>;
-	/**
-	 * a list of all layer-ids which should be rendered
-	 */
-	_renderableLayerIds: Array<string>;
-	constructor(painter: Painter, terrain: Terrain);
-	destruct(): void;
-	getTexture(tile: Tile): Texture;
-	prepareForRender(style: Style, zoom: number): void;
-	/**
-	 * due that switching textures is relatively slow, the render
-	 * layer-by-layer context is not practicable. To bypass this problem
-	 * this lines of code stack all layers and later render all at once.
-	 * Because of the stylesheet possibility to mixing render-to-texture layers
-	 * and 'live'-layers (f.e. symbols) it is necessary to create more stacks. For example
-	 * a symbol-layer is in between of fill-layers.
-	 * @param layer - the layer to render
-	 * @param renderOptions - flags describing how to render the layer
-	 * @returns if true layer is rendered to texture, otherwise false
-	 */
-	renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean;
 }
 type RenderPass = "offscreen" | "opaque" | "translucent";
 type PainterOptions = {
@@ -3559,7 +3355,7 @@ export declare class Painter {
 	cache: {
 		[_: string]: Program<any>;
 	};
-	crossTileSymbolIndex: CrossTileSymbolIndex;
+	crossTileSymbolIndex?: CrossTileSymbolIndex;
 	symbolFadeChange: number;
 	debugOverlayTexture: Texture;
 	debugOverlayCanvas: HTMLCanvasElement;
@@ -4589,221 +4385,6 @@ interface IReadonlyTransform extends ITransformGetters {
  */
 export interface ITransform extends IReadonlyTransform, ITransformMutators {
 }
-type QueryParameters = {
-	scale: number;
-	pixelPosMatrix: mat4;
-	transform: IReadonlyTransform;
-	tileSize: number;
-	queryGeometry: Array<Point>;
-	cameraQueryGeometry: Array<Point>;
-	queryPadding: number;
-	getElevation: undefined | ((x: number, y: number) => number);
-	params: {
-		filter?: FilterSpecification;
-		layers?: Set<string> | null;
-		availableImages?: Array<string>;
-		globalState?: Record<string, any>;
-	};
-};
-type QueryResults = {
-	[_: string]: QueryResultsItem[];
-};
-type QueryResultsItem = {
-	featureIndex: number;
-	feature: GeoJSONFeature;
-	intersectionZ?: boolean | number;
-};
-/**
- * An in memory index class to allow fast interaction with features
- */
-export declare class FeatureIndex {
-	tileID: OverscaledTileID;
-	x: number;
-	y: number;
-	z: number;
-	grid: TransferableGridIndex;
-	grid3D: TransferableGridIndex;
-	featureIndexArray: FeatureIndexArray;
-	promoteId?: PromoteIdSpecification;
-	rawTileData: ArrayBuffer;
-	bucketLayerIDs: Array<Array<string>>;
-	vtLayers: {
-		[_: string]: VectorTileLayer;
-	};
-	sourceLayerCoder: DictionaryCoder;
-	constructor(tileID: OverscaledTileID, promoteId?: PromoteIdSpecification | null);
-	insert(feature: VectorTileFeature, geometry: Array<Array<Point>>, featureIndex: number, sourceLayerIndex: number, bucketIndex: number, is3D?: boolean): void;
-	loadVTLayers(): {
-		[_: string]: VectorTileLayer;
-	};
-	query(args: QueryParameters, styleLayers: {
-		[_: string]: StyleLayer;
-	}, serializedLayers: {
-		[_: string]: any;
-	}, sourceFeatureState: SourceFeatureState): QueryResults;
-	loadMatchingFeature(result: QueryResults, bucketIndex: number, sourceLayerIndex: number, featureIndex: number, filter: FeatureFilter, filterLayerIDs: Set<string> | undefined, availableImages: Array<string>, styleLayers: {
-		[_: string]: StyleLayer;
-	}, serializedLayers: {
-		[_: string]: any;
-	}, sourceFeatureState?: SourceFeatureState, intersectionTest?: (feature: VectorTileFeature, styleLayer: StyleLayer, featureState: any, id: string | number | void) => boolean | number): void;
-	lookupSymbolFeatures(symbolFeatureIndexes: Array<number>, serializedLayers: {
-		[_: string]: StyleLayer;
-	}, bucketIndex: number, sourceLayerIndex: number, filterParams: {
-		filterSpec: FilterSpecification;
-		globalState: Record<string, any>;
-	}, filterLayerIDs: Set<string> | null, availableImages: Array<string>, styleLayers: {
-		[_: string]: StyleLayer;
-	}): QueryResults;
-	hasLayer(id: string): boolean;
-	getId(feature: VectorTileFeature, sourceLayerId: string): string | number;
-}
-type DEMEncoding = "mapbox" | "terrarium" | "custom";
-declare class DEMData {
-	uid: string | number;
-	data: Uint32Array;
-	stride: number;
-	dim: number;
-	min: number;
-	max: number;
-	redFactor: number;
-	greenFactor: number;
-	blueFactor: number;
-	baseShift: number;
-	/**
-	 * Constructs a `DEMData` object
-	 * @param uid - the tile's unique id
-	 * @param data - RGBAImage data has uniform 1px padding on all sides: square tile edge size defines stride
-	// and dim is calculated as stride - 2.
-	 * @param encoding - the encoding type of the data
-	 * @param redFactor - the red channel factor used to unpack the data, used for `custom` encoding only
-	 * @param greenFactor - the green channel factor used to unpack the data, used for `custom` encoding only
-	 * @param blueFactor - the blue channel factor used to unpack the data, used for `custom` encoding only
-	 * @param baseShift - the base shift used to unpack the data, used for `custom` encoding only
-	 */
-	constructor(uid: string | number, data: RGBAImage | ImageData, encoding: DEMEncoding, redFactor?: number, greenFactor?: number, blueFactor?: number, baseShift?: number);
-	get(x: number, y: number): number;
-	getUnpackVector(): number[];
-	_idx(x: number, y: number): number;
-	unpack(r: number, g: number, b: number): number;
-	pack(v: number): {
-		r: number;
-		g: number;
-		b: number;
-	};
-	getPixels(): RGBAImage;
-	backfillBorder(borderTile: DEMData, dx: number, dy: number): void;
-}
-type CircleGranularity = 1 | 3 | 5 | 7;
-declare class SubdivisionGranularityExpression {
-	/**
-	 * A tile of zoom level 0 will be subdivided to this granularity level.
-	 * Each subsequent zoom level will have its granularity halved.
-	 */
-	private readonly _baseZoomGranularity;
-	/**
-	 * No tile will have granularity level smaller than this.
-	 */
-	private readonly _minGranularity;
-	constructor(baseZoomGranularity: number, minGranularity: number);
-	getGranularityForZoomLevel(zoomLevel: number): number;
-}
-declare class SubdivisionGranularitySetting {
-	/**
-	 * Granularity settings used for fill and fill-extrusion layers (for fill, both polygons and their anti-aliasing outlines).
-	 */
-	readonly fill: SubdivisionGranularityExpression;
-	/**
-	 * Granularity used for the line layer.
-	 */
-	readonly line: SubdivisionGranularityExpression;
-	/**
-	 * Granularity used for geometry covering the entire tile: raster tiles, etc.
-	 */
-	readonly tile: SubdivisionGranularityExpression;
-	/**
-	 * Granularity used for stencil masks for tiles.
-	 */
-	readonly stencil: SubdivisionGranularityExpression;
-	/**
-	 * Controls the granularity of `pitch-alignment: map` circles and heatmap kernels.
-	 * More granular circles will more closely follow the map's surface.
-	 */
-	readonly circle: CircleGranularity;
-	constructor(options: {
-		/**
-		 * Granularity settings used for fill and fill-extrusion layers (for fill, both polygons and their anti-aliasing outlines).
-		 */
-		fill: SubdivisionGranularityExpression;
-		/**
-		 * Granularity used for the line layer.
-		 */
-		line: SubdivisionGranularityExpression;
-		/**
-		 * Granularity used for geometry covering the entire tile: stencil masks, raster tiles, etc.
-		 */
-		tile: SubdivisionGranularityExpression;
-		/**
-		 * Granularity used for stencil masks for tiles.
-		 */
-		stencil: SubdivisionGranularityExpression;
-		/**
-		 * Controls the granularity of `pitch-alignment: map` circles and heatmap kernels.
-		 * More granular circles will more closely follow the map's surface.
-		 */
-		circle: CircleGranularity;
-	});
-	/**
-	 * Granularity settings that disable subdivision altogether.
-	 */
-	static readonly noSubdivision: SubdivisionGranularitySetting;
-}
-type TileParameters = {
-	type: string;
-	source: string;
-	uid: string | number;
-};
-type WorkerTileParameters = TileParameters & {
-	tileID: OverscaledTileID;
-	request?: RequestParameters;
-	zoom: number;
-	maxZoom?: number;
-	tileSize: number;
-	promoteId: PromoteIdSpecification;
-	pixelRatio: number;
-	showCollisionBoxes: boolean;
-	collectResourceTiming?: boolean;
-	returnDependencies?: boolean;
-	subdivisionGranularity: SubdivisionGranularitySetting;
-};
-type WorkerDEMTileParameters = TileParameters & {
-	rawImageData: RGBAImage | ImageBitmap | ImageData;
-	encoding: DEMEncoding;
-	redFactor: number;
-	greenFactor: number;
-	blueFactor: number;
-	baseShift: number;
-};
-/**
- * The worker tile's result type
- */
-export type WorkerTileResult = ExpiryData & {
-	buckets: Array<Bucket>;
-	imageAtlas: ImageAtlas;
-	glyphAtlasImage: AlphaImage;
-	featureIndex: FeatureIndex;
-	collisionBoxArray: CollisionBoxArray;
-	rawTileData?: ArrayBuffer;
-	resourceTiming?: Array<PerformanceResourceTiming>;
-	glyphMap?: {
-		[_: string]: {
-			[_: number]: StyleGlyph;
-		};
-	} | null;
-	iconMap?: {
-		[_: string]: StyleImage;
-	} | null;
-	glyphPositions?: GlyphPositions | null;
-};
 type OverlapMode = "never" | "always" | "cooperative";
 type QueryResult<T> = {
 	key: T;
@@ -5242,6 +4823,256 @@ declare class SourceFeatureState {
 		[_ in any]: Tile;
 	}, painter: any): void;
 }
+type QueryParameters = {
+	scale: number;
+	pixelPosMatrix: mat4;
+	transform: IReadonlyTransform;
+	tileSize: number;
+	queryGeometry: Array<Point>;
+	cameraQueryGeometry: Array<Point>;
+	queryPadding: number;
+	getElevation: undefined | ((x: number, y: number) => number);
+	params: {
+		filter?: FilterSpecification;
+		layers?: Set<string> | null;
+		availableImages?: Array<string>;
+		globalState?: Record<string, any>;
+	};
+};
+type QueryResults = {
+	[_: string]: QueryResultsItem[];
+};
+type QueryResultsItem = {
+	featureIndex: number;
+	feature: GeoJSONFeature;
+	intersectionZ?: boolean | number;
+};
+/**
+ * An in memory index class to allow fast interaction with features
+ */
+export declare class FeatureIndex {
+	tileID: OverscaledTileID;
+	x: number;
+	y: number;
+	z: number;
+	grid: TransferableGridIndex;
+	grid3D: TransferableGridIndex;
+	featureIndexArray: FeatureIndexArray;
+	promoteId?: PromoteIdSpecification;
+	rawTileData: ArrayBuffer;
+	bucketLayerIDs: Array<Array<string>>;
+	vtLayers: {
+		[_: string]: VectorTileLayer;
+	};
+	sourceLayerCoder: DictionaryCoder;
+	constructor(tileID: OverscaledTileID, promoteId?: PromoteIdSpecification | null);
+	insert(feature: VectorTileFeature, geometry: Array<Array<Point>>, featureIndex: number, sourceLayerIndex: number, bucketIndex: number, is3D?: boolean): void;
+	loadVTLayers(): {
+		[_: string]: VectorTileLayer;
+	};
+	query(args: QueryParameters, styleLayers: {
+		[_: string]: StyleLayer;
+	}, serializedLayers: {
+		[_: string]: any;
+	}, sourceFeatureState: SourceFeatureState): QueryResults;
+	loadMatchingFeature(result: QueryResults, bucketIndex: number, sourceLayerIndex: number, featureIndex: number, filter: FeatureFilter, filterLayerIDs: Set<string> | undefined, availableImages: Array<string>, styleLayers: {
+		[_: string]: StyleLayer;
+	}, serializedLayers: {
+		[_: string]: any;
+	}, sourceFeatureState?: SourceFeatureState, intersectionTest?: (feature: VectorTileFeature, styleLayer: StyleLayer, featureState: any, id: string | number | void) => boolean | number): void;
+	lookupSymbolFeatures(symbolFeatureIndexes: Array<number>, serializedLayers: {
+		[_: string]: StyleLayer;
+	}, bucketIndex: number, sourceLayerIndex: number, filterParams: {
+		filterSpec: FilterSpecification;
+		globalState: Record<string, any>;
+	}, filterLayerIDs: Set<string> | null, availableImages: Array<string>, styleLayers: {
+		[_: string]: StyleLayer;
+	}): QueryResults;
+	hasLayer(id: string): boolean;
+	getId(feature: VectorTileFeature, sourceLayerId: string): string | number;
+}
+type CircleGranularity = 1 | 3 | 5 | 7;
+declare class SubdivisionGranularityExpression {
+	/**
+	 * A tile of zoom level 0 will be subdivided to this granularity level.
+	 * Each subsequent zoom level will have its granularity halved.
+	 */
+	private readonly _baseZoomGranularity;
+	/**
+	 * No tile will have granularity level smaller than this.
+	 */
+	private readonly _minGranularity;
+	constructor(baseZoomGranularity: number, minGranularity: number);
+	getGranularityForZoomLevel(zoomLevel: number): number;
+}
+declare class SubdivisionGranularitySetting {
+	/**
+	 * Granularity settings used for fill and fill-extrusion layers (for fill, both polygons and their anti-aliasing outlines).
+	 */
+	readonly fill: SubdivisionGranularityExpression;
+	/**
+	 * Granularity used for the line layer.
+	 */
+	readonly line: SubdivisionGranularityExpression;
+	/**
+	 * Granularity used for geometry covering the entire tile: raster tiles, etc.
+	 */
+	readonly tile: SubdivisionGranularityExpression;
+	/**
+	 * Granularity used for stencil masks for tiles.
+	 */
+	readonly stencil: SubdivisionGranularityExpression;
+	/**
+	 * Controls the granularity of `pitch-alignment: map` circles and heatmap kernels.
+	 * More granular circles will more closely follow the map's surface.
+	 */
+	readonly circle: CircleGranularity;
+	constructor(options: {
+		/**
+		 * Granularity settings used for fill and fill-extrusion layers (for fill, both polygons and their anti-aliasing outlines).
+		 */
+		fill: SubdivisionGranularityExpression;
+		/**
+		 * Granularity used for the line layer.
+		 */
+		line: SubdivisionGranularityExpression;
+		/**
+		 * Granularity used for geometry covering the entire tile: stencil masks, raster tiles, etc.
+		 */
+		tile: SubdivisionGranularityExpression;
+		/**
+		 * Granularity used for stencil masks for tiles.
+		 */
+		stencil: SubdivisionGranularityExpression;
+		/**
+		 * Controls the granularity of `pitch-alignment: map` circles and heatmap kernels.
+		 * More granular circles will more closely follow the map's surface.
+		 */
+		circle: CircleGranularity;
+	});
+	/**
+	 * Granularity settings that disable subdivision altogether.
+	 */
+	static readonly noSubdivision: SubdivisionGranularitySetting;
+}
+type BucketParameters<Layer extends TypedStyleLayer> = {
+	index: number;
+	layers: Array<Layer>;
+	zoom: number;
+	pixelRatio: number;
+	overscaling: number;
+	collisionBoxArray: CollisionBoxArray;
+	sourceLayerIndex: number;
+	sourceID: string;
+};
+type PopulateParameters = {
+	featureIndex: FeatureIndex;
+	iconDependencies: {};
+	patternDependencies: {};
+	glyphDependencies: {};
+	availableImages: Array<string>;
+	subdivisionGranularity: SubdivisionGranularitySetting;
+};
+type IndexedFeature = {
+	feature: VectorTileFeature;
+	id: number | string;
+	index: number;
+	sourceLayerIndex: number;
+};
+type BucketFeature = {
+	index: number;
+	sourceLayerIndex: number;
+	geometry: Array<Array<Point>>;
+	properties: any;
+	type: 0 | 1 | 2 | 3;
+	id?: any;
+	readonly patterns: {
+		[_: string]: {
+			"min": string;
+			"mid": string;
+			"max": string;
+		};
+	};
+	sortKey?: number;
+};
+/**
+ * @hidden
+ * The `Bucket` interface is the single point of knowledge about turning vector
+ * tiles into WebGL buffers.
+ *
+ * `Bucket` is an abstract interface. An implementation exists for each style layer type.
+ * Create a bucket via the `StyleLayer.createBucket` method.
+ *
+ * The concrete bucket types, using layout options from the style layer,
+ * transform feature geometries into vertex and index data for use by the
+ * vertex shader.  They also (via `ProgramConfiguration`) use feature
+ * properties and the zoom level to populate the attributes needed for
+ * data-driven styling.
+ *
+ * Buckets are designed to be built on a worker thread and then serialized and
+ * transferred back to the main thread for rendering.  On the worker side, a
+ * bucket's vertex, index, and attribute data is stored in `bucket.arrays: ArrayGroup`.
+ * When a bucket's data is serialized and sent back to the main thread,
+ * is gets deserialized (using `new Bucket(serializedBucketData)`, with
+ * the array data now stored in `bucket.buffers: BufferGroup`. BufferGroups
+ * hold the same data as ArrayGroups, but are tuned for consumption by WebGL.
+ */
+export interface Bucket {
+	layerIds: Array<string>;
+	hasPattern: boolean;
+	readonly layers: Array<any>;
+	readonly stateDependentLayers: Array<any>;
+	readonly stateDependentLayerIds: Array<string>;
+	populate(features: Array<IndexedFeature>, options: PopulateParameters, canonical: CanonicalTileID): void;
+	update(states: FeatureStates, vtLayer: VectorTileLayer, imagePositions: {
+		[_: string]: ImagePosition;
+	}): void;
+	isEmpty(): boolean;
+	upload(context: Context): void;
+	uploadPending(): boolean;
+	/**
+	 * Release the WebGL resources associated with the buffers. Note that because
+	 * buckets are shared between layers having the same layout properties, they
+	 * must be destroyed in groups (all buckets for a tile, or all symbol buckets).
+	 */
+	destroy(): void;
+}
+declare class HeatmapBucket extends CircleBucket<HeatmapStyleLayer> {
+	layers: Array<HeatmapStyleLayer>;
+}
+type HeatmapPaintProps = {
+	"heatmap-radius": DataDrivenProperty<number>;
+	"heatmap-weight": DataDrivenProperty<number>;
+	"heatmap-intensity": DataConstantProperty<number>;
+	"heatmap-color": ColorRampProperty;
+	"heatmap-opacity": DataConstantProperty<number>;
+};
+type HeatmapPaintPropsPossiblyEvaluated = {
+	"heatmap-radius": PossiblyEvaluatedPropertyValue<number>;
+	"heatmap-weight": PossiblyEvaluatedPropertyValue<number>;
+	"heatmap-intensity": number;
+	"heatmap-color": ColorRampProperty;
+	"heatmap-opacity": number;
+};
+/**
+ * A style layer that defines a heatmap
+ */
+export declare class HeatmapStyleLayer extends StyleLayer {
+	heatmapFbos: Map<string, Framebuffer>;
+	colorRamp: RGBAImage;
+	colorRampTexture: Texture;
+	_transitionablePaint: Transitionable<HeatmapPaintProps>;
+	_transitioningPaint: Transitioning<HeatmapPaintProps>;
+	paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated>;
+	createBucket(options: any): HeatmapBucket;
+	constructor(layer: LayerSpecification, globalState: Record<string, any>);
+	_handleSpecialPaintPropertyUpdate(name: string): void;
+	_updateColorRamp(): void;
+	resize(): void;
+	queryRadius(bucket: Bucket): number;
+	queryIntersectsFeature({ queryGeometry, feature, featureState, geometry, transform, pixelsToTileUnits, unwrappedTileID, getElevation }: QueryIntersectsFeatureParams): boolean;
+	hasOffscreenPass(): boolean;
+}
 declare class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> implements Bucket {
 	index: number;
 	zoom: number;
@@ -5307,7 +5138,10 @@ type CirclePaintPropsPossiblyEvaluated = {
 	"circle-stroke-color": PossiblyEvaluatedPropertyValue<Color>;
 	"circle-stroke-opacity": PossiblyEvaluatedPropertyValue<number>;
 };
-declare class CircleStyleLayer extends StyleLayer {
+/**
+ * A style layer that defines a circle
+ */
+export declare class CircleStyleLayer extends StyleLayer {
 	_unevaluatedLayout: Layout<CircleLayoutProps>;
 	layout: PossiblyEvaluated<CircleLayoutProps, CircleLayoutPropsPossiblyEvaluated>;
 	_transitionablePaint: Transitionable<CirclePaintProps>;
@@ -5384,7 +5218,7 @@ type FillPaintPropsPossiblyEvaluated = {
 	"fill-translate-anchor": "map" | "viewport";
 	"fill-pattern": PossiblyEvaluatedPropertyValue<CrossFaded<ResolvedImage>>;
 };
-declare class FillStyleLayer extends StyleLayer {
+export declare class FillStyleLayer extends StyleLayer {
 	_unevaluatedLayout: Layout<FillLayoutProps>;
 	layout: PossiblyEvaluated<FillLayoutProps, FillLayoutPropsPossiblyEvaluated>;
 	_transitionablePaint: Transitionable<FillPaintProps>;
@@ -5464,7 +5298,7 @@ type FillExtrusionPaintPropsPossiblyEvaluated = {
 	"fill-extrusion-base": PossiblyEvaluatedPropertyValue<number>;
 	"fill-extrusion-vertical-gradient": boolean;
 };
-declare class FillExtrusionStyleLayer extends StyleLayer {
+export declare class FillExtrusionStyleLayer extends StyleLayer {
 	_transitionablePaint: Transitionable<FillExtrusionPaintProps>;
 	_transitioningPaint: Transitioning<FillExtrusionPaintProps>;
 	paint: PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated>;
@@ -5494,7 +5328,7 @@ type HillshadePaintPropsPossiblyEvaluated = {
 	"hillshade-accent-color": Color;
 	"hillshade-method": "standard" | "basic" | "combined" | "igor" | "multidirectional";
 };
-declare class HillshadeStyleLayer extends StyleLayer {
+export declare class HillshadeStyleLayer extends StyleLayer {
 	_transitionablePaint: Transitionable<HillshadePaintProps>;
 	_transitioningPaint: Transitioning<HillshadePaintProps>;
 	paint: PossiblyEvaluated<HillshadePaintProps, HillshadePaintPropsPossiblyEvaluated>;
@@ -5523,7 +5357,7 @@ type ColorRampTextures = {
 	elevationTexture: Texture;
 	colorTexture: Texture;
 };
-declare class ColorReliefStyleLayer extends StyleLayer {
+export declare class ColorReliefStyleLayer extends StyleLayer {
 	colorRampExpression: StylePropertyExpression;
 	colorRampTextures: ColorRampTextures;
 	_transitionablePaint: Transitionable<ColorReliefPaintProps>;
@@ -5641,7 +5475,7 @@ type LinePaintProps = {
 	"line-gap-width": DataDrivenProperty<number>;
 	"line-offset": DataDrivenProperty<number>;
 	"line-blur": DataDrivenProperty<number>;
-	"line-dasharray": CrossFadedProperty<Array<number>>;
+	"line-dasharray": CrossFadedDataDrivenProperty<Array<number>>;
 	"line-pattern": CrossFadedDataDrivenProperty<ResolvedImage>;
 	"line-gradient": ColorRampProperty;
 };
@@ -5657,11 +5491,11 @@ type LinePaintPropsPossiblyEvaluated = {
 	"line-gap-width": PossiblyEvaluatedPropertyValue<number>;
 	"line-offset": PossiblyEvaluatedPropertyValue<number>;
 	"line-blur": PossiblyEvaluatedPropertyValue<number>;
-	"line-dasharray": CrossFaded<Array<number>>;
+	"line-dasharray": PossiblyEvaluatedPropertyValue<CrossFaded<Array<number>>>;
 	"line-pattern": PossiblyEvaluatedPropertyValue<CrossFaded<ResolvedImage>>;
 	"line-gradient": ColorRampProperty;
 };
-declare class LineStyleLayer extends StyleLayer {
+export declare class LineStyleLayer extends StyleLayer {
 	_unevaluatedLayout: Layout<LineLayoutProps>;
 	layout: PossiblyEvaluated<LineLayoutProps, LineLayoutPropsPossiblyEvaluated>;
 	gradientVersion: number;
@@ -5953,63 +5787,6 @@ declare class Texture {
 	isSizePowerOfTwo(): boolean;
 	destroy(): void;
 }
-declare class ImagePosition {
-	paddedRect: Rect;
-	pixelRatio: number;
-	version: number;
-	stretchY: Array<[
-		number,
-		number
-	]>;
-	stretchX: Array<[
-		number,
-		number
-	]>;
-	content: [
-		number,
-		number,
-		number,
-		number
-	];
-	textFitWidth: TextFit;
-	textFitHeight: TextFit;
-	constructor(paddedRect: Rect, { pixelRatio, version, stretchX, stretchY, content, textFitWidth, textFitHeight }: StyleImage);
-	get tl(): [
-		number,
-		number
-	];
-	get br(): [
-		number,
-		number
-	];
-	get tlbr(): Array<number>;
-	get displaySize(): [
-		number,
-		number
-	];
-}
-/**
- * A class holding all the images
- */
-export declare class ImageAtlas {
-	image: RGBAImage;
-	iconPositions: {
-		[_: string]: ImagePosition;
-	};
-	patternPositions: {
-		[_: string]: ImagePosition;
-	};
-	haveRenderCallbacks: Array<string>;
-	uploaded: boolean;
-	constructor(icons: GetImagesResponse, patterns: GetImagesResponse);
-	addImages(images: {
-		[_: string]: StyleImage;
-	}, positions: {
-		[_: string]: ImagePosition;
-	}, bins: Array<Rect>): void;
-	patchUpdatedImages(imageManager: ImageManager, texture: Texture): void;
-	patchUpdatedImage(position: ImagePosition, image: StyleImage, texture: Texture): void;
-}
 type Pattern = {
 	bin: PotpackBox;
 	position: ImagePosition;
@@ -6114,33 +5891,6 @@ declare class Light extends Evented {
 	_validate(validate: Function, value: unknown, options?: {
 		validate?: boolean;
 	}): boolean;
-}
-declare class LayerPlacement {
-	_sortAcrossTiles: boolean;
-	_currentTileIndex: number;
-	_currentPartIndex: number;
-	_seenCrossTileIDs: {
-		[k in string | number]: boolean;
-	};
-	_bucketParts: Array<BucketPart>;
-	constructor(styleLayer: SymbolStyleLayer);
-	continuePlacement(tiles: Array<Tile>, placement: Placement, showCollisionBoxes: boolean, styleLayer: StyleLayer, shouldPausePlacement: () => boolean): boolean;
-}
-declare class PauseablePlacement {
-	placement: Placement;
-	_done: boolean;
-	_currentPlacementIndex: number;
-	_forceFullPlacement: boolean;
-	_showCollisionBoxes: boolean;
-	_inProgressLayer: LayerPlacement;
-	constructor(transform: ITransform, terrain: Terrain, order: Array<string>, forceFullPlacement: boolean, showCollisionBoxes: boolean, fadeDuration: number, crossSourceCollisions: boolean, prevPlacement?: Placement);
-	isDone(): boolean;
-	continuePlacement(order: Array<string>, layers: {
-		[_: string]: StyleLayer;
-	}, layerTiles: {
-		[_: string]: Array<Tile>;
-	}): void;
-	commit(now: number): Placement;
 }
 /**
 * Input arguments exposed by custom render function.
@@ -6476,6 +6226,33 @@ interface Projection {
 	 */
 	setErrorQueryLatitudeDegrees(value: number): any;
 }
+declare class LayerPlacement {
+	_sortAcrossTiles: boolean;
+	_currentTileIndex: number;
+	_currentPartIndex: number;
+	_seenCrossTileIDs: {
+		[k in string | number]: boolean;
+	};
+	_bucketParts: Array<BucketPart>;
+	constructor(styleLayer: SymbolStyleLayer);
+	continuePlacement(tiles: Array<Tile>, placement: Placement, showCollisionBoxes: boolean, styleLayer: StyleLayer, shouldPausePlacement: () => boolean): boolean;
+}
+export declare class PauseablePlacement {
+	placement: Placement;
+	_done: boolean;
+	_currentPlacementIndex: number;
+	_forceFullPlacement: boolean;
+	_showCollisionBoxes: boolean;
+	_inProgressLayer: LayerPlacement;
+	constructor(transform: ITransform, terrain: Terrain, order: Array<string>, forceFullPlacement: boolean, showCollisionBoxes: boolean, fadeDuration: number, crossSourceCollisions: boolean, prevPlacement?: Placement);
+	isDone(): boolean;
+	continuePlacement(order: Array<string>, layers: {
+		[_: string]: StyleLayer;
+	}, layerTiles: {
+		[_: string]: Array<Tile>;
+	}): void;
+	commit(now: number): Placement;
+}
 /**
  * A feature identifier that is bound to a source
  */
@@ -6648,9 +6425,9 @@ export declare class Style extends Evented {
 	};
 	_availableImages: Array<string>;
 	_globalState: Record<string, any>;
-	crossTileSymbolIndex: CrossTileSymbolIndex;
-	pauseablePlacement: PauseablePlacement;
-	placement: Placement;
+	crossTileSymbolIndex?: CrossTileSymbolIndex;
+	pauseablePlacement?: PauseablePlacement;
+	placement?: Placement;
 	z: number;
 	constructor(map: Map$1, options?: StyleOptions);
 	_rtlPluginLoaded: () => void;
@@ -6865,608 +6642,6 @@ export declare class Style extends Evented {
 	 */
 	setSprite(sprite: SpriteSpecification, options?: StyleSetterOptions, completion?: (err: Error) => void): void;
 }
-type BucketParameters<Layer extends TypedStyleLayer> = {
-	index: number;
-	layers: Array<Layer>;
-	zoom: number;
-	pixelRatio: number;
-	overscaling: number;
-	collisionBoxArray: CollisionBoxArray;
-	sourceLayerIndex: number;
-	sourceID: string;
-};
-type PopulateParameters = {
-	featureIndex: FeatureIndex;
-	iconDependencies: {};
-	patternDependencies: {};
-	glyphDependencies: {};
-	availableImages: Array<string>;
-	subdivisionGranularity: SubdivisionGranularitySetting;
-};
-type IndexedFeature = {
-	feature: VectorTileFeature;
-	id: number | string;
-	index: number;
-	sourceLayerIndex: number;
-};
-type BucketFeature = {
-	index: number;
-	sourceLayerIndex: number;
-	geometry: Array<Array<Point>>;
-	properties: any;
-	type: 0 | 1 | 2 | 3;
-	id?: any;
-	readonly patterns: {
-		[_: string]: {
-			"min": string;
-			"mid": string;
-			"max": string;
-		};
-	};
-	sortKey?: number;
-};
-/**
- * @hidden
- * The `Bucket` interface is the single point of knowledge about turning vector
- * tiles into WebGL buffers.
- *
- * `Bucket` is an abstract interface. An implementation exists for each style layer type.
- * Create a bucket via the `StyleLayer.createBucket` method.
- *
- * The concrete bucket types, using layout options from the style layer,
- * transform feature geometries into vertex and index data for use by the
- * vertex shader.  They also (via `ProgramConfiguration`) use feature
- * properties and the zoom level to populate the attributes needed for
- * data-driven styling.
- *
- * Buckets are designed to be built on a worker thread and then serialized and
- * transferred back to the main thread for rendering.  On the worker side, a
- * bucket's vertex, index, and attribute data is stored in `bucket.arrays: ArrayGroup`.
- * When a bucket's data is serialized and sent back to the main thread,
- * is gets deserialized (using `new Bucket(serializedBucketData)`, with
- * the array data now stored in `bucket.buffers: BufferGroup`. BufferGroups
- * hold the same data as ArrayGroups, but are tuned for consumption by WebGL.
- */
-export interface Bucket {
-	layerIds: Array<string>;
-	hasPattern: boolean;
-	readonly layers: Array<any>;
-	readonly stateDependentLayers: Array<any>;
-	readonly stateDependentLayerIds: Array<string>;
-	populate(features: Array<IndexedFeature>, options: PopulateParameters, canonical: CanonicalTileID): void;
-	update(states: FeatureStates, vtLayer: VectorTileLayer, imagePositions: {
-		[_: string]: ImagePosition;
-	}): void;
-	isEmpty(): boolean;
-	upload(context: Context): void;
-	uploadPending(): boolean;
-	/**
-	 * Release the WebGL resources associated with the buffers. Note that because
-	 * buckets are shared between layers having the same layout properties, they
-	 * must be destroyed in groups (all buckets for a tile, or all symbol buckets).
-	 */
-	destroy(): void;
-}
-type QueryIntersectsFeatureParams = {
-	/**
-	 * The geometry to check intersection with.
-	 * This geometry is in tile coordinates.
-	 */
-	queryGeometry: Array<Point>;
-	/**
-	 * The feature to allow expression evaluation.
-	 */
-	feature: VectorTileFeature;
-	/**
-	 * The feature state to allow expression evaluation.
-	 */
-	featureState: FeatureState;
-	/**
-	 * The geometry of the feature.
-	 * This geometry is in tile coordinates.
-	 */
-	geometry: Array<Array<Point>>;
-	/**
-	 * The current zoom level.
-	 */
-	zoom: number;
-	/**
-	 * The transform to convert from tile coordinates to pixels.
-	 */
-	transform: IReadonlyTransform;
-	/**
-	 * The number of pixels per tile unit.
-	 */
-	pixelsToTileUnits: number;
-	/**
-	 * The matrix to convert from tile coordinates to pixel coordinates.
-	 * The pixel coordinates are relative to the center of the screen.
-	 */
-	pixelPosMatrix: mat4;
-	/**
-	 * The unwrapped tile ID for the tile being queried.
-	 */
-	unwrappedTileID: UnwrappedTileID;
-	/**
-	 * A function to get the elevation of a point in tile coordinates.
-	 */
-	getElevation: undefined | ((x: number, y: number) => number);
-};
-/**
- * A base class for style layers
- */
-export declare abstract class StyleLayer extends Evented {
-	id: string;
-	metadata: unknown;
-	type: LayerSpecification["type"] | CustomLayerInterface["type"];
-	source: string;
-	sourceLayer: string;
-	minzoom: number;
-	maxzoom: number;
-	filter: FilterSpecification | void;
-	visibility: "visible" | "none" | void;
-	_crossfadeParameters: CrossfadeParameters;
-	_unevaluatedLayout: Layout<any>;
-	readonly layout: unknown;
-	_transitionablePaint: Transitionable<any>;
-	_transitioningPaint: Transitioning<any>;
-	readonly paint: unknown;
-	_featureFilter: FeatureFilter;
-	readonly onAdd: ((map: Map$1) => void);
-	readonly onRemove: ((map: Map$1) => void);
-	queryRadius?(bucket: Bucket): number;
-	queryIntersectsFeature?(params: QueryIntersectsFeatureParams): boolean | number;
-	createBucket?(parameters: BucketParameters<any>): Bucket;
-	private _globalState;
-	constructor(layer: LayerSpecification | CustomLayerInterface, properties: Readonly<{
-		layout?: Properties<any>;
-		paint?: Properties<any>;
-	}>, globalState: Record<string, any>);
-	setFilter(filter: FilterSpecification | void): void;
-	getCrossfadeParameters(): CrossfadeParameters;
-	getLayoutProperty(name: string): any;
-	/**
-	 * Get list of global state references that are used within layout or filter properties.
-	 * This is used to determine if layer source need to be reloaded when global state property changes.
-	 *
-	 */
-	getLayoutAffectingGlobalStateRefs(): Set<string>;
-	/**
-	 * Get list of global state references that are used within paint properties.
-	 * This is used to determine if layer needs to be repainted when global state property changes.
-	 *
-	 */
-	getPaintAffectingGlobalStateRefs(): globalThis.Map<string, Array<{
-		name: string;
-		value: any;
-	}>>;
-	setLayoutProperty(name: string, value: any, options?: StyleSetterOptions): void;
-	getPaintProperty(name: string): unknown;
-	setPaintProperty(name: string, value: unknown, options?: StyleSetterOptions): boolean;
-	_handleSpecialPaintPropertyUpdate(_: string): void;
-	_handleOverridablePaintPropertyUpdate<T, R>(name: string, oldValue: PropertyValue<T, R>, newValue: PropertyValue<T, R>): boolean;
-	isHidden(zoom: number): boolean;
-	updateTransitions(parameters: TransitionParameters): void;
-	hasTransition(): boolean;
-	recalculate(parameters: EvaluationParameters, availableImages: Array<string>): void;
-	serialize(): LayerSpecification;
-	_validate(validate: Function, key: string, name: string, value: unknown, options?: StyleSetterOptions): boolean;
-	is3D(): boolean;
-	isTileClipped(): boolean;
-	hasOffscreenPass(): boolean;
-	resize(): void;
-	isStateDependent(): boolean;
-}
-/**
- * A way to identify a feature, either by string or by number
- */
-export type GeoJSONFeatureId = number | string;
-/**
- * The geojson source diff object
- */
-export type GeoJSONSourceDiff = {
-	/**
-	 * When set to `true` it will remove all features
-	 */
-	removeAll?: boolean;
-	/**
-	 * An array of features IDs to remove
-	 */
-	remove?: Array<GeoJSONFeatureId>;
-	/**
-	 * An array of features to add
-	 */
-	add?: Array<GeoJSON.Feature>;
-	/**
-	 * An array of update objects
-	 */
-	update?: Array<GeoJSONFeatureDiff>;
-};
-/**
- * A geojson feature diff object
- */
-export type GeoJSONFeatureDiff = {
-	/**
-	 * The feature ID
-	 */
-	id: GeoJSONFeatureId;
-	/**
-	 * If it's a new geometry, place it here
-	 */
-	newGeometry?: GeoJSON.Geometry;
-	/**
-	 * Setting to `true` will remove all preperties
-	 */
-	removeAllProperties?: boolean;
-	/**
-	 * The properties keys to remove
-	 */
-	removeProperties?: Array<string>;
-	/**
-	 * The properties to add or update along side their values
-	 */
-	addOrUpdateProperties?: Array<{
-		key: string;
-		value: any;
-	}>;
-};
-type GeoJSONWorkerOptions = {
-	source?: string;
-	cluster?: boolean;
-	geojsonVtOptions?: GeoJSONVTOptions;
-	superclusterOptions?: SuperclusterOptions<any, any>;
-	clusterProperties?: ClusterProperties;
-	filter?: Array<unknown>;
-	promoteId?: string;
-	collectResourceTiming?: boolean;
-};
-type LoadGeoJSONParameters = GeoJSONWorkerOptions & {
-	type: "geojson";
-	request?: RequestParameters;
-	/**
-	 * Literal GeoJSON data. Must be provided if `request.url` is not.
-	 */
-	data?: string;
-	dataDiff?: GeoJSONSourceDiff;
-};
-type RTLPluginStatus = "unavailable" | "deferred" | "requested" | "loading" | "loaded" | "error";
-type PluginState = {
-	pluginStatus: RTLPluginStatus;
-	pluginURL: string;
-};
-type ClusterIDAndSource = {
-	type: "geojson";
-	clusterId: number;
-	source: string;
-};
-type GetClusterLeavesParams = ClusterIDAndSource & {
-	limit: number;
-	offset: number;
-};
-type GeoJSONWorkerSourceLoadDataResult = {
-	data?: GeoJSON.GeoJSON;
-	resourceTiming?: {
-		[_: string]: Array<PerformanceResourceTiming>;
-	};
-	abandoned?: boolean;
-};
-type RemoveSourceParams = {
-	source: string;
-	type: string;
-};
-type UpdateLayersParameters = {
-	layers: Array<LayerSpecification>;
-	removedIds: Array<string>;
-};
-type GetImagesParameters = {
-	icons: Array<string>;
-	source: string;
-	tileID: OverscaledTileID;
-	type: string;
-};
-type GetGlyphsParameters = {
-	type: string;
-	stacks: {
-		[_: string]: Array<number>;
-	};
-	source: string;
-	tileID: OverscaledTileID;
-};
-type GetGlyphsResponse = {
-	[stack: string]: {
-		[id: number]: StyleGlyph;
-	};
-};
-type GetImagesResponse = {
-	[_: string]: StyleImage;
-};
-/**
- * All the possible message types that can be sent to and from the worker
- */
-export declare const enum MessageType {
-	loadDEMTile = "LDT",
-	getClusterExpansionZoom = "GCEZ",
-	getClusterChildren = "GCC",
-	getClusterLeaves = "GCL",
-	loadData = "LD",
-	getData = "GD",
-	loadTile = "LT",
-	reloadTile = "RT",
-	getGlyphs = "GG",
-	getImages = "GI",
-	setImages = "SI",
-	updateGlobalState = "UGS",
-	setLayers = "SL",
-	updateLayers = "UL",
-	syncRTLPluginState = "SRPS",
-	setReferrer = "SR",
-	removeSource = "RS",
-	removeMap = "RM",
-	importScript = "IS",
-	removeTile = "RMT",
-	abortTile = "AT",
-	removeDEMTile = "RDT",
-	getResource = "GR"
-}
-/**
- * This is basically a mapping between all the calls that are made to and from the workers.
- * The key is the event name, the first parameter is the event input type, and the last parameter is the output type.
- */
-export type RequestResponseMessageMap = {
-	[MessageType.loadDEMTile]: [
-		WorkerDEMTileParameters,
-		DEMData
-	];
-	[MessageType.getClusterExpansionZoom]: [
-		ClusterIDAndSource,
-		number
-	];
-	[MessageType.getClusterChildren]: [
-		ClusterIDAndSource,
-		Array<GeoJSON.Feature>
-	];
-	[MessageType.getClusterLeaves]: [
-		GetClusterLeavesParams,
-		Array<GeoJSON.Feature>
-	];
-	[MessageType.loadData]: [
-		LoadGeoJSONParameters,
-		GeoJSONWorkerSourceLoadDataResult
-	];
-	[MessageType.getData]: [
-		LoadGeoJSONParameters,
-		GeoJSON.GeoJSON
-	];
-	[MessageType.loadTile]: [
-		WorkerTileParameters,
-		WorkerTileResult
-	];
-	[MessageType.reloadTile]: [
-		WorkerTileParameters,
-		WorkerTileResult
-	];
-	[MessageType.getGlyphs]: [
-		GetGlyphsParameters,
-		GetGlyphsResponse
-	];
-	[MessageType.getImages]: [
-		GetImagesParameters,
-		GetImagesResponse
-	];
-	[MessageType.setImages]: [
-		string[],
-		void
-	];
-	[MessageType.updateGlobalState]: [
-		Record<string, any>,
-		void
-	];
-	[MessageType.setLayers]: [
-		Array<LayerSpecification>,
-		void
-	];
-	[MessageType.updateLayers]: [
-		UpdateLayersParameters,
-		void
-	];
-	[MessageType.syncRTLPluginState]: [
-		PluginState,
-		PluginState
-	];
-	[MessageType.setReferrer]: [
-		string,
-		void
-	];
-	[MessageType.removeSource]: [
-		RemoveSourceParams,
-		void
-	];
-	[MessageType.removeMap]: [
-		undefined,
-		void
-	];
-	[MessageType.importScript]: [
-		string,
-		void
-	];
-	[MessageType.removeTile]: [
-		TileParameters,
-		void
-	];
-	[MessageType.abortTile]: [
-		TileParameters,
-		void
-	];
-	[MessageType.removeDEMTile]: [
-		TileParameters,
-		void
-	];
-	[MessageType.getResource]: [
-		RequestParameters,
-		GetResourceResponse<any>
-	];
-};
-/**
- * The message to be sent by the actor
- */
-export type ActorMessage<T extends MessageType> = {
-	type: T;
-	data: RequestResponseMessageMap[T][0];
-	targetMapId?: string | number | null;
-	mustQueue?: boolean;
-	sourceMapId?: string | number | null;
-};
-interface ActorTarget {
-	addEventListener: typeof window.addEventListener;
-	removeEventListener: typeof window.removeEventListener;
-	postMessage: typeof window.postMessage;
-	terminate?: () => void;
-}
-type MessageData = {
-	id: string;
-	type: MessageType | "<cancel>" | "<response>";
-	origin: string;
-	data?: Serialized;
-	targetMapId?: string | number | null;
-	mustQueue?: boolean;
-	error?: Serialized | null;
-	sourceMapId: string | number | null;
-};
-type ResolveReject = {
-	resolve: (value?: RequestResponseMessageMap[MessageType][1]) => void;
-	reject: (reason?: Error) => void;
-};
-/**
- * This interface allowing to substitute only the sendAsync method of the Actor class.
- */
-export interface IActor {
-	sendAsync<T extends MessageType>(message: ActorMessage<T>, abortController?: AbortController): Promise<RequestResponseMessageMap[T][1]>;
-}
-type MessageHandler<T extends MessageType> = (mapId: string | number, params: RequestResponseMessageMap[T][0], abortController?: AbortController) => Promise<RequestResponseMessageMap[T][1]>;
-/**
- * An implementation of the [Actor design pattern](https://en.wikipedia.org/wiki/Actor_model)
- * that maintains the relationship between asynchronous tasks and the objects
- * that spin them off - in this case, tasks like parsing parts of styles,
- * owned by the styles
- */
-export declare class Actor implements IActor {
-	target: ActorTarget;
-	mapId: string | number | null;
-	resolveRejects: {
-		[x: string]: ResolveReject;
-	};
-	name: string;
-	tasks: {
-		[x: string]: MessageData;
-	};
-	taskQueue: Array<string>;
-	abortControllers: {
-		[x: number | string]: AbortController;
-	};
-	invoker: ThrottledInvoker;
-	globalScope: ActorTarget;
-	messageHandlers: {
-		[x in MessageType]?: MessageHandler<MessageType>;
-	};
-	subscription: Subscription;
-	/**
-	 * @param target - The target
-	 * @param mapId - A unique identifier for the Map instance using this Actor.
-	 */
-	constructor(target: ActorTarget, mapId?: string | number);
-	registerMessageHandler<T extends MessageType>(type: T, handler: MessageHandler<T>): void;
-	/**
-	 * Sends a message from a main-thread map to a Worker or from a Worker back to
-	 * a main-thread map instance.
-	 * @param message - the message to send
-	 * @param abortController - an optional AbortController to abort the request
-	 * @returns a promise that will be resolved with the response data
-	 */
-	sendAsync<T extends MessageType>(message: ActorMessage<T>, abortController?: AbortController): Promise<RequestResponseMessageMap[T][1]>;
-	receive(message: {
-		data: MessageData;
-	}): void;
-	process(): void;
-	processTask(id: string, task: MessageData): Promise<void>;
-	completeTask(id: string, err: Error, data?: RequestResponseMessageMap[MessageType][1]): void;
-	remove(): void;
-}
-/**
- * Given a destination object and optionally many source objects,
- * copy all properties from the source objects into the destination.
- * The last source object given overrides properties from previous
- * source objects.
- *
- * @param dest - destination object
- * @param sources - sources from which properties are pulled
- */
-export declare function extend<T extends {}, U>(dest: T, source: U): T & U;
-export declare function extend<T extends {}, U, V>(dest: T, source1: U, source2: V): T & U & V;
-export declare function extend<T extends {}, U, V, W>(dest: T, source1: U, source2: V, source3: W): T & U & V & W;
-export declare function extend(dest: object, ...sources: Array<any>): any;
-type KeysOfUnion<T> = T extends T ? keyof T : never;
-/**
- * Given an object and a number of properties as strings, return version
- * of that object with only those properties.
- *
- * @param src - the object
- * @param properties - an array of property names chosen
- * to appear on the resulting object.
- * @returns object with limited properties.
- * @example
- * ```ts
- * let foo = { name: 'Charlie', age: 10 };
- * let justName = pick(foo, ['name']); // justName = { name: 'Charlie' }
- * ```
- */
-export declare function pick<T extends object>(src: T, properties: Array<KeysOfUnion<T>>): Partial<T>;
-/**
- * Return a unique numeric id, starting at 1 and incrementing with
- * each call.
- *
- * @returns unique numeric id.
- */
-export declare function uniqueId(): number;
-export declare function warnOnce(message: string): void;
-export declare function isImageBitmap(image: any): image is ImageBitmap;
-/**
- * Allows to unsubscribe from events without the need to store the method reference.
- */
-export interface Subscription {
-	/**
-	 * Unsubscribes from the event.
-	 */
-	unsubscribe(): void;
-}
-/**
- * Makes optional keys required and add the the undefined type.
- *
- * ```
- * interface Test {
- *  foo: number;
- *  bar?: number;
- *  baz: number | undefined;
- * }
- *
- * Complete<Test> {
- *  foo: number;
- *  bar: number | undefined;
- *  baz: number | undefined;
- * }
- *
- * ```
- *
- * See https://medium.com/terria/typescript-transforming-optional-properties-to-required-properties-that-may-be-undefined-7482cb4e1585
- */
-export type Complete<T> = {
-	[P in keyof Required<T>]: Pick<T, P> extends Required<Pick<T, P>> ? T[P] : (T[P] | undefined);
-};
-/**
- * A helper to allow require of at least one property
- */
-export type RequireAtLeastOne<T> = {
-	[K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
-}[keyof T];
 /**
  * Adds the map's position to its page's location hash.
  * Passed as an option to the map object.
@@ -12425,6 +11600,1500 @@ declare class Map$1 extends Camera {
 	 */
 	setProjection(projection: ProjectionSpecification): this;
 }
+type SpriteOnDemandStyleImage = {
+	width: number;
+	height: number;
+	x: number;
+	y: number;
+	context: CanvasRenderingContext2D;
+};
+/**
+ * The style's image metadata
+ */
+export type StyleImageData = {
+	data: RGBAImage;
+	version?: number;
+	hasRenderCallback?: boolean;
+	userImage?: StyleImageInterface;
+	spriteData?: SpriteOnDemandStyleImage;
+};
+/**
+ * Enumeration of possible values for StyleImageMetadata.textFitWidth and textFitHeight.
+ */
+export declare const enum TextFit {
+	/**
+	 * The image will be resized on the specified axis to tightly fit the content rectangle to target text.
+	 * This is the same as not being defined.
+	 */
+	stretchOrShrink = "stretchOrShrink",
+	/**
+	 * The image will be resized on the specified axis to fit the content rectangle to the target text, but will not
+	 * fall below the aspect ratio of the original content rectangle if the other axis is set to proportional.
+	 */
+	stretchOnly = "stretchOnly",
+	/**
+	 * The image will be resized on the specified axis to fit the content rectangle to the target text and
+	 * will resize the other axis to maintain the aspect ratio of the content rectangle.
+	 */
+	proportional = "proportional"
+}
+/**
+ * The style's image metadata
+ */
+export type StyleImageMetadata = {
+	/**
+	 * The ratio of pixels in the image to physical pixels on the screen
+	 */
+	pixelRatio: number;
+	/**
+	 * Whether the image should be interpreted as an SDF image
+	 */
+	sdf: boolean;
+	/**
+	 * If `icon-text-fit` is used in a layer with this image, this option defines the part(s) of the image that can be stretched horizontally.
+	 */
+	stretchX?: Array<[
+		number,
+		number
+	]>;
+	/**
+	 * If `icon-text-fit` is used in a layer with this image, this option defines the part(s) of the image that can be stretched vertically.
+	 */
+	stretchY?: Array<[
+		number,
+		number
+	]>;
+	/**
+	 * If `icon-text-fit` is used in a layer with this image, this option defines the part of the image that can be covered by the content in `text-field`.
+	 */
+	content?: [
+		number,
+		number,
+		number,
+		number
+	];
+	/**
+	 * If `icon-text-fit` is used in a layer with this image, this option defines constraints on the horizontal scaling of the image.
+	 */
+	textFitWidth?: TextFit;
+	/**
+	 * If `icon-text-fit` is used in a layer with this image, this option defines constraints on the vertical scaling of the image.
+	 */
+	textFitHeight?: TextFit;
+};
+/**
+ * the style's image, including data and metedata
+ */
+export type StyleImage = StyleImageData & StyleImageMetadata;
+/**
+ * Interface for dynamically generated style images. This is a specification for
+ * implementers to model: it is not an exported method or class.
+ *
+ * Images implementing this interface can be redrawn for every frame. They can be used to animate
+ * icons and patterns or make them respond to user input. Style images can implement a
+ * {@link StyleImageInterface.render} method. The method is called every frame and
+ * can be used to update the image.
+ *
+ * @see [Add an animated icon to the map.](https://maplibre.org/maplibre-gl-js/docs/examples/add-image-animated/)
+ *
+ * @example
+ * ```ts
+ * let flashingSquare = {
+ *     width: 64,
+ *     height: 64,
+ *     data: new Uint8Array(64 * 64 * 4),
+ *
+ *     onAdd: function(map) {
+ *         this.map = map;
+ *     },
+ *
+ *     render: function() {
+ *         // keep repainting while the icon is on the map
+ *         this.map.triggerRepaint();
+ *
+ *         // alternate between black and white based on the time
+ *         let value = Math.round(Date.now() / 1000) % 2 === 0  ? 255 : 0;
+ *
+ *         // check if image needs to be changed
+ *         if (value !== this.previousValue) {
+ *             this.previousValue = value;
+ *
+ *             let bytesPerPixel = 4;
+ *             for (let x = 0; x < this.width; x++) {
+ *                 for (let y = 0; y < this.height; y++) {
+ *                     let offset = (y * this.width + x) * bytesPerPixel;
+ *                     this.data[offset + 0] = value;
+ *                     this.data[offset + 1] = value;
+ *                     this.data[offset + 2] = value;
+ *                     this.data[offset + 3] = 255;
+ *                 }
+ *             }
+ *
+ *             // return true to indicate that the image changed
+ *             return true;
+ *         }
+ *     }
+ *  }
+ *
+ *  map.addImage('flashing_square', flashingSquare);
+ * ```
+ */
+export interface StyleImageInterface {
+	width: number;
+	height: number;
+	data: Uint8Array | Uint8ClampedArray;
+	/**
+	 * This method is called once before every frame where the icon will be used.
+	 * The method can optionally update the image's `data` member with a new image.
+	 *
+	 * If the method updates the image it must return `true` to commit the change.
+	 * If the method returns `false` or nothing the image is assumed to not have changed.
+	 *
+	 * If updates are infrequent it maybe easier to use {@link Map.updateImage} to update
+	 * the image instead of implementing this method.
+	 *
+	 * @returns `true` if this method updated the image. `false` if the image was not changed.
+	 */
+	render?: () => boolean;
+	/**
+	 * Optional method called when the layer has been added to the Map with {@link Map.addImage}.
+	 *
+	 * @param map - The Map this custom layer was just added to.
+	 */
+	onAdd?: (map: Map$1, id: string) => void;
+	/**
+	 * Optional method called when the icon is removed from the map with {@link Map.removeImage}.
+	 * This gives the image a chance to clean up resources and event listeners.
+	 */
+	onRemove?: () => void;
+}
+declare class ImagePosition {
+	paddedRect: Rect;
+	pixelRatio: number;
+	version: number;
+	stretchY: Array<[
+		number,
+		number
+	]>;
+	stretchX: Array<[
+		number,
+		number
+	]>;
+	content: [
+		number,
+		number,
+		number,
+		number
+	];
+	textFitWidth: TextFit;
+	textFitHeight: TextFit;
+	constructor(paddedRect: Rect, { pixelRatio, version, stretchX, stretchY, content, textFitWidth, textFitHeight }: StyleImage);
+	get tl(): [
+		number,
+		number
+	];
+	get br(): [
+		number,
+		number
+	];
+	get tlbr(): Array<number>;
+	get displaySize(): [
+		number,
+		number
+	];
+}
+/**
+ * A class holding all the images
+ */
+export declare class ImageAtlas {
+	image: RGBAImage;
+	iconPositions: {
+		[_: string]: ImagePosition;
+	};
+	patternPositions: {
+		[_: string]: ImagePosition;
+	};
+	haveRenderCallbacks: Array<string>;
+	uploaded: boolean;
+	constructor(icons: GetImagesResponse, patterns: GetImagesResponse);
+	addImages(images: {
+		[_: string]: StyleImage;
+	}, positions: {
+		[_: string]: ImagePosition;
+	}, bins: Array<Rect>): void;
+	patchUpdatedImages(imageManager: ImageManager, texture: Texture): void;
+	patchUpdatedImage(position: ImagePosition, image: StyleImage, texture: Texture): void;
+}
+type TileParameters = {
+	type: string;
+	source: string;
+	uid: string | number;
+};
+type WorkerTileParameters = TileParameters & {
+	tileID: OverscaledTileID;
+	request?: RequestParameters;
+	zoom: number;
+	maxZoom?: number;
+	tileSize: number;
+	promoteId: PromoteIdSpecification;
+	pixelRatio: number;
+	showCollisionBoxes: boolean;
+	collectResourceTiming?: boolean;
+	returnDependencies?: boolean;
+	subdivisionGranularity: SubdivisionGranularitySetting;
+};
+type WorkerDEMTileParameters = TileParameters & {
+	rawImageData: RGBAImage | ImageBitmap | ImageData;
+	encoding: DEMEncoding;
+	redFactor: number;
+	greenFactor: number;
+	blueFactor: number;
+	baseShift: number;
+};
+/**
+ * The worker tile's result type
+ */
+export type WorkerTileResult = ExpiryData & {
+	buckets: Array<Bucket>;
+	imageAtlas: ImageAtlas;
+	glyphAtlasImage: AlphaImage;
+	featureIndex: FeatureIndex;
+	collisionBoxArray: CollisionBoxArray;
+	rawTileData?: ArrayBuffer;
+	resourceTiming?: Array<PerformanceResourceTiming>;
+	glyphMap?: {
+		[_: string]: {
+			[_: number]: StyleGlyph;
+		};
+	} | null;
+	iconMap?: {
+		[_: string]: StyleImage;
+	} | null;
+	glyphPositions?: GlyphPositions | null;
+};
+/**
+ * A way to identify a feature, either by string or by number
+ */
+export type GeoJSONFeatureId = number | string;
+/**
+ * The geojson source diff object
+ */
+export type GeoJSONSourceDiff = {
+	/**
+	 * When set to `true` it will remove all features
+	 */
+	removeAll?: boolean;
+	/**
+	 * An array of features IDs to remove
+	 */
+	remove?: Array<GeoJSONFeatureId>;
+	/**
+	 * An array of features to add
+	 */
+	add?: Array<GeoJSON.Feature>;
+	/**
+	 * An array of update objects
+	 */
+	update?: Array<GeoJSONFeatureDiff>;
+};
+/**
+ * A geojson feature diff object
+ */
+export type GeoJSONFeatureDiff = {
+	/**
+	 * The feature ID
+	 */
+	id: GeoJSONFeatureId;
+	/**
+	 * If it's a new geometry, place it here
+	 */
+	newGeometry?: GeoJSON.Geometry;
+	/**
+	 * Setting to `true` will remove all preperties
+	 */
+	removeAllProperties?: boolean;
+	/**
+	 * The properties keys to remove
+	 */
+	removeProperties?: Array<string>;
+	/**
+	 * The properties to add or update along side their values
+	 */
+	addOrUpdateProperties?: Array<{
+		key: string;
+		value: any;
+	}>;
+};
+type GeoJSONWorkerOptions = {
+	source?: string;
+	cluster?: boolean;
+	geojsonVtOptions?: GeoJSONVTOptions;
+	superclusterOptions?: SuperclusterOptions<any, any>;
+	clusterProperties?: ClusterProperties;
+	filter?: Array<unknown>;
+	promoteId?: string;
+	collectResourceTiming?: boolean;
+};
+type LoadGeoJSONParameters = GeoJSONWorkerOptions & {
+	type: "geojson";
+	request?: RequestParameters;
+	/**
+	 * Literal GeoJSON data. Must be provided if `request.url` is not.
+	 */
+	data?: string;
+	dataDiff?: GeoJSONSourceDiff;
+};
+type RTLPluginStatus = "unavailable" | "deferred" | "requested" | "loading" | "loaded" | "error";
+type PluginState = {
+	pluginStatus: RTLPluginStatus;
+	pluginURL: string;
+};
+type ClusterIDAndSource = {
+	type: "geojson";
+	clusterId: number;
+	source: string;
+};
+type GetClusterLeavesParams = ClusterIDAndSource & {
+	limit: number;
+	offset: number;
+};
+type GeoJSONWorkerSourceLoadDataResult = {
+	data?: GeoJSON.GeoJSON;
+	resourceTiming?: {
+		[_: string]: Array<PerformanceResourceTiming>;
+	};
+	abandoned?: boolean;
+};
+type RemoveSourceParams = {
+	source: string;
+	type: string;
+};
+type UpdateLayersParameters = {
+	layers: Array<LayerSpecification>;
+	removedIds: Array<string>;
+};
+type GetImagesParameters = {
+	icons: Array<string>;
+	source: string;
+	tileID: OverscaledTileID;
+	type: string;
+};
+type GetGlyphsParameters = {
+	type: string;
+	stacks: {
+		[_: string]: Array<number>;
+	};
+	source: string;
+	tileID: OverscaledTileID;
+};
+type GetGlyphsResponse = {
+	[stack: string]: {
+		[id: number]: StyleGlyph;
+	};
+};
+type GetImagesResponse = {
+	[_: string]: StyleImage;
+};
+/**
+ * All the possible message types that can be sent to and from the worker
+ */
+export declare const enum MessageType {
+	loadDEMTile = "LDT",
+	getClusterExpansionZoom = "GCEZ",
+	getClusterChildren = "GCC",
+	getClusterLeaves = "GCL",
+	loadData = "LD",
+	getData = "GD",
+	loadTile = "LT",
+	reloadTile = "RT",
+	getGlyphs = "GG",
+	getImages = "GI",
+	setImages = "SI",
+	updateGlobalState = "UGS",
+	setLayers = "SL",
+	updateLayers = "UL",
+	syncRTLPluginState = "SRPS",
+	setReferrer = "SR",
+	removeSource = "RS",
+	removeMap = "RM",
+	importScript = "IS",
+	removeTile = "RMT",
+	abortTile = "AT",
+	removeDEMTile = "RDT",
+	getResource = "GR"
+}
+/**
+ * This is basically a mapping between all the calls that are made to and from the workers.
+ * The key is the event name, the first parameter is the event input type, and the last parameter is the output type.
+ */
+export type RequestResponseMessageMap = {
+	[MessageType.loadDEMTile]: [
+		WorkerDEMTileParameters,
+		DEMData
+	];
+	[MessageType.getClusterExpansionZoom]: [
+		ClusterIDAndSource,
+		number
+	];
+	[MessageType.getClusterChildren]: [
+		ClusterIDAndSource,
+		Array<GeoJSON.Feature>
+	];
+	[MessageType.getClusterLeaves]: [
+		GetClusterLeavesParams,
+		Array<GeoJSON.Feature>
+	];
+	[MessageType.loadData]: [
+		LoadGeoJSONParameters,
+		GeoJSONWorkerSourceLoadDataResult
+	];
+	[MessageType.getData]: [
+		LoadGeoJSONParameters,
+		GeoJSON.GeoJSON
+	];
+	[MessageType.loadTile]: [
+		WorkerTileParameters,
+		WorkerTileResult
+	];
+	[MessageType.reloadTile]: [
+		WorkerTileParameters,
+		WorkerTileResult
+	];
+	[MessageType.getGlyphs]: [
+		GetGlyphsParameters,
+		GetGlyphsResponse
+	];
+	[MessageType.getImages]: [
+		GetImagesParameters,
+		GetImagesResponse
+	];
+	[MessageType.setImages]: [
+		string[],
+		void
+	];
+	[MessageType.updateGlobalState]: [
+		Record<string, any>,
+		void
+	];
+	[MessageType.setLayers]: [
+		Array<LayerSpecification>,
+		void
+	];
+	[MessageType.updateLayers]: [
+		UpdateLayersParameters,
+		void
+	];
+	[MessageType.syncRTLPluginState]: [
+		PluginState,
+		PluginState
+	];
+	[MessageType.setReferrer]: [
+		string,
+		void
+	];
+	[MessageType.removeSource]: [
+		RemoveSourceParams,
+		void
+	];
+	[MessageType.removeMap]: [
+		undefined,
+		void
+	];
+	[MessageType.importScript]: [
+		string,
+		void
+	];
+	[MessageType.removeTile]: [
+		TileParameters,
+		void
+	];
+	[MessageType.abortTile]: [
+		TileParameters,
+		void
+	];
+	[MessageType.removeDEMTile]: [
+		TileParameters,
+		void
+	];
+	[MessageType.getResource]: [
+		RequestParameters,
+		GetResourceResponse<any>
+	];
+};
+/**
+ * The message to be sent by the actor
+ */
+export type ActorMessage<T extends MessageType> = {
+	type: T;
+	data: RequestResponseMessageMap[T][0];
+	targetMapId?: string | number | null;
+	mustQueue?: boolean;
+	sourceMapId?: string | number | null;
+};
+interface ActorTarget {
+	addEventListener: typeof window.addEventListener;
+	removeEventListener: typeof window.removeEventListener;
+	postMessage: typeof window.postMessage;
+	terminate?: () => void;
+}
+type MessageData = {
+	id: string;
+	type: MessageType | "<cancel>" | "<response>";
+	origin: string;
+	data?: Serialized;
+	targetMapId?: string | number | null;
+	mustQueue?: boolean;
+	error?: Serialized | null;
+	sourceMapId: string | number | null;
+};
+type ResolveReject = {
+	resolve: (value?: RequestResponseMessageMap[MessageType][1]) => void;
+	reject: (reason?: Error) => void;
+};
+/**
+ * This interface allowing to substitute only the sendAsync method of the Actor class.
+ */
+export interface IActor {
+	sendAsync<T extends MessageType>(message: ActorMessage<T>, abortController?: AbortController): Promise<RequestResponseMessageMap[T][1]>;
+}
+type MessageHandler<T extends MessageType> = (mapId: string | number, params: RequestResponseMessageMap[T][0], abortController?: AbortController) => Promise<RequestResponseMessageMap[T][1]>;
+/**
+ * An implementation of the [Actor design pattern](https://en.wikipedia.org/wiki/Actor_model)
+ * that maintains the relationship between asynchronous tasks and the objects
+ * that spin them off - in this case, tasks like parsing parts of styles,
+ * owned by the styles
+ */
+export declare class Actor implements IActor {
+	target: ActorTarget;
+	mapId: string | number | null;
+	resolveRejects: {
+		[x: string]: ResolveReject;
+	};
+	name: string;
+	tasks: {
+		[x: string]: MessageData;
+	};
+	taskQueue: Array<string>;
+	abortControllers: {
+		[x: number | string]: AbortController;
+	};
+	invoker: ThrottledInvoker;
+	globalScope: ActorTarget;
+	messageHandlers: {
+		[x in MessageType]?: MessageHandler<MessageType>;
+	};
+	subscription: Subscription;
+	/**
+	 * @param target - The target
+	 * @param mapId - A unique identifier for the Map instance using this Actor.
+	 */
+	constructor(target: ActorTarget, mapId?: string | number);
+	registerMessageHandler<T extends MessageType>(type: T, handler: MessageHandler<T>): void;
+	/**
+	 * Sends a message from a main-thread map to a Worker or from a Worker back to
+	 * a main-thread map instance.
+	 * @param message - the message to send
+	 * @param abortController - an optional AbortController to abort the request
+	 * @returns a promise that will be resolved with the response data
+	 */
+	sendAsync<T extends MessageType>(message: ActorMessage<T>, abortController?: AbortController): Promise<RequestResponseMessageMap[T][1]>;
+	receive(message: {
+		data: MessageData;
+	}): void;
+	process(): void;
+	processTask(id: string, task: MessageData): Promise<void>;
+	completeTask(id: string, err: Error, data?: RequestResponseMessageMap[MessageType][1]): void;
+	remove(): void;
+}
+/**
+ * Given a destination object and optionally many source objects,
+ * copy all properties from the source objects into the destination.
+ * The last source object given overrides properties from previous
+ * source objects.
+ *
+ * @param dest - destination object
+ * @param sources - sources from which properties are pulled
+ */
+export declare function extend<T extends {}, U>(dest: T, source: U): T & U;
+export declare function extend<T extends {}, U, V>(dest: T, source1: U, source2: V): T & U & V;
+export declare function extend<T extends {}, U, V, W>(dest: T, source1: U, source2: V, source3: W): T & U & V & W;
+export declare function extend(dest: object, ...sources: Array<any>): any;
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+/**
+ * Given an object and a number of properties as strings, return version
+ * of that object with only those properties.
+ *
+ * @param src - the object
+ * @param properties - an array of property names chosen
+ * to appear on the resulting object.
+ * @returns object with limited properties.
+ * @example
+ * ```ts
+ * let foo = { name: 'Charlie', age: 10 };
+ * let justName = pick(foo, ['name']); // justName = { name: 'Charlie' }
+ * ```
+ */
+export declare function pick<T extends object>(src: T, properties: Array<KeysOfUnion<T>>): Partial<T>;
+/**
+ * Return a unique numeric id, starting at 1 and incrementing with
+ * each call.
+ *
+ * @returns unique numeric id.
+ */
+export declare function uniqueId(): number;
+export declare function warnOnce(message: string): void;
+export declare function isImageBitmap(image: any): image is ImageBitmap;
+/**
+ * Allows to unsubscribe from events without the need to store the method reference.
+ */
+export interface Subscription {
+	/**
+	 * Unsubscribes from the event.
+	 */
+	unsubscribe(): void;
+}
+/**
+ * Makes optional keys required and add the the undefined type.
+ *
+ * ```
+ * interface Test {
+ *  foo: number;
+ *  bar?: number;
+ *  baz: number | undefined;
+ * }
+ *
+ * Complete<Test> {
+ *  foo: number;
+ *  bar: number | undefined;
+ *  baz: number | undefined;
+ * }
+ *
+ * ```
+ *
+ * See https://medium.com/terria/typescript-transforming-optional-properties-to-required-properties-that-may-be-undefined-7482cb4e1585
+ */
+export type Complete<T> = {
+	[P in keyof Required<T>]: Pick<T, P> extends Required<Pick<T, P>> ? T[P] : (T[P] | undefined);
+};
+/**
+ * A helper to allow require of at least one property
+ */
+export type RequireAtLeastOne<T> = {
+	[K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
+/**
+ * A listener method used as a callback to events
+ */
+export type Listener = (a: any) => any;
+type Listeners = {
+	[_: string]: Array<Listener>;
+};
+/**
+ * The event class
+ */
+declare class Event$1 {
+	readonly type: string;
+	constructor(type: string, data?: any);
+}
+interface ErrorLike {
+	message: string;
+}
+/**
+ * An error event
+ */
+declare class ErrorEvent$1 extends Event$1 {
+	error: ErrorLike;
+	constructor(error: ErrorLike, data?: any);
+}
+/**
+ * Methods mixed in to other classes for event capabilities.
+ *
+ * @group Event Related
+ */
+export declare class Evented {
+	_listeners: Listeners;
+	_oneTimeListeners: Listeners;
+	_eventedParent: Evented;
+	_eventedParentData: any | (() => any);
+	/**
+	 * Adds a listener to a specified event type.
+	 *
+	 * @param type - The event type to add a listen for.
+	 * @param listener - The function to be called when the event is fired.
+	 * The listener function is called with the data object passed to `fire`,
+	 * extended with `target` and `type` properties.
+	 */
+	on(type: string, listener: Listener): Subscription;
+	/**
+	 * Removes a previously registered event listener.
+	 *
+	 * @param type - The event type to remove listeners for.
+	 * @param listener - The listener function to remove.
+	 */
+	off(type: string, listener: Listener): this;
+	/**
+	 * Adds a listener that will be called only once to a specified event type.
+	 *
+	 * The listener will be called first time the event fires after the listener is registered.
+	 *
+	 * @param type - The event type to listen for.
+	 * @param listener - The function to be called when the event is fired the first time.
+	 * @returns `this` or a promise if a listener is not provided
+	 */
+	once(type: string, listener?: Listener): this | Promise<any>;
+	fire(event: Event$1 | string, properties?: any): this;
+	/**
+	 * Returns a true if this instance of Evented or any forwardeed instances of Evented have a listener for the specified type.
+	 *
+	 * @param type - The event type
+	 * @returns `true` if there is at least one registered listener for specified event type, `false` otherwise
+	 */
+	listens(type: string): boolean;
+	/**
+	 * Bubble all events fired by this instance of Evented to this parent instance of Evented.
+	 */
+	setEventedParent(parent?: Evented | null, data?: any | (() => any)): this;
+}
+type QueryIntersectsFeatureParams = {
+	/**
+	 * The geometry to check intersection with.
+	 * This geometry is in tile coordinates.
+	 */
+	queryGeometry: Array<Point>;
+	/**
+	 * The feature to allow expression evaluation.
+	 */
+	feature: VectorTileFeature;
+	/**
+	 * The feature state to allow expression evaluation.
+	 */
+	featureState: FeatureState;
+	/**
+	 * The geometry of the feature.
+	 * This geometry is in tile coordinates.
+	 */
+	geometry: Array<Array<Point>>;
+	/**
+	 * The current zoom level.
+	 */
+	zoom: number;
+	/**
+	 * The transform to convert from tile coordinates to pixels.
+	 */
+	transform: IReadonlyTransform;
+	/**
+	 * The number of pixels per tile unit.
+	 */
+	pixelsToTileUnits: number;
+	/**
+	 * The matrix to convert from tile coordinates to pixel coordinates.
+	 * The pixel coordinates are relative to the center of the screen.
+	 */
+	pixelPosMatrix: mat4;
+	/**
+	 * The unwrapped tile ID for the tile being queried.
+	 */
+	unwrappedTileID: UnwrappedTileID;
+	/**
+	 * A function to get the elevation of a point in tile coordinates.
+	 */
+	getElevation: undefined | ((x: number, y: number) => number);
+};
+/**
+ * A base class for style layers
+ */
+export declare abstract class StyleLayer extends Evented {
+	id: string;
+	metadata: unknown;
+	type: LayerSpecification["type"] | CustomLayerInterface["type"];
+	source: string;
+	sourceLayer: string;
+	minzoom: number;
+	maxzoom: number;
+	filter: FilterSpecification | void;
+	visibility: "visible" | "none" | void;
+	_crossfadeParameters: CrossfadeParameters;
+	_unevaluatedLayout: Layout<any>;
+	readonly layout: unknown;
+	_transitionablePaint: Transitionable<any>;
+	_transitioningPaint: Transitioning<any>;
+	readonly paint: unknown;
+	_featureFilter: FeatureFilter;
+	readonly onAdd: ((map: Map$1) => void);
+	readonly onRemove: ((map: Map$1) => void);
+	queryRadius?(bucket: Bucket): number;
+	queryIntersectsFeature?(params: QueryIntersectsFeatureParams): boolean | number;
+	createBucket?(parameters: BucketParameters<any>): Bucket;
+	private _globalState;
+	constructor(layer: LayerSpecification | CustomLayerInterface, properties: Readonly<{
+		layout?: Properties<any>;
+		paint?: Properties<any>;
+	}>, globalState: Record<string, any>);
+	setFilter(filter: FilterSpecification | void): void;
+	getCrossfadeParameters(): CrossfadeParameters;
+	getLayoutProperty(name: string): any;
+	/**
+	 * Get list of global state references that are used within layout or filter properties.
+	 * This is used to determine if layer source need to be reloaded when global state property changes.
+	 *
+	 */
+	getLayoutAffectingGlobalStateRefs(): Set<string>;
+	/**
+	 * Get list of global state references that are used within paint properties.
+	 * This is used to determine if layer needs to be repainted when global state property changes.
+	 *
+	 */
+	getPaintAffectingGlobalStateRefs(): globalThis.Map<string, Array<{
+		name: string;
+		value: any;
+	}>>;
+	setLayoutProperty(name: string, value: any, options?: StyleSetterOptions): void;
+	getPaintProperty(name: string): unknown;
+	setPaintProperty(name: string, value: unknown, options?: StyleSetterOptions): boolean;
+	_handleSpecialPaintPropertyUpdate(_: string): void;
+	_handleOverridablePaintPropertyUpdate<T, R>(name: string, oldValue: PropertyValue<T, R>, newValue: PropertyValue<T, R>): boolean;
+	isHidden(zoom: number): boolean;
+	updateTransitions(parameters: TransitionParameters): void;
+	hasTransition(): boolean;
+	recalculate(parameters: EvaluationParameters, availableImages: Array<string>): void;
+	serialize(): LayerSpecification;
+	_validate(validate: Function, key: string, name: string, value: unknown, options?: StyleSetterOptions): boolean;
+	is3D(): boolean;
+	isTileClipped(): boolean;
+	hasOffscreenPass(): boolean;
+	resize(): void;
+	isStateDependent(): boolean;
+}
+type GeoJSONSourceOptions = GeoJSONSourceSpecification & {
+	workerOptions?: GeoJSONWorkerOptions;
+	collectResourceTiming?: boolean;
+	data: GeoJSON.GeoJSON | string;
+};
+type GeoJSONSourceInternalOptions = {
+	data?: GeoJSON.GeoJSON | string | undefined;
+	cluster?: boolean;
+	clusterMaxZoom?: number;
+	clusterRadius?: number;
+	clusterMinPoints?: number;
+	generateId?: boolean;
+};
+/**
+ * The cluster options to set
+ */
+export type SetClusterOptions = {
+	/**
+	 * Whether or not to cluster
+	 */
+	cluster?: boolean;
+	/**
+	 * The cluster's max zoom.
+	 * Non-integer values are rounded to the closest integer due to supercluster integer value requirements.
+	 */
+	clusterMaxZoom?: number;
+	/**
+	 * The cluster's radius
+	 */
+	clusterRadius?: number;
+};
+/**
+ * A source containing GeoJSON.
+ * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/#sources-geojson) for detailed documentation of options.)
+ *
+ * @group Sources
+ *
+ * @example
+ * ```ts
+ * map.addSource('some id', {
+ *     type: 'geojson',
+ *     data: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_ports.geojson'
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * map.addSource('some id', {
+ *    type: 'geojson',
+ *    data: {
+ *        "type": "FeatureCollection",
+ *        "features": [{
+ *            "type": "Feature",
+ *            "properties": {},
+ *            "geometry": {
+ *                "type": "Point",
+ *                "coordinates": [
+ *                    -76.53063297271729,
+ *                    39.18174077994108
+ *                ]
+ *            }
+ *        }]
+ *    }
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * map.getSource('some id').setData({
+ *   "type": "FeatureCollection",
+ *   "features": [{
+ *       "type": "Feature",
+ *       "properties": { "name": "Null Island" },
+ *       "geometry": {
+ *           "type": "Point",
+ *           "coordinates": [ 0, 0 ]
+ *       }
+ *   }]
+ * });
+ * ```
+ * @see [Draw GeoJSON points](https://maplibre.org/maplibre-gl-js/docs/examples/draw-geojson-points/)
+ * @see [Add a GeoJSON line](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-line/)
+ * @see [Create a heatmap from points](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer/)
+ * @see [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/create-and-style-clusters/)
+ */
+export declare class GeoJSONSource extends Evented implements Source {
+	type: "geojson";
+	id: string;
+	minzoom: number;
+	maxzoom: number;
+	tileSize: number;
+	attribution: string;
+	promoteId: PromoteIdSpecification;
+	isTileClipped: boolean;
+	reparseOverscaled: boolean;
+	_data: GeoJSON.GeoJSON | string | undefined;
+	_options: GeoJSONSourceInternalOptions;
+	workerOptions: GeoJSONWorkerOptions;
+	map: Map$1;
+	actor: Actor;
+	_isUpdatingWorker: boolean;
+	_pendingWorkerUpdate: {
+		data?: GeoJSON.GeoJSON | string;
+		diff?: GeoJSONSourceDiff;
+	};
+	_collectResourceTiming: boolean;
+	_removed: boolean;
+	/** @internal */
+	constructor(id: string, options: GeoJSONSourceOptions, dispatcher: Dispatcher, eventedParent: Evented);
+	private _pixelsToTileUnits;
+	private _getClusterMaxZoom;
+	load(): Promise<void>;
+	onAdd(map: Map$1): void;
+	/**
+	 * Sets the GeoJSON data and re-renders the map.
+	 *
+	 * @param data - A GeoJSON data object or a URL to one. The latter is preferable in the case of large GeoJSON files.
+	 */
+	setData(data: GeoJSON.GeoJSON | string): this;
+	/**
+	 * Updates the source's GeoJSON, and re-renders the map.
+	 *
+	 * For sources with lots of features, this method can be used to make updates more quickly.
+	 *
+	 * This approach requires unique IDs for every feature in the source. The IDs can either be specified on the feature,
+	 * or by using the promoteId option to specify which property should be used as the ID.
+	 *
+	 * It is an error to call updateData on a source that did not have unique IDs for each of its features already.
+	 *
+	 * Updates are applied on a best-effort basis, updating an ID that does not exist will not result in an error.
+	 *
+	 * @param diff - The changes that need to be applied.
+	 */
+	updateData(diff: GeoJSONSourceDiff): this;
+	/**
+	 * Allows to get the source's actual GeoJSON data.
+	 *
+	 * @returns a promise which resolves to the source's actual GeoJSON data
+	 */
+	getData(): Promise<GeoJSON.GeoJSON>;
+	private getCoordinatesFromGeometry;
+	/**
+	 * Allows getting the source's boundaries.
+	 * If there's a problem with the source's data, it will return an empty {@link LngLatBounds}.
+	 * @returns a promise which resolves to the source's boundaries
+	 */
+	getBounds(): Promise<LngLatBounds>;
+	/**
+	 * To disable/enable clustering on the source options
+	 * @param options - The options to set
+	 * @example
+	 * ```ts
+	 * map.getSource('some id').setClusterOptions({cluster: false});
+	 * map.getSource('some id').setClusterOptions({cluster: false, clusterRadius: 50, clusterMaxZoom: 14});
+	 * ```
+	 */
+	setClusterOptions(options: SetClusterOptions): this;
+	/**
+	 * For clustered sources, fetches the zoom at which the given cluster expands.
+	 *
+	 * @param clusterId - The value of the cluster's `cluster_id` property.
+	 * @returns a promise that is resolved with the zoom number
+	 */
+	getClusterExpansionZoom(clusterId: number): Promise<number>;
+	/**
+	 * For clustered sources, fetches the children of the given cluster on the next zoom level (as an array of GeoJSON features).
+	 *
+	 * @param clusterId - The value of the cluster's `cluster_id` property.
+	 * @returns a promise that is resolved when the features are retrieved
+	 */
+	getClusterChildren(clusterId: number): Promise<Array<GeoJSON.Feature>>;
+	/**
+	 * For clustered sources, fetches the original points that belong to the cluster (as an array of GeoJSON features).
+	 *
+	 * @param clusterId - The value of the cluster's `cluster_id` property.
+	 * @param limit - The maximum number of features to return.
+	 * @param offset - The number of features to skip (e.g. for pagination).
+	 * @returns a promise that is resolved when the features are retrieved
+	 * @example
+	 * Retrieve cluster leaves on click
+	 * ```ts
+	 * map.on('click', 'clusters', (e) => {
+	 *   let features = map.queryRenderedFeatures(e.point, {
+	 *     layers: ['clusters']
+	 *   });
+	 *
+	 *   let clusterId = features[0].properties.cluster_id;
+	 *   let pointCount = features[0].properties.point_count;
+	 *   let clusterSource = map.getSource('clusters');
+	 *
+	 *   const features = await clusterSource.getClusterLeaves(clusterId, pointCount);
+	 *   // Print cluster leaves in the console
+	 *   console.log('Cluster leaves:', features);
+	 * });
+	 * ```
+	 */
+	getClusterLeaves(clusterId: number, limit: number, offset: number): Promise<Array<GeoJSON.Feature>>;
+	/**
+	 * Responsible for invoking WorkerSource's geojson.loadData target, which
+	 * handles loading the geojson data and preparing to serve it up as tiles,
+	 * using geojson-vt or supercluster as appropriate.
+	 */
+	_updateWorkerData(): Promise<void>;
+	loaded(): boolean;
+	loadTile(tile: Tile): Promise<void>;
+	abortTile(tile: Tile): Promise<void>;
+	unloadTile(tile: Tile): Promise<void>;
+	onRemove(): void;
+	serialize(): GeoJSONSourceSpecification;
+	hasTransition(): boolean;
+}
+declare class TileBounds {
+	bounds: LngLatBounds;
+	minzoom: number;
+	maxzoom: number;
+	constructor(bounds: [
+		number,
+		number,
+		number,
+		number
+	], minzoom?: number | null, maxzoom?: number | null);
+	validateBounds(bounds: [
+		number,
+		number,
+		number,
+		number
+	]): LngLatBoundsLike;
+	contains(tileID: CanonicalTileID): boolean;
+}
+/**
+ * A source containing raster tiles (See the [raster source documentation](https://maplibre.org/maplibre-style-spec/sources/#raster) for detailed documentation of options.)
+ *
+ * @group Sources
+ *
+ * \> ℹ️ **Note:** The default `tileSize` is `512`. If your tile provider (such as OpenStreetMap or Stadia Maps) serves 256px tiles, set `tileSize: 256` manually to avoid blurry rendering due to upscaling.
+ *
+ * @example
+ * ```ts
+ * map.addSource('raster-source', {
+ *     'type': 'raster',
+ *     'tiles': ['https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg'],
+ *     'tileSize': 256, // Set this to match tile server output to avoid blurry rendering
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * map.addSource('wms-test-source', {
+ *      'type': 'raster',
+ * // use the tiles option to specify a WMS tile source URL
+ *      'tiles': [
+ *          'https://img.nj.gov/imagerywms/Natural2015?bbox={bbox-epsg-3857}&format=image/png&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&transparent=true&width=256&height=256&layers=Natural2015'
+ *      ],
+ *      'tileSize': 256 // Important for WMS if tiles are 256px
+ * });
+ * ```
+ * @see [Add a raster tile source](https://maplibre.org/maplibre-gl-js/docs/examples/map-tiles/)
+ * @see [Add a WMS source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-wms-source/)
+ * @see [Display a satellite map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-satellite-map/)
+ */
+export declare class RasterTileSource extends Evented implements Source {
+	type: "raster" | "raster-dem";
+	id: string;
+	minzoom: number;
+	maxzoom: number;
+	url: string;
+	scheme: string;
+	tileSize: number;
+	bounds: [
+		number,
+		number,
+		number,
+		number
+	];
+	tileBounds: TileBounds;
+	roundZoom: boolean;
+	dispatcher: Dispatcher;
+	map: Map$1;
+	tiles: Array<string>;
+	_loaded: boolean;
+	_options: RasterSourceSpecification | RasterDEMSourceSpecification;
+	_tileJSONRequest: AbortController;
+	constructor(id: string, options: RasterSourceSpecification | RasterDEMSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented);
+	load(sourceDataChanged?: boolean): Promise<void>;
+	loaded(): boolean;
+	onAdd(map: Map$1): void;
+	onRemove(): void;
+	setSourceProperty(callback: Function): void;
+	/**
+	 * Sets the source `tiles` property and re-renders the map.
+	 *
+	 * @param tiles - An array of one or more tile source URLs, as in the raster tiles spec (See the [Style Specification](https://maplibre.org/maplibre-style-spec/)
+	 */
+	setTiles(tiles: Array<string>): this;
+	/**
+	 * Sets the source `url` property and re-renders the map.
+	 *
+	 * @param url - A URL to a TileJSON resource. Supported protocols are `http:` and `https:`.
+	 */
+	setUrl(url: string): this;
+	serialize(): RasterSourceSpecification | RasterDEMSourceSpecification;
+	hasTile(tileID: OverscaledTileID): boolean;
+	loadTile(tile: Tile): Promise<void>;
+	abortTile(tile: Tile): Promise<void>;
+	unloadTile(tile: Tile): Promise<void>;
+	hasTransition(): boolean;
+}
+/**
+ * A source containing raster DEM tiles (See the [Style Specification](https://maplibre.org/maplibre-style-spec/) for detailed documentation of options.)
+ * This source can be used to show hillshading and 3D terrain
+ *
+ * @group Sources
+ *
+ * @example
+ * ```ts
+ * map.addSource('raster-dem-source', {
+ *      type: 'raster-dem',
+ *      url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+ *      tileSize: 256
+ * });
+ * ```
+ * @see [3D Terrain](https://maplibre.org/maplibre-gl-js/docs/examples/3d-terrain/)
+ */
+export declare class RasterDEMTileSource extends RasterTileSource implements Source {
+	encoding: DEMEncoding;
+	redFactor?: number;
+	greenFactor?: number;
+	blueFactor?: number;
+	baseShift?: number;
+	constructor(id: string, options: RasterDEMSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented);
+	loadTile(tile: Tile): Promise<void>;
+	readImageNow(img: ImageBitmap | HTMLImageElement): Promise<RGBAImage | ImageData>;
+	_getNeighboringTiles(tileID: OverscaledTileID): {};
+	unloadTile(tile: Tile): Promise<void>;
+}
+type VectorTileSourceOptions = VectorSourceSpecification & {
+	collectResourceTiming?: boolean;
+	tileSize?: number;
+};
+/**
+ * A source containing vector tiles in [Mapbox Vector Tile format](https://docs.mapbox.com/vector-tiles/reference/).
+ * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/) for detailed documentation of options.)
+ *
+ * @group Sources
+ *
+ * @example
+ * ```ts
+ * map.addSource('some id', {
+ *     type: 'vector',
+ *     url: 'https://demotiles.maplibre.org/tiles/tiles.json'
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * map.addSource('some id', {
+ *     type: 'vector',
+ *     tiles: ['https://d25uarhxywzl1j.cloudfront.net/v0.1/{z}/{x}/{y}.mvt'],
+ *     minzoom: 6,
+ *     maxzoom: 14
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * map.getSource('some id').setUrl("https://demotiles.maplibre.org/tiles/tiles.json");
+ * ```
+ *
+ * @example
+ * ```ts
+ * map.getSource('some id').setTiles(['https://d25uarhxywzl1j.cloudfront.net/v0.1/{z}/{x}/{y}.mvt']);
+ * ```
+ * @see [Add a vector tile source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-vector-tile-source/)
+ */
+export declare class VectorTileSource extends Evented implements Source {
+	type: "vector";
+	id: string;
+	minzoom: number;
+	maxzoom: number;
+	url: string;
+	scheme: string;
+	tileSize: number;
+	promoteId: PromoteIdSpecification;
+	_options: VectorSourceSpecification;
+	_collectResourceTiming: boolean;
+	dispatcher: Dispatcher;
+	map: Map$1;
+	bounds: [
+		number,
+		number,
+		number,
+		number
+	];
+	tiles: Array<string>;
+	tileBounds: TileBounds;
+	reparseOverscaled: boolean;
+	isTileClipped: boolean;
+	_tileJSONRequest: AbortController;
+	_loaded: boolean;
+	constructor(id: string, options: VectorTileSourceOptions, dispatcher: Dispatcher, eventedParent: Evented);
+	load(): Promise<void>;
+	loaded(): boolean;
+	hasTile(tileID: OverscaledTileID): boolean;
+	onAdd(map: Map$1): void;
+	setSourceProperty(callback: Function): void;
+	/**
+	 * Sets the source `tiles` property and re-renders the map.
+	 *
+	 * @param tiles - An array of one or more tile source URLs, as in the TileJSON spec.
+	 */
+	setTiles(tiles: Array<string>): this;
+	/**
+	 * Sets the source `url` property and re-renders the map.
+	 *
+	 * @param url - A URL to a TileJSON resource. Supported protocols are `http:` and `https:`.
+	 */
+	setUrl(url: string): this;
+	onRemove(): void;
+	serialize(): VectorSourceSpecification;
+	loadTile(tile: Tile): Promise<void>;
+	private _afterTileLoadWorkerResponse;
+	abortTile(tile: Tile): Promise<void>;
+	unloadTile(tile: Tile): Promise<void>;
+	hasTransition(): boolean;
+}
+/**
+ * A data source containing video.
+ * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/#sources-video) for detailed documentation of options.)
+ *
+ * @group Sources
+ *
+ * @example
+ * ```ts
+ * // add to map
+ * map.addSource('some id', {
+ *    type: 'video',
+ *    url: [
+ *        'https://www.mapbox.com/blog/assets/baltimore-smoke.mp4',
+ *        'https://www.mapbox.com/blog/assets/baltimore-smoke.webm'
+ *    ],
+ *    coordinates: [
+ *        [-76.54, 39.18],
+ *        [-76.52, 39.18],
+ *        [-76.52, 39.17],
+ *        [-76.54, 39.17]
+ *    ]
+ * });
+ *
+ * // update
+ * let mySource = map.getSource('some id');
+ * mySource.setCoordinates([
+ *     [-76.54335737228394, 39.18579907229748],
+ *     [-76.52803659439087, 39.1838364847587],
+ *     [-76.5295386314392, 39.17683392507606],
+ *     [-76.54520273208618, 39.17876344106642]
+ * ]);
+ *
+ * map.removeSource('some id');  // remove
+ * ```
+ * @see [Add a video](https://maplibre.org/maplibre-gl-js/docs/examples/video-on-a-map/)
+ *
+ * Note that when rendered as a raster layer, the layer's `raster-fade-duration` property will cause the video to fade in.
+ * This happens when playback is started, paused and resumed, or when the video's coordinates are updated. To avoid this behavior,
+ * set the layer's `raster-fade-duration` property to `0`.
+ */
+export declare class VideoSource extends ImageSource {
+	options: VideoSourceSpecification;
+	urls: Array<string>;
+	video: HTMLVideoElement;
+	roundZoom: boolean;
+	constructor(id: string, options: VideoSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented);
+	load(): Promise<void>;
+	/**
+	 * Pauses the video.
+	 */
+	pause(): void;
+	/**
+	 * Plays the video.
+	 */
+	play(): void;
+	/**
+	 * Sets playback to a timestamp, in seconds.
+	 */
+	seek(seconds: number): void;
+	/**
+	 * Returns the HTML `video` element.
+	 *
+	 * @returns The HTML `video` element.
+	 */
+	getVideo(): HTMLVideoElement;
+	onAdd(map: Map$1): void;
+	/**
+	 * Sets the video's coordinates and re-renders the map.
+	 */
+	prepare(): this;
+	serialize(): VideoSourceSpecification;
+	hasTransition(): boolean;
+}
+type BackgroundPaintProps = {
+	"background-color": DataConstantProperty<Color>;
+	"background-pattern": CrossFadedProperty<ResolvedImage>;
+	"background-opacity": DataConstantProperty<number>;
+};
+type BackgroundPaintPropsPossiblyEvaluated = {
+	"background-color": Color;
+	"background-pattern": CrossFaded<ResolvedImage>;
+	"background-opacity": number;
+};
+export declare class BackgroundStyleLayer extends StyleLayer {
+	_transitionablePaint: Transitionable<BackgroundPaintProps>;
+	_transitioningPaint: Transitioning<BackgroundPaintProps>;
+	paint: PossiblyEvaluated<BackgroundPaintProps, BackgroundPaintPropsPossiblyEvaluated>;
+	constructor(layer: LayerSpecification, globalState: Record<string, any>);
+}
+type RasterPaintProps = {
+	"raster-opacity": DataConstantProperty<number>;
+	"raster-hue-rotate": DataConstantProperty<number>;
+	"raster-brightness-min": DataConstantProperty<number>;
+	"raster-brightness-max": DataConstantProperty<number>;
+	"raster-saturation": DataConstantProperty<number>;
+	"raster-contrast": DataConstantProperty<number>;
+	"raster-resampling": DataConstantProperty<"linear" | "nearest">;
+	"raster-fade-duration": DataConstantProperty<number>;
+};
+type RasterPaintPropsPossiblyEvaluated = {
+	"raster-opacity": number;
+	"raster-hue-rotate": number;
+	"raster-brightness-min": number;
+	"raster-brightness-max": number;
+	"raster-saturation": number;
+	"raster-contrast": number;
+	"raster-resampling": "linear" | "nearest";
+	"raster-fade-duration": number;
+};
+export declare class RasterStyleLayer extends StyleLayer {
+	_transitionablePaint: Transitionable<RasterPaintProps>;
+	_transitioningPaint: Transitioning<RasterPaintProps>;
+	paint: PossiblyEvaluated<RasterPaintProps, RasterPaintPropsPossiblyEvaluated>;
+	constructor(layer: LayerSpecification, globalState: Record<string, any>);
+}
+type DrawFunction = (painter: Painter, sourceCache: SourceCache, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) => void;
+type PerformSymbolLayoutFunction = (args: any) => void;
+interface SourceRegistry {
+	canvas?: typeof CanvasSource;
+	geojson?: typeof GeoJSONSource;
+	image?: typeof ImageSource;
+	"raster-dem"?: typeof RasterDEMTileSource;
+	raster?: typeof RasterTileSource;
+	vector?: typeof VectorTileSource;
+	video?: typeof VideoSource;
+}
+interface LayerRegistry {
+	background?: typeof BackgroundStyleLayer;
+	circle?: typeof CircleStyleLayer;
+	"color-relief"?: typeof ColorReliefStyleLayer;
+	"fill-extrusion"?: typeof FillExtrusionStyleLayer;
+	fill?: typeof FillStyleLayer;
+	heatmap?: typeof HeatmapStyleLayer;
+	hillshade?: typeof HillshadeStyleLayer;
+	line?: typeof LineStyleLayer;
+	raster?: typeof RasterStyleLayer;
+	symbol?: typeof SymbolStyleLayer;
+}
+interface DrawFunctionRegistry {
+	background?: DrawFunction;
+	circle?: DrawFunction;
+	"fill-extrusion"?: DrawFunction;
+	fill?: DrawFunction;
+	heatmap?: DrawFunction;
+	hillshade?: DrawFunction;
+	line?: DrawFunction;
+	raster?: DrawFunction;
+	"color-relief"?: DrawFunction;
+	symbol?: DrawFunction;
+}
+interface ShaderRegistry {
+	atmosphere?: PreparedShader;
+	background?: PreparedShader;
+	backgroundPattern?: PreparedShader;
+	circle?: PreparedShader;
+	clippingMask?: PreparedShader;
+	collisionBox?: PreparedShader;
+	collisionCircle?: PreparedShader;
+	debug?: PreparedShader;
+	depth?: PreparedShader;
+	fillExtrusion?: PreparedShader;
+	fillExtrusionPattern?: PreparedShader;
+	fill?: PreparedShader;
+	fillOutline?: PreparedShader;
+	fillPattern?: PreparedShader;
+	fillOutlinePattern?: PreparedShader;
+	heatmap?: PreparedShader;
+	heatmapTexture?: PreparedShader;
+	hillshade?: PreparedShader;
+	hillshadePrepare?: PreparedShader;
+	line?: PreparedShader;
+	lineGradient?: PreparedShader;
+	linePattern?: PreparedShader;
+	lineSDF?: PreparedShader;
+	prelude?: PreparedShader;
+	projectionErrorMeasurement?: PreparedShader;
+	projectionMercator?: PreparedShader;
+	projectionGlobe?: PreparedShader;
+	raster?: PreparedShader;
+	colorRelief?: PreparedShader;
+	sky?: PreparedShader;
+	symbolIcon?: PreparedShader;
+	symbolSDF?: PreparedShader;
+	symbolTextAndIcon?: PreparedShader;
+	terrain?: PreparedShader;
+	terrainDepth?: PreparedShader;
+	terrainCoords?: PreparedShader;
+}
+interface SymbolRegistry {
+	SymbolBucket?: typeof SymbolBucket;
+	CrossTileSymbolIndex?: typeof CrossTileSymbolIndex;
+	PauseablePlacement?: typeof PauseablePlacement;
+	performSymbolLayout?: PerformSymbolLayoutFunction;
+}
+/**
+ * Global registries for tree-shaking
+ * Set these to register sources, layers, draws, and shaders
+ */
+export declare const registry: {
+	source: SourceRegistry;
+	layer: LayerRegistry;
+	draw: DrawFunctionRegistry;
+	shader: ShaderRegistry;
+	symbol: SymbolRegistry;
+};
 /**
  * The {@link NavigationControl} options object
  */
@@ -13739,504 +14408,6 @@ export declare function prewarm(): void;
  * ```
  */
 export declare function clearPrewarmedResources(): void;
-type GeoJSONSourceOptions = GeoJSONSourceSpecification & {
-	workerOptions?: GeoJSONWorkerOptions;
-	collectResourceTiming?: boolean;
-	data: GeoJSON.GeoJSON | string;
-};
-type GeoJSONSourceInternalOptions = {
-	data?: GeoJSON.GeoJSON | string | undefined;
-	cluster?: boolean;
-	clusterMaxZoom?: number;
-	clusterRadius?: number;
-	clusterMinPoints?: number;
-	generateId?: boolean;
-};
-/**
- * The cluster options to set
- */
-export type SetClusterOptions = {
-	/**
-	 * Whether or not to cluster
-	 */
-	cluster?: boolean;
-	/**
-	 * The cluster's max zoom.
-	 * Non-integer values are rounded to the closest integer due to supercluster integer value requirements.
-	 */
-	clusterMaxZoom?: number;
-	/**
-	 * The cluster's radius
-	 */
-	clusterRadius?: number;
-};
-/**
- * A source containing GeoJSON.
- * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/#sources-geojson) for detailed documentation of options.)
- *
- * @group Sources
- *
- * @example
- * ```ts
- * map.addSource('some id', {
- *     type: 'geojson',
- *     data: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_ports.geojson'
- * });
- * ```
- *
- * @example
- * ```ts
- * map.addSource('some id', {
- *    type: 'geojson',
- *    data: {
- *        "type": "FeatureCollection",
- *        "features": [{
- *            "type": "Feature",
- *            "properties": {},
- *            "geometry": {
- *                "type": "Point",
- *                "coordinates": [
- *                    -76.53063297271729,
- *                    39.18174077994108
- *                ]
- *            }
- *        }]
- *    }
- * });
- * ```
- *
- * @example
- * ```ts
- * map.getSource('some id').setData({
- *   "type": "FeatureCollection",
- *   "features": [{
- *       "type": "Feature",
- *       "properties": { "name": "Null Island" },
- *       "geometry": {
- *           "type": "Point",
- *           "coordinates": [ 0, 0 ]
- *       }
- *   }]
- * });
- * ```
- * @see [Draw GeoJSON points](https://maplibre.org/maplibre-gl-js/docs/examples/draw-geojson-points/)
- * @see [Add a GeoJSON line](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-line/)
- * @see [Create a heatmap from points](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer/)
- * @see [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/create-and-style-clusters/)
- */
-export declare class GeoJSONSource extends Evented implements Source {
-	type: "geojson";
-	id: string;
-	minzoom: number;
-	maxzoom: number;
-	tileSize: number;
-	attribution: string;
-	promoteId: PromoteIdSpecification;
-	isTileClipped: boolean;
-	reparseOverscaled: boolean;
-	_data: GeoJSON.GeoJSON | string | undefined;
-	_options: GeoJSONSourceInternalOptions;
-	workerOptions: GeoJSONWorkerOptions;
-	map: Map$1;
-	actor: Actor;
-	_isUpdatingWorker: boolean;
-	_pendingWorkerUpdate: {
-		data?: GeoJSON.GeoJSON | string;
-		diff?: GeoJSONSourceDiff;
-	};
-	_collectResourceTiming: boolean;
-	_removed: boolean;
-	/** @internal */
-	constructor(id: string, options: GeoJSONSourceOptions, dispatcher: Dispatcher, eventedParent: Evented);
-	private _pixelsToTileUnits;
-	private _getClusterMaxZoom;
-	load(): Promise<void>;
-	onAdd(map: Map$1): void;
-	/**
-	 * Sets the GeoJSON data and re-renders the map.
-	 *
-	 * @param data - A GeoJSON data object or a URL to one. The latter is preferable in the case of large GeoJSON files.
-	 */
-	setData(data: GeoJSON.GeoJSON | string): this;
-	/**
-	 * Updates the source's GeoJSON, and re-renders the map.
-	 *
-	 * For sources with lots of features, this method can be used to make updates more quickly.
-	 *
-	 * This approach requires unique IDs for every feature in the source. The IDs can either be specified on the feature,
-	 * or by using the promoteId option to specify which property should be used as the ID.
-	 *
-	 * It is an error to call updateData on a source that did not have unique IDs for each of its features already.
-	 *
-	 * Updates are applied on a best-effort basis, updating an ID that does not exist will not result in an error.
-	 *
-	 * @param diff - The changes that need to be applied.
-	 */
-	updateData(diff: GeoJSONSourceDiff): this;
-	/**
-	 * Allows to get the source's actual GeoJSON data.
-	 *
-	 * @returns a promise which resolves to the source's actual GeoJSON data
-	 */
-	getData(): Promise<GeoJSON.GeoJSON>;
-	private getCoordinatesFromGeometry;
-	/**
-	 * Allows getting the source's boundaries.
-	 * If there's a problem with the source's data, it will return an empty {@link LngLatBounds}.
-	 * @returns a promise which resolves to the source's boundaries
-	 */
-	getBounds(): Promise<LngLatBounds>;
-	/**
-	 * To disable/enable clustering on the source options
-	 * @param options - The options to set
-	 * @example
-	 * ```ts
-	 * map.getSource('some id').setClusterOptions({cluster: false});
-	 * map.getSource('some id').setClusterOptions({cluster: false, clusterRadius: 50, clusterMaxZoom: 14});
-	 * ```
-	 */
-	setClusterOptions(options: SetClusterOptions): this;
-	/**
-	 * For clustered sources, fetches the zoom at which the given cluster expands.
-	 *
-	 * @param clusterId - The value of the cluster's `cluster_id` property.
-	 * @returns a promise that is resolved with the zoom number
-	 */
-	getClusterExpansionZoom(clusterId: number): Promise<number>;
-	/**
-	 * For clustered sources, fetches the children of the given cluster on the next zoom level (as an array of GeoJSON features).
-	 *
-	 * @param clusterId - The value of the cluster's `cluster_id` property.
-	 * @returns a promise that is resolved when the features are retrieved
-	 */
-	getClusterChildren(clusterId: number): Promise<Array<GeoJSON.Feature>>;
-	/**
-	 * For clustered sources, fetches the original points that belong to the cluster (as an array of GeoJSON features).
-	 *
-	 * @param clusterId - The value of the cluster's `cluster_id` property.
-	 * @param limit - The maximum number of features to return.
-	 * @param offset - The number of features to skip (e.g. for pagination).
-	 * @returns a promise that is resolved when the features are retrieved
-	 * @example
-	 * Retrieve cluster leaves on click
-	 * ```ts
-	 * map.on('click', 'clusters', (e) => {
-	 *   let features = map.queryRenderedFeatures(e.point, {
-	 *     layers: ['clusters']
-	 *   });
-	 *
-	 *   let clusterId = features[0].properties.cluster_id;
-	 *   let pointCount = features[0].properties.point_count;
-	 *   let clusterSource = map.getSource('clusters');
-	 *
-	 *   const features = await clusterSource.getClusterLeaves(clusterId, pointCount);
-	 *   // Print cluster leaves in the console
-	 *   console.log('Cluster leaves:', features);
-	 * });
-	 * ```
-	 */
-	getClusterLeaves(clusterId: number, limit: number, offset: number): Promise<Array<GeoJSON.Feature>>;
-	/**
-	 * Responsible for invoking WorkerSource's geojson.loadData target, which
-	 * handles loading the geojson data and preparing to serve it up as tiles,
-	 * using geojson-vt or supercluster as appropriate.
-	 */
-	_updateWorkerData(): Promise<void>;
-	loaded(): boolean;
-	loadTile(tile: Tile): Promise<void>;
-	abortTile(tile: Tile): Promise<void>;
-	unloadTile(tile: Tile): Promise<void>;
-	onRemove(): void;
-	serialize(): GeoJSONSourceSpecification;
-	hasTransition(): boolean;
-}
-declare class TileBounds {
-	bounds: LngLatBounds;
-	minzoom: number;
-	maxzoom: number;
-	constructor(bounds: [
-		number,
-		number,
-		number,
-		number
-	], minzoom?: number | null, maxzoom?: number | null);
-	validateBounds(bounds: [
-		number,
-		number,
-		number,
-		number
-	]): LngLatBoundsLike;
-	contains(tileID: CanonicalTileID): boolean;
-}
-/**
- * A source containing raster tiles (See the [raster source documentation](https://maplibre.org/maplibre-style-spec/sources/#raster) for detailed documentation of options.)
- *
- * @group Sources
- *
- * \> ℹ️ **Note:** The default `tileSize` is `512`. If your tile provider (such as OpenStreetMap or Stadia Maps) serves 256px tiles, set `tileSize: 256` manually to avoid blurry rendering due to upscaling.
- *
- * @example
- * ```ts
- * map.addSource('raster-source', {
- *     'type': 'raster',
- *     'tiles': ['https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg'],
- *     'tileSize': 256, // Set this to match tile server output to avoid blurry rendering
- * });
- * ```
- *
- * @example
- * ```ts
- * map.addSource('wms-test-source', {
- *      'type': 'raster',
- * // use the tiles option to specify a WMS tile source URL
- *      'tiles': [
- *          'https://img.nj.gov/imagerywms/Natural2015?bbox={bbox-epsg-3857}&format=image/png&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&transparent=true&width=256&height=256&layers=Natural2015'
- *      ],
- *      'tileSize': 256 // Important for WMS if tiles are 256px
- * });
- * ```
- * @see [Add a raster tile source](https://maplibre.org/maplibre-gl-js/docs/examples/map-tiles/)
- * @see [Add a WMS source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-wms-source/)
- * @see [Display a satellite map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-satellite-map/)
- */
-export declare class RasterTileSource extends Evented implements Source {
-	type: "raster" | "raster-dem";
-	id: string;
-	minzoom: number;
-	maxzoom: number;
-	url: string;
-	scheme: string;
-	tileSize: number;
-	bounds: [
-		number,
-		number,
-		number,
-		number
-	];
-	tileBounds: TileBounds;
-	roundZoom: boolean;
-	dispatcher: Dispatcher;
-	map: Map$1;
-	tiles: Array<string>;
-	_loaded: boolean;
-	_options: RasterSourceSpecification | RasterDEMSourceSpecification;
-	_tileJSONRequest: AbortController;
-	constructor(id: string, options: RasterSourceSpecification | RasterDEMSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented);
-	load(sourceDataChanged?: boolean): Promise<void>;
-	loaded(): boolean;
-	onAdd(map: Map$1): void;
-	onRemove(): void;
-	setSourceProperty(callback: Function): void;
-	/**
-	 * Sets the source `tiles` property and re-renders the map.
-	 *
-	 * @param tiles - An array of one or more tile source URLs, as in the raster tiles spec (See the [Style Specification](https://maplibre.org/maplibre-style-spec/)
-	 */
-	setTiles(tiles: Array<string>): this;
-	/**
-	 * Sets the source `url` property and re-renders the map.
-	 *
-	 * @param url - A URL to a TileJSON resource. Supported protocols are `http:` and `https:`.
-	 */
-	setUrl(url: string): this;
-	serialize(): RasterSourceSpecification | RasterDEMSourceSpecification;
-	hasTile(tileID: OverscaledTileID): boolean;
-	loadTile(tile: Tile): Promise<void>;
-	abortTile(tile: Tile): Promise<void>;
-	unloadTile(tile: Tile): Promise<void>;
-	hasTransition(): boolean;
-}
-/**
- * A source containing raster DEM tiles (See the [Style Specification](https://maplibre.org/maplibre-style-spec/) for detailed documentation of options.)
- * This source can be used to show hillshading and 3D terrain
- *
- * @group Sources
- *
- * @example
- * ```ts
- * map.addSource('raster-dem-source', {
- *      type: 'raster-dem',
- *      url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
- *      tileSize: 256
- * });
- * ```
- * @see [3D Terrain](https://maplibre.org/maplibre-gl-js/docs/examples/3d-terrain/)
- */
-export declare class RasterDEMTileSource extends RasterTileSource implements Source {
-	encoding: DEMEncoding;
-	redFactor?: number;
-	greenFactor?: number;
-	blueFactor?: number;
-	baseShift?: number;
-	constructor(id: string, options: RasterDEMSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented);
-	loadTile(tile: Tile): Promise<void>;
-	readImageNow(img: ImageBitmap | HTMLImageElement): Promise<RGBAImage | ImageData>;
-	_getNeighboringTiles(tileID: OverscaledTileID): {};
-	unloadTile(tile: Tile): Promise<void>;
-}
-type VectorTileSourceOptions = VectorSourceSpecification & {
-	collectResourceTiming?: boolean;
-	tileSize?: number;
-};
-/**
- * A source containing vector tiles in [Mapbox Vector Tile format](https://docs.mapbox.com/vector-tiles/reference/).
- * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/) for detailed documentation of options.)
- *
- * @group Sources
- *
- * @example
- * ```ts
- * map.addSource('some id', {
- *     type: 'vector',
- *     url: 'https://demotiles.maplibre.org/tiles/tiles.json'
- * });
- * ```
- *
- * @example
- * ```ts
- * map.addSource('some id', {
- *     type: 'vector',
- *     tiles: ['https://d25uarhxywzl1j.cloudfront.net/v0.1/{z}/{x}/{y}.mvt'],
- *     minzoom: 6,
- *     maxzoom: 14
- * });
- * ```
- *
- * @example
- * ```ts
- * map.getSource('some id').setUrl("https://demotiles.maplibre.org/tiles/tiles.json");
- * ```
- *
- * @example
- * ```ts
- * map.getSource('some id').setTiles(['https://d25uarhxywzl1j.cloudfront.net/v0.1/{z}/{x}/{y}.mvt']);
- * ```
- * @see [Add a vector tile source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-vector-tile-source/)
- */
-export declare class VectorTileSource extends Evented implements Source {
-	type: "vector";
-	id: string;
-	minzoom: number;
-	maxzoom: number;
-	url: string;
-	scheme: string;
-	tileSize: number;
-	promoteId: PromoteIdSpecification;
-	_options: VectorSourceSpecification;
-	_collectResourceTiming: boolean;
-	dispatcher: Dispatcher;
-	map: Map$1;
-	bounds: [
-		number,
-		number,
-		number,
-		number
-	];
-	tiles: Array<string>;
-	tileBounds: TileBounds;
-	reparseOverscaled: boolean;
-	isTileClipped: boolean;
-	_tileJSONRequest: AbortController;
-	_loaded: boolean;
-	constructor(id: string, options: VectorTileSourceOptions, dispatcher: Dispatcher, eventedParent: Evented);
-	load(): Promise<void>;
-	loaded(): boolean;
-	hasTile(tileID: OverscaledTileID): boolean;
-	onAdd(map: Map$1): void;
-	setSourceProperty(callback: Function): void;
-	/**
-	 * Sets the source `tiles` property and re-renders the map.
-	 *
-	 * @param tiles - An array of one or more tile source URLs, as in the TileJSON spec.
-	 */
-	setTiles(tiles: Array<string>): this;
-	/**
-	 * Sets the source `url` property and re-renders the map.
-	 *
-	 * @param url - A URL to a TileJSON resource. Supported protocols are `http:` and `https:`.
-	 */
-	setUrl(url: string): this;
-	onRemove(): void;
-	serialize(): VectorSourceSpecification;
-	loadTile(tile: Tile): Promise<void>;
-	private _afterTileLoadWorkerResponse;
-	abortTile(tile: Tile): Promise<void>;
-	unloadTile(tile: Tile): Promise<void>;
-	hasTransition(): boolean;
-}
-/**
- * A data source containing video.
- * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/#sources-video) for detailed documentation of options.)
- *
- * @group Sources
- *
- * @example
- * ```ts
- * // add to map
- * map.addSource('some id', {
- *    type: 'video',
- *    url: [
- *        'https://www.mapbox.com/blog/assets/baltimore-smoke.mp4',
- *        'https://www.mapbox.com/blog/assets/baltimore-smoke.webm'
- *    ],
- *    coordinates: [
- *        [-76.54, 39.18],
- *        [-76.52, 39.18],
- *        [-76.52, 39.17],
- *        [-76.54, 39.17]
- *    ]
- * });
- *
- * // update
- * let mySource = map.getSource('some id');
- * mySource.setCoordinates([
- *     [-76.54335737228394, 39.18579907229748],
- *     [-76.52803659439087, 39.1838364847587],
- *     [-76.5295386314392, 39.17683392507606],
- *     [-76.54520273208618, 39.17876344106642]
- * ]);
- *
- * map.removeSource('some id');  // remove
- * ```
- * @see [Add a video](https://maplibre.org/maplibre-gl-js/docs/examples/video-on-a-map/)
- *
- * Note that when rendered as a raster layer, the layer's `raster-fade-duration` property will cause the video to fade in.
- * This happens when playback is started, paused and resumed, or when the video's coordinates are updated. To avoid this behavior,
- * set the layer's `raster-fade-duration` property to `0`.
- */
-export declare class VideoSource extends ImageSource {
-	options: VideoSourceSpecification;
-	urls: Array<string>;
-	video: HTMLVideoElement;
-	roundZoom: boolean;
-	constructor(id: string, options: VideoSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented);
-	load(): Promise<void>;
-	/**
-	 * Pauses the video.
-	 */
-	pause(): void;
-	/**
-	 * Plays the video.
-	 */
-	play(): void;
-	/**
-	 * Sets playback to a timestamp, in seconds.
-	 */
-	seek(seconds: number): void;
-	/**
-	 * Returns the HTML `video` element.
-	 *
-	 * @returns The HTML `video` element.
-	 */
-	getVideo(): HTMLVideoElement;
-	onAdd(map: Map$1): void;
-	/**
-	 * Sets the video's coordinates and re-renders the map.
-	 */
-	prepare(): this;
-	serialize(): VideoSourceSpecification;
-	hasTransition(): boolean;
-}
 /**
  * Adds a custom load resource function that will be called when using a URL that starts with a custom url schema.
  * This will happen in the main thread, and workers might call it if they don't know how to handle the protocol.
@@ -14672,6 +14843,108 @@ export declare function isFramebufferNotCompleteError(error: Error): boolean;
  * Throttle the given function to run at most every `period` milliseconds.
  */
 export declare function throttle<T extends (...args: any) => void>(fn: T, time: number): (...args: Parameters<T>) => ReturnType<typeof setTimeout>;
+export declare function performSymbolLayout(args: {
+	bucket: SymbolBucket;
+	glyphMap: {
+		[_: string]: {
+			[x: number]: StyleGlyph;
+		};
+	};
+	glyphPositions: {
+		[_: string]: {
+			[x: number]: GlyphPosition;
+		};
+	};
+	imageMap: {
+		[_: string]: StyleImage;
+	};
+	imagePositions: {
+		[_: string]: ImagePosition;
+	};
+	showCollisionBoxes: boolean;
+	canonical: CanonicalTileID;
+	subdivisionGranularity: SubdivisionGranularitySetting;
+}): void;
+export declare function drawBackground(painter: Painter, sourceCache: SourceCache, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawCircles(painter: Painter, sourceCache: SourceCache, layer: CircleStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawFillExtrusion(painter: Painter, source: SourceCache, layer: FillExtrusionStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawFill(painter: Painter, sourceCache: SourceCache, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawHeatmap(painter: Painter, sourceCache: SourceCache, layer: HeatmapStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawHillshade(painter: Painter, sourceCache: SourceCache, layer: HillshadeStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawLine(painter: Painter, sourceCache: SourceCache, layer: LineStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawRaster(painter: Painter, sourceCache: SourceCache, layer: RasterStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions): void;
+export declare function drawSymbols(painter: Painter, sourceCache: SourceCache, layer: SymbolStyleLayer, coords: Array<OverscaledTileID>, variableOffsets: {
+	[_ in CrossTileID]: VariableOffset;
+}, renderOptions: RenderOptions): void;
+declare const _default: "in vec3 view_direction;uniform vec3 u_sun_pos;uniform vec3 u_globe_position;uniform float u_globe_radius;uniform float u_atmosphere_blend;/**Shader use from https:*Made some change to adapt to MapLibre Globe geometry*/const float PI=3.141592653589793;const int iSteps=5;const int jSteps=3;/*radius of the planet*/const float EARTH_RADIUS=6371e3;/*radius of the atmosphere*/const float ATMOS_RADIUS=6471e3;vec2 rsi(vec3 r0,vec3 rd,float sr) {float a=dot(rd,rd);float b=2.0*dot(rd,r0);float c=dot(r0,r0)-(sr*sr);float d=(b*b)-4.0*a*c;if (d < 0.0) return vec2(1e5,-1e5);return vec2((-b-sqrt(d))/(2.0*a),(-b+sqrt(d))/(2.0*a));}vec4 atmosphere(vec3 r,vec3 r0,vec3 pSun,float iSun,float rPlanet,float rAtmos,vec3 kRlh,float kMie,float shRlh,float shMie,float g) {pSun=normalize(pSun);r=normalize(r);vec2 p=rsi(r0,r,rAtmos);if (p.x > p.y) {return vec4(0.0,0.0,0.0,1.0);}if (p.x < 0.0) {p.x=0.0;}vec3 pos=r0+r*p.x;vec2 p2=rsi(r0,r,rPlanet);if (p2.x <=p2.y && p2.x > 0.0) {p.y=min(p.y,p2.x);}float iStepSize=(p.y-p.x)/float(iSteps);float iTime=p.x+iStepSize*0.5;vec3 totalRlh=vec3(0,0,0);vec3 totalMie=vec3(0,0,0);float iOdRlh=0.0;float iOdMie=0.0;float mu=dot(r,pSun);float mumu=mu*mu;float gg=g*g;float pRlh=3.0/(16.0*PI)*(1.0+mumu);float pMie=3.0/(8.0*PI)*((1.0-gg)*(mumu+1.0))/(pow(1.0+gg-2.0*mu*g,1.5)*(2.0+gg));for (int i=0; i < iSteps; i++) {vec3 iPos=r0+r*iTime;float iHeight=length(iPos)-rPlanet;float odStepRlh=exp(-iHeight/shRlh)*iStepSize;float odStepMie=exp(-iHeight/shMie)*iStepSize;iOdRlh+=odStepRlh;iOdMie+=odStepMie;float jStepSize=rsi(iPos,pSun,rAtmos).y/float(jSteps);float jTime=jStepSize*0.5;float jOdRlh=0.0;float jOdMie=0.0;for (int j=0; j < jSteps; j++) {vec3 jPos=iPos+pSun*jTime;float jHeight=length(jPos)-rPlanet;jOdRlh+=exp(-jHeight/shRlh)*jStepSize;jOdMie+=exp(-jHeight/shMie)*jStepSize;jTime+=jStepSize;}vec3 attn=exp(-(kMie*(iOdMie+jOdMie)+kRlh*(iOdRlh+jOdRlh)));totalRlh+=odStepRlh*attn;totalMie+=odStepMie*attn;iTime+=iStepSize;}float opacity=exp(-(length(kRlh)*length(totalRlh)+kMie*length(totalMie)));vec3 color=iSun*(pRlh*kRlh*totalRlh+pMie*kMie*totalMie);return vec4(color,opacity);}void main() {vec3 scale_camera_pos=-u_globe_position*EARTH_RADIUS/u_globe_radius;vec4 color=atmosphere(normalize(view_direction),scale_camera_pos,u_sun_pos,22.0,EARTH_RADIUS,ATMOS_RADIUS,vec3(5.5e-6,13.0e-6,22.4e-6),21e-6,8e3,1.2e3,0.758\n);color.rgb=1.0-exp(-1.0*color.rgb);color=pow(color,vec4(1.0/2.2));fragColor=vec4(color.rgb,1.0-color.a)*u_atmosphere_blend;}";
+declare const _default$1: "in vec2 a_pos;uniform mat4 u_inv_proj_matrix;out vec3 view_direction;void main() {view_direction=(u_inv_proj_matrix*vec4(a_pos,0.0,1.0)).xyz;gl_Position=vec4(a_pos,0.0,1.0);}";
+declare const _default$2: "uniform vec4 u_color;uniform float u_opacity;void main() {fragColor=u_color*u_opacity;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$3: "in vec2 a_pos;void main() {gl_Position=projectTile(a_pos);}";
+declare const _default$4: "uniform vec2 u_pattern_tl_a;uniform vec2 u_pattern_br_a;uniform vec2 u_pattern_tl_b;uniform vec2 u_pattern_br_b;uniform vec2 u_texsize;uniform float u_mix;uniform float u_opacity;uniform sampler2D u_image;in vec2 v_pos_a;in vec2 v_pos_b;void main() {vec2 imagecoord=mod(v_pos_a,1.0);vec2 pos=mix(u_pattern_tl_a/u_texsize,u_pattern_br_a/u_texsize,imagecoord);vec4 color1=texture(u_image,pos);vec2 imagecoord_b=mod(v_pos_b,1.0);vec2 pos2=mix(u_pattern_tl_b/u_texsize,u_pattern_br_b/u_texsize,imagecoord_b);vec4 color2=texture(u_image,pos2);fragColor=mix(color1,color2,u_mix)*u_opacity;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$5: "uniform vec2 u_pattern_size_a;uniform vec2 u_pattern_size_b;uniform vec2 u_pixel_coord_upper;uniform vec2 u_pixel_coord_lower;uniform float u_scale_a;uniform float u_scale_b;uniform float u_tile_units_to_pixels;in vec2 a_pos;out vec2 v_pos_a;out vec2 v_pos_b;void main() {gl_Position=projectTile(a_pos);v_pos_a=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,u_scale_a*u_pattern_size_a,u_tile_units_to_pixels,a_pos);v_pos_b=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,u_scale_b*u_pattern_size_b,u_tile_units_to_pixels,a_pos);}";
+declare const _default$6: "in vec3 v_data;in float v_visibility;\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define mediump float radius\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define highp vec4 stroke_color\n#pragma mapbox: define mediump float stroke_width\n#pragma mapbox: define lowp float stroke_opacity\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize mediump float radius\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize highp vec4 stroke_color\n#pragma mapbox: initialize mediump float stroke_width\n#pragma mapbox: initialize lowp float stroke_opacity\nvec2 extrude=v_data.xy;float extrude_length=length(extrude);float antialiased_blur=v_data.z;float opacity_t=smoothstep(0.0,antialiased_blur,extrude_length-1.0);float color_t=stroke_width < 0.01 ? 0.0 : smoothstep(antialiased_blur,0.0,extrude_length-radius/(radius+stroke_width));fragColor=v_visibility*opacity_t*mix(color*opacity,stroke_color*stroke_opacity,color_t);const float epsilon=0.5/255.0;if (fragColor.r < epsilon && fragColor.g < epsilon && fragColor.b < epsilon && fragColor.a < epsilon) {discard;}\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$7: "uniform bool u_scale_with_map;uniform bool u_pitch_with_map;uniform vec2 u_extrude_scale;uniform highp float u_globe_extrude_scale;uniform lowp float u_device_pixel_ratio;uniform highp float u_camera_to_center_distance;uniform vec2 u_translate;in vec2 a_pos;out vec3 v_data;out float v_visibility;\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define mediump float radius\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define highp vec4 stroke_color\n#pragma mapbox: define mediump float stroke_width\n#pragma mapbox: define lowp float stroke_opacity\nvoid main(void) {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize mediump float radius\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize highp vec4 stroke_color\n#pragma mapbox: initialize mediump float stroke_width\n#pragma mapbox: initialize lowp float stroke_opacity\nvec2 pos_raw=a_pos+32768.0;vec2 extrude=vec2(mod(pos_raw,8.0)/7.0*2.0-1.0);vec2 circle_center=floor(pos_raw/8.0)+u_translate;float ele=get_elevation(circle_center);v_visibility=calculate_visibility(projectTileWithElevation(circle_center,ele));if (u_pitch_with_map) {\n#ifdef GLOBE\nvec3 center_vector=projectToSphere(circle_center);\n#endif\nfloat angle_scale=u_globe_extrude_scale;vec2 corner_position=circle_center;if (u_scale_with_map) {angle_scale*=(radius+stroke_width);corner_position+=extrude*u_extrude_scale*(radius+stroke_width);} else {\n#ifdef GLOBE\nvec4 projected_center=interpolateProjection(circle_center,center_vector,ele);\n#else\nvec4 projected_center=projectTileWithElevation(circle_center,ele);\n#endif\ncorner_position+=extrude*u_extrude_scale*(radius+stroke_width)*(projected_center.w/u_camera_to_center_distance);angle_scale*=(radius+stroke_width)*(projected_center.w/u_camera_to_center_distance);}\n#ifdef GLOBE\nvec2 angles=extrude*angle_scale;vec3 corner_vector=globeRotateVector(center_vector,angles);gl_Position=interpolateProjection(corner_position,corner_vector,ele);\n#else\ngl_Position=projectTileWithElevation(corner_position,ele);\n#endif\n} else {gl_Position=projectTileWithElevation(circle_center,ele);if (gl_Position.z/gl_Position.w > 1.0) {gl_Position.xy=vec2(10000.0);}if (u_scale_with_map) {gl_Position.xy+=extrude*(radius+stroke_width)*u_extrude_scale*u_camera_to_center_distance;} else {gl_Position.xy+=extrude*(radius+stroke_width)*u_extrude_scale*gl_Position.w;}}float antialiasblur=-max(1.0/u_device_pixel_ratio/(radius+stroke_width),blur);v_data=vec3(extrude.x,extrude.y,antialiasblur);}";
+declare const _default$8: "void main() {fragColor=vec4(1.0);}";
+declare const _default$9: "in vec2 a_pos;void main() {gl_Position=projectTile(a_pos);}";
+declare const _default$10: "in float v_placed;in float v_notUsed;void main() {float alpha=0.5;fragColor=vec4(1.0,0.0,0.0,1.0)*alpha;if (v_placed > 0.5) {fragColor=vec4(0.0,0.0,1.0,0.5)*alpha;}if (v_notUsed > 0.5) {fragColor*=.1;}}";
+declare const _default$11: "in vec2 a_anchor_pos;in vec2 a_placed;in vec2 a_box_real;uniform vec2 u_pixel_extrude_scale;out float v_placed;out float v_notUsed;void main() {gl_Position=projectTileWithElevation(a_anchor_pos,get_elevation(a_anchor_pos));gl_Position.xy=((a_box_real+0.5)*u_pixel_extrude_scale*2.0-1.0)*vec2(1.0,-1.0)*gl_Position.w;if (gl_Position.z/gl_Position.w < 1.1) {gl_Position.z=0.5;}v_placed=a_placed.x;v_notUsed=a_placed.y;}";
+declare const _default$12: "in float v_radius;in vec2 v_extrude;in float v_collision;void main() {float alpha=0.5;float stroke_radius=0.9;float distance_to_center=length(v_extrude);float distance_to_edge=abs(distance_to_center-v_radius);float opacity_t=smoothstep(-stroke_radius,0.0,-distance_to_edge);vec4 color=mix(vec4(0.0,0.0,1.0,0.5),vec4(1.0,0.0,0.0,1.0),v_collision);fragColor=color*alpha*opacity_t;}";
+declare const _default$13: "in vec2 a_pos;in float a_radius;in vec2 a_flags;uniform vec2 u_viewport_size;out float v_radius;out vec2 v_extrude;out float v_collision;void main() {float radius=a_radius;float collision=a_flags.x;float vertexIdx=a_flags.y;vec2 quadVertexOffset=vec2(mix(-1.0,1.0,float(vertexIdx >=2.0)),mix(-1.0,1.0,float(vertexIdx >=1.0 && vertexIdx <=2.0)));vec2 quadVertexExtent=quadVertexOffset*radius;float padding_factor=1.2;v_radius=radius;v_extrude=quadVertexExtent*padding_factor;v_collision=collision;gl_Position=vec4((a_pos/u_viewport_size*2.0-1.0)*vec2(1.0,-1.0),0.0,1.0)+vec4(quadVertexExtent*padding_factor/u_viewport_size*2.0,0.0,0.0);}";
+declare const _default$14: "uniform highp vec4 u_color;uniform sampler2D u_overlay;in vec2 v_uv;void main() {vec4 overlay_color=texture(u_overlay,v_uv);fragColor=mix(u_color,overlay_color,overlay_color.a);}";
+declare const _default$15: "in vec2 a_pos;out vec2 v_uv;uniform float u_overlay_scale;void main() {v_uv=a_pos/8192.0;gl_Position=projectTileWithElevation(a_pos*u_overlay_scale,get_elevation(a_pos));}";
+declare const _default$16: "in vec2 a_pos;void main() {\n#ifdef GLOBE\ngl_Position=projectTileFor3D(a_pos,0.0);\n#else\ngl_Position=u_projection_matrix*vec4(a_pos,0.0,1.0);\n#endif\n}";
+declare const _default$17: "in vec4 v_color;void main() {fragColor=v_color;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$18: "uniform vec3 u_lightcolor;uniform lowp vec3 u_lightpos;uniform lowp vec3 u_lightpos_globe;uniform lowp float u_lightintensity;uniform float u_vertical_gradient;uniform lowp float u_opacity;uniform vec2 u_fill_translate;in vec2 a_pos;in vec4 a_normal_ed;\n#ifdef TERRAIN3D\nin vec2 a_centroid;\n#endif\nout vec4 v_color;\n#pragma mapbox: define highp float base\n#pragma mapbox: define highp float height\n#pragma mapbox: define highp vec4 color\nvoid main() {\n#pragma mapbox: initialize highp float base\n#pragma mapbox: initialize highp float height\n#pragma mapbox: initialize highp vec4 color\nvec3 normal=a_normal_ed.xyz;\n#ifdef TERRAIN3D\nfloat height_terrain3d_offset=get_elevation(a_centroid);float base_terrain3d_offset=height_terrain3d_offset-(base > 0.0 ? 0.0 : 10.0);\n#else\nfloat height_terrain3d_offset=0.0;float base_terrain3d_offset=0.0;\n#endif\nbase=max(0.0,base)+base_terrain3d_offset;height=max(0.0,height)+height_terrain3d_offset;float t=mod(normal.x,2.0);float elevation=t > 0.0 ? height : base;vec2 posInTile=a_pos+u_fill_translate;\n#ifdef GLOBE\nvec3 spherePos=projectToSphere(posInTile,a_pos);gl_Position=interpolateProjectionFor3D(posInTile,spherePos,elevation);\n#else\ngl_Position=u_projection_matrix*vec4(posInTile,elevation,1.0);\n#endif\nfloat colorvalue=color.r*0.2126+color.g*0.7152+color.b*0.0722;v_color=vec4(0.0,0.0,0.0,1.0);vec4 ambientlight=vec4(0.03,0.03,0.03,1.0);color+=ambientlight;vec3 normalForLighting=normal/16384.0;float directional=clamp(dot(normalForLighting,u_lightpos),0.0,1.0);\n#ifdef GLOBE\nmat3 rotMatrix=globeGetRotationMatrix(spherePos);normalForLighting=rotMatrix*normalForLighting;directional=mix(directional,clamp(dot(normalForLighting,u_lightpos_globe),0.0,1.0),u_projection_transition);\n#endif\ndirectional=mix((1.0-u_lightintensity),max((1.0-colorvalue+u_lightintensity),1.0),directional);if (normal.y !=0.0) {directional*=((1.0-u_vertical_gradient)+(u_vertical_gradient*clamp((t+base)*pow(height/150.0,0.5),mix(0.7,0.98,1.0-u_lightintensity),1.0)));}v_color.r+=clamp(color.r*directional*u_lightcolor.r,mix(0.0,0.3,1.0-u_lightcolor.r),1.0);v_color.g+=clamp(color.g*directional*u_lightcolor.g,mix(0.0,0.3,1.0-u_lightcolor.g),1.0);v_color.b+=clamp(color.b*directional*u_lightcolor.b,mix(0.0,0.3,1.0-u_lightcolor.b),1.0);v_color*=u_opacity;}";
+declare const _default$19: "uniform vec2 u_texsize;uniform float u_fade;uniform sampler2D u_image;in vec2 v_pos_a;in vec2 v_pos_b;in vec4 v_lighting;\n#pragma mapbox: define lowp float base\n#pragma mapbox: define lowp float height\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\n#pragma mapbox: define lowp float pixel_ratio_from\n#pragma mapbox: define lowp float pixel_ratio_to\nvoid main() {\n#pragma mapbox: initialize lowp float base\n#pragma mapbox: initialize lowp float height\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\n#pragma mapbox: initialize lowp float pixel_ratio_from\n#pragma mapbox: initialize lowp float pixel_ratio_to\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;vec2 imagecoord=mod(v_pos_a,1.0);vec2 pos=mix(pattern_tl_a/u_texsize,pattern_br_a/u_texsize,imagecoord);vec4 color1=texture(u_image,pos);vec2 imagecoord_b=mod(v_pos_b,1.0);vec2 pos2=mix(pattern_tl_b/u_texsize,pattern_br_b/u_texsize,imagecoord_b);vec4 color2=texture(u_image,pos2);vec4 mixedColor=mix(color1,color2,u_fade);fragColor=mixedColor*v_lighting;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$20: "uniform vec2 u_pixel_coord_upper;uniform vec2 u_pixel_coord_lower;uniform float u_height_factor;uniform vec3 u_scale;uniform float u_vertical_gradient;uniform lowp float u_opacity;uniform vec2 u_fill_translate;uniform vec3 u_lightcolor;uniform lowp vec3 u_lightpos;uniform lowp vec3 u_lightpos_globe;uniform lowp float u_lightintensity;in vec2 a_pos;in vec4 a_normal_ed;\n#ifdef TERRAIN3D\nin vec2 a_centroid;\n#endif\n#ifdef GLOBE\nout vec3 v_sphere_pos;\n#endif\nout vec2 v_pos_a;out vec2 v_pos_b;out vec4 v_lighting;\n#pragma mapbox: define lowp float base\n#pragma mapbox: define lowp float height\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\n#pragma mapbox: define lowp float pixel_ratio_from\n#pragma mapbox: define lowp float pixel_ratio_to\nvoid main() {\n#pragma mapbox: initialize lowp float base\n#pragma mapbox: initialize lowp float height\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\n#pragma mapbox: initialize lowp float pixel_ratio_from\n#pragma mapbox: initialize lowp float pixel_ratio_to\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;float tileRatio=u_scale.x;float fromScale=u_scale.y;float toScale=u_scale.z;vec3 normal=a_normal_ed.xyz;float edgedistance=a_normal_ed.w;vec2 display_size_a=(pattern_br_a-pattern_tl_a)/pixel_ratio_from;vec2 display_size_b=(pattern_br_b-pattern_tl_b)/pixel_ratio_to;\n#ifdef TERRAIN3D\nfloat height_terrain3d_offset=get_elevation(a_centroid);float base_terrain3d_offset=height_terrain3d_offset-(base > 0.0 ? 0.0 : 10.0);\n#else\nfloat height_terrain3d_offset=0.0;float base_terrain3d_offset=0.0;\n#endif\nbase=max(0.0,base)+base_terrain3d_offset;height=max(0.0,height)+height_terrain3d_offset;float t=mod(normal.x,2.0);float elevation=t > 0.0 ? height : base;vec2 posInTile=a_pos+u_fill_translate;\n#ifdef GLOBE\nvec3 spherePos=projectToSphere(posInTile,a_pos);vec3 elevatedPos=spherePos*(1.0+elevation/GLOBE_RADIUS);v_sphere_pos=elevatedPos;gl_Position=interpolateProjectionFor3D(posInTile,spherePos,elevation);\n#else\ngl_Position=u_projection_matrix*vec4(posInTile,elevation,1.0);\n#endif\nvec2 pos=normal.x==1.0 && normal.y==0.0 && normal.z==16384.0\n? a_pos\n: vec2(edgedistance,elevation*u_height_factor);v_pos_a=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,fromScale*display_size_a,tileRatio,pos);v_pos_b=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,toScale*display_size_b,tileRatio,pos);v_lighting=vec4(0.0,0.0,0.0,1.0);float directional=clamp(dot(normal/16383.0,u_lightpos),0.0,1.0);directional=mix((1.0-u_lightintensity),max((0.5+u_lightintensity),1.0),directional);if (normal.y !=0.0) {directional*=((1.0-u_vertical_gradient)+(u_vertical_gradient*clamp((t+base)*pow(height/150.0,0.5),mix(0.7,0.98,1.0-u_lightintensity),1.0)));}v_lighting.rgb+=clamp(directional*u_lightcolor,mix(vec3(0.0),vec3(0.3),1.0-u_lightcolor),vec3(1.0));v_lighting*=u_opacity;}";
+declare const _default$21: "#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize lowp float opacity\nfragColor=color*opacity;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$22: "uniform vec2 u_fill_translate;in vec2 a_pos;\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize lowp float opacity\ngl_Position=projectTile(a_pos+u_fill_translate,a_pos);}";
+declare const _default$23: "in vec2 v_pos;\n#ifdef GLOBE\nin float v_depth;\n#endif\n#pragma mapbox: define highp vec4 outline_color\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize highp vec4 outline_color\n#pragma mapbox: initialize lowp float opacity\nfloat dist=length(v_pos-gl_FragCoord.xy);float alpha=1.0-smoothstep(0.0,1.0,dist);fragColor=outline_color*(alpha*opacity);\n#ifdef GLOBE\nif (v_depth > 1.0) {discard;}\n#endif\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$24: "uniform vec2 u_world;uniform vec2 u_fill_translate;in vec2 a_pos;out vec2 v_pos;\n#ifdef GLOBE\nout float v_depth;\n#endif\n#pragma mapbox: define highp vec4 outline_color\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize highp vec4 outline_color\n#pragma mapbox: initialize lowp float opacity\ngl_Position=projectTile(a_pos+u_fill_translate,a_pos);v_pos=(gl_Position.xy/gl_Position.w+1.0)/2.0*u_world;\n#ifdef GLOBE\nv_depth=gl_Position.z/gl_Position.w;\n#endif\n}";
+declare const _default$25: "#ifdef GL_ES\nprecision highp float;\n#endif\nuniform vec2 u_texsize;uniform float u_fade;uniform sampler2D u_image;in vec2 v_pos_a;in vec2 v_pos_b;\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;vec2 imagecoord=mod(v_pos_a,1.0);vec2 pos=mix(pattern_tl_a/u_texsize,pattern_br_a/u_texsize,imagecoord);vec4 color1=texture(u_image,pos);vec2 imagecoord_b=mod(v_pos_b,1.0);vec2 pos2=mix(pattern_tl_b/u_texsize,pattern_br_b/u_texsize,imagecoord_b);vec4 color2=texture(u_image,pos2);fragColor=mix(color1,color2,u_fade)*opacity;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$26: "uniform vec2 u_pixel_coord_upper;uniform vec2 u_pixel_coord_lower;uniform vec3 u_scale;uniform vec2 u_fill_translate;in vec2 a_pos;out vec2 v_pos_a;out vec2 v_pos_b;\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\n#pragma mapbox: define lowp float pixel_ratio_from\n#pragma mapbox: define lowp float pixel_ratio_to\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\n#pragma mapbox: initialize lowp float pixel_ratio_from\n#pragma mapbox: initialize lowp float pixel_ratio_to\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;float tileZoomRatio=u_scale.x;float fromScale=u_scale.y;float toScale=u_scale.z;vec2 display_size_a=(pattern_br_a-pattern_tl_a)/pixel_ratio_from;vec2 display_size_b=(pattern_br_b-pattern_tl_b)/pixel_ratio_to;gl_Position=projectTile(a_pos+u_fill_translate,a_pos);v_pos_a=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,fromScale*display_size_a,tileZoomRatio,a_pos);v_pos_b=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,toScale*display_size_b,tileZoomRatio,a_pos);}";
+declare const _default$27: "uniform vec2 u_texsize;uniform sampler2D u_image;uniform float u_fade;in vec2 v_pos_a;in vec2 v_pos_b;in vec2 v_pos;\n#ifdef GLOBE\nin float v_depth;\n#endif\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;vec2 imagecoord=mod(v_pos_a,1.0);vec2 pos=mix(pattern_tl_a/u_texsize,pattern_br_a/u_texsize,imagecoord);vec4 color1=texture(u_image,pos);vec2 imagecoord_b=mod(v_pos_b,1.0);vec2 pos2=mix(pattern_tl_b/u_texsize,pattern_br_b/u_texsize,imagecoord_b);vec4 color2=texture(u_image,pos2);float dist=length(v_pos-gl_FragCoord.xy);float alpha=1.0-smoothstep(0.0,1.0,dist);fragColor=mix(color1,color2,u_fade)*alpha*opacity;\n#ifdef GLOBE\nif (v_depth > 1.0) {discard;}\n#endif\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$28: "uniform vec2 u_world;uniform vec2 u_pixel_coord_upper;uniform vec2 u_pixel_coord_lower;uniform vec3 u_scale;uniform vec2 u_fill_translate;in vec2 a_pos;out vec2 v_pos_a;out vec2 v_pos_b;out vec2 v_pos;\n#ifdef GLOBE\nout float v_depth;\n#endif\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\n#pragma mapbox: define lowp float pixel_ratio_from\n#pragma mapbox: define lowp float pixel_ratio_to\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\n#pragma mapbox: initialize lowp float pixel_ratio_from\n#pragma mapbox: initialize lowp float pixel_ratio_to\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;float tileRatio=u_scale.x;float fromScale=u_scale.y;float toScale=u_scale.z;gl_Position=projectTile(a_pos+u_fill_translate,a_pos);vec2 display_size_a=(pattern_br_a-pattern_tl_a)/pixel_ratio_from;vec2 display_size_b=(pattern_br_b-pattern_tl_b)/pixel_ratio_to;v_pos_a=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,fromScale*display_size_a,tileRatio,a_pos);v_pos_b=get_pattern_pos(u_pixel_coord_upper,u_pixel_coord_lower,toScale*display_size_b,tileRatio,a_pos);v_pos=(gl_Position.xy/gl_Position.w+1.0)/2.0*u_world;\n#ifdef GLOBE\nv_depth=gl_Position.z/gl_Position.w;\n#endif\n}";
+declare const _default$29: "uniform highp float u_intensity;in vec2 v_extrude;\n#pragma mapbox: define highp float weight\n#define GAUSS_COEF 0.3989422804014327\nvoid main() {\n#pragma mapbox: initialize highp float weight\nfloat d=-0.5*3.0*3.0*dot(v_extrude,v_extrude);float val=weight*u_intensity*GAUSS_COEF*exp(d);fragColor=vec4(val,1.0,1.0,1.0);\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$30: "uniform float u_extrude_scale;uniform float u_opacity;uniform float u_intensity;uniform highp float u_globe_extrude_scale;in vec2 a_pos;out vec2 v_extrude;\n#pragma mapbox: define highp float weight\n#pragma mapbox: define mediump float radius\nconst highp float ZERO=1.0/255.0/16.0;\n#define GAUSS_COEF 0.3989422804014327\nvoid main(void) {\n#pragma mapbox: initialize highp float weight\n#pragma mapbox: initialize mediump float radius\nvec2 pos_raw=a_pos+32768.0;vec2 unscaled_extrude=vec2(mod(pos_raw,8.0)/7.0*2.0-1.0);float S=sqrt(-2.0*log(ZERO/weight/u_intensity/GAUSS_COEF))/3.0;v_extrude=S*unscaled_extrude;vec2 extrude=v_extrude*radius*u_extrude_scale;vec2 circle_center=floor(pos_raw/8.0);\n#ifdef GLOBE\nvec2 angles=v_extrude*radius*u_globe_extrude_scale;vec3 center_vector=projectToSphere(circle_center);vec3 corner_vector=globeRotateVector(center_vector,angles);gl_Position=interpolateProjection(circle_center+extrude,corner_vector,0.0);\n#else\ngl_Position=projectTileFor3D(circle_center+extrude,get_elevation(circle_center));\n#endif\n}";
+declare const _default$31: "uniform sampler2D u_image;uniform sampler2D u_color_ramp;uniform float u_opacity;in vec2 v_pos;void main() {float t=texture(u_image,v_pos).r;vec4 color=texture(u_color_ramp,vec2(t,0.5));fragColor=color*u_opacity;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(0.0);\n#endif\n}";
+declare const _default$32: "uniform mat4 u_matrix;uniform vec2 u_world;in vec2 a_pos;out vec2 v_pos;void main() {gl_Position=u_matrix*vec4(a_pos*u_world,0,1);v_pos.x=a_pos.x;v_pos.y=1.0-a_pos.y;}";
+declare const _default$33: "uniform sampler2D u_image;in vec2 v_pos;uniform vec2 u_latrange;uniform float u_exaggeration;uniform vec4 u_accent;uniform int u_method;uniform float u_altitudes[NUM_ILLUMINATION_SOURCES];uniform float u_azimuths[NUM_ILLUMINATION_SOURCES];uniform vec4 u_shadows[NUM_ILLUMINATION_SOURCES];uniform vec4 u_highlights[NUM_ILLUMINATION_SOURCES];\n#define PI 3.141592653589793\n#define STANDARD 0\n#define COMBINED 1\n#define IGOR 2\n#define MULTIDIRECTIONAL 3\n#define BASIC 4\nfloat get_aspect(vec2 deriv){return deriv.x !=0.0 ? atan(deriv.y,-deriv.x) : PI/2.0*(deriv.y > 0.0 ? 1.0 :-1.0);}void igor_hillshade(vec2 deriv){deriv=deriv*u_exaggeration*2.0;float aspect=get_aspect(deriv);float azimuth=u_azimuths[0]+PI;float slope_stength=atan(length(deriv))*2.0/PI;float aspect_strength=1.0-abs(mod((aspect+azimuth)/PI+0.5,2.0)-1.0);float shadow_strength=slope_stength*aspect_strength;float highlight_strength=slope_stength*(1.0-aspect_strength);fragColor=u_shadows[0]*shadow_strength+u_highlights[0]*highlight_strength;}void standard_hillshade(vec2 deriv){float azimuth=u_azimuths[0]+PI;float slope=atan(0.625*length(deriv));float aspect=get_aspect(deriv);float intensity=u_exaggeration;float base=1.875-intensity*1.75;float maxValue=0.5*PI;float scaledSlope=intensity !=0.5 ? ((pow(base,slope)-1.0)/(pow(base,maxValue)-1.0))*maxValue : slope;float accent=cos(scaledSlope);vec4 accent_color=(1.0-accent)*u_accent*clamp(intensity*2.0,0.0,1.0);float shade=abs(mod((aspect+azimuth)/PI+0.5,2.0)-1.0);vec4 shade_color=mix(u_shadows[0],u_highlights[0],shade)*sin(scaledSlope)*clamp(intensity*2.0,0.0,1.0);fragColor=accent_color*(1.0-shade_color.a)+shade_color;}void basic_hillshade(vec2 deriv){deriv=deriv*u_exaggeration*2.0;float azimuth=u_azimuths[0]+PI;float cos_az=cos(azimuth);float sin_az=sin(azimuth);float cos_alt=cos(u_altitudes[0]);float sin_alt=sin(u_altitudes[0]);float cang=(sin_alt-(deriv.y*cos_az*cos_alt-deriv.x*sin_az*cos_alt))/sqrt(1.0+dot(deriv,deriv));float shade=clamp(cang,0.0,1.0);if(shade > 0.5){fragColor=u_highlights[0]*(2.0*shade-1.0);}else\n{fragColor=u_shadows[0]*(1.0-2.0*shade);}}void multidirectional_hillshade(vec2 deriv){deriv=deriv*u_exaggeration*2.0;fragColor=vec4(0,0,0,0);for(int i=0; i < NUM_ILLUMINATION_SOURCES; i++){float cos_alt=cos(u_altitudes[i]);float sin_alt=sin(u_altitudes[i]);float cos_az=-cos(u_azimuths[i]);float sin_az=-sin(u_azimuths[i]);float cang=(sin_alt-(deriv.y*cos_az*cos_alt-deriv.x*sin_az*cos_alt))/sqrt(1.0+dot(deriv,deriv));float shade=clamp(cang,0.0,1.0);if(shade > 0.5){fragColor+=u_highlights[i]*(2.0*shade-1.0)/float(NUM_ILLUMINATION_SOURCES);}else\n{fragColor+=u_shadows[i]*(1.0-2.0*shade)/float(NUM_ILLUMINATION_SOURCES);}}}void combined_hillshade(vec2 deriv){deriv=deriv*u_exaggeration*2.0;float azimuth=u_azimuths[0]+PI;float cos_az=cos(azimuth);float sin_az=sin(azimuth);float cos_alt=cos(u_altitudes[0]);float sin_alt=sin(u_altitudes[0]);float cang=acos((sin_alt-(deriv.y*cos_az*cos_alt-deriv.x*sin_az*cos_alt))/sqrt(1.0+dot(deriv,deriv)));cang=clamp(cang,0.0,PI/2.0);float shade=cang*atan(length(deriv))*4.0/PI/PI;float highlight=(PI/2.0-cang)*atan(length(deriv))*4.0/PI/PI;fragColor=u_shadows[0]*shade+u_highlights[0]*highlight;}void main() {vec4 pixel=texture(u_image,v_pos);float scaleFactor=cos(radians((u_latrange[0]-u_latrange[1])*(1.0-v_pos.y)+u_latrange[1]));vec2 deriv=((pixel.rg*8.0)-4.0)/scaleFactor;if (u_method==BASIC) {basic_hillshade(deriv);} else if (u_method==COMBINED) {combined_hillshade(deriv);} else if (u_method==IGOR) {igor_hillshade(deriv);} else if (u_method==MULTIDIRECTIONAL) {multidirectional_hillshade(deriv);} else if (u_method==STANDARD) {standard_hillshade(deriv);} else {standard_hillshade(deriv);}\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$34: "uniform mat4 u_matrix;in vec2 a_pos;out vec2 v_pos;void main() {gl_Position=projectTile(a_pos,a_pos);v_pos=a_pos/8192.0;if (a_pos.y <-32767.5) {v_pos.y=0.0;}if (a_pos.y > 32766.5) {v_pos.y=1.0;}}";
+declare const _default$35: "#ifdef GL_ES\nprecision highp float;\n#endif\nuniform sampler2D u_image;in vec2 v_pos;uniform vec2 u_dimension;uniform float u_zoom;uniform vec4 u_unpack;float getElevation(vec2 coord,float bias) {vec4 data=texture(u_image,coord)*255.0;data.a=-1.0;return dot(data,u_unpack);}void main() {vec2 epsilon=1.0/u_dimension;float tileSize=u_dimension.x-2.0;float a=getElevation(v_pos+vec2(-epsilon.x,-epsilon.y),0.0);float b=getElevation(v_pos+vec2(0,-epsilon.y),0.0);float c=getElevation(v_pos+vec2(epsilon.x,-epsilon.y),0.0);float d=getElevation(v_pos+vec2(-epsilon.x,0),0.0);float e=getElevation(v_pos,0.0);float f=getElevation(v_pos+vec2(epsilon.x,0),0.0);float g=getElevation(v_pos+vec2(-epsilon.x,epsilon.y),0.0);float h=getElevation(v_pos+vec2(0,epsilon.y),0.0);float i=getElevation(v_pos+vec2(epsilon.x,epsilon.y),0.0);float exaggerationFactor=u_zoom < 2.0 ? 0.4 : u_zoom < 4.5 ? 0.35 : 0.3;float exaggeration=u_zoom < 15.0 ? (u_zoom-15.0)*exaggerationFactor : 0.0;vec2 deriv=vec2((c+f+f+i)-(a+d+d+g),(g+h+h+i)-(a+b+b+c))*tileSize/pow(2.0,exaggeration+(28.2562-u_zoom));fragColor=clamp(vec4(deriv.x/8.0+0.5,deriv.y/8.0+0.5,1.0,1.0),0.0,1.0);\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$36: "uniform mat4 u_matrix;uniform vec2 u_dimension;in vec2 a_pos;in vec2 a_texture_pos;out vec2 v_pos;void main() {gl_Position=u_matrix*vec4(a_pos,0,1);highp vec2 epsilon=1.0/u_dimension;float scale=(u_dimension.x-2.0)/u_dimension.x;v_pos=(a_texture_pos/8192.0)*scale+epsilon;}";
+declare const _default$37: "uniform lowp float u_device_pixel_ratio;in vec2 v_width2;in vec2 v_normal;in float v_gamma_scale;\n#ifdef GLOBE\nin float v_depth;\n#endif\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\nfloat dist=length(v_normal)*v_width2.s;float blur2=(blur+1.0/u_device_pixel_ratio)*v_gamma_scale;float alpha=clamp(min(dist-(v_width2.t-blur2),v_width2.s-dist)/blur2,0.0,1.0);fragColor=color*(alpha*opacity);\n#ifdef GLOBE\nif (v_depth > 1.0) {discard;}\n#endif\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$38: "\n#define scale 0.015873016\nin vec2 a_pos_normal;in vec4 a_data;uniform vec2 u_translation;uniform mediump float u_ratio;uniform vec2 u_units_to_pixels;uniform lowp float u_device_pixel_ratio;out vec2 v_normal;out vec2 v_width2;out float v_gamma_scale;out highp float v_linesofar;\n#ifdef GLOBE\nout float v_depth;\n#endif\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define mediump float gapwidth\n#pragma mapbox: define lowp float offset\n#pragma mapbox: define mediump float width\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump float gapwidth\n#pragma mapbox: initialize lowp float offset\n#pragma mapbox: initialize mediump float width\nfloat ANTIALIASING=1.0/u_device_pixel_ratio/2.0;vec2 a_extrude=a_data.xy-128.0;float a_direction=mod(a_data.z,4.0)-1.0;v_linesofar=(floor(a_data.z/4.0)+a_data.w*64.0)*2.0;vec2 pos=floor(a_pos_normal*0.5);mediump vec2 normal=a_pos_normal-2.0*pos;normal.y=normal.y*2.0-1.0;v_normal=normal;gapwidth=gapwidth/2.0;float halfwidth=width/2.0;offset=-1.0*offset;float inset=gapwidth+(gapwidth > 0.0 ? ANTIALIASING : 0.0);float outset=gapwidth+halfwidth*(gapwidth > 0.0 ? 2.0 : 1.0)+(halfwidth==0.0 ? 0.0 : ANTIALIASING);mediump vec2 dist=outset*a_extrude*scale;mediump float u=0.5*a_direction;mediump float t=1.0-abs(u);mediump vec2 offset2=offset*a_extrude*scale*normal.y*mat2(t,-u,u,t);float adjustedThickness=projectLineThickness(pos.y);vec4 projected_no_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation);vec4 projected_with_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation+dist/u_ratio*adjustedThickness);gl_Position=projected_with_extrude;\n#ifdef GLOBE\nv_depth=gl_Position.z/gl_Position.w;\n#endif\n#ifdef TERRAIN3D\nv_gamma_scale=1.0;\n#else\nfloat extrude_length_without_perspective=length(dist);float extrude_length_with_perspective=length((projected_with_extrude.xy-projected_no_extrude.xy)/projected_with_extrude.w*u_units_to_pixels);v_gamma_scale=extrude_length_without_perspective/extrude_length_with_perspective;\n#endif\nv_width2=vec2(outset,inset);}";
+declare const _default$39: "uniform lowp float u_device_pixel_ratio;uniform sampler2D u_image;in vec2 v_width2;in vec2 v_normal;in float v_gamma_scale;in highp vec2 v_uv;\n#ifdef GLOBE\nin float v_depth;\n#endif\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\nfloat dist=length(v_normal)*v_width2.s;float blur2=(blur+1.0/u_device_pixel_ratio)*v_gamma_scale;float alpha=clamp(min(dist-(v_width2.t-blur2),v_width2.s-dist)/blur2,0.0,1.0);vec4 color=texture(u_image,v_uv);fragColor=color*(alpha*opacity);\n#ifdef GLOBE\nif (v_depth > 1.0) {discard;}\n#endif\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$40: "\n#define scale 0.015873016\nin vec2 a_pos_normal;in vec4 a_data;in float a_uv_x;in float a_split_index;uniform vec2 u_translation;uniform mediump float u_ratio;uniform lowp float u_device_pixel_ratio;uniform vec2 u_units_to_pixels;uniform float u_image_height;out vec2 v_normal;out vec2 v_width2;out float v_gamma_scale;out highp vec2 v_uv;\n#ifdef GLOBE\nout float v_depth;\n#endif\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define mediump float gapwidth\n#pragma mapbox: define lowp float offset\n#pragma mapbox: define mediump float width\nvoid main() {\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump float gapwidth\n#pragma mapbox: initialize lowp float offset\n#pragma mapbox: initialize mediump float width\nfloat ANTIALIASING=1.0/u_device_pixel_ratio/2.0;vec2 a_extrude=a_data.xy-128.0;float a_direction=mod(a_data.z,4.0)-1.0;highp float texel_height=1.0/u_image_height;highp float half_texel_height=0.5*texel_height;v_uv=vec2(a_uv_x,a_split_index*texel_height-half_texel_height);vec2 pos=floor(a_pos_normal*0.5);mediump vec2 normal=a_pos_normal-2.0*pos;normal.y=normal.y*2.0-1.0;v_normal=normal;gapwidth=gapwidth/2.0;float halfwidth=width/2.0;offset=-1.0*offset;float inset=gapwidth+(gapwidth > 0.0 ? ANTIALIASING : 0.0);float outset=gapwidth+halfwidth*(gapwidth > 0.0 ? 2.0 : 1.0)+(halfwidth==0.0 ? 0.0 : ANTIALIASING);mediump vec2 dist=outset*a_extrude*scale;mediump float u=0.5*a_direction;mediump float t=1.0-abs(u);mediump vec2 offset2=offset*a_extrude*scale*normal.y*mat2(t,-u,u,t);float adjustedThickness=projectLineThickness(pos.y);vec4 projected_no_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation);vec4 projected_with_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation+dist/u_ratio*adjustedThickness);gl_Position=projected_with_extrude;\n#ifdef GLOBE\nv_depth=gl_Position.z/gl_Position.w;\n#endif\n#ifdef TERRAIN3D\nv_gamma_scale=1.0;\n#else\nfloat extrude_length_without_perspective=length(dist);float extrude_length_with_perspective=length((projected_with_extrude.xy-projected_no_extrude.xy)/projected_with_extrude.w*u_units_to_pixels);v_gamma_scale=extrude_length_without_perspective/extrude_length_with_perspective;\n#endif\nv_width2=vec2(outset,inset);}";
+declare const _default$41: "#ifdef GL_ES\nprecision highp float;\n#endif\nuniform lowp float u_device_pixel_ratio;uniform vec2 u_texsize;uniform float u_fade;uniform mediump vec3 u_scale;uniform sampler2D u_image;in vec2 v_normal;in vec2 v_width2;in float v_linesofar;in float v_gamma_scale;in float v_width;\n#ifdef GLOBE\nin float v_depth;\n#endif\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\n#pragma mapbox: define lowp float pixel_ratio_from\n#pragma mapbox: define lowp float pixel_ratio_to\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\n#pragma mapbox: initialize lowp float pixel_ratio_from\n#pragma mapbox: initialize lowp float pixel_ratio_to\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\nvec2 pattern_tl_a=pattern_from.xy;vec2 pattern_br_a=pattern_from.zw;vec2 pattern_tl_b=pattern_to.xy;vec2 pattern_br_b=pattern_to.zw;float tileZoomRatio=u_scale.x;float fromScale=u_scale.y;float toScale=u_scale.z;vec2 display_size_a=(pattern_br_a-pattern_tl_a)/pixel_ratio_from;vec2 display_size_b=(pattern_br_b-pattern_tl_b)/pixel_ratio_to;vec2 pattern_size_a=vec2(display_size_a.x*fromScale/tileZoomRatio,display_size_a.y);vec2 pattern_size_b=vec2(display_size_b.x*toScale/tileZoomRatio,display_size_b.y);float aspect_a=display_size_a.y/v_width;float aspect_b=display_size_b.y/v_width;float dist=length(v_normal)*v_width2.s;float blur2=(blur+1.0/u_device_pixel_ratio)*v_gamma_scale;float alpha=clamp(min(dist-(v_width2.t-blur2),v_width2.s-dist)/blur2,0.0,1.0);float x_a=mod(v_linesofar/pattern_size_a.x*aspect_a,1.0);float x_b=mod(v_linesofar/pattern_size_b.x*aspect_b,1.0);float y=0.5*v_normal.y+0.5;vec2 texel_size=1.0/u_texsize;vec2 pos_a=mix(pattern_tl_a*texel_size-texel_size,pattern_br_a*texel_size+texel_size,vec2(x_a,y));vec2 pos_b=mix(pattern_tl_b*texel_size-texel_size,pattern_br_b*texel_size+texel_size,vec2(x_b,y));vec4 color=mix(texture(u_image,pos_a),texture(u_image,pos_b),u_fade);fragColor=color*alpha*opacity;\n#ifdef GLOBE\nif (v_depth > 1.0) {discard;}\n#endif\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$42: "\n#define scale 0.015873016\n#define LINE_DISTANCE_SCALE 2.0\nin vec2 a_pos_normal;in vec4 a_data;uniform vec2 u_translation;uniform vec2 u_units_to_pixels;uniform mediump float u_ratio;uniform lowp float u_device_pixel_ratio;out vec2 v_normal;out vec2 v_width2;out float v_linesofar;out float v_gamma_scale;out float v_width;\n#ifdef GLOBE\nout float v_depth;\n#endif\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float offset\n#pragma mapbox: define mediump float gapwidth\n#pragma mapbox: define mediump float width\n#pragma mapbox: define lowp float floorwidth\n#pragma mapbox: define lowp vec4 pattern_from\n#pragma mapbox: define lowp vec4 pattern_to\n#pragma mapbox: define lowp float pixel_ratio_from\n#pragma mapbox: define lowp float pixel_ratio_to\nvoid main() {\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float offset\n#pragma mapbox: initialize mediump float gapwidth\n#pragma mapbox: initialize mediump float width\n#pragma mapbox: initialize lowp float floorwidth\n#pragma mapbox: initialize mediump vec4 pattern_from\n#pragma mapbox: initialize mediump vec4 pattern_to\n#pragma mapbox: initialize lowp float pixel_ratio_from\n#pragma mapbox: initialize lowp float pixel_ratio_to\nfloat ANTIALIASING=1.0/u_device_pixel_ratio/2.0;vec2 a_extrude=a_data.xy-128.0;float a_direction=mod(a_data.z,4.0)-1.0;float a_linesofar=(floor(a_data.z/4.0)+a_data.w*64.0)*LINE_DISTANCE_SCALE;vec2 pos=floor(a_pos_normal*0.5);mediump vec2 normal=a_pos_normal-2.0*pos;normal.y=normal.y*2.0-1.0;v_normal=normal;gapwidth=gapwidth/2.0;float halfwidth=width/2.0;offset=-1.0*offset;float inset=gapwidth+(gapwidth > 0.0 ? ANTIALIASING : 0.0);float outset=gapwidth+halfwidth*(gapwidth > 0.0 ? 2.0 : 1.0)+(halfwidth==0.0 ? 0.0 : ANTIALIASING);mediump vec2 dist=outset*a_extrude*scale;mediump float u=0.5*a_direction;mediump float t=1.0-abs(u);mediump vec2 offset2=offset*a_extrude*scale*normal.y*mat2(t,-u,u,t);float adjustedThickness=projectLineThickness(pos.y);vec4 projected_no_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation);vec4 projected_with_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation+dist/u_ratio*adjustedThickness);gl_Position=projected_with_extrude;\n#ifdef GLOBE\nv_depth=gl_Position.z/gl_Position.w;\n#endif\n#ifdef TERRAIN3D\nv_gamma_scale=1.0;\n#else\nfloat extrude_length_without_perspective=length(dist);float extrude_length_with_perspective=length((projected_with_extrude.xy-projected_no_extrude.xy)/projected_with_extrude.w*u_units_to_pixels);v_gamma_scale=extrude_length_without_perspective/extrude_length_with_perspective;\n#endif\nv_linesofar=a_linesofar;v_width2=vec2(outset,inset);v_width=floorwidth;}";
+declare const _default$43: "uniform lowp float u_device_pixel_ratio;uniform sampler2D u_image;uniform float u_sdfgamma;uniform float u_mix;in vec2 v_normal;in vec2 v_width2;in vec2 v_tex_a;in vec2 v_tex_b;in float v_gamma_scale;\n#ifdef GLOBE\nin float v_depth;\n#endif\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define mediump float width\n#pragma mapbox: define lowp float floorwidth\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump float width\n#pragma mapbox: initialize lowp float floorwidth\nfloat dist=length(v_normal)*v_width2.s;float blur2=(blur+1.0/u_device_pixel_ratio)*v_gamma_scale;float alpha=clamp(min(dist-(v_width2.t-blur2),v_width2.s-dist)/blur2,0.0,1.0);float sdfdist_a=texture(u_image,v_tex_a).a;float sdfdist_b=texture(u_image,v_tex_b).a;float sdfdist=mix(sdfdist_a,sdfdist_b,u_mix);alpha*=smoothstep(0.5-u_sdfgamma/floorwidth,0.5+u_sdfgamma/floorwidth,sdfdist);fragColor=color*(alpha*opacity);\n#ifdef GLOBE\nif (v_depth > 1.0) {discard;}\n#endif\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$44: "\n#define scale 0.015873016\n#define LINE_DISTANCE_SCALE 2.0\nin vec2 a_pos_normal;in vec4 a_data;uniform vec2 u_translation;uniform mediump float u_ratio;uniform lowp float u_device_pixel_ratio;uniform vec2 u_patternscale_a;uniform float u_tex_y_a;uniform vec2 u_patternscale_b;uniform float u_tex_y_b;uniform vec2 u_units_to_pixels;out vec2 v_normal;out vec2 v_width2;out vec2 v_tex_a;out vec2 v_tex_b;out float v_gamma_scale;\n#ifdef GLOBE\nout float v_depth;\n#endif\n#pragma mapbox: define highp vec4 color\n#pragma mapbox: define lowp float blur\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define mediump float gapwidth\n#pragma mapbox: define lowp float offset\n#pragma mapbox: define mediump float width\n#pragma mapbox: define lowp float floorwidth\nvoid main() {\n#pragma mapbox: initialize highp vec4 color\n#pragma mapbox: initialize lowp float blur\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize mediump float gapwidth\n#pragma mapbox: initialize lowp float offset\n#pragma mapbox: initialize mediump float width\n#pragma mapbox: initialize lowp float floorwidth\nfloat ANTIALIASING=1.0/u_device_pixel_ratio/2.0;vec2 a_extrude=a_data.xy-128.0;float a_direction=mod(a_data.z,4.0)-1.0;float a_linesofar=(floor(a_data.z/4.0)+a_data.w*64.0)*LINE_DISTANCE_SCALE;vec2 pos=floor(a_pos_normal*0.5);mediump vec2 normal=a_pos_normal-2.0*pos;normal.y=normal.y*2.0-1.0;v_normal=normal;gapwidth=gapwidth/2.0;float halfwidth=width/2.0;offset=-1.0*offset;float inset=gapwidth+(gapwidth > 0.0 ? ANTIALIASING : 0.0);float outset=gapwidth+halfwidth*(gapwidth > 0.0 ? 2.0 : 1.0)+(halfwidth==0.0 ? 0.0 : ANTIALIASING);mediump vec2 dist=outset*a_extrude*scale;mediump float u=0.5*a_direction;mediump float t=1.0-abs(u);mediump vec2 offset2=offset*a_extrude*scale*normal.y*mat2(t,-u,u,t);float adjustedThickness=projectLineThickness(pos.y);vec4 projected_no_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation);vec4 projected_with_extrude=projectTile(pos+offset2/u_ratio*adjustedThickness+u_translation+dist/u_ratio*adjustedThickness);gl_Position=projected_with_extrude;\n#ifdef GLOBE\nv_depth=gl_Position.z/gl_Position.w;\n#endif\n#ifdef TERRAIN3D\nv_gamma_scale=1.0;\n#else\nfloat extrude_length_without_perspective=length(dist);float extrude_length_with_perspective=length((projected_with_extrude.xy-projected_no_extrude.xy)/projected_with_extrude.w*u_units_to_pixels);v_gamma_scale=extrude_length_without_perspective/extrude_length_with_perspective;\n#endif\nv_tex_a=vec2(a_linesofar*u_patternscale_a.x/floorwidth,normal.y*u_patternscale_a.y+u_tex_y_a);v_tex_b=vec2(a_linesofar*u_patternscale_b.x/floorwidth,normal.y*u_patternscale_b.y+u_tex_y_b);v_width2=vec2(outset,inset);}";
+declare const _default$45: "#ifdef GL_ES\nprecision mediump float;\n#else\n#if !defined(lowp)\n#define lowp\n#endif\n#if !defined(mediump)\n#define mediump\n#endif\n#if !defined(highp)\n#define highp\n#endif\n#endif\nout highp vec4 fragColor;";
+declare const _default$46: "#ifdef GL_ES\nprecision highp float;\n#else\n#if !defined(lowp)\n#define lowp\n#endif\n#if !defined(mediump)\n#define mediump\n#endif\n#if !defined(highp)\n#define highp\n#endif\n#endif\nvec2 unpack_float(const float packedValue) {int packedIntValue=int(packedValue);int v0=packedIntValue/256;return vec2(v0,packedIntValue-v0*256);}vec2 unpack_opacity(const float packedOpacity) {int intOpacity=int(packedOpacity)/2;return vec2(float(intOpacity)/127.0,mod(packedOpacity,2.0));}vec4 decode_color(const vec2 encodedColor) {return vec4(unpack_float(encodedColor[0])/255.0,unpack_float(encodedColor[1])/255.0\n);}float unpack_mix_vec2(const vec2 packedValue,const float t) {return mix(packedValue[0],packedValue[1],t);}vec4 unpack_mix_color(const vec4 packedColors,const float t) {vec4 minColor=decode_color(vec2(packedColors[0],packedColors[1]));vec4 maxColor=decode_color(vec2(packedColors[2],packedColors[3]));return mix(minColor,maxColor,t);}vec2 get_pattern_pos(const vec2 pixel_coord_upper,const vec2 pixel_coord_lower,const vec2 pattern_size,const float tile_units_to_pixels,const vec2 pos) {vec2 offset=mod(mod(mod(pixel_coord_upper,pattern_size)*256.0,pattern_size)*256.0+pixel_coord_lower,pattern_size);return (tile_units_to_pixels*pos+offset)/pattern_size;}mat3 rotationMatrixFromAxisAngle(vec3 u,float angle) {float c=cos(angle);float s=sin(angle);float c2=1.0-c;return mat3(u.x*u.x*c2+      c,u.x*u.y*c2-u.z*s,u.x*u.z*c2+u.y*s,u.y*u.x*c2+u.z*s,u.y*u.y*c2+    c,u.y*u.z*c2-u.x*s,u.z*u.x*c2-u.y*s,u.z*u.y*c2+u.x*s,u.z*u.z*c2+    c\n);}\n#ifdef TERRAIN3D\nuniform sampler2D u_terrain;uniform float u_terrain_dim;uniform mat4 u_terrain_matrix;uniform vec4 u_terrain_unpack;uniform float u_terrain_exaggeration;uniform highp sampler2D u_depth;\n#endif\nconst highp vec4 bitSh=vec4(256.*256.*256.,256.*256.,256.,1.);const highp vec4 bitShifts=vec4(1.)/bitSh;highp float unpack(highp vec4 color) {return dot(color,bitShifts);}highp float depthOpacity(vec3 frag) {\n#ifdef TERRAIN3D\nhighp float d=unpack(texture(u_depth,frag.xy*0.5+0.5))+0.0001-frag.z;return 1.0-max(0.0,min(1.0,-d*500.0));\n#else\nreturn 1.0;\n#endif\n}float calculate_visibility(vec4 pos) {\n#ifdef TERRAIN3D\nvec3 frag=pos.xyz/pos.w;highp float d=depthOpacity(frag);if (d > 0.95) return 1.0;return (d+depthOpacity(frag+vec3(0.0,0.01,0.0)))/2.0;\n#else\nreturn 1.0;\n#endif\n}float ele(vec2 pos) {\n#ifdef TERRAIN3D\nvec4 rgb=(texture(u_terrain,pos)*255.0)*u_terrain_unpack;return rgb.r+rgb.g+rgb.b-u_terrain_unpack.a;\n#else\nreturn 0.0;\n#endif\n}float get_elevation(vec2 pos) {\n#ifdef TERRAIN3D\n#ifdef GLOBE\nif ((pos.y <-32767.5) || (pos.y > 32766.5)) {return 0.0;}\n#endif\nvec2 coord=(u_terrain_matrix*vec4(pos,0.0,1.0)).xy*u_terrain_dim+1.0;vec2 f=fract(coord);vec2 c=(floor(coord)+0.5)/(u_terrain_dim+2.0);float d=1.0/(u_terrain_dim+2.0);float tl=ele(c);float tr=ele(c+vec2(d,0.0));float bl=ele(c+vec2(0.0,d));float br=ele(c+vec2(d,d));float elevation=mix(mix(tl,tr,f.x),mix(bl,br,f.x),f.y);return elevation*u_terrain_exaggeration;\n#else\nreturn 0.0;\n#endif\n}const float PI=3.141592653589793;uniform mat4 u_projection_matrix;";
+declare const _default$47: "in vec4 v_output_error_encoded;void main() {fragColor=v_output_error_encoded;}";
+declare const _default$48: "in vec2 a_pos;uniform highp float u_input;uniform highp float u_output_expected;out vec4 v_output_error_encoded;void main() {float real_output=2.0*atan(exp(PI-(u_input*PI*2.0)))-PI*0.5;float error=real_output-u_output_expected;float abs_error=abs(error)*128.0;v_output_error_encoded.x=min(floor(abs_error*256.0),255.0)/255.0;abs_error-=v_output_error_encoded.x;v_output_error_encoded.y=min(floor(abs_error*65536.0),255.0)/255.0;abs_error-=v_output_error_encoded.x/255.0;v_output_error_encoded.z=min(floor(abs_error*16777216.0),255.0)/255.0;v_output_error_encoded.w=error >=0.0 ? 1.0 : 0.0;gl_Position=vec4(a_pos,0.0,1.0);}";
+declare const _default$49: "float projectLineThickness(float tileY) {return 1.0;}float projectCircleRadius(float tileY) {return 1.0;}vec4 projectTile(vec2 p) {vec4 result=u_projection_matrix*vec4(p,0.0,1.0);return result;}vec4 projectTile(vec2 p,vec2 rawPos) {vec4 result=u_projection_matrix*vec4(p,0.0,1.0);if (rawPos.y <-32767.5 || rawPos.y > 32766.5) {result.z=-10000000.0;}return result;}vec4 projectTileWithElevation(vec2 posInTile,float elevation) {return u_projection_matrix*vec4(posInTile,elevation,1.0);}vec4 projectTileFor3D(vec2 posInTile,float elevation) {return projectTileWithElevation(posInTile,elevation);}";
+declare const _default$50: "#define GLOBE_RADIUS 6371008.8\nuniform highp vec4 u_projection_tile_mercator_coords;uniform highp vec4 u_projection_clipping_plane;uniform highp float u_projection_transition;uniform mat4 u_projection_fallback_matrix;vec3 globeRotateVector(vec3 vec,vec2 angles) {vec3 axisRight=vec3(vec.z,0.0,-vec.x);vec3 axisUp=cross(axisRight,vec);axisRight=normalize(axisRight);axisUp=normalize(axisUp);vec2 t=tan(angles);return normalize(vec+axisRight*t.x+axisUp*t.y);}mat3 globeGetRotationMatrix(vec3 spherePos) {vec3 axisRight=vec3(spherePos.z,0.0,-spherePos.x);vec3 axisDown=cross(axisRight,spherePos);axisRight=normalize(axisRight);axisDown=normalize(axisDown);return mat3(axisRight,axisDown,spherePos\n);}float circumferenceRatioAtTileY(float tileY) {float mercator_pos_y=u_projection_tile_mercator_coords.y+u_projection_tile_mercator_coords.w*tileY;float spherical_y=2.0*atan(exp(PI-(mercator_pos_y*PI*2.0)))-PI*0.5;return cos(spherical_y);}float projectLineThickness(float tileY) {float thickness=1.0/circumferenceRatioAtTileY(tileY); \nif (u_projection_transition < 0.999) {return mix(1.0,thickness,u_projection_transition);} else {return thickness;}}vec3 projectToSphere(vec2 translatedPos,vec2 rawPos) {vec2 mercator_pos=u_projection_tile_mercator_coords.xy+u_projection_tile_mercator_coords.zw*translatedPos;vec2 spherical;spherical.x=mercator_pos.x*PI*2.0+PI;spherical.y=2.0*atan(exp(PI-(mercator_pos.y*PI*2.0)))-PI*0.5;float len=cos(spherical.y);vec3 pos=vec3(sin(spherical.x)*len,sin(spherical.y),cos(spherical.x)*len\n);if (rawPos.y <-32767.5) {pos=vec3(0.0,1.0,0.0);}if (rawPos.y > 32766.5) {pos=vec3(0.0,-1.0,0.0);}return pos;}vec3 projectToSphere(vec2 posInTile) {return projectToSphere(posInTile,vec2(0.0,0.0));}float globeComputeClippingZ(vec3 spherePos) {return (1.0-(dot(spherePos,u_projection_clipping_plane.xyz)+u_projection_clipping_plane.w));}vec4 interpolateProjection(vec2 posInTile,vec3 spherePos,float elevation) {vec3 elevatedPos=spherePos*(1.0+elevation/GLOBE_RADIUS);vec4 globePosition=u_projection_matrix*vec4(elevatedPos,1.0);globePosition.z=globeComputeClippingZ(elevatedPos)*globePosition.w;if (u_projection_transition > 0.999) {return globePosition;}vec4 flatPosition=u_projection_fallback_matrix*vec4(posInTile,elevation,1.0);const float z_globeness_threshold=0.2;vec4 result=globePosition;result.z=mix(0.0,globePosition.z,clamp((u_projection_transition-z_globeness_threshold)/(1.0-z_globeness_threshold),0.0,1.0));result.xyw=mix(flatPosition.xyw,globePosition.xyw,u_projection_transition);if ((posInTile.y <-32767.5) || (posInTile.y > 32766.5)) {result=globePosition;const float poles_hidden_anim_percentage=0.02;result.z=mix(globePosition.z,100.0,pow(max((1.0-u_projection_transition)/poles_hidden_anim_percentage,0.0),8.0));}return result;}vec4 interpolateProjectionFor3D(vec2 posInTile,vec3 spherePos,float elevation) {vec3 elevatedPos=spherePos*(1.0+elevation/GLOBE_RADIUS);vec4 globePosition=u_projection_matrix*vec4(elevatedPos,1.0);if (u_projection_transition > 0.999) {return globePosition;}vec4 fallbackPosition=u_projection_fallback_matrix*vec4(posInTile,elevation,1.0);return mix(fallbackPosition,globePosition,u_projection_transition);}vec4 projectTile(vec2 posInTile) {return interpolateProjection(posInTile,projectToSphere(posInTile),0.0);}vec4 projectTile(vec2 posInTile,vec2 rawPos) {return interpolateProjection(posInTile,projectToSphere(posInTile,rawPos),0.0);}vec4 projectTileWithElevation(vec2 posInTile,float elevation) {return interpolateProjection(posInTile,projectToSphere(posInTile),elevation);}vec4 projectTileFor3D(vec2 posInTile,float elevation) {vec3 spherePos=projectToSphere(posInTile,posInTile);return interpolateProjectionFor3D(posInTile,spherePos,elevation);}";
+declare const _default$51: "uniform float u_fade_t;uniform float u_opacity;uniform sampler2D u_image0;uniform sampler2D u_image1;in vec2 v_pos0;in vec2 v_pos1;uniform float u_brightness_low;uniform float u_brightness_high;uniform float u_saturation_factor;uniform float u_contrast_factor;uniform vec3 u_spin_weights;void main() {vec4 color0=texture(u_image0,v_pos0);vec4 color1=texture(u_image1,v_pos1);if (color0.a > 0.0) {color0.rgb=color0.rgb/color0.a;}if (color1.a > 0.0) {color1.rgb=color1.rgb/color1.a;}vec4 color=mix(color0,color1,u_fade_t);color.a*=u_opacity;vec3 rgb=color.rgb;rgb=vec3(dot(rgb,u_spin_weights.xyz),dot(rgb,u_spin_weights.zxy),dot(rgb,u_spin_weights.yzx));float average=(color.r+color.g+color.b)/3.0;rgb+=(average-rgb)*u_saturation_factor;rgb=(rgb-0.5)*u_contrast_factor+0.5;vec3 u_high_vec=vec3(u_brightness_low,u_brightness_low,u_brightness_low);vec3 u_low_vec=vec3(u_brightness_high,u_brightness_high,u_brightness_high);fragColor=vec4(mix(u_high_vec,u_low_vec,rgb)*color.a,color.a);\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$52: "uniform vec2 u_tl_parent;uniform float u_scale_parent;uniform float u_buffer_scale;uniform vec4 u_coords_top;uniform vec4 u_coords_bottom;in vec2 a_pos;out vec2 v_pos0;out vec2 v_pos1;void main() {vec2 fractionalPos=a_pos/8192.0;vec2 position=mix(mix(u_coords_top.xy,u_coords_top.zw,fractionalPos.x),mix(u_coords_bottom.xy,u_coords_bottom.zw,fractionalPos.x),fractionalPos.y);gl_Position=projectTile(position,position);v_pos0=((fractionalPos-0.5)/u_buffer_scale)+0.5;\n#ifdef GLOBE\nif (a_pos.y <-32767.5) {v_pos0.y=0.0;}if (a_pos.y > 32766.5) {v_pos0.y=1.0;}\n#endif\nv_pos1=(v_pos0*u_scale_parent)+u_tl_parent;}";
+declare const _default$53: "#ifdef GL_ES\nprecision highp float;\n#endif\nuniform sampler2D u_image;uniform vec4 u_unpack;uniform sampler2D u_elevation_stops;uniform sampler2D u_color_stops;uniform int u_color_ramp_size;uniform float u_opacity;in vec2 v_pos;float getElevation(vec2 coord) {vec4 data=texture(u_image,coord)*255.0;data.a=-1.0;return dot(data,u_unpack);}float getElevationStop(int stop) {float x=(float(stop)+0.5)/float(u_color_ramp_size);vec4 data=texture(u_elevation_stops,vec2(x,0))*255.0;data.a=-1.0;return dot(data,u_unpack);}void main() {float el=getElevation(v_pos);int r=(u_color_ramp_size-1);int l=0;float el_l=getElevationStop(l);float el_r=getElevationStop(r);while(r-l > 1){int m=(r+l)/2;float el_m=getElevationStop(m);if(el < el_m){r=m;el_r=el_m;}else\n{l=m;el_l=el_m;}}float x=(float(l)+(el-el_l)/(el_r-el_l)+0.5)/float(u_color_ramp_size);fragColor=u_opacity*texture(u_color_stops,vec2(x,0));\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$54: "uniform vec2 u_dimension;in vec2 a_pos;out vec2 v_pos;void main() {gl_Position=projectTile(a_pos,a_pos);highp vec2 epsilon=1.0/u_dimension;float scale=(u_dimension.x-2.0)/u_dimension.x;v_pos=(a_pos/8192.0)*scale+epsilon;if (a_pos.y <-32767.5) {v_pos.y=0.0;}if (a_pos.y > 32766.5) {v_pos.y=1.0;}}";
+declare const _default$55: "uniform vec4 u_sky_color;uniform vec4 u_horizon_color;uniform vec2 u_horizon;uniform vec2 u_horizon_normal;uniform float u_sky_horizon_blend;uniform float u_sky_blend;void main() {float x=gl_FragCoord.x;float y=gl_FragCoord.y;float blend=(y-u_horizon.y)*u_horizon_normal.y+(x-u_horizon.x)*u_horizon_normal.x;if (blend > 0.0) {if (blend < u_sky_horizon_blend) {fragColor=mix(u_sky_color,u_horizon_color,pow(1.0-blend/u_sky_horizon_blend,2.0));} else {fragColor=u_sky_color;}}fragColor=mix(fragColor,vec4(vec3(0.0),0.0),u_sky_blend);}";
+declare const _default$56: "in vec2 a_pos;void main() {gl_Position=vec4(a_pos,1.0,1.0);}";
+declare const _default$57: "uniform sampler2D u_texture;in vec2 v_tex;in float v_fade_opacity;\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\nlowp float alpha=opacity*v_fade_opacity;fragColor=texture(u_texture,v_tex)*alpha;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$58: "in vec4 a_pos_offset;in vec4 a_data;in vec4 a_pixeloffset;in vec3 a_projected_pos;in float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform highp float u_camera_to_center_distance;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform float u_fade_change;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform vec2 u_texsize;uniform bool u_is_along_line;uniform bool u_is_variable_anchor;uniform vec2 u_translation;uniform float u_pitched_scale;out vec2 v_tex;out float v_fade_opacity;\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);vec2 a_pxoffset=a_pixeloffset.xy;vec2 a_minFontScale=a_pixeloffset.zw/256.0;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec2 translated_a_pos=a_pos+u_translation;vec4 projectedPoint=projectTileWithElevation(translated_a_pos,ele);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=u_is_text ? size/24.0 : size;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=projectTileWithElevation(translated_a_pos+vec2(1,0),ele);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos;if (u_is_along_line || u_is_variable_anchor) {projected_pos=vec4(a_projected_pos.xy,ele,1.0);} else if (u_pitch_with_map) {projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy+u_translation,ele,1.0);} else {projected_pos=u_label_plane_matrix*projectTileWithElevation(a_projected_pos.xy+u_translation,ele);}float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;float projectionScaling=1.0;\n#ifdef GLOBE\nif(u_pitch_with_map) {float anchor_pos_tile_y=(u_coord_matrix*vec4(projected_pos.xy/projected_pos.w,z,1.0)).y;projectionScaling=mix(projectionScaling,1.0/circumferenceRatioAtTileY(anchor_pos_tile_y)*u_pitched_scale,u_projection_transition);}\n#endif\nvec4 finalPos=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*max(a_minFontScale,fontScale)+a_pxoffset/16.0)*projectionScaling,z,1.0);if(u_pitch_with_map) {finalPos=projectTileWithElevation(finalPos.xy,finalPos.z);}gl_Position=finalPos;v_tex=a_tex/u_texsize;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float visibility=calculate_visibility(projectedPoint);v_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));}";
+declare const _default$59: "#define SDF_PX 8.0\nuniform bool u_is_halo;uniform sampler2D u_texture;uniform highp float u_gamma_scale;uniform lowp float u_device_pixel_ratio;uniform bool u_is_text;in vec2 v_data0;in vec3 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nfloat EDGE_GAMMA=0.105/u_device_pixel_ratio;vec2 tex=v_data0.xy;float gamma_scale=v_data1.x;float size=v_data1.y;float fade_opacity=v_data1[2];float fontScale=u_is_text ? size/24.0 : size;lowp vec4 color=fill_color;highp float gamma=EDGE_GAMMA/(fontScale*u_gamma_scale);lowp float inner_edge=(256.0-64.0)/256.0;if (u_is_halo) {color=halo_color;gamma=(halo_blur*1.19/SDF_PX+EDGE_GAMMA)/(fontScale*u_gamma_scale);inner_edge=inner_edge+gamma*gamma_scale;}lowp float dist=texture(u_texture,tex).a;highp float gamma_scaled=gamma*gamma_scale;highp float alpha=smoothstep(inner_edge-gamma_scaled,inner_edge+gamma_scaled,dist);if (u_is_halo) {lowp float halo_edge=(6.0-halo_width/fontScale)/SDF_PX;alpha=min(smoothstep(halo_edge-gamma_scaled,halo_edge+gamma_scaled,dist),1.0-alpha);}fragColor=color*(alpha*opacity*fade_opacity);\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$60: "in vec4 a_pos_offset;in vec4 a_data;in vec4 a_pixeloffset;in vec3 a_projected_pos;in float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform bool u_is_along_line;uniform bool u_is_variable_anchor;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform highp float u_camera_to_center_distance;uniform float u_fade_change;uniform vec2 u_texsize;uniform vec2 u_translation;uniform float u_pitched_scale;out vec2 v_data0;out vec3 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);vec2 a_pxoffset=a_pixeloffset.xy;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec2 translated_a_pos=a_pos+u_translation;vec4 projectedPoint=projectTileWithElevation(translated_a_pos,ele);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=u_is_text ? size/24.0 : size;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=projectTileWithElevation(translated_a_pos+vec2(1,0),ele);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos;if (u_is_along_line || u_is_variable_anchor) {projected_pos=vec4(a_projected_pos.xy,ele,1.0);} else if (u_pitch_with_map) {projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy+u_translation,ele,1.0);} else {projected_pos=u_label_plane_matrix*projectTileWithElevation(a_projected_pos.xy+u_translation,ele);}float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;float projectionScaling=1.0;\n#ifdef GLOBE\nif(u_pitch_with_map) {float anchor_pos_tile_y=(u_coord_matrix*vec4(projected_pos.xy/projected_pos.w,z,1.0)).y;projectionScaling=mix(projectionScaling,1.0/circumferenceRatioAtTileY(anchor_pos_tile_y)*u_pitched_scale,u_projection_transition);}\n#endif\nvec4 finalPos=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*fontScale+a_pxoffset)*projectionScaling,z,1.0);if(u_pitch_with_map) {finalPos=projectTileWithElevation(finalPos.xy,finalPos.z);}float gamma_scale=finalPos.w;gl_Position=finalPos;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float visibility=calculate_visibility(projectedPoint);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float interpolated_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));v_data0=a_tex/u_texsize;v_data1=vec3(gamma_scale,size,interpolated_fade_opacity);}";
+declare const _default$61: "#define SDF_PX 8.0\n#define SDF 1.0\n#define ICON 0.0\nuniform bool u_is_halo;uniform sampler2D u_texture;uniform sampler2D u_texture_icon;uniform highp float u_gamma_scale;uniform lowp float u_device_pixel_ratio;in vec4 v_data0;in vec4 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nfloat fade_opacity=v_data1[2];if (v_data1.w==ICON) {vec2 tex_icon=v_data0.zw;lowp float alpha=opacity*fade_opacity;fragColor=texture(u_texture_icon,tex_icon)*alpha;\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\nreturn;}vec2 tex=v_data0.xy;float EDGE_GAMMA=0.105/u_device_pixel_ratio;float gamma_scale=v_data1.x;float size=v_data1.y;float fontScale=size/24.0;lowp vec4 color=fill_color;highp float gamma=EDGE_GAMMA/(fontScale*u_gamma_scale);lowp float buff=(256.0-64.0)/256.0;if (u_is_halo) {color=halo_color;gamma=(halo_blur*1.19/SDF_PX+EDGE_GAMMA)/(fontScale*u_gamma_scale);buff=(6.0-halo_width/fontScale)/SDF_PX;}lowp float dist=texture(u_texture,tex).a;highp float gamma_scaled=gamma*gamma_scale;highp float alpha=smoothstep(buff-gamma_scaled,buff+gamma_scaled,dist);fragColor=color*(alpha*opacity*fade_opacity);\n#ifdef OVERDRAW_INSPECTOR\nfragColor=vec4(1.0);\n#endif\n}";
+declare const _default$62: "in vec4 a_pos_offset;in vec4 a_data;in vec3 a_projected_pos;in float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform highp float u_camera_to_center_distance;uniform float u_fade_change;uniform vec2 u_texsize;uniform vec2 u_texsize_icon;uniform bool u_is_along_line;uniform bool u_is_variable_anchor;uniform vec2 u_translation;uniform float u_pitched_scale;out vec4 v_data0;out vec4 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);float is_sdf=a_size[0]-2.0*a_size_min;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec2 translated_a_pos=a_pos+u_translation;vec4 projectedPoint=projectTileWithElevation(translated_a_pos,ele);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=size/24.0;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=projectTileWithElevation(translated_a_pos+vec2(1,0),ele);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos;if (u_is_along_line || u_is_variable_anchor) {projected_pos=vec4(a_projected_pos.xy,ele,1.0);} else if (u_pitch_with_map) {projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy+u_translation,ele,1.0);} else {projected_pos=u_label_plane_matrix*projectTileWithElevation(a_projected_pos.xy+u_translation,ele);}float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;float projectionScaling=1.0;\n#ifdef GLOBE\nif(u_pitch_with_map && !u_is_along_line) {float anchor_pos_tile_y=(u_coord_matrix*vec4(projected_pos.xy/projected_pos.w,z,1.0)).y;projectionScaling=mix(projectionScaling,1.0/circumferenceRatioAtTileY(anchor_pos_tile_y)*u_pitched_scale,u_projection_transition);}\n#endif\nvec4 finalPos=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*fontScale)*projectionScaling,z,1.0);if(u_pitch_with_map) {finalPos=projectTileWithElevation(finalPos.xy,finalPos.z);}float gamma_scale=finalPos.w;gl_Position=finalPos;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float visibility=calculate_visibility(projectedPoint);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float interpolated_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));v_data0.xy=a_tex/u_texsize;v_data0.zw=a_tex/u_texsize_icon;v_data1=vec4(gamma_scale,size,interpolated_fade_opacity,is_sdf);}";
+declare const _default$63: "uniform sampler2D u_texture;uniform vec4 u_fog_color;uniform vec4 u_horizon_color;uniform float u_fog_ground_blend;uniform float u_fog_ground_blend_opacity;uniform float u_horizon_fog_blend;uniform bool u_is_globe_mode;in vec2 v_texture_pos;in float v_fog_depth;const float gamma=2.2;vec4 gammaToLinear(vec4 color) {return pow(color,vec4(gamma));}vec4 linearToGamma(vec4 color) {return pow(color,vec4(1.0/gamma));}void main() {vec4 surface_color=texture(u_texture,vec2(v_texture_pos.x,1.0-v_texture_pos.y));if (!u_is_globe_mode && v_fog_depth > u_fog_ground_blend) {vec4 surface_color_linear=gammaToLinear(surface_color);float blend_color=smoothstep(0.0,1.0,max((v_fog_depth-u_horizon_fog_blend)/(1.0-u_horizon_fog_blend),0.0));vec4 fog_horizon_color_linear=mix(gammaToLinear(u_fog_color),gammaToLinear(u_horizon_color),blend_color);float factor_fog=max(v_fog_depth-u_fog_ground_blend,0.0)/(1.0-u_fog_ground_blend);fragColor=linearToGamma(mix(surface_color_linear,fog_horizon_color_linear,pow(factor_fog,2.0)*u_fog_ground_blend_opacity));} else {fragColor=surface_color;}}";
+declare const _default$64: "in vec3 a_pos3d;uniform mat4 u_fog_matrix;uniform float u_ele_delta;out vec2 v_texture_pos;out float v_fog_depth;void main() {float ele=get_elevation(a_pos3d.xy);float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;v_texture_pos=a_pos3d.xy/8192.0;gl_Position=projectTileFor3D(a_pos3d.xy,get_elevation(a_pos3d.xy)-ele_delta);vec4 pos=u_fog_matrix*vec4(a_pos3d.xy,ele,1.0);v_fog_depth=pos.z/pos.w*0.5+0.5;}";
+declare const _default$65: "in float v_depth;const highp vec4 bitSh=vec4(256.*256.*256.,256.*256.,256.,1.);const highp vec4 bitMsk=vec4(0.,vec3(1./256.0));highp vec4 pack(highp float value) {highp vec4 comp=fract(value*bitSh);comp-=comp.xxyz*bitMsk;return comp;}void main() {fragColor=pack(v_depth);}";
+declare const _default$66: "in vec3 a_pos3d;uniform float u_ele_delta;out float v_depth;void main() {float ele=get_elevation(a_pos3d.xy);float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;gl_Position=projectTileFor3D(a_pos3d.xy,ele-ele_delta);v_depth=gl_Position.z/gl_Position.w;}";
+declare const _default$67: "precision mediump float;uniform sampler2D u_texture;uniform float u_terrain_coords_id;in vec2 v_texture_pos;void main() {vec4 rgba=texture(u_texture,v_texture_pos);fragColor=vec4(rgba.r,rgba.g,rgba.b,u_terrain_coords_id);}";
+declare const _default$68: "in vec3 a_pos3d;uniform float u_ele_delta;out vec2 v_texture_pos;void main() {float ele=get_elevation(a_pos3d.xy);float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;v_texture_pos=a_pos3d.xy/8192.0;gl_Position=projectTileFor3D(a_pos3d.xy,ele-ele_delta);}";
 export declare function setRTLTextPlugin(pluginURL: string, lazy: boolean): Promise<void>;
 export declare function getRTLTextPluginStatus(): string;
 export declare function getVersion(): string;
@@ -14729,6 +15002,75 @@ export {
 	VariableAnchorOffsetCollection,
 	VectorSourceSpecification,
 	VideoSourceSpecification,
+	_default as atmosphereFrag,
+	_default$1 as atmosphereVert,
+	_default$10 as collisionBoxFrag,
+	_default$11 as collisionBoxVert,
+	_default$12 as collisionCircleFrag,
+	_default$13 as collisionCircleVert,
+	_default$14 as debugFrag,
+	_default$15 as debugVert,
+	_default$16 as depthVert,
+	_default$17 as fillExtrusionFrag,
+	_default$18 as fillExtrusionVert,
+	_default$19 as fillExtrusionPatternFrag,
+	_default$2 as backgroundFrag,
+	_default$20 as fillExtrusionPatternVert,
+	_default$21 as fillFrag,
+	_default$22 as fillVert,
+	_default$23 as fillOutlineFrag,
+	_default$24 as fillOutlineVert,
+	_default$25 as fillPatternFrag,
+	_default$26 as fillPatternVert,
+	_default$27 as fillOutlinePatternFrag,
+	_default$28 as fillOutlinePatternVert,
+	_default$29 as heatmapFrag,
+	_default$3 as backgroundVert,
+	_default$30 as heatmapVert,
+	_default$31 as heatmapTextureFrag,
+	_default$32 as heatmapTextureVert,
+	_default$33 as hillshadeFrag,
+	_default$34 as hillshadeVert,
+	_default$35 as hillshadePrepareFrag,
+	_default$36 as hillshadePrepareVert,
+	_default$37 as lineFrag,
+	_default$38 as lineVert,
+	_default$39 as lineGradientFrag,
+	_default$4 as backgroundPatternFrag,
+	_default$40 as lineGradientVert,
+	_default$41 as linePatternFrag,
+	_default$42 as linePatternVert,
+	_default$43 as lineSDFFrag,
+	_default$44 as lineSDFVert,
+	_default$45 as preludeFrag,
+	_default$46 as preludeVert,
+	_default$47 as projectionErrorMeasurementFrag,
+	_default$48 as projectionErrorMeasurementVert,
+	_default$49 as projectionMercatorVert,
+	_default$5 as backgroundPatternVert,
+	_default$50 as projectionGlobeVert,
+	_default$51 as rasterFrag,
+	_default$52 as rasterVert,
+	_default$53 as colorReliefFrag,
+	_default$54 as colorReliefVert,
+	_default$55 as skyFrag,
+	_default$56 as skyVert,
+	_default$57 as symbolIconFrag,
+	_default$58 as symbolIconVert,
+	_default$59 as symbolSDFFrag,
+	_default$6 as circleFrag,
+	_default$60 as symbolSDFVert,
+	_default$61 as symbolTextAndIconFrag,
+	_default$62 as symbolTextAndIconVert,
+	_default$63 as terrainFrag,
+	_default$64 as terrainVert,
+	_default$65 as terrainDepthFrag,
+	_default$66 as terrainVertDepth,
+	_default$67 as terrainCoordsFrag,
+	_default$68 as terrainVertCoords,
+	_default$7 as circleVert,
+	_default$8 as clippingMaskFrag,
+	_default$9 as clippingMaskVert,
 };
 
 export as namespace maplibregl;

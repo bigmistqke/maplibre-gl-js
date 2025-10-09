@@ -38,9 +38,6 @@ export type HandlerResult = {
     needsRenderFrame?: boolean;
     noInertia?: boolean;
 };
-export type HandlerFactory = (map: Map, options: CompleteMapOptions, manager: HandlerManager) => void;
-export declare function registerHandler(name: string, factory: HandlerFactory): void;
-export declare function getHandlerFactory(name: string): HandlerFactory | undefined;
 export type EventInProgress = {
     handlerName: string;
     originalEvent: Event;

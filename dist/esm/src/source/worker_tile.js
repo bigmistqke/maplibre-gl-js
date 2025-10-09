@@ -18,6 +18,7 @@ import { ImageAtlas } from '../render/image_atlas';
 import { GlyphAtlas } from '../render/glyph_atlas';
 import { EvaluationParameters } from '../style/evaluation_parameters';
 import { OverscaledTileID } from './tile_id';
+import { registry } from '../registry';
 export class WorkerTile {
     constructor(params) {
         this.tileID = new OverscaledTileID(params.tileID.overscaledZ, params.tileID.wrap, params.tileID.canonical.z, params.tileID.canonical.x, params.tileID.canonical.y);
@@ -35,6 +36,7 @@ export class WorkerTile {
     }
     parse(data, layerIndex, availableImages, actor, subdivisionGranularity) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             this.status = 'parsing';
             this.data = data;
             this.collisionBoxArray = new CollisionBoxArray();
@@ -121,11 +123,10 @@ export class WorkerTile {
             const imageAtlas = new ImageAtlas(iconMap, patternMap);
             for (const key in buckets) {
                 const bucket = buckets[key];
-                if ('symbolInstances' in bucket) {
-                    const { performSymbolLayout } = yield import('../symbol/symbol_layout');
+                if (registry.symbol.SymbolBucket && bucket instanceof registry.symbol.SymbolBucket) {
                     recalculateLayers(bucket.layers, this.zoom, availableImages);
-                    performSymbolLayout({
-                        bucket: bucket,
+                    (_b = (_a = registry.symbol).performSymbolLayout) === null || _b === void 0 ? void 0 : _b.call(_a, {
+                        bucket,
                         glyphMap,
                         glyphPositions: glyphAtlas.positions,
                         imageMap: iconMap,

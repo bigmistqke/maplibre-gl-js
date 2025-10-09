@@ -1,6 +1,7 @@
 import { Color } from '@maplibre/maplibre-gl-style-spec';
 import { drawTerrain } from './draw_terrain';
 import { RenderPool } from '../gl/render_pool';
+import { registry } from '../registry';
 const LAYERS = {
     background: true,
     fill: true,
@@ -32,7 +33,7 @@ export class RenderToTexture {
             this._coordsAscending[id] = {};
             const tileIDs = style.sourceCaches[id].getVisibleCoordinates();
             const source = style.sourceCaches[id].getSource();
-            const terrainTileRanges = 'terrainTileRanges' in source ? source.terrainTileRanges : null;
+            const terrainTileRanges = registry.source.image && source instanceof registry.source.image ? source.terrainTileRanges : null;
             for (const tileID of tileIDs) {
                 const keys = this.terrain.sourceCache.getTerrainCoords(tileID, terrainTileRanges);
                 for (const key in keys) {

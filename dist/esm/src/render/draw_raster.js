@@ -7,6 +7,7 @@ import { rasterUniformValues } from './program/raster_program';
 import { EXTENT } from '../data/extent';
 import { coveringZoomLevel } from '../geo/projection/covering_tiles';
 import Point from '@mapbox/point-geometry';
+import { registry } from '../registry';
 const cornerCoords = [
     new Point(0, 0),
     new Point(EXTENT, 0),
@@ -24,7 +25,7 @@ export function drawRaster(painter, sourceCache, layer, tileIDs, renderOptions) 
     const source = sourceCache.getSource();
     const projection = painter.style.projection;
     const useSubdivision = projection.useSubdivision;
-    if ('tileCoords' in source && 'flippedWindingOrder' in source) {
+    if (source instanceof registry.source.image) {
         drawTiles(painter, sourceCache, layer, tileIDs, null, false, false, source.tileCoords, source.flippedWindingOrder, isRenderingToTexture);
     }
     else if (useSubdivision) {

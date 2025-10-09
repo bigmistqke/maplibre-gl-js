@@ -1,5 +1,5 @@
 import { EXTENT } from '../../data/extent';
-import { getShader } from '../../shaders/shader_registry';
+import { registry } from '../../registry';
 import { Mesh } from '../../render/mesh';
 import { PosArray, TriangleIndexArray } from '../../data/array_types.g';
 import { SegmentVector } from '../../data/segment';
@@ -24,10 +24,10 @@ export class MercatorProjection {
         return MercatorShaderDefine;
     }
     get shaderPreludeCode() {
-        return getShader('projectionMercator');
+        return registry.shader.projectionMercator;
     }
     get vertexShaderPreludeCode() {
-        return getShader('projectionMercator').vertexSource;
+        return registry.shader.projectionMercator.vertexSource;
     }
     get subdivisionGranularity() {
         return SubdivisionGranularitySetting.noSubdivision;

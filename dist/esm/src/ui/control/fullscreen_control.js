@@ -80,20 +80,20 @@ export class FullscreenControl extends Evented {
         return this._fullscreen;
     }
     _handleFullscreenChange() {
-        var _a, _b, _c, _d;
+        var _a, _b, _c;
         this._fullscreen = !this._fullscreen;
         this._fullscreenButton.classList.toggle('maplibregl-ctrl-shrink');
         this._fullscreenButton.classList.toggle('maplibregl-ctrl-fullscreen');
         this._updateTitle();
         if (this._fullscreen) {
             this.fire(new Event('fullscreenstart'));
-            this._prevCooperativeGesturesEnabled = (_b = (_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.isEnabled()) !== null && _b !== void 0 ? _b : false;
-            (_c = this._map.cooperativeGestures) === null || _c === void 0 ? void 0 : _c.disable();
+            this._prevCooperativeGesturesEnabled = !!((_a = this._map.cooperativeGestures) === null || _a === void 0 ? void 0 : _a.isEnabled());
+            (_b = this._map.cooperativeGestures) === null || _b === void 0 ? void 0 : _b.disable();
         }
         else {
             this.fire(new Event('fullscreenend'));
             if (this._prevCooperativeGesturesEnabled) {
-                (_d = this._map.cooperativeGestures) === null || _d === void 0 ? void 0 : _d.enable();
+                (_c = this._map.cooperativeGestures) === null || _c === void 0 ? void 0 : _c.enable();
             }
         }
     }

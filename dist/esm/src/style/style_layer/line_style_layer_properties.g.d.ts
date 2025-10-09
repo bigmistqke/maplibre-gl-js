@@ -1,4 +1,4 @@
-import { Properties, DataConstantProperty, DataDrivenProperty, CrossFadedDataDrivenProperty, CrossFadedProperty, ColorRampProperty, PossiblyEvaluatedPropertyValue, CrossFaded } from '../properties';
+import { Properties, DataConstantProperty, DataDrivenProperty, CrossFadedDataDrivenProperty, ColorRampProperty, PossiblyEvaluatedPropertyValue, CrossFaded } from '../properties';
 import type { Color, ResolvedImage } from '@maplibre/maplibre-gl-style-spec';
 export type LineLayoutProps = {
     "line-cap": DataConstantProperty<"butt" | "round" | "square">;
@@ -23,7 +23,7 @@ export type LinePaintProps = {
     "line-gap-width": DataDrivenProperty<number>;
     "line-offset": DataDrivenProperty<number>;
     "line-blur": DataDrivenProperty<number>;
-    "line-dasharray": CrossFadedProperty<Array<number>>;
+    "line-dasharray": CrossFadedDataDrivenProperty<Array<number>>;
     "line-pattern": CrossFadedDataDrivenProperty<ResolvedImage>;
     "line-gradient": ColorRampProperty;
 };
@@ -36,7 +36,7 @@ export type LinePaintPropsPossiblyEvaluated = {
     "line-gap-width": PossiblyEvaluatedPropertyValue<number>;
     "line-offset": PossiblyEvaluatedPropertyValue<number>;
     "line-blur": PossiblyEvaluatedPropertyValue<number>;
-    "line-dasharray": CrossFaded<Array<number>>;
+    "line-dasharray": PossiblyEvaluatedPropertyValue<CrossFaded<Array<number>>>;
     "line-pattern": PossiblyEvaluatedPropertyValue<CrossFaded<ResolvedImage>>;
     "line-gradient": ColorRampProperty;
 };

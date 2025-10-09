@@ -1,4 +1,4 @@
-import { type CustomLayerInterface } from './style_layer/custom_style_layer';
+import { CustomStyleLayer, type CustomLayerInterface } from './style_layer/custom_style_layer';
 import type { LayerSpecification } from '@maplibre/maplibre-gl-style-spec';
-export declare function createStyleLayer(layer: LayerSpecification | CustomLayerInterface, globalState: Record<string, any>): import("./style_layer").StyleLayer;
+export declare function createStyleLayer(layer: LayerSpecification | CustomLayerInterface, globalState: Record<string, any>): CustomStyleLayer | import("..").SymbolStyleLayer | import("..").FillStyleLayer | import("..").BackgroundStyleLayer | import("..").CircleStyleLayer | import("..").LineStyleLayer | import("..").RasterStyleLayer | import("..").HeatmapStyleLayer | import("..").FillExtrusionStyleLayer | import("..").HillshadeStyleLayer | import("..").ColorReliefStyleLayer;
 //# sourceMappingURL=create_style_layer.d.ts.map

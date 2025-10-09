@@ -13,6 +13,9 @@ import type { StyleSetterOptions } from './style';
 import { type mat4 } from 'gl-matrix';
 import type { VectorTileFeature } from '@mapbox/vector-tile';
 import type { UnwrappedTileID } from '../source/tile_id';
+export type StyleLayerClass = {
+    new (layer: LayerSpecification, globalState: Record<string, any>): StyleLayer;
+};
 export type QueryIntersectsFeatureParams = {
     queryGeometry: Array<Point>;
     feature: VectorTileFeature;
