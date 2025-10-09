@@ -17,11 +17,12 @@ import {fileURLToPath} from 'url';
 const execAsync = promisify(exec);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.join(__dirname, '..');
-const DEPENDENCY_GRAPH_FILE = path.join(__dirname, 'registry-dependency-graphs.json');
-const EXPORT_SIZES_FILE = path.join(__dirname, 'registry-export-sizes.json');
-const FINAL_ANALYSIS_FILE = path.join(__dirname, 'registry-size-analysis.json');
-const MARKDOWN_REPORT_FILE = path.join(__dirname, 'registry-size-analysis.md');
+const PROJECT_ROOT = path.join(__dirname, '../..');
+const OUT_DIR = path.join(__dirname, '../out');
+const DEPENDENCY_GRAPH_FILE = path.join(OUT_DIR, 'registry-dependency-graphs.json');
+const EXPORT_SIZES_FILE = path.join(OUT_DIR, 'registry-export-sizes.json');
+const FINAL_ANALYSIS_FILE = path.join(OUT_DIR, 'registry-size-analysis.json');
+const MARKDOWN_REPORT_FILE = path.join(OUT_DIR, 'registry-size-analysis.md');
 
 // ===== STAGE 1: Parse src/index.ts to extract registry items =====
 
@@ -126,14 +127,14 @@ function parseRegistryItems() {
         };
     }
 
-    // Extract registry.drawFunction
-    const drawMatch = content.match(/registry\.drawFunction\s*=\s*{([\s\S]+?)^}/m);
+    // Extract registry.draw
+    const drawMatch = content.match(/registry\.draw\s*=\s*{([\s\S]+?)^}/m);
     if (drawMatch) {
         const drawBlock = drawMatch[1];
         const entries = drawBlock.matchAll(/'([^']+)':\s*(\w+)/g);
         for (const [, key, funcName] of entries) {
             if (importMap[funcName]) {
-                registryItems[`drawFunctions:${key}`] = {
+                registryItems[`draw:${key}`] = {
                     file: importMap[funcName],
                     export: funcName
                 };
@@ -149,7 +150,7 @@ function parseRegistryItems() {
 
 async function analyzeSingleDependency(key, item) {
     try {
-        const tempOutput = path.join(__dirname, `tmp-dpdm-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+        const tempOutput = path.join(OUT_DIR, `tmp-dpdm-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
         await execAsync(
             `npx dpdm "${item.file}" -T --exit-code=circular:0 --tree=false --circular=false --warning=false -o "${tempOutput}"`,
@@ -413,7 +414,56 @@ function createFinalAnalysis(graphs, exportSizes) {
 
 // ===== STAGE 5: Generate markdown report =====
 
-function generateMarkdownReport(analysis) {
+function calculateSharedDependencies(graphs) {
+    // Build dependency sets for each item
+    const depSets = {};
+    for (const [key, graph] of Object.entries(graphs)) {
+        if (graph.dependencies && !graph.error) {
+            depSets[key] = new Set(graph.dependencies);
+        }
+    }
+
+    // Calculate overlap percentages
+    const overlaps = [];
+    const keys = Object.keys(depSets);
+
+    for (let i = 0; i < keys.length; i++) {
+        for (let j = i + 1; j < keys.length; j++) {
+            const key1 = keys[i];
+            const key2 = keys[j];
+            const deps1 = depSets[key1];
+            const deps2 = depSets[key2];
+
+            // Calculate intersection
+            const intersection = new Set([...deps1].filter(x => deps2.has(x)));
+            const union = new Set([...deps1, ...deps2]);
+
+            // Calculate percentages
+            const sharedCount = intersection.size;
+            const percentOfFirst = deps1.size > 0 ? (sharedCount / deps1.size * 100) : 0;
+            const percentOfSecond = deps2.size > 0 ? (sharedCount / deps2.size * 100) : 0;
+            const percentOfUnion = union.size > 0 ? (sharedCount / union.size * 100) : 0;
+
+            if (sharedCount > 0) {
+                overlaps.push({
+                    item1: key1,
+                    item2: key2,
+                    sharedCount,
+                    total1: deps1.size,
+                    total2: deps2.size,
+                    percentOfFirst,
+                    percentOfSecond,
+                    percentOfUnion
+                });
+            }
+        }
+    }
+
+    // Sort by shared count descending
+    return overlaps.sort((a, b) => b.sharedCount - a.sharedCount);
+}
+
+function generateMarkdownReport(analysis, graphs) {
     console.log('Stage 5: Generating markdown report...\n');
 
     const items = Object.entries(analysis)
@@ -495,6 +545,115 @@ This report analyzes the bundle size impact of each registry item in MapLibre GL
         markdown += `\n`;
     }
 
+    // Shared Dependencies Matrix
+    markdown += `## Shared Dependencies Matrix\n\n`;
+    markdown += `This matrix shows both the percentage and absolute size (KB) of dependencies shared between each pair of registry items. Each cell (Row, Column) shows: percentage of Row's dependencies (shared KB).\n\n`;
+    markdown += `**How to read:** If cell (lay:fill, lay:line) = "88% (19KB)", it means layers:fill shares 19KB of code with layers:line, which represents 88% of layers:fill's total dependencies.\n\n`;
+
+    // Build dependency sets for matrix
+    const depSets = {};
+    const allKeys = [];
+
+    for (const [key, graph] of Object.entries(graphs)) {
+        if (graph.dependencies && !graph.error) {
+            depSets[key] = new Set(graph.dependencies);
+            allKeys.push(key);
+        }
+    }
+
+    // Sort keys by category and then by name for better readability
+    allKeys.sort((a, b) => {
+        const catA = a.split(':')[0];
+        const catB = b.split(':')[0];
+        if (catA !== catB) return catA.localeCompare(catB);
+        return a.localeCompare(b);
+    });
+
+    // Generate matrix header
+    markdown += `| Item |`;
+    for (const colKey of allKeys) {
+        markdown += ` ${colKey} |`;
+    }
+    markdown += `\n`;
+
+    // Generate header separator
+    markdown += `|------|`;
+    for (let i = 0; i < allKeys.length; i++) {
+        markdown += `---:|`;
+    }
+    markdown += `\n`;
+
+    // Calculate total lines for each item and each file for size calculations
+    const itemLines = {};
+    const fileLines = {};
+
+    for (const [key, item] of Object.entries(analysis)) {
+        if (!item.error) {
+            itemLines[key] = item.totalLines;
+
+            // Store file sizes from dependency details
+            if (item.dependencyDetails) {
+                for (const dep of item.dependencyDetails) {
+                    if (dep.file && dep.lines && !fileLines[dep.file]) {
+                        fileLines[dep.file] = dep.lines;
+                    }
+                }
+            }
+        }
+    }
+
+    // Generate matrix rows
+    for (const rowKey of allKeys) {
+        const rowDeps = depSets[rowKey];
+        const rowTotalLines = itemLines[rowKey] || 0;
+
+        markdown += `| ${rowKey} |`;
+
+        for (const colKey of allKeys) {
+            if (rowKey === colKey) {
+                markdown += `  |`;
+            } else {
+                const colDeps = depSets[colKey];
+                const intersection = new Set([...rowDeps].filter(x => colDeps.has(x)));
+
+                // Calculate actual shared size by summing the lines of shared files
+                let sharedLines = 0;
+                for (const file of intersection) {
+                    sharedLines += fileLines[file] || 0;
+                }
+
+                const kb = Math.round(sharedLines / 1000);
+                const percentage = rowDeps.size > 0 ? Math.round((intersection.size / rowDeps.size) * 100) : 0;
+
+                if (percentage === 0) {
+                    markdown += ` - |`;
+                } else {
+                    markdown += ` ${percentage}% (${kb}KB) |`;
+                }
+            }
+        }
+        markdown += `\n`;
+    }
+
+    markdown += `\n`;
+
+    // Add category grouping legend
+    markdown += `### Category Legend\n\n`;
+    const categoryGroups = new Map();
+    for (const key of allKeys) {
+        const category = key.split(':')[0];
+        if (!categoryGroups.has(category)) {
+            categoryGroups.set(category, []);
+        }
+        categoryGroups.get(category).push(key.split(':')[1] || key);
+    }
+
+    for (const [category, items] of Array.from(categoryGroups.entries()).sort()) {
+        markdown += `- **${category}**: ${items.join(', ')}\n`;
+    }
+
+    markdown += `\n`;
+
     // Detailed breakdown
     markdown += `## Detailed Item Analysis\n\n`;
 
@@ -559,11 +718,16 @@ async function main() {
     console.log('═'.repeat(80));
     console.log('\n');
 
+    // Ensure output directory exists
+    if (!fs.existsSync(OUT_DIR)) {
+        fs.mkdirSync(OUT_DIR, { recursive: true });
+    }
+
     const registryItems = parseRegistryItems();
     const graphs = await analyzeDependencyGraphs(registryItems);
     const exportSizes = analyzeExportSizes(graphs);
     const analysis = createFinalAnalysis(graphs, exportSizes);
-    generateMarkdownReport(analysis);
+    generateMarkdownReport(analysis, graphs);
 
     // Print summary
     console.log('═'.repeat(80));

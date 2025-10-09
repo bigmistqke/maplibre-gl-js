@@ -646,7 +646,7 @@ export class Painter {
         }
 
         // Use registry for all layer types
-        const drawFn = registry.drawFunction[layer.type];
+        const drawFn = registry.draw[layer.type];
         if (drawFn) {
             drawFn(painter, sourceCache, layer, coords, renderOptions);
         }

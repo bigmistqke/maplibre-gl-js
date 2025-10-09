@@ -184,7 +184,7 @@ export const registry = {
     source: {} as SourceRegistry,
     layer: {} as LayerRegistry,
     handler: {} as HandlerRegistry,
-    drawFunction: {} as DrawFunctionRegistry,
+    draw: {} as DrawFunctionRegistry,
     shader: {} as ShaderRegistry,
     symbol: {} as SymbolRegistry
 };

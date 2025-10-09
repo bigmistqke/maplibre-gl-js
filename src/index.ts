@@ -312,7 +312,7 @@ registry.handler = {
 };
 
 // ===== REGISTER DRAW FUNCTIONS =====
-registry.drawFunction = {
+registry.draw = {
     'background': drawBackground,
     'circle': drawCircles,
     'fill-extrusion': drawFillExtrusion,
