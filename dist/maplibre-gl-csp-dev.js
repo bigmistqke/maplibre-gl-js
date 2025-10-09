@@ -10289,7 +10289,8 @@ const config = {
     MAX_PARALLEL_IMAGE_REQUESTS_PER_FRAME: 8,
     MAX_TILE_CACHE_ZOOM_LEVELS: 5,
     REGISTERED_PROTOCOLS: {},
-    WORKER_URL: ''
+    WORKER_URL: '',
+    WORKER_IS_MODULE: false
 };
 
 function getProtocol(url) {
@@ -27138,7 +27139,8 @@ class Actor {
 
 function workerFactory() {
     // Check if we should use module workers (for ESM builds)
-    const useModuleWorker = config.WORKER_URL && config.WORKER_URL.endsWith('.mjs');
+    // Either explicitly set via setWorkerUrl(url, true) or auto-detect .mjs extension
+    const useModuleWorker = config.WORKER_IS_MODULE || (config.WORKER_URL && config.WORKER_URL.endsWith('.mjs'));
     if (useModuleWorker) {
         try {
             return new Worker(config.WORKER_URL, { type: 'module' });
@@ -68800,7 +68802,10 @@ function setWorkerCount(count) { WorkerPool.workerCount = count; }
 function getMaxParallelImageRequests() { return config.MAX_PARALLEL_IMAGE_REQUESTS; }
 function setMaxParallelImageRequests(numRequests) { config.MAX_PARALLEL_IMAGE_REQUESTS = numRequests; }
 function getWorkerUrl() { return config.WORKER_URL; }
-function setWorkerUrl(value) { config.WORKER_URL = value; }
+function setWorkerUrl(value, module = false) {
+    config.WORKER_URL = value;
+    config.WORKER_IS_MODULE = module;
+}
 function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadcast("IS" /* MessageType.importScript */, workerUrl); }
 
 /**

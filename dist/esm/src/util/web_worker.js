@@ -1,6 +1,7 @@
 import { config } from './config';
 export function workerFactory() {
-    const useModuleWorker = config.WORKER_URL && config.WORKER_URL.endsWith('.mjs');
+    const useModuleWorker = config.WORKER_IS_MODULE;
+    console.log('useModuleWorker', useModuleWorker);
     if (useModuleWorker) {
         try {
             return new Worker(config.WORKER_URL, { type: 'module' });

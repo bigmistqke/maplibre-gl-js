@@ -9943,7 +9943,8 @@ const config = {
     MAX_PARALLEL_IMAGE_REQUESTS_PER_FRAME: 8,
     MAX_TILE_CACHE_ZOOM_LEVELS: 5,
     REGISTERED_PROTOCOLS: {},
-    WORKER_URL: ''
+    WORKER_URL: '',
+    WORKER_IS_MODULE: false
 };
 
 function getProtocol(url) {
@@ -47981,7 +47982,8 @@ class LineAtlas {
 
 function workerFactory() {
     // Check if we should use module workers (for ESM builds)
-    const useModuleWorker = features.config.WORKER_URL && features.config.WORKER_URL.endsWith('.mjs');
+    // Either explicitly set via setWorkerUrl(url, true) or auto-detect .mjs extension
+    const useModuleWorker = features.config.WORKER_IS_MODULE || (features.config.WORKER_URL && features.config.WORKER_URL.endsWith('.mjs'));
     if (useModuleWorker) {
         try {
             return new Worker(features.config.WORKER_URL, { type: 'module' });
@@ -69091,7 +69093,10 @@ function setWorkerCount(count) { WorkerPool.workerCount = count; }
 function getMaxParallelImageRequests() { return features.config.MAX_PARALLEL_IMAGE_REQUESTS; }
 function setMaxParallelImageRequests(numRequests) { features.config.MAX_PARALLEL_IMAGE_REQUESTS = numRequests; }
 function getWorkerUrl() { return features.config.WORKER_URL; }
-function setWorkerUrl(value) { features.config.WORKER_URL = value; }
+function setWorkerUrl(value, module = false) {
+    features.config.WORKER_URL = value;
+    features.config.WORKER_IS_MODULE = module;
+}
 function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadcast("IS" /* MessageType.importScript */, workerUrl); }
 
 /**

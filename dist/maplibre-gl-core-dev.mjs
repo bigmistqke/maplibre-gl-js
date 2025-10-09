@@ -10283,7 +10283,8 @@ const config = {
     MAX_PARALLEL_IMAGE_REQUESTS_PER_FRAME: 8,
     MAX_TILE_CACHE_ZOOM_LEVELS: 5,
     REGISTERED_PROTOCOLS: {},
-    WORKER_URL: ''
+    WORKER_URL: '',
+    WORKER_IS_MODULE: false
 };
 
 function getProtocol(url) {
@@ -27132,7 +27133,8 @@ class Actor {
 
 function workerFactory() {
     // Check if we should use module workers (for ESM builds)
-    const useModuleWorker = config.WORKER_URL && config.WORKER_URL.endsWith('.mjs');
+    // Either explicitly set via setWorkerUrl(url, true) or auto-detect .mjs extension
+    const useModuleWorker = config.WORKER_IS_MODULE || (config.WORKER_URL && config.WORKER_URL.endsWith('.mjs'));
     if (useModuleWorker) {
         try {
             return new Worker(config.WORKER_URL, { type: 'module' });
@@ -68794,7 +68796,10 @@ function setWorkerCount(count) { WorkerPool.workerCount = count; }
 function getMaxParallelImageRequests() { return config.MAX_PARALLEL_IMAGE_REQUESTS; }
 function setMaxParallelImageRequests(numRequests) { config.MAX_PARALLEL_IMAGE_REQUESTS = numRequests; }
 function getWorkerUrl() { return config.WORKER_URL; }
-function setWorkerUrl(value) { config.WORKER_URL = value; }
+function setWorkerUrl(value, module = false) {
+    config.WORKER_URL = value;
+    config.WORKER_IS_MODULE = module;
+}
 function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadcast("IS" /* MessageType.importScript */, workerUrl); }
 
 export { AJAXError, AttributionControl, BoxZoomHandler, Camera, CanonicalTileID, CanvasSource, CooperativeGesturesHandler, DOM, DoubleClickZoomHandler, DragPanHandler, DragRotateHandler, EdgeInsets, ErrorEvent, EvaluationParameters, Event, Evented, FullscreenControl, GeoJSONSource, GeolocateControl, GlobeControl, HandlerManager, Hash, ImageRequest, ImageSource, KeyboardHandler, LngLat, LngLatBounds, LogoControl, Map$1 as Map, MapMouseEvent, MapTouchEvent, MapWheelEvent, Marker, MercatorCameraHelper, MercatorCoordinate, MercatorTransform, NavigationControl, Painter, PerformanceMarkers, PerformanceUtils, Point, Popup, RGBAImage, RasterDEMTileSource, RasterTileSource, RenderToTexture, RequestManager, ScaleControl, ScrollZoomHandler, Style, TaskQueue, Terrain, TerrainControl, TwoFingersTouchPitchHandler, TwoFingersTouchRotateHandler, TwoFingersTouchZoomHandler, TwoFingersTouchZoomRotateHandler, VectorTileSource, VideoSource, Worker$1 as Worker, addProtocol, addSourceType, browser, clearPrewarmedResources, config, coveringTiles, createCalculateTileZoomFunction, createTileMesh, defaultAttributionControlOptions, defaultLocale, extend$1 as extend, getJSON, getMaxParallelImageRequests, getRTLTextPluginStatus, getVersion, getWorkerCount, getWorkerUrl, importScriptInWorkers, isAbortError, isFramebufferNotCompleteError, isImageBitmap, packageJSON, pick, prewarm, registerBackground, registerCanvasSource, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerGeoJSONSource, registerHeatmap, registerHillshade, registerImageSource, registerLine, registerRaster, registerRasterDEMSource, registerRasterSource, registerSymbol, registerUtilityShaders, registerVectorSource, registerVideoSource, removeProtocol, setMaxParallelImageRequests, setRTLTextPlugin, setWorkerCount, setWorkerUrl, throttle, uniqueId, warnOnce, webpSupported };

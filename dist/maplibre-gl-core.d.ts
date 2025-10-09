@@ -118,6 +118,7 @@ type Config = {
 		[x: string]: AddProtocolAction;
 	};
 	WORKER_URL: string;
+	WORKER_IS_MODULE: boolean;
 };
 export declare const config: Config;
 type SerializedObject<S extends Serialized = any> = {
@@ -14895,7 +14896,7 @@ export declare function setWorkerCount(count: number): void;
 export declare function getMaxParallelImageRequests(): number;
 export declare function setMaxParallelImageRequests(numRequests: number): void;
 export declare function getWorkerUrl(): string;
-export declare function setWorkerUrl(value: string): void;
+export declare function setWorkerUrl(value: string, module?: boolean): void;
 export declare function importScriptInWorkers(workerUrl: string): Promise<void[]>;
 export type * from "@maplibre/maplibre-gl-style-spec";
 

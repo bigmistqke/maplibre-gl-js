@@ -8,6 +8,7 @@ type Config = {
         [x: string]: AddProtocolAction;
     };
     WORKER_URL: string;
+    WORKER_IS_MODULE: boolean;
 };
 export declare const config: Config;
 export {};
