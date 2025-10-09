@@ -28,7 +28,7 @@ const config: RollupOptions[] = [{
         amd: {
             autoId: true,
         },
-        minifyInternalExports: production
+        minifyInternalExports: production,
     },
     onwarn: (message) => {
         console.error(message);
@@ -68,6 +68,7 @@ const config: RollupOptions[] = [{
 
 // ESM builds
 cspConfig('src/index.ts', `dist/maplibre-gl${outputPostfix}.mjs`, 'es'),
+cspConfig('src/core.ts', `dist/maplibre-gl-core${outputPostfix}.mjs`, 'es'),
 cspConfig('src/source/worker.ts', `dist/maplibre-gl-worker${outputPostfix}.mjs`, 'es'),
 
 ];

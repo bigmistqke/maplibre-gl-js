@@ -85,6 +85,13 @@ import {isFramebufferNotCompleteError} from './util/framebuffer_error';
 import {RenderToTexture} from './render/render_to_texture';
 import {Terrain} from './render/terrain';
 import {throttle} from './util/throttle';
+import {CanvasSource} from './source/canvas_source';
+import {GeoJSONSource} from './source/geojson_source';
+import {ImageSource} from './source/image_source';
+import {RasterDEMTileSource} from './source/raster_dem_tile_source';
+import {RasterTileSource} from './source/raster_tile_source';
+import {VectorTileSource} from './source/vector_tile_source';
+import {VideoSource} from './source/video_source';
 
 export {
     // Sources
@@ -189,6 +196,13 @@ export {
     Event,
     AJAXError,
     config,
+    CanvasSource,
+    GeoJSONSource,
+    ImageSource,
+    RasterDEMTileSource,
+    RasterTileSource,
+    VectorTileSource,
+    VideoSource,
     EdgeInsets,
     BoxZoomHandler,
     DragRotateHandler,
