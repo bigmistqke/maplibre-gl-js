@@ -16,7 +16,7 @@
     },
     "./worker": {
       "types": "./dist/maplibre-gl-worker.d.ts",
-      "default": "./dist/esm/src/source/worker.js"
+      "default": "./dist/maplibre-gl-worker.mjs"
     }
   },
   "license": "BSD-3-Clause",
