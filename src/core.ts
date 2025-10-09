@@ -86,7 +86,30 @@ import {RenderToTexture} from './render/render_to_texture';
 import {Terrain} from './render/terrain';
 import {throttle} from './util/throttle';
 
-export * from './features';
+export {
+    // Sources
+    registerCanvasSource,
+    registerGeoJSONSource,
+    registerImageSource,
+    registerRasterDEMSource,
+    registerRasterSource,
+    registerVectorSource,
+    registerVideoSource,
+    // Layers
+    registerBackground,
+    registerCircle,
+    registerColorRelief,
+    registerFill,
+    registerFillExtrusion,
+    registerHeatmap,
+    registerHillshade,
+    registerLine,
+    registerRaster,
+    registerSymbol,
+    // Utilities
+    registerUtilityShaders,
+} from './features';
+
 export type * from '@maplibre/maplibre-gl-style-spec';
 
 const version = packageJSON.version;

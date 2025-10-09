@@ -40,3 +40,5 @@ npm-debug.log
 /.vs/
 .*.swp
 junit.xml
+/analysis/out/
+/analysis/node_modules/
