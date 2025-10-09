@@ -92,6 +92,7 @@ import {RasterDEMTileSource} from './source/raster_dem_tile_source';
 import {RasterTileSource} from './source/raster_tile_source';
 import {VectorTileSource} from './source/vector_tile_source';
 import {VideoSource} from './source/video_source';
+import Worker from './source/worker';
 
 export {
     // Sources
@@ -203,6 +204,7 @@ export {
     RasterTileSource,
     VectorTileSource,
     VideoSource,
+    Worker,
     EdgeInsets,
     BoxZoomHandler,
     DragRotateHandler,
