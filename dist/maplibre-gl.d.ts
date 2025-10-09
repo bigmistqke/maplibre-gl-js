@@ -4797,6 +4797,37 @@ export type WorkerTileResult = ExpiryData & {
 	} | null;
 	glyphPositions?: GlyphPositions | null;
 };
+interface WorkerSourceConstructor {
+	new (actor: IActor, layerIndex: StyleLayerIndex, availableImages: Array<string>): WorkerSource;
+}
+interface WorkerSource {
+	availableImages: Array<string>;
+	/**
+	 * Loads a tile from the given params and parse it into buckets ready to send
+	 * back to the main thread for rendering.  Should call the callback with:
+	 * `{ buckets, featureIndex, collisionIndex, rawTileData}`.
+	 */
+	loadTile(params: WorkerTileParameters): Promise<WorkerTileResult>;
+	/**
+	 * Re-parses a tile that has already been loaded.  Yields the same data as
+	 * {@link WorkerSource.loadTile}.
+	 */
+	reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult>;
+	/**
+	 * Aborts loading a tile that is in progress.
+	 */
+	abortTile(params: TileParameters): Promise<void>;
+	/**
+	 * Removes this tile from any local caches.
+	 */
+	removeTile(params: TileParameters): Promise<void>;
+	/**
+	 * Tells the WorkerSource to abort in-progress tasks and release resources.
+	 * The foreground Source is responsible for ensuring that 'removeSource' is
+	 * the last message sent to the WorkerSource.
+	 */
+	removeSource?: (params: RemoveSourceParams) => Promise<void>;
+}
 type OverlapMode = "never" | "always" | "cooperative";
 type QueryResult<T> = {
 	key: T;
@@ -7050,6 +7081,26 @@ export declare abstract class StyleLayer extends Evented {
 	resize(): void;
 	isStateDependent(): boolean;
 }
+type LayerConfigs = {
+	[_: string]: LayerSpecification;
+};
+declare class StyleLayerIndex {
+	familiesBySource: {
+		[source: string]: {
+			[sourceLayer: string]: Array<Array<StyleLayer>>;
+		};
+	};
+	keyCache: {
+		[source: string]: string;
+	};
+	_layerConfigs: LayerConfigs;
+	_layers: {
+		[_: string]: StyleLayer;
+	};
+	constructor(layerConfigs?: Array<LayerSpecification> | null, globalState?: Record<string, any>);
+	replace(layerConfigs: Array<LayerSpecification>, globalState?: Record<string, any>): void;
+	update(layerConfigs: Array<LayerSpecification>, removedIds: Array<string>, globalState?: Record<string, any>): void;
+}
 /**
  * A way to identify a feature, either by string or by number
  */
@@ -7383,6 +7434,86 @@ export declare class Actor implements IActor {
 	processTask(id: string, task: MessageData): Promise<void>;
 	completeTask(id: string, err: Error, data?: RequestResponseMessageMap[MessageType][1]): void;
 	remove(): void;
+}
+declare class RasterDEMTileWorkerSource {
+	actor: Actor;
+	loaded: {
+		[_: string]: DEMData;
+	};
+	constructor();
+	loadTile(params: WorkerDEMTileParameters): Promise<DEMData | null>;
+	removeTile(params: TileParameters): void;
+}
+/**
+ * The Worker class responsible for background thread related execution
+ */
+declare class Worker$1 {
+	self: WorkerGlobalScopeInterface & ActorTarget;
+	actor: Actor;
+	layerIndexes: {
+		[_: string]: StyleLayerIndex;
+	};
+	availableImages: {
+		[_: string]: Array<string>;
+	};
+	externalWorkerSourceTypes: {
+		[_: string]: WorkerSourceConstructor;
+	};
+	/**
+	 * This holds a cache for the already created worker source instances.
+	 * The cache is build with the following hierarchy:
+	 * [mapId][sourceType][sourceName]: worker source instance
+	 * sourceType can be 'vector' for example
+	 */
+	workerSources: {
+		[_: string]: {
+			[_: string]: {
+				[_: string]: WorkerSource;
+			};
+		};
+	};
+	/**
+	 * This holds a cache for the already created DEM worker source instances.
+	 * The cache is build with the following hierarchy:
+	 * [mapId][sourceType]: DEM worker source instance
+	 * sourceType can be 'raster-dem' for example
+	 */
+	demWorkerSources: {
+		[_: string]: {
+			[_: string]: RasterDEMTileWorkerSource;
+		};
+	};
+	referrer: string;
+	globalStates: Map<string, Record<string, any>>;
+	constructor(self: WorkerGlobalScopeInterface & ActorTarget);
+	private _getGlobalState;
+	private _setImages;
+	private _syncRTLPluginState;
+	private _getAvailableImages;
+	private _getLayerIndex;
+	/**
+	 * This is basically a lazy initialization of a worker per mapId and sourceType and sourceName
+	 * @param mapId - the mapId
+	 * @param sourceType - the source type - 'vector' for example
+	 * @param sourceName - the source name - 'osm' for example
+	 * @returns a new instance or a cached one
+	 */
+	private _getWorkerSource;
+	/**
+	 * This is basically a lazy initialization of a worker per mapId and source
+	 * @param mapId - the mapId
+	 * @param sourceType - the source type - 'raster-dem' for example
+	 * @returns a new instance or a cached one
+	 */
+	private _getDEMWorkerSource;
+}
+interface WorkerGlobalScopeInterface {
+	importScripts(...urls: Array<string>): void;
+	registerWorkerSource: (sourceName: string, sourceConstructor: WorkerSourceConstructor) => void;
+	registerRTLTextPlugin: (_: any) => void;
+	addProtocol: (customProtocol: string, loadFn: AddProtocolAction) => void;
+	removeProtocol: (customProtocol: string) => void;
+	worker: Worker$1;
 }
 /**
  * Given a destination object and optionally many source objects,
@@ -14813,6 +14944,7 @@ export {
 	VariableAnchorOffsetCollection,
 	VectorSourceSpecification,
 	VideoSourceSpecification,
+	Worker$1 as Worker,
 };
 
 export as namespace maplibregl;

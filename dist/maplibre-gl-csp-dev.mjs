@@ -19,7 +19,7 @@ var exports = {
 	},
 	"./worker": {
 		types: "./dist/maplibre-gl-worker.d.ts",
-		"default": "./dist/esm/src/source/worker.js"
+		"default": "./dist/maplibre-gl-worker.mjs"
 	}
 };
 var license = "BSD-3-Clause";
@@ -156,7 +156,7 @@ var scripts = {
 	"generate-shaders": "node --no-warnings --loader ts-node/esm build/generate-shaders.ts",
 	"generate-struct-arrays": "node --no-warnings --loader ts-node/esm build/generate-struct-arrays.ts",
 	"generate-style-code": "node --no-warnings --loader ts-node/esm build/generate-style-code.ts",
-	"generate-typings": "dts-bundle-generator --export-referenced-types=false --umd-module-name=maplibregl -o ./dist/maplibre-gl.d.ts ./src/index.ts && dts-bundle-generator --export-referenced-types=false --umd-module-name=maplibregl -o ./dist/maplibre-gl-core.d.ts ./src/core.ts && dts-bundle-generator --export-referenced-types=false --umd-module-name=maplibregl -o ./dist/maplibre-gl-worker.d.ts ./src/source/worker.ts",
+	"generate-typings": "dts-bundle-generator --export-referenced-types=false --umd-module-name=maplibregl -o ./dist/maplibre-gl.d.ts ./src/index.ts && dts-bundle-generator --export-referenced-types=false --umd-module-name=maplibregl -o ./dist/maplibre-gl-core.d.ts ./src/core.ts && dts-bundle-generator --export-referenced-types=false --umd-module-name=maplibregl -o ./dist/maplibre-gl-worker.d.ts ./src/worker.ts",
 	"generate-docs": "typedoc && node --no-warnings --loader ts-node/esm build/generate-docs.ts",
 	"generate-images": "node --no-warnings --loader ts-node/esm build/generate-doc-images.ts",
 	"build-dist": "npm run build-css && npm run generate-typings && npm run generate-shaders && npm run build-dev && npm run build-csp-dev && npm run build-prod && npm run build-csp",
@@ -9425,7 +9425,7 @@ function clamp$1(n, min, max) {
  * @param max - the maximum value to be returned, inclusive
  * @returns constrained number
  */
-function wrap(n, min, max) {
+function wrap$1(n, min, max) {
     const d = max - min;
     const w = ((n - min) % d + d) % d + min;
     return (w === min) ? max : w;
@@ -9445,7 +9445,7 @@ function keysDifference(obj, other) {
     }
     return difference;
 }
-function extend(dest, ...sources) {
+function extend$1(dest, ...sources) {
     for (const src of sources) {
         for (const k in src) {
             dest[k] = src[k];
@@ -10498,10 +10498,10 @@ const makeRequest = function (requestParameters, abortController) {
     return makeXMLHttpRequest(requestParameters, abortController);
 };
 const getJSON = (requestParameters, abortController) => {
-    return makeRequest(extend(requestParameters, { type: 'json' }), abortController);
+    return makeRequest(extend$1(requestParameters, { type: 'json' }), abortController);
 };
 const getArrayBuffer = (requestParameters, abortController) => {
-    return makeRequest(extend(requestParameters, { type: 'arrayBuffer' }), abortController);
+    return makeRequest(extend$1(requestParameters, { type: 'arrayBuffer' }), abortController);
 };
 function sameOrigin(inComingUrl) {
     // A relative URL "/foo" or "./foo" will throw exception in URL's ctor,
@@ -10672,7 +10672,7 @@ var ImageRequest;
                 }
                 requestParameters.headers.accept = 'image/webp,*/*';
             }
-            extend(requestParameters, { type: 'image' });
+            extend$1(requestParameters, { type: 'image' });
             const request = {
                 abortController,
                 requestParameters,
@@ -10828,7 +10828,7 @@ function _removeEventListener(type, listener, listenerList) {
  */
 class Event {
     constructor(type, data = {}) {
-        extend(this, data);
+        extend$1(this, data);
         this.type = type;
     }
 }
@@ -10837,7 +10837,7 @@ class Event {
  */
 class ErrorEvent extends Event {
     constructor(error, data = {}) {
-        super('error', extend({ error }, data));
+        super('error', extend$1({ error }, data));
     }
 }
 /**
@@ -10913,7 +10913,7 @@ class Evented {
             }
             const parent = this._eventedParent;
             if (parent) {
-                extend(event, typeof this._eventedParentData === 'function' ? this._eventedParentData() : this._eventedParentData);
+                extend$1(event, typeof this._eventedParentData === 'function' ? this._eventedParentData() : this._eventedParentData);
                 parent.fire(event);
             }
             // To ensure that no error events are dropped, print them to the
@@ -23885,7 +23885,7 @@ class TransitionablePropertyValue {
         this.value = new PropertyValue(property, undefined, globalState);
     }
     transitioned(parameters, prior) {
-        return new TransitioningPropertyValue(this.property, this.value, prior, extend({}, parameters.transition, this.transition), parameters.now);
+        return new TransitioningPropertyValue(this.property, this.value, prior, extend$1({}, parameters.transition, this.transition), parameters.now);
     }
     untransitioned() {
         return new TransitioningPropertyValue(this.property, this.value, null, {}, 0);
@@ -25137,7 +25137,7 @@ function renderStyleImage(image) {
  * copy of the image data wrapped from the opposite side. In both cases, this ensures the
  * correct behavior of GL_LINEAR texture sampling mode.
  */
-const padding = 1;
+const padding$1 = 1;
 /**
  * ImageManager does three things:
  *
@@ -25333,8 +25333,8 @@ class ImageManager extends Evented {
             return pattern.position;
         }
         if (!pattern) {
-            const w = image.data.width + padding * 2;
-            const h = image.data.height + padding * 2;
+            const w = image.data.width + padding$1 * 2;
+            const h = image.data.height + padding$1 * 2;
             const bin = { w, h, x: 0, y: 0 };
             const position = new ImagePosition(bin, image);
             this.patterns[id] = { bin, position };
@@ -25366,8 +25366,8 @@ class ImageManager extends Evented {
         dst.resize({ width: w || 1, height: h || 1 });
         for (const id in this.patterns) {
             const { bin } = this.patterns[id];
-            const x = bin.x + padding;
-            const y = bin.y + padding;
+            const x = bin.x + padding$1;
+            const y = bin.y + padding$1;
             const src = this.getImage(id).data;
             const w = src.width;
             const h = src.height;
@@ -26724,7 +26724,7 @@ class Sky extends Evented {
         if ((options === null || options === void 0 ? void 0 : options.validate) === false) {
             return false;
         }
-        return emitValidationErrors$1(this, validate.call(validateStyle, extend({
+        return emitValidationErrors$1(this, validate.call(validateStyle, extend$1({
             value,
             // Workaround for https://github.com/mapbox/mapbox-gl-js/issues/2407
             style: { glyphs: true, sprite: true },
@@ -29348,7 +29348,7 @@ class FeatureIndex {
                 // `feature-state` expression evaluation requires feature state to be available
                 featureState = sourceFeatureState.getState(styleLayer.sourceLayer || '_geojsonTileLayer', id);
             }
-            const serializedLayer = extend({}, serializedLayers[layerID]);
+            const serializedLayer = extend$1({}, serializedLayers[layerID]);
             serializedLayer.paint = evaluateProperties(serializedLayer.paint, styleLayer.paint, feature, featureState, availableImages);
             serializedLayer.layout = evaluateProperties(serializedLayer.layout, styleLayer.layout, feature, featureState, availableImages);
             const intersectionZ = !intersectionTest || intersectionTest(feature, styleLayer, featureState);
@@ -30065,7 +30065,7 @@ class LngLat {
      * ```
      */
     wrap() {
-        return new LngLat(wrap(this.lng, -180, 180), this.lat);
+        return new LngLat(wrap$1(this.lng, -180, 180), this.lat);
     }
     /**
      * Returns the coordinates represented as an array of two numbers.
@@ -30593,7 +30593,7 @@ class SourceFeatureState {
         const feature = String(featureId);
         this.stateChanges[sourceLayer] = this.stateChanges[sourceLayer] || {};
         this.stateChanges[sourceLayer][feature] = this.stateChanges[sourceLayer][feature] || {};
-        extend(this.stateChanges[sourceLayer][feature], newState);
+        extend$1(this.stateChanges[sourceLayer][feature], newState);
         if (this.deletedStates[sourceLayer] === null) {
             this.deletedStates[sourceLayer] = {};
             for (const ft in this.state[sourceLayer]) {
@@ -30650,7 +30650,7 @@ class SourceFeatureState {
         const feature = String(featureId);
         const base = this.state[sourceLayer] || {};
         const changes = this.stateChanges[sourceLayer] || {};
-        const reconciledState = extend({}, base[feature], changes[feature]);
+        const reconciledState = extend$1({}, base[feature], changes[feature]);
         //return empty object if the whole source layer is awaiting deletion
         if (this.deletedStates[sourceLayer] === null)
             return {};
@@ -30675,7 +30675,7 @@ class SourceFeatureState {
             for (const feature in this.stateChanges[sourceLayer]) {
                 if (!this.state[sourceLayer][feature])
                     this.state[sourceLayer][feature] = {};
-                extend(this.state[sourceLayer][feature], this.stateChanges[sourceLayer][feature]);
+                extend$1(this.state[sourceLayer][feature], this.stateChanges[sourceLayer][feature]);
                 layerStates[feature] = this.state[sourceLayer][feature];
             }
             featuresChanged[sourceLayer] = layerStates;
@@ -30703,7 +30703,7 @@ class SourceFeatureState {
                 }
             }
             featuresChanged[sourceLayer] = featuresChanged[sourceLayer] || {};
-            extend(featuresChanged[sourceLayer], layerStates);
+            extend$1(featuresChanged[sourceLayer], layerStates);
         }
         this.stateChanges = {};
         this.deletedStates = {};
@@ -36127,7 +36127,7 @@ class TransformHelper {
         return this._bearingInRadians / Math.PI * 180;
     }
     setBearing(bearing) {
-        const b = wrap(bearing, -180, 180) * Math.PI / 180;
+        const b = wrap$1(bearing, -180, 180) * Math.PI / 180;
         if (this._bearingInRadians === b)
             return;
         this._unmodified = false;
@@ -37131,8 +37131,8 @@ class MercatorTransform {
                 scaleY = screenHeight / (maxY - minY);
         }
         if (lngRange) {
-            minX = wrap(mercatorXfromLng(lngRange[0]) * worldSize, 0, worldSize);
-            maxX = wrap(mercatorXfromLng(lngRange[1]) * worldSize, 0, worldSize);
+            minX = wrap$1(mercatorXfromLng(lngRange[0]) * worldSize, 0, worldSize);
+            maxX = wrap$1(mercatorXfromLng(lngRange[1]) * worldSize, 0, worldSize);
             if (maxX < minX)
                 maxX += worldSize;
             const shouldZoomIn = maxX - minX < screenWidth;
@@ -37160,7 +37160,7 @@ class MercatorTransform {
             const centerX = (minX + maxX) / 2;
             let wrappedX = originalX;
             if (this._helper._renderWorldCopies) {
-                wrappedX = wrap(originalX, centerX - worldSize / 2, centerX + worldSize / 2);
+                wrappedX = wrap$1(originalX, centerX - worldSize / 2, centerX + worldSize / 2);
             }
             const w2 = screenWidth / 2;
             if (wrappedX - w2 < minX)
@@ -39861,7 +39861,7 @@ function sphereSurfacePointToCoordinates(surface) {
         const acosZ = Math.acos(projZ);
         const lngRadians = (projX > 0) ? acosZ : -acosZ;
         const lngDegrees = lngRadians / Math.PI * 180.0;
-        return new LngLat(wrap(lngDegrees, -180, 180), latDegrees);
+        return new LngLat(wrap$1(lngDegrees, -180, 180), latDegrees);
     }
     else {
         return new LngLat(0.0, latDegrees);
@@ -42830,7 +42830,7 @@ class Style extends Evented {
             if ('source' in layerObject && typeof layerObject.source === 'object') {
                 this.addSource(id, layerObject.source);
                 layerObject = clone(layerObject);
-                layerObject = extend(layerObject, { source: id });
+                layerObject = extend$1(layerObject, { source: id });
             }
             // this layer is not in the style.layers array, so we pass an impossible array index
             if (this._validate(validateStyle.layer, `layers.${id}`, layerObject, { arrayIndex: -1 }, options))
@@ -43113,7 +43113,7 @@ class Style extends Evented {
         return sourceCache.getFeatureState(sourceLayer, target.id);
     }
     getTransition() {
-        return extend({ duration: 300, delay: 0 }, this.stylesheet && this.stylesheet.transition);
+        return extend$1({ duration: 300, delay: 0 }, this.stylesheet && this.stylesheet.transition);
     }
     serialize() {
         // We return undefined before we're loaded, following the pattern of Map.getStyle() before
@@ -43286,7 +43286,7 @@ class Style extends Evented {
             return;
         const parameters = {
             now: browser.now(),
-            transition: extend({
+            transition: extend$1({
                 duration: 300,
                 delay: 0
             }, this.stylesheet.transition)
@@ -43337,7 +43337,7 @@ class Style extends Evented {
             return;
         const parameters = {
             now: browser.now(),
-            transition: extend({
+            transition: extend$1({
                 duration: 300,
                 delay: 0
             }, this.stylesheet.transition)
@@ -43358,7 +43358,7 @@ class Style extends Evented {
         if (options && options.validate === false) {
             return false;
         }
-        return emitValidationErrors(this, validate.call(validateStyle, extend({
+        return emitValidationErrors(this, validate.call(validateStyle, extend$1({
             key,
             style: this.serialize(),
             value,
@@ -44171,7 +44171,7 @@ const fillExtrusionUniformValues = (painter, shouldUseVerticalGradient, opacity,
     };
 };
 const fillExtrusionPatternUniformValues = (painter, shouldUseVerticalGradient, opacity, translate, coord, crossfade, tile) => {
-    return extend(fillExtrusionUniformValues(painter, shouldUseVerticalGradient, opacity, translate), patternUniformValues(crossfade, painter, tile), {
+    return extend$1(fillExtrusionUniformValues(painter, shouldUseVerticalGradient, opacity, translate), patternUniformValues(crossfade, painter, tile), {
         'u_height_factor': -Math.pow(2, coord.overscaledZ) / tile.tileSize / 8
     });
 };
@@ -44202,7 +44202,7 @@ const fillOutlinePatternUniforms = (context, locations) => ({
     'u_fade': new Uniform1f(context, locations.u_fade),
     'u_fill_translate': new Uniform2f(context, locations.u_fill_translate)
 });
-const fillPatternUniformValues = (painter, crossfade, tile, translate) => extend(patternUniformValues(crossfade, painter, tile), {
+const fillPatternUniformValues = (painter, crossfade, tile, translate) => extend$1(patternUniformValues(crossfade, painter, tile), {
     'u_fill_translate': translate,
 });
 const fillUniformValues = (translate) => ({
@@ -44212,7 +44212,7 @@ const fillOutlineUniformValues = (drawingBufferSize, translate) => ({
     'u_world': drawingBufferSize,
     'u_fill_translate': translate,
 });
-const fillOutlinePatternUniformValues = (painter, crossfade, tile, drawingBufferSize, translate) => extend(fillPatternUniformValues(painter, crossfade, tile, translate), {
+const fillOutlinePatternUniformValues = (painter, crossfade, tile, drawingBufferSize, translate) => extend$1(fillPatternUniformValues(painter, crossfade, tile, translate), {
     'u_world': drawingBufferSize
 });
 
@@ -44468,7 +44468,7 @@ const lineUniformValues = (painter, tile, layer, ratioScale) => {
     };
 };
 const lineGradientUniformValues = (painter, tile, layer, ratioScale, imageHeight) => {
-    return extend(lineUniformValues(painter, tile, layer, ratioScale), {
+    return extend$1(lineUniformValues(painter, tile, layer, ratioScale), {
         'u_image': 0,
         'u_image_height': imageHeight,
     });
@@ -44500,7 +44500,7 @@ const lineSDFUniformValues = (painter, tile, layer, ratioScale, dasharray, cross
     const posB = lineAtlas.getDash(dasharray.to, round);
     const widthA = posA.width * crossfade.fromScale;
     const widthB = posB.width * crossfade.toScale;
-    return extend(lineUniformValues(painter, tile, layer, ratioScale), {
+    return extend$1(lineUniformValues(painter, tile, layer, ratioScale), {
         'u_patternscale_a': [tileRatio / widthA, -posA.height / 2],
         'u_patternscale_b': [tileRatio / widthB, -posB.height / 2],
         'u_sdfgamma': lineAtlas.width / (Math.min(widthA, widthB) * 256 * painter.pixelRatio) / 2,
@@ -44672,14 +44672,14 @@ const symbolIconUniformValues = (functionType, size, rotateInShader, pitchWithMa
 };
 const symbolSDFUniformValues = (functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix, glCoordMatrix, translation, isText, texSize, isHalo, pitchedScale) => {
     const transform = painter.transform;
-    return extend(symbolIconUniformValues(functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix, glCoordMatrix, translation, isText, texSize, pitchedScale), {
+    return extend$1(symbolIconUniformValues(functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix, glCoordMatrix, translation, isText, texSize, pitchedScale), {
         'u_gamma_scale': (pitchWithMap ? Math.cos(transform.pitch * Math.PI / 180.0) * transform.cameraToCenterDistance : 1),
         'u_device_pixel_ratio': painter.pixelRatio,
         'u_is_halo': +isHalo
     });
 };
 const symbolTextAndIconUniformValues = (functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix, glCoordMatrix, translation, texSizeSDF, texSizeIcon, pitchedScale) => {
-    return extend(symbolSDFUniformValues(functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix, glCoordMatrix, translation, true, texSizeSDF, true, pitchedScale), {
+    return extend$1(symbolSDFUniformValues(functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix, glCoordMatrix, translation, true, texSizeSDF, true, pitchedScale), {
         'u_texsize_icon': texSizeIcon,
         'u_texture_icon': 1
     });
@@ -44710,7 +44710,7 @@ const backgroundUniformValues = (opacity, color) => ({
     'u_opacity': opacity,
     'u_color': color
 });
-const backgroundPatternUniformValues = (opacity, painter, image, tile, crossfade) => extend(bgPatternUniformValues(image, crossfade, painter, tile), {
+const backgroundPatternUniformValues = (opacity, painter, image, tile, crossfade) => extend$1(bgPatternUniformValues(image, crossfade, painter, tile), {
     'u_opacity': opacity
 });
 
@@ -46741,23 +46741,23 @@ const defaultInertiaOptions = {
     linearity: 0.3,
     easing: bezier(0, 0, 0.3, 1),
 };
-const defaultPanInertiaOptions = extend({
+const defaultPanInertiaOptions = extend$1({
     deceleration: 2500,
     maxSpeed: 1400
 }, defaultInertiaOptions);
-const defaultZoomInertiaOptions = extend({
+const defaultZoomInertiaOptions = extend$1({
     deceleration: 20,
     maxSpeed: 1400
 }, defaultInertiaOptions);
-const defaultBearingInertiaOptions = extend({
+const defaultBearingInertiaOptions = extend$1({
     deceleration: 1000,
     maxSpeed: 360
 }, defaultInertiaOptions);
-const defaultPitchInertiaOptions = extend({
+const defaultPitchInertiaOptions = extend$1({
     deceleration: 1000,
     maxSpeed: 90
 }, defaultInertiaOptions);
-const defaultRollInertiaOptions = extend({
+const defaultRollInertiaOptions = extend$1({
     deceleration: 1000,
     maxSpeed: 360
 }, defaultInertiaOptions);
@@ -46808,7 +46808,7 @@ class HandlerInertia {
         const duration = (lastEntry.time - this._inertiaBuffer[0].time);
         const easeOptions = {};
         if (deltas.pan.mag()) {
-            const result = calculateEasing(deltas.pan.mag(), duration, extend({}, defaultPanInertiaOptions, panInertiaOptions || {}));
+            const result = calculateEasing(deltas.pan.mag(), duration, extend$1({}, defaultPanInertiaOptions, panInertiaOptions || {}));
             const finalPan = deltas.pan.mult(result.amount / deltas.pan.mag());
             const computedEaseOptions = this._map.cameraHelper.handlePanInertia(finalPan, this._map.transform);
             easeOptions.center = computedEaseOptions.easingCenter;
@@ -46840,7 +46840,7 @@ class HandlerInertia {
             easeOptions.around = last ? this._map.unproject(last) : this._map.getCenter();
         }
         this.clear();
-        return extend(easeOptions, {
+        return extend$1(easeOptions, {
             noMoveStart: true
         });
     }
@@ -46905,7 +46905,7 @@ class MapMouseEvent extends Event {
         originalEvent = originalEvent instanceof MouseEvent ? originalEvent : new MouseEvent(type, originalEvent);
         const point = DOM.mousePos(map.getCanvas(), originalEvent);
         const lngLat = map.unproject(point);
-        super(type, extend({ point, lngLat, originalEvent }, data));
+        super(type, extend$1({ point, lngLat, originalEvent }, data));
         this._defaultPrevented = false;
         this.target = map;
     }
@@ -48049,7 +48049,7 @@ class TwoFingersTouchPitchHandler extends TwoFingersTouchHandler {
     }
 }
 
-const defaultOptions$5 = {
+const defaultOptions$7 = {
     panStep: 100,
     bearingStep: 15,
     pitchStep: 10
@@ -48074,7 +48074,7 @@ class KeyboardHandler {
     /** @internal */
     constructor(map) {
         this._tr = new TransformProvider(map);
-        const stepOptions = defaultOptions$5;
+        const stepOptions = defaultOptions$7;
         this._panStep = stepOptions.panStep;
         this._bearingStep = stepOptions.bearingStep;
         this._pitchStep = stepOptions.pitchStep;
@@ -49311,7 +49311,7 @@ class HandlerManager {
     mergeHandlerResult(mergedHandlerResult, eventsInProgress, handlerResult, name, e) {
         if (!handlerResult)
             return;
-        extend(mergedHandlerResult, handlerResult);
+        extend$1(mergedHandlerResult, handlerResult);
         const eventData = { handlerName: name, originalEvent: handlerResult.originalEvent || e };
         // track which handler changed which camera property
         if (handlerResult.zoomDelta !== undefined) {
@@ -49351,8 +49351,8 @@ class HandlerManager {
                 combined.pinchAround = change.pinchAround;
             if (change.noInertia)
                 combined.noInertia = change.noInertia;
-            extend(combinedEventsInProgress, eventsInProgress);
-            extend(combinedDeactivatedHandlers, deactivatedHandlers);
+            extend$1(combinedEventsInProgress, eventsInProgress);
+            extend$1(combinedDeactivatedHandlers, deactivatedHandlers);
         }
         this._updateMapTransform(combined, combinedEventsInProgress, combinedDeactivatedHandlers);
         this._changes = [];
@@ -49627,7 +49627,7 @@ class Camera extends Evented {
      */
     panBy(offset, options, eventData) {
         offset = Point.convert(offset).mult(-1);
-        return this.panTo(this.transform.center, extend({ offset }, options), eventData);
+        return this.panTo(this.transform.center, extend$1({ offset }, options), eventData);
     }
     /**
      * Pans the map to the specified location with an animated transition.
@@ -49646,7 +49646,7 @@ class Camera extends Evented {
      * @see [Update a feature in realtime](https://maplibre.org/maplibre-gl-js/docs/examples/update-a-feature-in-realtime/)
      */
     panTo(lnglat, options, eventData) {
-        return this.easeTo(extend({
+        return this.easeTo(extend$1({
             center: lnglat
         }, options), eventData);
     }
@@ -49697,7 +49697,7 @@ class Camera extends Evented {
      * ```
      */
     zoomTo(zoom, options, eventData) {
-        return this.easeTo(extend({
+        return this.easeTo(extend$1({
             zoom
         }, options), eventData);
     }
@@ -49833,7 +49833,7 @@ class Camera extends Evented {
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
      */
     rotateTo(bearing, options, eventData) {
-        return this.easeTo(extend({
+        return this.easeTo(extend$1({
             bearing
         }, options), eventData);
     }
@@ -49846,7 +49846,7 @@ class Camera extends Evented {
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
      */
     resetNorth(options, eventData) {
-        this.rotateTo(0, extend({ duration: 1000 }, options), eventData);
+        this.rotateTo(0, extend$1({ duration: 1000 }, options), eventData);
         return this;
     }
     /**
@@ -49858,7 +49858,7 @@ class Camera extends Evented {
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
      */
     resetNorthPitch(options, eventData) {
-        this.easeTo(extend({
+        this.easeTo(extend$1({
             bearing: 0,
             pitch: 0,
             roll: 0,
@@ -49966,7 +49966,7 @@ class Camera extends Evented {
             right: 0,
             left: 0
         };
-        options = extend({
+        options = extend$1({
             padding: defaultPadding,
             offset: [0, 0],
             maxZoom: this.transform.maxZoom
@@ -49980,7 +49980,7 @@ class Camera extends Evented {
                 left: p
             };
         }
-        const padding = extend(defaultPadding, options.padding);
+        const padding = extend$1(defaultPadding, options.padding);
         options.padding = padding;
         const tr = this.transform;
         const bounds = new LngLatBounds(p0, p1);
@@ -50038,7 +50038,7 @@ class Camera extends Evented {
         // cameraForBounds warns + returns undefined if unable to fit:
         if (!calculatedOptions)
             return this;
-        options = extend(calculatedOptions, options);
+        options = extend$1(calculatedOptions, options);
         // Explicitly remove the padding field because, calculatedOptions already accounts for padding by setting zoom and center accordingly.
         delete options.padding;
         return options.linear ?
@@ -50213,7 +50213,7 @@ class Camera extends Evented {
      */
     easeTo(options, eventData) {
         this._stop(false, options.easeId);
-        options = extend({
+        options = extend$1({
             offset: [0, 0],
             duration: 500,
             easing: defaultEasing
@@ -50491,7 +50491,7 @@ class Camera extends Evented {
         // Where applicable, local variable documentation begins with the associated variable or
         // function in van Wijk (2003).
         this.stop();
-        options = extend({
+        options = extend$1({
             offset: [0, 0],
             speed: 1.2,
             curve: 1.42,
@@ -50662,7 +50662,7 @@ class Camera extends Evented {
     }
     // convert bearing so that it's numerically close to the current one so that it interpolates properly
     _normalizeBearing(bearing, currentBearing) {
-        bearing = wrap(bearing, -180, 180);
+        bearing = wrap$1(bearing, -180, 180);
         const diff = Math.abs(bearing - currentBearing);
         if (Math.abs(bearing - 360 - currentBearing) < diff)
             bearing -= 360;
@@ -51921,7 +51921,7 @@ const defaultMinPitch = 0;
 const defaultMaxPitch = 60;
 // use this variable to check maxPitch for validity
 const maxPitchThreshold = 180;
-const defaultOptions$4 = {
+const defaultOptions$6 = {
     hash: false,
     interactive: true,
     bearingSnap: 7,
@@ -52008,7 +52008,7 @@ let Map$1 = class Map extends Camera {
     constructor(options) {
         var _a, _b;
         PerformanceUtils.mark(PerformanceMarkers.create);
-        const resolvedOptions = Object.assign(Object.assign(Object.assign({}, defaultOptions$4), options), { canvasContextAttributes: Object.assign(Object.assign({}, defaultOptions$4.canvasContextAttributes), options.canvasContextAttributes) });
+        const resolvedOptions = Object.assign(Object.assign(Object.assign({}, defaultOptions$6), options), { canvasContextAttributes: Object.assign(Object.assign({}, defaultOptions$6.canvasContextAttributes), options.canvasContextAttributes) });
         if (resolvedOptions.minZoom != null && resolvedOptions.maxZoom != null && resolvedOptions.minZoom > resolvedOptions.maxZoom) {
             throw new Error('maxZoom must be greater than or equal to minZoom');
         }
@@ -52149,7 +52149,7 @@ let Map$1 = class Map extends Camera {
             });
             if (resolvedOptions.bounds) {
                 this.resize();
-                this.fitBounds(resolvedOptions.bounds, extend({}, resolvedOptions.fitBoundsOptions, { duration: 0 }));
+                this.fitBounds(resolvedOptions.bounds, extend$1({}, resolvedOptions.fitBoundsOptions, { duration: 0 }));
             }
         }
         // When no style is set or it's using something other than the globe projection, we can constrain the camera.
@@ -52992,7 +52992,7 @@ let Map$1 = class Map extends Camera {
      * ```
      */
     setStyle(style, options) {
-        options = extend({}, {
+        options = extend$1({}, {
             localIdeographFontFamily: this._localIdeographFontFamily,
             validate: this._validateStyle
         }, options);
@@ -54591,7 +54591,7 @@ let Map$1 = class Map extends Camera {
     }
 };
 
-const defaultOptions$3 = {
+const defaultOptions$5 = {
     showCompass: true,
     showZoom: true,
     visualizePitch: false,
@@ -54643,7 +54643,7 @@ class NavigationControl {
             button.title = str;
             button.setAttribute('aria-label', str);
         };
-        this.options = extend({}, defaultOptions$3, options);
+        this.options = extend$1({}, defaultOptions$5, options);
         this._container = DOM.create('div', 'maplibregl-ctrl maplibregl-ctrl-group');
         this._container.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.options.showZoom) {
@@ -55596,7 +55596,7 @@ class Marker extends Evented {
     }
 }
 
-const defaultOptions$2 = {
+const defaultOptions$4 = {
     positionOptions: {
         enableHighAccuracy: false,
         maximumAge: 0,
@@ -55863,7 +55863,7 @@ class GeolocateControl extends Evented {
             const center = new LngLat(position.coords.longitude, position.coords.latitude);
             const radius = position.coords.accuracy;
             const bearing = this._map.getBearing();
-            const options = extend({ bearing }, this.options.fitBoundsOptions);
+            const options = extend$1({ bearing }, this.options.fitBoundsOptions);
             const newBounds = LngLatBounds.fromLngLat(center, radius);
             this._map.fitBounds(newBounds, options, {
                 geolocateSource: true // tag this camera change so it won't cause the control to change to background state
@@ -55997,7 +55997,7 @@ class GeolocateControl extends Evented {
                 });
             }
         };
-        this.options = extend({}, defaultOptions$2, options);
+        this.options = extend$1({}, defaultOptions$4, options);
     }
     /** {@inheritDoc IControl.onAdd} */
     onAdd(map) {
@@ -56198,7 +56198,7 @@ class GeolocateControl extends Evented {
     }
 }
 
-const defaultOptions$1 = {
+const defaultOptions$3 = {
     maxWidth: 100,
     unit: 'metric'
 };
@@ -56235,7 +56235,7 @@ class ScaleControl {
             this.options.unit = unit;
             updateScale(this._map, this._container, this.options);
         };
-        this.options = Object.assign(Object.assign({}, defaultOptions$1), options);
+        this.options = Object.assign(Object.assign({}, defaultOptions$3), options);
     }
     getDefaultPosition() {
         return 'bottom-left';
@@ -56599,7 +56599,7 @@ class GlobeControl {
     }
 }
 
-const defaultOptions = {
+const defaultOptions$2 = {
     closeButton: true,
     closeOnClick: true,
     focusAfterOpen: true,
@@ -56806,7 +56806,7 @@ class Popup extends Evented {
         this._onClose = () => {
             this.remove();
         };
-        this.options = extend(Object.create(defaultOptions), options);
+        this.options = extend$1(Object.create(defaultOptions$2), options);
     }
     /**
      * Adds the popup to a map.
@@ -57825,7 +57825,7 @@ class GeoJSONSource extends Evented {
         this.actor = dispatcher.getActor();
         this.setEventedParent(eventedParent);
         this._data = options.data;
-        this._options = extend({}, options);
+        this._options = extend$1({}, options);
         this._collectResourceTiming = options.collectResourceTiming;
         if (options.maxzoom !== undefined)
             this.maxzoom = options.maxzoom;
@@ -57841,7 +57841,7 @@ class GeoJSONSource extends Evented {
         // so that it can load/parse/index the geojson data
         // extending with `options.workerOptions` helps to make it easy for
         // third-party sources to hack/reuse GeoJSONSource.
-        this.workerOptions = extend({
+        this.workerOptions = extend$1({
             source: this.id,
             cluster: options.cluster || false,
             geojsonVtOptions: {
@@ -57924,7 +57924,7 @@ class GeoJSONSource extends Evented {
      */
     getData() {
         return __awaiter(this, void 0, void 0, function* () {
-            const options = extend({ type: this.type }, this.workerOptions);
+            const options = extend$1({ type: this.type }, this.workerOptions);
             return this.actor.sendAsync({ type: "GD" /* MessageType.getData */, data: options });
         });
     }
@@ -58051,7 +58051,7 @@ class GeoJSONSource extends Evented {
                 warnOnce(`No data or diff provided to GeoJSONSource ${this.id}.`);
                 return;
             }
-            const options = extend({ type: this.type }, this.workerOptions);
+            const options = extend$1({ type: this.type }, this.workerOptions);
             if (data) {
                 if (typeof data === 'string') {
                     options.request = this.map._requestManager.transformRequest(browser.resolveURL(data), "Source" /* ResourceType.Source */);
@@ -58082,7 +58082,7 @@ class GeoJSONSource extends Evented {
                 }
                 const eventData = { dataType: 'source' };
                 if (this._collectResourceTiming && resourceTiming && resourceTiming.length > 0) {
-                    extend(eventData, { resourceTiming });
+                    extend$1(eventData, { resourceTiming });
                 }
                 // although GeoJSON sources contain no metadata, we fire this event to let the SourceCache
                 // know its ok to start requesting tiles.
@@ -58154,7 +58154,7 @@ class GeoJSONSource extends Evented {
         this.actor.sendAsync({ type: "RS" /* MessageType.removeSource */, data: { type: this.type, source: this.id } });
     }
     serialize() {
-        return extend({}, this._options, {
+        return extend$1({}, this._options, {
             type: this.type,
             data: this._data
         });
@@ -58179,7 +58179,7 @@ function loadTileJson(options, requestManager, abortController) {
         }
         const result = pick(
         // explicit source options take precedence over TileJSON
-        extend(tileJSON, options), ['tiles', 'minzoom', 'maxzoom', 'attribution', 'bounds', 'scheme', 'tileSize', 'encoding']);
+        extend$1(tileJSON, options), ['tiles', 'minzoom', 'maxzoom', 'attribution', 'bounds', 'scheme', 'tileSize', 'encoding']);
         if ('vector_layers' in tileJSON && tileJSON.vector_layers) {
             result.vectorLayerIds = tileJSON.vector_layers.map((layer) => { return layer.id; });
         }
@@ -58256,8 +58256,8 @@ class RasterTileSource extends Evented {
         this.scheme = 'xyz';
         this.tileSize = 512;
         this._loaded = false;
-        this._options = extend({ type: 'raster' }, options);
-        extend(this, pick(options, ['url', 'scheme', 'tileSize']));
+        this._options = extend$1({ type: 'raster' }, options);
+        extend$1(this, pick(options, ['url', 'scheme', 'tileSize']));
     }
     load() {
         return __awaiter(this, arguments, void 0, function* (sourceDataChanged = false) {
@@ -58269,7 +58269,7 @@ class RasterTileSource extends Evented {
                 this._tileJSONRequest = null;
                 this._loaded = true;
                 if (tileJSON) {
-                    extend(this, tileJSON);
+                    extend$1(this, tileJSON);
                     if (tileJSON.bounds)
                         this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom);
                     // `content` is included here to prevent a race condition where `Style._updateSources` is called
@@ -58331,7 +58331,7 @@ class RasterTileSource extends Evented {
         return this;
     }
     serialize() {
-        return extend({}, this._options);
+        return extend$1({}, this._options);
     }
     hasTile(tileID) {
         return !this.tileBounds || this.tileBounds.contains(tileID.canonical);
@@ -58574,7 +58574,7 @@ class RasterDEMTileSource extends RasterTileSource {
         super(id, options, dispatcher, eventedParent);
         this.type = 'raster-dem';
         this.maxzoom = 22;
-        this._options = extend({ type: 'raster-dem' }, options);
+        this._options = extend$1({ type: 'raster-dem' }, options);
         this.encoding = options.encoding || 'mapbox';
         this.redFactor = options.redFactor;
         this.greenFactor = options.greenFactor;
@@ -58741,8 +58741,8 @@ class VectorTileSource extends Evented {
         this.reparseOverscaled = true;
         this.isTileClipped = true;
         this._loaded = false;
-        extend(this, pick(options, ['url', 'scheme', 'tileSize', 'promoteId']));
-        this._options = extend({ type: 'vector' }, options);
+        extend$1(this, pick(options, ['url', 'scheme', 'tileSize', 'promoteId']));
+        this._options = extend$1({ type: 'vector' }, options);
         this._collectResourceTiming = options.collectResourceTiming;
         if (this.tileSize !== 512) {
             throw new Error('vector tile sources must have a tileSize of 512');
@@ -58760,7 +58760,7 @@ class VectorTileSource extends Evented {
                 this._loaded = true;
                 this.map.style.sourceCaches[this.id].clearTiles();
                 if (tileJSON) {
-                    extend(this, tileJSON);
+                    extend$1(this, tileJSON);
                     if (tileJSON.bounds)
                         this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom);
                     // `content` is included here to prevent a race condition where `Style._updateSources` is called
@@ -58824,7 +58824,7 @@ class VectorTileSource extends Evented {
         }
     }
     serialize() {
-        return extend({}, this._options);
+        return extend$1({}, this._options);
     }
     loadTile(tile) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -59087,6 +59087,3551 @@ class VideoSource extends ImageSource {
     hasTransition() {
         return this.video && !this.video.paused;
     }
+}
+
+class StyleLayerIndex {
+    constructor(layerConfigs, globalState) {
+        this.keyCache = {};
+        if (layerConfigs) {
+            this.replace(layerConfigs, globalState);
+        }
+    }
+    replace(layerConfigs, globalState) {
+        this._layerConfigs = {};
+        this._layers = {};
+        this.update(layerConfigs, [], globalState);
+    }
+    update(layerConfigs, removedIds, globalState) {
+        for (const layerConfig of layerConfigs) {
+            this._layerConfigs[layerConfig.id] = layerConfig;
+            const layer = this._layers[layerConfig.id] = createStyleLayer(layerConfig, globalState);
+            layer._featureFilter = featureFilter(layer.filter, globalState);
+            if (this.keyCache[layerConfig.id])
+                delete this.keyCache[layerConfig.id];
+        }
+        for (const id of removedIds) {
+            delete this.keyCache[id];
+            delete this._layerConfigs[id];
+            delete this._layers[id];
+        }
+        this.familiesBySource = {};
+        const groups = groupByLayout(Object.values(this._layerConfigs), this.keyCache);
+        for (const layerConfigs of groups) {
+            const layers = layerConfigs.map((layerConfig) => this._layers[layerConfig.id]);
+            const layer = layers[0];
+            if (layer.visibility === 'none') {
+                continue;
+            }
+            const sourceId = layer.source || '';
+            let sourceGroup = this.familiesBySource[sourceId];
+            if (!sourceGroup) {
+                sourceGroup = this.familiesBySource[sourceId] = {};
+            }
+            const sourceLayerId = layer.sourceLayer || '_geojsonTileLayer';
+            let sourceLayerFamilies = sourceGroup[sourceLayerId];
+            if (!sourceLayerFamilies) {
+                sourceLayerFamilies = sourceGroup[sourceLayerId] = [];
+            }
+            sourceLayerFamilies.push(layers);
+        }
+    }
+}
+
+const lineLayoutAttributes = createLayout([
+    { name: 'a_pos_normal', components: 2, type: 'Int16' },
+    { name: 'a_data', components: 4, type: 'Uint8' }
+], 4);
+const { members: members$4, size: size$4, alignment: alignment$4 } = lineLayoutAttributes;
+
+const lineLayoutAttributesExt = createLayout([
+    { name: 'a_uv_x', components: 1, type: 'Float32' },
+    { name: 'a_split_index', components: 1, type: 'Float32' },
+]);
+const { members: members$3, size: size$3, alignment: alignment$3 } = lineLayoutAttributesExt;
+
+function hasPattern(type, layers, options) {
+    const patterns = options.patternDependencies;
+    let hasPattern = false;
+    for (const layer of layers) {
+        const patternProperty = layer.paint.get(`${type}-pattern`);
+        if (!patternProperty.isConstant()) {
+            hasPattern = true;
+        }
+        const constantPattern = patternProperty.constantOr(null);
+        if (constantPattern) {
+            hasPattern = true;
+            patterns[constantPattern.to] = true;
+            patterns[constantPattern.from] = true;
+        }
+    }
+    return hasPattern;
+}
+function addPatternDependencies(type, layers, patternFeature, parameters, options) {
+    const { zoom } = parameters;
+    const patterns = options.patternDependencies;
+    for (const layer of layers) {
+        const patternProperty = layer.paint.get(`${type}-pattern`);
+        const patternPropertyValue = patternProperty.value;
+        if (patternPropertyValue.kind !== 'constant') {
+            let min = patternPropertyValue.evaluate({ zoom: zoom - 1 }, patternFeature, {}, options.availableImages);
+            let mid = patternPropertyValue.evaluate({ zoom }, patternFeature, {}, options.availableImages);
+            let max = patternPropertyValue.evaluate({ zoom: zoom + 1 }, patternFeature, {}, options.availableImages);
+            min = min && min.name ? min.name : min;
+            mid = mid && mid.name ? mid.name : mid;
+            max = max && max.name ? max.name : max;
+            // add to patternDependencies
+            patterns[min] = true;
+            patterns[mid] = true;
+            patterns[max] = true;
+            // save for layout
+            patternFeature.patterns[layer.id] = { min, mid, max };
+        }
+    }
+    return patternFeature;
+}
+
+// NOTE ON EXTRUDE SCALE:
+// scale the extrusion vector so that the normal length is this value.
+// contains the "texture" normals (-1..1). this is distinct from the extrude
+// normals for line joins, because the x-value remains 0 for the texture
+// normal array, while the extrude normal actually moves the vertex to create
+// the acute/bevelled line join.
+const EXTRUDE_SCALE = 63;
+/*
+ * Sharp corners cause dashed lines to tilt because the distance along the line
+ * is the same at both the inner and outer corners. To improve the appearance of
+ * dashed lines we add extra points near sharp corners so that a smaller part
+ * of the line is tilted.
+ *
+ * COS_HALF_SHARP_CORNER controls how sharp a corner has to be for us to add an
+ * extra vertex. The default is 75 degrees.
+ *
+ * The newly created vertices are placed SHARP_CORNER_OFFSET pixels from the corner.
+ */
+const COS_HALF_SHARP_CORNER = Math.cos(75 / 2 * (Math.PI / 180));
+const SHARP_CORNER_OFFSET = 15;
+// Angle per triangle for approximating round line joins.
+const DEG_PER_TRIANGLE = 20;
+// The number of bits that is used to store the line distance in the buffer.
+const LINE_DISTANCE_BUFFER_BITS = 15;
+// We don't have enough bits for the line distance as we'd like to have, so
+// use this value to scale the line distance (in tile units) down to a smaller
+// value. This lets us store longer distances while sacrificing precision.
+const LINE_DISTANCE_SCALE = 1 / 2;
+// The maximum line distance, in tile units, that fits in the buffer.
+const MAX_LINE_DISTANCE = Math.pow(2, LINE_DISTANCE_BUFFER_BITS - 1) / LINE_DISTANCE_SCALE;
+/**
+ * @internal
+ * Line bucket class
+ */
+class LineBucket {
+    constructor(options) {
+        this.zoom = options.zoom;
+        this.overscaling = options.overscaling;
+        this.layers = options.layers;
+        this.layerIds = this.layers.map(layer => layer.id);
+        this.index = options.index;
+        this.hasPattern = false;
+        this.patternFeatures = [];
+        this.lineClipsArray = [];
+        this.gradients = {};
+        this.layers.forEach(layer => {
+            this.gradients[layer.id] = {};
+        });
+        this.layoutVertexArray = new LineLayoutArray();
+        this.layoutVertexArray2 = new LineExtLayoutArray();
+        this.indexArray = new TriangleIndexArray();
+        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
+        this.segments = new SegmentVector();
+        this.maxLineLength = 0;
+        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
+    }
+    populate(features, options, canonical) {
+        this.hasPattern = hasPattern('line', this.layers, options);
+        const lineSortKey = this.layers[0].layout.get('line-sort-key');
+        const sortFeaturesByKey = !lineSortKey.isConstant();
+        const bucketFeatures = [];
+        for (const { feature, id, index, sourceLayerIndex } of features) {
+            const needGeometry = this.layers[0]._featureFilter.needGeometry;
+            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
+            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
+                continue;
+            const sortKey = sortFeaturesByKey ?
+                lineSortKey.evaluate(evaluationFeature, {}, canonical) :
+                undefined;
+            const bucketFeature = {
+                id,
+                properties: feature.properties,
+                type: feature.type,
+                sourceLayerIndex,
+                index,
+                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
+                patterns: {},
+                sortKey
+            };
+            bucketFeatures.push(bucketFeature);
+        }
+        if (sortFeaturesByKey) {
+            bucketFeatures.sort((a, b) => {
+                return (a.sortKey) - (b.sortKey);
+            });
+        }
+        for (const bucketFeature of bucketFeatures) {
+            const { geometry, index, sourceLayerIndex } = bucketFeature;
+            if (this.hasPattern) {
+                const patternBucketFeature = addPatternDependencies('line', this.layers, bucketFeature, { zoom: this.zoom }, options);
+                // pattern features are added only once the pattern is loaded into the image atlas
+                // so are stored during populate until later updated with positions by tile worker in addFeatures
+                this.patternFeatures.push(patternBucketFeature);
+            }
+            else {
+                this.addFeature(bucketFeature, geometry, index, canonical, {}, options.subdivisionGranularity);
+            }
+            const feature = features[index].feature;
+            options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this.index);
+        }
+    }
+    update(states, vtLayer, imagePositions) {
+        if (!this.stateDependentLayers.length)
+            return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
+            imagePositions
+        });
+    }
+    addFeatures(options, canonical, imagePositions) {
+        for (const feature of this.patternFeatures) {
+            this.addFeature(feature, feature.geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
+        }
+    }
+    isEmpty() {
+        return this.layoutVertexArray.length === 0;
+    }
+    uploadPending() {
+        return !this.uploaded || this.programConfigurations.needsUpload;
+    }
+    upload(context) {
+        if (!this.uploaded) {
+            if (this.layoutVertexArray2.length !== 0) {
+                this.layoutVertexBuffer2 = context.createVertexBuffer(this.layoutVertexArray2, members$3);
+            }
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$4);
+            this.indexBuffer = context.createIndexBuffer(this.indexArray);
+        }
+        this.programConfigurations.upload(context);
+        this.uploaded = true;
+    }
+    destroy() {
+        if (!this.layoutVertexBuffer)
+            return;
+        this.layoutVertexBuffer.destroy();
+        this.indexBuffer.destroy();
+        this.programConfigurations.destroy();
+        this.segments.destroy();
+    }
+    lineFeatureClips(feature) {
+        if (!!feature.properties && Object.prototype.hasOwnProperty.call(feature.properties, 'mapbox_clip_start') && Object.prototype.hasOwnProperty.call(feature.properties, 'mapbox_clip_end')) {
+            const start = +feature.properties['mapbox_clip_start'];
+            const end = +feature.properties['mapbox_clip_end'];
+            return { start, end };
+        }
+    }
+    addFeature(feature, geometry, index, canonical, imagePositions, subdivisionGranularity) {
+        const layout = this.layers[0].layout;
+        const join = layout.get('line-join').evaluate(feature, {});
+        const cap = layout.get('line-cap');
+        const miterLimit = layout.get('line-miter-limit');
+        const roundLimit = layout.get('line-round-limit');
+        this.lineClips = this.lineFeatureClips(feature);
+        for (const line of geometry) {
+            this.addLine(line, feature, join, cap, miterLimit, roundLimit, canonical, subdivisionGranularity);
+        }
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
+    }
+    addLine(vertices, feature, join, cap, miterLimit, roundLimit, canonical, subdivisionGranularity) {
+        this.distance = 0;
+        this.scaledDistance = 0;
+        this.totalDistance = 0;
+        // First, subdivide the line if needed (mostly for globe rendering)
+        const granularity = canonical ? subdivisionGranularity.line.getGranularityForZoomLevel(canonical.z) : 1;
+        vertices = subdivideVertexLine(vertices, granularity);
+        if (this.lineClips) {
+            this.lineClipsArray.push(this.lineClips);
+            // Calculate the total distance, in tile units, of this tiled line feature
+            for (let i = 0; i < vertices.length - 1; i++) {
+                this.totalDistance += vertices[i].dist(vertices[i + 1]);
+            }
+            this.updateScaledDistance();
+            this.maxLineLength = Math.max(this.maxLineLength, this.totalDistance);
+        }
+        const isPolygon = VectorTileFeature.types[feature.type] === 'Polygon';
+        // If the line has duplicate vertices at the ends, adjust start/length to remove them.
+        let len = vertices.length;
+        while (len >= 2 && vertices[len - 1].equals(vertices[len - 2])) {
+            len--;
+        }
+        let first = 0;
+        while (first < len - 1 && vertices[first].equals(vertices[first + 1])) {
+            first++;
+        }
+        // Ignore invalid geometry.
+        if (len < (isPolygon ? 3 : 2))
+            return;
+        if (join === 'bevel')
+            miterLimit = 1.05;
+        const sharpCornerOffset = this.overscaling <= 16 ?
+            SHARP_CORNER_OFFSET * EXTENT$1 / (512 * this.overscaling) :
+            0;
+        // we could be more precise, but it would only save a negligible amount of space
+        const segment = this.segments.prepareSegment(len * 10, this.layoutVertexArray, this.indexArray);
+        let currentVertex;
+        let prevVertex;
+        let nextVertex;
+        let prevNormal;
+        let nextNormal;
+        // the last two vertices added
+        this.e1 = this.e2 = -1;
+        if (isPolygon) {
+            currentVertex = vertices[len - 2];
+            nextNormal = vertices[first].sub(currentVertex)._unit()._perp();
+        }
+        for (let i = first; i < len; i++) {
+            nextVertex = i === len - 1 ?
+                (isPolygon ? vertices[first + 1] : undefined) : // if it's a polygon, treat the last vertex like the first
+                vertices[i + 1]; // just the next vertex
+            // if two consecutive vertices exist, skip the current one
+            if (nextVertex && vertices[i].equals(nextVertex))
+                continue;
+            if (nextNormal)
+                prevNormal = nextNormal;
+            if (currentVertex)
+                prevVertex = currentVertex;
+            currentVertex = vertices[i];
+            // Calculate the normal towards the next vertex in this line. In case
+            // there is no next vertex, pretend that the line is continuing straight,
+            // meaning that we are just using the previous normal.
+            nextNormal = nextVertex ? nextVertex.sub(currentVertex)._unit()._perp() : prevNormal;
+            // If we still don't have a previous normal, this is the beginning of a
+            // non-closed line, so we're doing a straight "join".
+            prevNormal = prevNormal || nextNormal;
+            // Determine the normal of the join extrusion. It is the angle bisector
+            // of the segments between the previous line and the next line.
+            // In the case of 180° angles, the prev and next normals cancel each other out:
+            // prevNormal + nextNormal = (0, 0), its magnitude is 0, so the unit vector would be
+            // undefined. In that case, we're keeping the joinNormal at (0, 0), so that the cosHalfAngle
+            // below will also become 0 and miterLength will become Infinity.
+            let joinNormal = prevNormal.add(nextNormal);
+            if (joinNormal.x !== 0 || joinNormal.y !== 0) {
+                joinNormal._unit();
+            }
+            /*  joinNormal     prevNormal
+             *             ↖      ↑
+             *                .________. prevVertex
+             *                |
+             * nextNormal  ←  |  currentVertex
+             *                |
+             *     nextVertex !
+             *
+             */
+            // calculate cosines of the angle (and its half) using dot product
+            const cosAngle = prevNormal.x * nextNormal.x + prevNormal.y * nextNormal.y;
+            const cosHalfAngle = joinNormal.x * nextNormal.x + joinNormal.y * nextNormal.y;
+            // Calculate the length of the miter (the ratio of the miter to the width)
+            // as the inverse of cosine of the angle between next and join normals
+            const miterLength = cosHalfAngle !== 0 ? 1 / cosHalfAngle : Infinity;
+            // approximate angle from cosine
+            const approxAngle = 2 * Math.sqrt(2 - 2 * cosHalfAngle);
+            const isSharpCorner = cosHalfAngle < COS_HALF_SHARP_CORNER && prevVertex && nextVertex;
+            const lineTurnsLeft = prevNormal.x * nextNormal.y - prevNormal.y * nextNormal.x > 0;
+            if (isSharpCorner && i > first) {
+                const prevSegmentLength = currentVertex.dist(prevVertex);
+                if (prevSegmentLength > 2 * sharpCornerOffset) {
+                    const newPrevVertex = currentVertex.sub(currentVertex.sub(prevVertex)._mult(sharpCornerOffset / prevSegmentLength)._round());
+                    this.updateDistance(prevVertex, newPrevVertex);
+                    this.addCurrentVertex(newPrevVertex, prevNormal, 0, 0, segment);
+                    prevVertex = newPrevVertex;
+                }
+            }
+            // The join if a middle vertex, otherwise the cap.
+            const middleVertex = prevVertex && nextVertex;
+            let currentJoin = middleVertex ? join : isPolygon ? 'butt' : cap;
+            if (middleVertex && currentJoin === 'round') {
+                if (miterLength < roundLimit) {
+                    currentJoin = 'miter';
+                }
+                else if (miterLength <= 2) {
+                    currentJoin = 'fakeround';
+                }
+            }
+            if (currentJoin === 'miter' && miterLength > miterLimit) {
+                currentJoin = 'bevel';
+            }
+            if (currentJoin === 'bevel') {
+                // The maximum extrude length is 128 / 63 = 2 times the width of the line
+                // so if miterLength >= 2 we need to draw a different type of bevel here.
+                if (miterLength > 2)
+                    currentJoin = 'flipbevel';
+                // If the miterLength is really small and the line bevel wouldn't be visible,
+                // just draw a miter join to save a triangle.
+                if (miterLength < miterLimit)
+                    currentJoin = 'miter';
+            }
+            // Calculate how far along the line the currentVertex is
+            if (prevVertex)
+                this.updateDistance(prevVertex, currentVertex);
+            if (currentJoin === 'miter') {
+                joinNormal._mult(miterLength);
+                this.addCurrentVertex(currentVertex, joinNormal, 0, 0, segment);
+            }
+            else if (currentJoin === 'flipbevel') {
+                // miter is too big, flip the direction to make a beveled join
+                if (miterLength > 100) {
+                    // Almost parallel lines
+                    joinNormal = nextNormal.mult(-1);
+                }
+                else {
+                    const bevelLength = miterLength * prevNormal.add(nextNormal).mag() / prevNormal.sub(nextNormal).mag();
+                    joinNormal._perp()._mult(bevelLength * (lineTurnsLeft ? -1 : 1));
+                }
+                this.addCurrentVertex(currentVertex, joinNormal, 0, 0, segment);
+                this.addCurrentVertex(currentVertex, joinNormal.mult(-1), 0, 0, segment);
+            }
+            else if (currentJoin === 'bevel' || currentJoin === 'fakeround') {
+                const offset = -Math.sqrt(miterLength * miterLength - 1);
+                const offsetA = lineTurnsLeft ? offset : 0;
+                const offsetB = lineTurnsLeft ? 0 : offset;
+                // Close previous segment with a bevel
+                if (prevVertex) {
+                    this.addCurrentVertex(currentVertex, prevNormal, offsetA, offsetB, segment);
+                }
+                if (currentJoin === 'fakeround') {
+                    // The join angle is sharp enough that a round join would be visible.
+                    // Bevel joins fill the gap between segments with a single pie slice triangle.
+                    // Create a round join by adding multiple pie slices. The join isn't actually round, but
+                    // it looks like it is at the sizes we render lines at.
+                    // pick the number of triangles for approximating round join by based on the angle between normals
+                    const n = Math.round((approxAngle * 180 / Math.PI) / DEG_PER_TRIANGLE);
+                    for (let m = 1; m < n; m++) {
+                        let t = m / n;
+                        if (t !== 0.5) {
+                            // approximate spherical interpolation https://observablehq.com/@mourner/approximating-geometric-slerp
+                            const t2 = t - 0.5;
+                            const A = 1.0904 + cosAngle * (-3.2452 + cosAngle * (3.55645 - cosAngle * 1.43519));
+                            const B = 0.848013 + cosAngle * (-1.06021 + cosAngle * 0.215638);
+                            t = t + t * t2 * (t - 1) * (A * t2 * t2 + B);
+                        }
+                        const extrude = nextNormal.sub(prevNormal)._mult(t)._add(prevNormal)._unit()._mult(lineTurnsLeft ? -1 : 1);
+                        this.addHalfVertex(currentVertex, extrude.x, extrude.y, false, lineTurnsLeft, 0, segment);
+                    }
+                }
+                if (nextVertex) {
+                    // Start next segment
+                    this.addCurrentVertex(currentVertex, nextNormal, -offsetA, -offsetB, segment);
+                }
+            }
+            else if (currentJoin === 'butt') {
+                this.addCurrentVertex(currentVertex, joinNormal, 0, 0, segment); // butt cap
+            }
+            else if (currentJoin === 'square') {
+                const offset = prevVertex ? 1 : -1; // closing or starting square cap
+                this.addCurrentVertex(currentVertex, joinNormal, offset, offset, segment);
+            }
+            else if (currentJoin === 'round') {
+                if (prevVertex) {
+                    // Close previous segment with butt
+                    this.addCurrentVertex(currentVertex, prevNormal, 0, 0, segment);
+                    // Add round cap or linejoin at end of segment
+                    this.addCurrentVertex(currentVertex, prevNormal, 1, 1, segment, true);
+                }
+                if (nextVertex) {
+                    // Add round cap before first segment
+                    this.addCurrentVertex(currentVertex, nextNormal, -1, -1, segment, true);
+                    // Start next segment with a butt
+                    this.addCurrentVertex(currentVertex, nextNormal, 0, 0, segment);
+                }
+            }
+            if (isSharpCorner && i < len - 1) {
+                const nextSegmentLength = currentVertex.dist(nextVertex);
+                if (nextSegmentLength > 2 * sharpCornerOffset) {
+                    const newCurrentVertex = currentVertex.add(nextVertex.sub(currentVertex)._mult(sharpCornerOffset / nextSegmentLength)._round());
+                    this.updateDistance(currentVertex, newCurrentVertex);
+                    this.addCurrentVertex(newCurrentVertex, nextNormal, 0, 0, segment);
+                    currentVertex = newCurrentVertex;
+                }
+            }
+        }
+    }
+    /**
+     * Add two vertices to the buffers.
+     *
+     * @param p - the line vertex to add buffer vertices for
+     * @param normal - vertex normal
+     * @param endLeft - extrude to shift the left vertex along the line
+     * @param endRight - extrude to shift the left vertex along the line
+     * @param segment - the segment object to add the vertex to
+     * @param round - whether this is a round cap
+     */
+    addCurrentVertex(p, normal, endLeft, endRight, segment, round = false) {
+        // left and right extrude vectors, perpendicularly shifted by endLeft/endRight
+        const leftX = normal.x + normal.y * endLeft;
+        const leftY = normal.y - normal.x * endLeft;
+        const rightX = -normal.x + normal.y * endRight;
+        const rightY = -normal.y - normal.x * endRight;
+        this.addHalfVertex(p, leftX, leftY, round, false, endLeft, segment);
+        this.addHalfVertex(p, rightX, rightY, round, true, -endRight, segment);
+        // There is a maximum "distance along the line" that we can store in the buffers.
+        // When we get close to the distance, reset it to zero and add the vertex again with
+        // a distance of zero. The max distance is determined by the number of bits we allocate
+        // to `linesofar`.
+        if (this.distance > MAX_LINE_DISTANCE / 2 && this.totalDistance === 0) {
+            this.distance = 0;
+            this.updateScaledDistance();
+            this.addCurrentVertex(p, normal, endLeft, endRight, segment, round);
+        }
+    }
+    addHalfVertex({ x, y }, extrudeX, extrudeY, round, up, dir, segment) {
+        const totalDistance = this.lineClips ? this.scaledDistance * (MAX_LINE_DISTANCE - 1) : this.scaledDistance;
+        // scale down so that we can store longer distances while sacrificing precision.
+        const linesofarScaled = totalDistance * LINE_DISTANCE_SCALE;
+        this.layoutVertexArray.emplaceBack(
+        // a_pos_normal
+        // Encode round/up the least significant bits
+        (x << 1) + (round ? 1 : 0), (y << 1) + (up ? 1 : 0), 
+        // a_data
+        // add 128 to store a byte in an unsigned byte
+        Math.round(EXTRUDE_SCALE * extrudeX) + 128, Math.round(EXTRUDE_SCALE * extrudeY) + 128, 
+        // Encode the -1/0/1 direction value into the first two bits of .z of a_data.
+        // Combine it with the lower 6 bits of `linesofarScaled` (shifted by 2 bits to make
+        // room for the direction value). The upper 8 bits of `linesofarScaled` are placed in
+        // the `w` component.
+        ((dir === 0 ? 0 : (dir < 0 ? -1 : 1)) + 1) | ((linesofarScaled & 0x3F) << 2), linesofarScaled >> 6);
+        // Constructs a second vertex buffer with higher precision line progress
+        if (this.lineClips) {
+            const progressRealigned = this.scaledDistance - this.lineClips.start;
+            const endClipRealigned = this.lineClips.end - this.lineClips.start;
+            const uvX = progressRealigned / endClipRealigned;
+            this.layoutVertexArray2.emplaceBack(uvX, this.lineClipsArray.length);
+        }
+        const e = segment.vertexLength++;
+        if (this.e1 >= 0 && this.e2 >= 0) {
+            this.indexArray.emplaceBack(this.e1, e, this.e2);
+            segment.primitiveLength++;
+        }
+        if (up) {
+            this.e2 = e;
+        }
+        else {
+            this.e1 = e;
+        }
+    }
+    updateScaledDistance() {
+        // Knowing the ratio of the full linestring covered by this tiled feature, as well
+        // as the total distance (in tile units) of this tiled feature, and the distance
+        // (in tile units) of the current vertex, we can determine the relative distance
+        // of this vertex along the full linestring feature and scale it to [0, 2^15)
+        this.scaledDistance = this.lineClips ?
+            this.lineClips.start + (this.lineClips.end - this.lineClips.start) * this.distance / this.totalDistance :
+            this.distance;
+    }
+    updateDistance(prev, next) {
+        this.distance += prev.dist(next);
+        this.updateScaledDistance();
+    }
+}
+register('LineBucket', LineBucket, { omit: ['layers', 'patternFeatures'] });
+
+const layout$6 = createLayout([
+    { name: 'a_pos', components: 2, type: 'Int16' }
+], 4);
+const { members: members$2, size: size$2, alignment: alignment$2 } = layout$6;
+
+/**
+ * This function will take any "mesh" and fill in into vertex buffers, breaking it up into multiple drawcalls as needed
+ * if too many (\>65535) vertices are used.
+ * This function is mainly intended for use with subdivided geometry, since sometimes subdivision might generate
+ * more vertices than what fits into 16 bit indices.
+ *
+ * Accepts a triangle mesh, optionally with a line list (for fill outlines) as well. The triangle and line segments are expected to share a single vertex buffer.
+ *
+ * Mutates the provided `segmentsTriangles` and `segmentsLines` SegmentVectors,
+ * `vertexArray`, `triangleIndexArray` and optionally `lineIndexArray`.
+ * Does not mutate the input `flattened` vertices, `triangleIndices` and `lineList`.
+ * @param addVertex - A function for adding a new vertex into `vertexArray`. We might sometimes want to add more values per vertex than just X and Y coordinates, which can be handled in this function.
+ * @param segmentsTriangles - The segment array for triangle draw calls. New segments will be placed here.
+ * @param vertexArray - The vertex array into which new vertices are placed by the provided `addVertex` function.
+ * @param triangleIndexArray - Index array for drawing triangles. New triangle indices are placed here.
+ * @param flattened - The input flattened array or vertex coordinates.
+ * @param triangleIndices - Triangle indices into `flattened`.
+ * @param segmentsLines - Segment array for line draw calls. New segments will be placed here. Only needed if the mesh also contains lines.
+ * @param lineIndexArray - Index array for drawing lines. New triangle indices are placed here. Only needed if the mesh also contains lines.
+ * @param lineList - Line indices into `flattened`. Only needed if the mesh also contains lines.
+ */
+function fillLargeMeshArrays(addVertex, segmentsTriangles, vertexArray, triangleIndexArray, flattened, triangleIndices, segmentsLines, lineIndexArray, lineList) {
+    const numVertices = flattened.length / 2;
+    const hasLines = segmentsLines && lineIndexArray && lineList;
+    if (numVertices < SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
+        // The fast path - no segmentation needed
+        const triangleSegment = segmentsTriangles.prepareSegment(numVertices, vertexArray, triangleIndexArray);
+        const triangleIndex = triangleSegment.vertexLength;
+        for (let i = 0; i < triangleIndices.length; i += 3) {
+            triangleIndexArray.emplaceBack(triangleIndex + triangleIndices[i], triangleIndex + triangleIndices[i + 1], triangleIndex + triangleIndices[i + 2]);
+        }
+        triangleSegment.vertexLength += numVertices;
+        triangleSegment.primitiveLength += triangleIndices.length / 3;
+        let lineIndicesStart;
+        let lineSegment;
+        if (hasLines) {
+            // Note that segment creation must happen *before* we add vertices into the vertex buffer
+            lineSegment = segmentsLines.prepareSegment(numVertices, vertexArray, lineIndexArray);
+            lineIndicesStart = lineSegment.vertexLength;
+            lineSegment.vertexLength += numVertices;
+        }
+        // Add vertices into vertex buffer
+        for (let i = 0; i < flattened.length; i += 2) {
+            addVertex(flattened[i], flattened[i + 1]);
+        }
+        if (hasLines) {
+            for (let listIndex = 0; listIndex < lineList.length; listIndex++) {
+                const lineIndices = lineList[listIndex];
+                for (let i = 1; i < lineIndices.length; i += 2) {
+                    lineIndexArray.emplaceBack(lineIndicesStart + lineIndices[i - 1], lineIndicesStart + lineIndices[i]);
+                }
+                lineSegment.primitiveLength += lineIndices.length / 2;
+            }
+        }
+    }
+    else {
+        // Assumption: the incoming triangle indices use vertices in roughly linear order,
+        // for example a grid of quads where both vertices and quads are created row by row would satisfy this.
+        // Some completely random arbitrary vertex/triangle order would not.
+        // Thus, if we encounter a vertex that doesn't fit into MAX_VERTEX_ARRAY_LENGTH,
+        // we can just stop appending into the old segment and start a new segment and only append to the new segment,
+        // copying vertices that are already present in the old segment into the new segment if needed,
+        // because there will not be too many of such vertices.
+        // Normally, (out)lines share the same vertex buffer as triangles, but since we need to somehow split it into several drawcalls,
+        // it is easier to just consider (out)lines separately and duplicate their vertices.
+        fillSegmentsTriangles(segmentsTriangles, vertexArray, triangleIndexArray, flattened, triangleIndices, addVertex);
+        if (hasLines) {
+            fillSegmentsLines(segmentsLines, vertexArray, lineIndexArray, flattened, lineList, addVertex);
+        }
+        // Triangles and lines share the same vertex buffer, and they usually also share the same vertices.
+        // But this method might create the vertices for triangles and for lines separately, and thus increasing the vertex count
+        // of the triangle and line segments by different amounts.
+        // The non-splitting fillLargeMeshArrays logic (and old fill-bucket logic) assumes the vertex counts to be the same,
+        // and forcing both SegmentVectors to return a new segment upon next prepare call satisfies this.
+        segmentsTriangles.forceNewSegmentOnNextPrepare();
+        segmentsLines === null || segmentsLines === void 0 ? void 0 : segmentsLines.forceNewSegmentOnNextPrepare();
+    }
+}
+/**
+ * Determines the new index of a vertex given by its old index.
+ * @param actualVertexIndices - Array that maps the old index of a given vertex to a new index in the final vertex buffer.
+ * @param flattened - Old vertex buffer.
+ * @param addVertex - Function for creating a new vertex in the final vertex buffer.
+ * @param totalVerticesCreated - Reference to an int holding how many vertices were added to the final vertex buffer.
+ * @param oldIndex - The old index of the desired vertex.
+ * @param needsCopy - Whether to duplicate the desired vertex in the final vertex buffer.
+ * @param segment - The current segment.
+ * @returns Index of the vertex in the final vertex array.
+ */
+function copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, oldIndex, needsCopy, segment) {
+    if (needsCopy) {
+        const newIndex = totalVerticesCreated.count;
+        addVertex(flattened[oldIndex * 2], flattened[oldIndex * 2 + 1]);
+        actualVertexIndices[oldIndex] = totalVerticesCreated.count;
+        totalVerticesCreated.count++;
+        segment.vertexLength++;
+        return newIndex;
+    }
+    else {
+        return actualVertexIndices[oldIndex];
+    }
+}
+function fillSegmentsTriangles(segmentsTriangles, vertexArray, triangleIndexArray, flattened, triangleIndices, addVertex) {
+    // Array, or rather a map of [vertex index in the original data] -> index of the latest copy of this vertex in the final vertex buffer.
+    const actualVertexIndices = [];
+    for (let i = 0; i < flattened.length / 2; i++) {
+        actualVertexIndices.push(-1);
+    }
+    const totalVerticesCreated = { count: 0 };
+    let currentSegmentCutoff = 0;
+    let segment = segmentsTriangles.getOrCreateLatestSegment(vertexArray, triangleIndexArray);
+    let baseVertex = segment.vertexLength;
+    for (let primitiveEndIndex = 2; primitiveEndIndex < triangleIndices.length; primitiveEndIndex += 3) {
+        const i0 = triangleIndices[primitiveEndIndex - 2];
+        const i1 = triangleIndices[primitiveEndIndex - 1];
+        const i2 = triangleIndices[primitiveEndIndex];
+        let i0needsVertexCopy = actualVertexIndices[i0] < currentSegmentCutoff;
+        let i1needsVertexCopy = actualVertexIndices[i1] < currentSegmentCutoff;
+        let i2needsVertexCopy = actualVertexIndices[i2] < currentSegmentCutoff;
+        const vertexCopyCount = (i0needsVertexCopy ? 1 : 0) + (i1needsVertexCopy ? 1 : 0) + (i2needsVertexCopy ? 1 : 0);
+        // Will needed vertex copies fit into this segment?
+        if (segment.vertexLength + vertexCopyCount > SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
+            // Break up into a new segment if not.
+            segment = segmentsTriangles.createNewSegment(vertexArray, triangleIndexArray);
+            currentSegmentCutoff = totalVerticesCreated.count;
+            i0needsVertexCopy = true;
+            i1needsVertexCopy = true;
+            i2needsVertexCopy = true;
+            baseVertex = 0;
+        }
+        const actualIndex0 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i0, i0needsVertexCopy, segment);
+        const actualIndex1 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i1, i1needsVertexCopy, segment);
+        const actualIndex2 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i2, i2needsVertexCopy, segment);
+        triangleIndexArray.emplaceBack(baseVertex + actualIndex0 - currentSegmentCutoff, baseVertex + actualIndex1 - currentSegmentCutoff, baseVertex + actualIndex2 - currentSegmentCutoff);
+        segment.primitiveLength++;
+    }
+}
+function fillSegmentsLines(segmentsLines, vertexArray, lineIndexArray, flattened, lineList, addVertex) {
+    // Array, or rather a map of [vertex index in the original data] -> index of the latest copy of this vertex in the final vertex buffer.
+    const actualVertexIndices = [];
+    for (let i = 0; i < flattened.length / 2; i++) {
+        actualVertexIndices.push(-1);
+    }
+    const totalVerticesCreated = { count: 0 };
+    let currentSegmentCutoff = 0;
+    let segment = segmentsLines.getOrCreateLatestSegment(vertexArray, lineIndexArray);
+    let baseVertex = segment.vertexLength;
+    for (let lineListIndex = 0; lineListIndex < lineList.length; lineListIndex++) {
+        const currentLine = lineList[lineListIndex];
+        for (let lineVertex = 1; lineVertex < lineList[lineListIndex].length; lineVertex += 2) {
+            const i0 = currentLine[lineVertex - 1];
+            const i1 = currentLine[lineVertex];
+            let i0needsVertexCopy = actualVertexIndices[i0] < currentSegmentCutoff;
+            let i1needsVertexCopy = actualVertexIndices[i1] < currentSegmentCutoff;
+            const vertexCopyCount = (i0needsVertexCopy ? 1 : 0) + (i1needsVertexCopy ? 1 : 0);
+            // Will needed vertex copies fit into this segment?
+            if (segment.vertexLength + vertexCopyCount > SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
+                // Break up into a new segment if not.
+                segment = segmentsLines.createNewSegment(vertexArray, lineIndexArray);
+                currentSegmentCutoff = totalVerticesCreated.count;
+                i0needsVertexCopy = true;
+                i1needsVertexCopy = true;
+                baseVertex = 0;
+            }
+            const actualIndex0 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i0, i0needsVertexCopy, segment);
+            const actualIndex1 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i1, i1needsVertexCopy, segment);
+            lineIndexArray.emplaceBack(baseVertex + actualIndex0 - currentSegmentCutoff, baseVertex + actualIndex1 - currentSegmentCutoff);
+            segment.primitiveLength++;
+        }
+    }
+}
+
+const EARCUT_MAX_RINGS$1 = 500;
+class FillBucket {
+    constructor(options) {
+        this.zoom = options.zoom;
+        this.overscaling = options.overscaling;
+        this.layers = options.layers;
+        this.layerIds = this.layers.map(layer => layer.id);
+        this.index = options.index;
+        this.hasPattern = false;
+        this.patternFeatures = [];
+        this.layoutVertexArray = new FillLayoutArray();
+        this.indexArray = new TriangleIndexArray();
+        this.indexArray2 = new LineIndexArray();
+        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
+        this.segments = new SegmentVector();
+        this.segments2 = new SegmentVector();
+        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
+    }
+    populate(features, options, canonical) {
+        this.hasPattern = hasPattern('fill', this.layers, options);
+        const fillSortKey = this.layers[0].layout.get('fill-sort-key');
+        const sortFeaturesByKey = !fillSortKey.isConstant();
+        const bucketFeatures = [];
+        for (const { feature, id, index, sourceLayerIndex } of features) {
+            const needGeometry = this.layers[0]._featureFilter.needGeometry;
+            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
+            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
+                continue;
+            const sortKey = sortFeaturesByKey ?
+                fillSortKey.evaluate(evaluationFeature, {}, canonical, options.availableImages) :
+                undefined;
+            const bucketFeature = {
+                id,
+                properties: feature.properties,
+                type: feature.type,
+                sourceLayerIndex,
+                index,
+                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
+                patterns: {},
+                sortKey
+            };
+            bucketFeatures.push(bucketFeature);
+        }
+        if (sortFeaturesByKey) {
+            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
+        }
+        for (const bucketFeature of bucketFeatures) {
+            const { geometry, index, sourceLayerIndex } = bucketFeature;
+            if (this.hasPattern) {
+                const patternFeature = addPatternDependencies('fill', this.layers, bucketFeature, { zoom: this.zoom }, options);
+                // pattern features are added only once the pattern is loaded into the image atlas
+                // so are stored during populate until later updated with positions by tile worker in addFeatures
+                this.patternFeatures.push(patternFeature);
+            }
+            else {
+                this.addFeature(bucketFeature, geometry, index, canonical, {}, options.subdivisionGranularity);
+            }
+            const feature = features[index].feature;
+            options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this.index);
+        }
+    }
+    update(states, vtLayer, imagePositions) {
+        if (!this.stateDependentLayers.length)
+            return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
+            imagePositions
+        });
+    }
+    addFeatures(options, canonical, imagePositions) {
+        for (const feature of this.patternFeatures) {
+            this.addFeature(feature, feature.geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
+        }
+    }
+    isEmpty() {
+        return this.layoutVertexArray.length === 0;
+    }
+    uploadPending() {
+        return !this.uploaded || this.programConfigurations.needsUpload;
+    }
+    upload(context) {
+        if (!this.uploaded) {
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$2);
+            this.indexBuffer = context.createIndexBuffer(this.indexArray);
+            this.indexBuffer2 = context.createIndexBuffer(this.indexArray2);
+        }
+        this.programConfigurations.upload(context);
+        this.uploaded = true;
+    }
+    destroy() {
+        if (!this.layoutVertexBuffer)
+            return;
+        this.layoutVertexBuffer.destroy();
+        this.indexBuffer.destroy();
+        this.indexBuffer2.destroy();
+        this.programConfigurations.destroy();
+        this.segments.destroy();
+        this.segments2.destroy();
+    }
+    addFeature(feature, geometry, index, canonical, imagePositions, subdivisionGranularity) {
+        for (const polygon of classifyRings$1(geometry, EARCUT_MAX_RINGS$1)) {
+            const subdivided = subdividePolygon(polygon, canonical, subdivisionGranularity.fill.getGranularityForZoomLevel(canonical.z));
+            const vertexArray = this.layoutVertexArray;
+            fillLargeMeshArrays((x, y) => {
+                vertexArray.emplaceBack(x, y);
+            }, this.segments, this.layoutVertexArray, this.indexArray, subdivided.verticesFlattened, subdivided.indicesTriangles, this.segments2, this.indexArray2, subdivided.indicesLineList);
+        }
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
+    }
+}
+register('FillBucket', FillBucket, { omit: ['layers', 'patternFeatures'] });
+
+const layout$5 = createLayout([
+    { name: 'a_pos', components: 2, type: 'Int16' },
+    { name: 'a_normal_ed', components: 4, type: 'Int16' },
+], 4);
+const centroidAttributes = createLayout([
+    { name: 'a_centroid', components: 2, type: 'Int16' }
+], 4);
+const { members: members$1, size: size$1, alignment: alignment$1 } = layout$5;
+
+const EARCUT_MAX_RINGS = 500;
+const FACTOR = Math.pow(2, 13);
+function addVertex(vertexArray, x, y, nx, ny, nz, t, e) {
+    vertexArray.emplaceBack(
+    // a_pos
+    x, y, 
+    // a_normal_ed: 3-component normal and 1-component edgedistance
+    Math.floor(nx * FACTOR) * 2 + t, ny * FACTOR * 2, nz * FACTOR * 2, 
+    // edgedistance (used for wrapping patterns around extrusion sides)
+    Math.round(e));
+}
+class FillExtrusionBucket {
+    constructor(options) {
+        this.zoom = options.zoom;
+        this.overscaling = options.overscaling;
+        this.layers = options.layers;
+        this.layerIds = this.layers.map(layer => layer.id);
+        this.index = options.index;
+        this.hasPattern = false;
+        this.layoutVertexArray = new FillExtrusionLayoutArray();
+        this.centroidVertexArray = new PosArray();
+        this.indexArray = new TriangleIndexArray();
+        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
+        this.segments = new SegmentVector();
+        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
+    }
+    populate(features, options, canonical) {
+        this.features = [];
+        this.hasPattern = hasPattern('fill-extrusion', this.layers, options);
+        for (const { feature, id, index, sourceLayerIndex } of features) {
+            const needGeometry = this.layers[0]._featureFilter.needGeometry;
+            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
+            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
+                continue;
+            const bucketFeature = {
+                id,
+                sourceLayerIndex,
+                index,
+                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
+                properties: feature.properties,
+                type: feature.type,
+                patterns: {}
+            };
+            if (this.hasPattern) {
+                this.features.push(addPatternDependencies('fill-extrusion', this.layers, bucketFeature, { zoom: this.zoom }, options));
+            }
+            else {
+                this.addFeature(bucketFeature, bucketFeature.geometry, index, canonical, {}, options.subdivisionGranularity);
+            }
+            options.featureIndex.insert(feature, bucketFeature.geometry, index, sourceLayerIndex, this.index, true);
+        }
+    }
+    addFeatures(options, canonical, imagePositions) {
+        for (const feature of this.features) {
+            const { geometry } = feature;
+            this.addFeature(feature, geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
+        }
+    }
+    update(states, vtLayer, imagePositions) {
+        if (!this.stateDependentLayers.length)
+            return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
+            imagePositions
+        });
+    }
+    isEmpty() {
+        return this.layoutVertexArray.length === 0 && this.centroidVertexArray.length === 0;
+    }
+    uploadPending() {
+        return !this.uploaded || this.programConfigurations.needsUpload;
+    }
+    upload(context) {
+        if (!this.uploaded) {
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$1);
+            this.centroidVertexBuffer = context.createVertexBuffer(this.centroidVertexArray, centroidAttributes.members, true);
+            this.indexBuffer = context.createIndexBuffer(this.indexArray);
+        }
+        this.programConfigurations.upload(context);
+        this.uploaded = true;
+    }
+    destroy() {
+        if (!this.layoutVertexBuffer)
+            return;
+        this.layoutVertexBuffer.destroy();
+        this.indexBuffer.destroy();
+        this.programConfigurations.destroy();
+        this.segments.destroy();
+        this.centroidVertexBuffer.destroy();
+    }
+    addFeature(feature, geometry, index, canonical, imagePositions, subdivisionGranularity) {
+        for (const polygon of classifyRings$1(geometry, EARCUT_MAX_RINGS)) {
+            // Compute polygon centroid to calculate elevation in GPU
+            const centroid = { x: 0, y: 0, sampleCount: 0 };
+            const oldVertexCount = this.layoutVertexArray.length;
+            this.processPolygon(centroid, canonical, feature, polygon, subdivisionGranularity);
+            const addedVertices = this.layoutVertexArray.length - oldVertexCount;
+            const centroidX = Math.floor(centroid.x / centroid.sampleCount);
+            const centroidY = Math.floor(centroid.y / centroid.sampleCount);
+            for (let i = 0; i < addedVertices; i++) {
+                this.centroidVertexArray.emplaceBack(centroidX, centroidY);
+            }
+        }
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
+    }
+    processPolygon(centroid, canonical, feature, polygon, subdivisionGranularity) {
+        if (polygon.length < 1) {
+            return;
+        }
+        if (isEntirelyOutside(polygon[0])) {
+            return;
+        }
+        // Only consider the un-subdivided polygon outer ring for centroid calculation
+        for (const ring of polygon) {
+            if (ring.length === 0) {
+                continue;
+            }
+            // Here we don't mind if a hole ring is entirely outside, unlike when generating geometry later.
+            accumulatePointsToCentroid(centroid, ring);
+        }
+        const segmentReference = {
+            segment: this.segments.prepareSegment(4, this.layoutVertexArray, this.indexArray)
+        };
+        const granularity = subdivisionGranularity.fill.getGranularityForZoomLevel(canonical.z);
+        const isPolygon = VectorTileFeature.types[feature.type] === 'Polygon';
+        for (const ring of polygon) {
+            if (ring.length === 0) {
+                continue;
+            }
+            if (isEntirelyOutside(ring)) {
+                continue;
+            }
+            const subdividedRing = subdivideVertexLine(ring, granularity, isPolygon);
+            this._generateSideFaces(subdividedRing, segmentReference);
+        }
+        // Only triangulate and draw the area of the feature if it is a polygon
+        // Other feature types (e.g. LineString) do not have area, so triangulation is pointless / undefined
+        if (!isPolygon)
+            return;
+        // Do not generate outlines, since outlines already got subdivided earlier.
+        const subdividedPolygon = subdividePolygon(polygon, canonical, granularity, false);
+        const vertexArray = this.layoutVertexArray;
+        fillLargeMeshArrays((x, y) => {
+            addVertex(vertexArray, x, y, 0, 0, 1, 1, 0);
+        }, this.segments, this.layoutVertexArray, this.indexArray, subdividedPolygon.verticesFlattened, subdividedPolygon.indicesTriangles);
+    }
+    /**
+     * Generates side faces for the supplied geometry. Assumes `geometry` to be a line string, like the output of {@link subdivideVertexLine}.
+     * For rings, it is assumed that the first and last vertex of `geometry` are equal.
+     */
+    _generateSideFaces(geometry, segmentReference) {
+        let edgeDistance = 0;
+        for (let p = 1; p < geometry.length; p++) {
+            const p1 = geometry[p];
+            const p2 = geometry[p - 1];
+            if (isBoundaryEdge(p1, p2)) {
+                continue;
+            }
+            if (segmentReference.segment.vertexLength + 4 > SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
+                segmentReference.segment = this.segments.prepareSegment(4, this.layoutVertexArray, this.indexArray);
+            }
+            const perp = p1.sub(p2)._perp()._unit();
+            const dist = p2.dist(p1);
+            if (edgeDistance + dist > 32768)
+                edgeDistance = 0;
+            addVertex(this.layoutVertexArray, p1.x, p1.y, perp.x, perp.y, 0, 0, edgeDistance);
+            addVertex(this.layoutVertexArray, p1.x, p1.y, perp.x, perp.y, 0, 1, edgeDistance);
+            edgeDistance += dist;
+            addVertex(this.layoutVertexArray, p2.x, p2.y, perp.x, perp.y, 0, 0, edgeDistance);
+            addVertex(this.layoutVertexArray, p2.x, p2.y, perp.x, perp.y, 0, 1, edgeDistance);
+            const bottomRight = segmentReference.segment.vertexLength;
+            // ┌──────┐
+            // │ 0  1 │ Counter-clockwise winding order.
+            // │      │ Triangle 1: 0 => 2 => 1
+            // │ 2  3 │ Triangle 2: 1 => 2 => 3
+            // └──────┘
+            this.indexArray.emplaceBack(bottomRight, bottomRight + 2, bottomRight + 1);
+            this.indexArray.emplaceBack(bottomRight + 1, bottomRight + 2, bottomRight + 3);
+            segmentReference.segment.vertexLength += 4;
+            segmentReference.segment.primitiveLength += 2;
+        }
+    }
+}
+/**
+ * Accumulates geometry to centroid. Geometry can be either a polygon ring, a line string or a closed line string.
+ * In case of a polygon ring or line ring, the last vertex is ignored if it is the same as the first vertex.
+ */
+function accumulatePointsToCentroid(centroid, geometry) {
+    for (let i = 0; i < geometry.length; i++) {
+        const p = geometry[i];
+        if (i === geometry.length - 1 && geometry[0].x === p.x && geometry[0].y === p.y) {
+            continue;
+        }
+        centroid.x += p.x;
+        centroid.y += p.y;
+        centroid.sampleCount++;
+    }
+}
+register('FillExtrusionBucket', FillExtrusionBucket, { omit: ['layers', 'features'] });
+function isBoundaryEdge(p1, p2) {
+    return (p1.x === p2.x && (p1.x < 0 || p1.x > EXTENT$1)) ||
+        (p1.y === p2.y && (p1.y < 0 || p1.y > EXTENT$1));
+}
+function isEntirelyOutside(ring) {
+    return ring.every(p => p.x < 0) ||
+        ring.every(p => p.x > EXTENT$1) ||
+        ring.every(p => p.y < 0) ||
+        ring.every(p => p.y > EXTENT$1);
+}
+
+const padding = 1;
+class GlyphAtlas {
+    constructor(stacks) {
+        const positions = {};
+        const bins = [];
+        for (const stack in stacks) {
+            const glyphs = stacks[stack];
+            const stackPositions = positions[stack] = {};
+            for (const id in glyphs) {
+                const src = glyphs[+id];
+                if (!src || src.bitmap.width === 0 || src.bitmap.height === 0)
+                    continue;
+                const bin = {
+                    x: 0,
+                    y: 0,
+                    w: src.bitmap.width + 2 * padding,
+                    h: src.bitmap.height + 2 * padding
+                };
+                bins.push(bin);
+                stackPositions[id] = { rect: bin, metrics: src.metrics };
+            }
+        }
+        const { w, h } = potpack(bins);
+        const image = new AlphaImage({ width: w || 1, height: h || 1 });
+        for (const stack in stacks) {
+            const glyphs = stacks[stack];
+            for (const id in glyphs) {
+                const src = glyphs[+id];
+                if (!src || src.bitmap.width === 0 || src.bitmap.height === 0)
+                    continue;
+                const bin = positions[stack][id].rect;
+                AlphaImage.copy(src.bitmap, image, { x: 0, y: 0 }, { x: bin.x + padding, y: bin.y + padding }, src.bitmap);
+            }
+        }
+        this.image = image;
+        this.positions = positions;
+    }
+}
+register('GlyphAtlas', GlyphAtlas);
+
+class WorkerTile {
+    constructor(params) {
+        this.tileID = new OverscaledTileID(params.tileID.overscaledZ, params.tileID.wrap, params.tileID.canonical.z, params.tileID.canonical.x, params.tileID.canonical.y);
+        this.uid = params.uid;
+        this.zoom = params.zoom;
+        this.pixelRatio = params.pixelRatio;
+        this.tileSize = params.tileSize;
+        this.source = params.source;
+        this.overscaling = this.tileID.overscaleFactor();
+        this.showCollisionBoxes = params.showCollisionBoxes;
+        this.collectResourceTiming = !!params.collectResourceTiming;
+        this.returnDependencies = !!params.returnDependencies;
+        this.promoteId = params.promoteId;
+        this.inFlightDependencies = [];
+    }
+    parse(data, layerIndex, availableImages, actor, subdivisionGranularity) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            this.status = 'parsing';
+            this.data = data;
+            this.collisionBoxArray = new CollisionBoxArray();
+            const sourceLayerCoder = new DictionaryCoder(Object.keys(data.layers).sort());
+            const featureIndex = new FeatureIndex(this.tileID, this.promoteId);
+            featureIndex.bucketLayerIDs = [];
+            const buckets = {};
+            const options = {
+                featureIndex,
+                iconDependencies: {},
+                patternDependencies: {},
+                glyphDependencies: {},
+                availableImages,
+                subdivisionGranularity
+            };
+            const layerFamilies = layerIndex.familiesBySource[this.source];
+            for (const sourceLayerId in layerFamilies) {
+                const sourceLayer = data.layers[sourceLayerId];
+                if (!sourceLayer) {
+                    continue;
+                }
+                if (sourceLayer.version === 1) {
+                    warnOnce(`Vector tile source "${this.source}" layer "${sourceLayerId}" ` +
+                        'does not use vector tile spec v2 and therefore may have some rendering errors.');
+                }
+                const sourceLayerIndex = sourceLayerCoder.encode(sourceLayerId);
+                const features = [];
+                for (let index = 0; index < sourceLayer.length; index++) {
+                    const feature = sourceLayer.feature(index);
+                    const id = featureIndex.getId(feature, sourceLayerId);
+                    features.push({ feature, id, index, sourceLayerIndex });
+                }
+                for (const family of layerFamilies[sourceLayerId]) {
+                    const layer = family[0];
+                    if (layer.source !== this.source) {
+                        warnOnce(`layer.source = ${layer.source} does not equal this.source = ${this.source}`);
+                    }
+                    if (layer.minzoom && this.zoom < Math.floor(layer.minzoom))
+                        continue;
+                    if (layer.maxzoom && this.zoom >= layer.maxzoom)
+                        continue;
+                    if (layer.visibility === 'none')
+                        continue;
+                    recalculateLayers(family, this.zoom, availableImages);
+                    const bucket = buckets[layer.id] = layer.createBucket({
+                        index: featureIndex.bucketLayerIDs.length,
+                        layers: family,
+                        zoom: this.zoom,
+                        pixelRatio: this.pixelRatio,
+                        overscaling: this.overscaling,
+                        collisionBoxArray: this.collisionBoxArray,
+                        sourceLayerIndex,
+                        sourceID: this.source
+                    });
+                    bucket.populate(features, options, this.tileID.canonical);
+                    featureIndex.bucketLayerIDs.push(family.map((l) => l.id));
+                }
+            }
+            // options.glyphDependencies looks like: {"SomeFontName":{"10":true,"32":true}}
+            // this line makes an object like: {"SomeFontName":[10,32]}
+            const stacks = mapObject(options.glyphDependencies, (glyphs) => Object.keys(glyphs).map(Number));
+            this.inFlightDependencies.forEach((request) => request === null || request === void 0 ? void 0 : request.abort());
+            this.inFlightDependencies = [];
+            let getGlyphsPromise = Promise.resolve({});
+            if (Object.keys(stacks).length) {
+                const abortController = new AbortController();
+                this.inFlightDependencies.push(abortController);
+                getGlyphsPromise = actor.sendAsync({ type: "GG" /* MessageType.getGlyphs */, data: { stacks, source: this.source, tileID: this.tileID, type: 'glyphs' } }, abortController);
+            }
+            const icons = Object.keys(options.iconDependencies);
+            let getIconsPromise = Promise.resolve({});
+            if (icons.length) {
+                const abortController = new AbortController();
+                this.inFlightDependencies.push(abortController);
+                getIconsPromise = actor.sendAsync({ type: "GI" /* MessageType.getImages */, data: { icons, source: this.source, tileID: this.tileID, type: 'icons' } }, abortController);
+            }
+            const patterns = Object.keys(options.patternDependencies);
+            let getPatternsPromise = Promise.resolve({});
+            if (patterns.length) {
+                const abortController = new AbortController();
+                this.inFlightDependencies.push(abortController);
+                getPatternsPromise = actor.sendAsync({ type: "GI" /* MessageType.getImages */, data: { icons: patterns, source: this.source, tileID: this.tileID, type: 'patterns' } }, abortController);
+            }
+            const [glyphMap, iconMap, patternMap] = yield Promise.all([getGlyphsPromise, getIconsPromise, getPatternsPromise]);
+            const glyphAtlas = new GlyphAtlas(glyphMap);
+            const imageAtlas = new ImageAtlas(iconMap, patternMap);
+            for (const key in buckets) {
+                const bucket = buckets[key];
+                if (registry.symbol.SymbolBucket && bucket instanceof registry.symbol.SymbolBucket) {
+                    recalculateLayers(bucket.layers, this.zoom, availableImages);
+                    (_b = (_a = registry.symbol).performSymbolLayout) === null || _b === void 0 ? void 0 : _b.call(_a, {
+                        bucket,
+                        glyphMap,
+                        glyphPositions: glyphAtlas.positions,
+                        imageMap: iconMap,
+                        imagePositions: imageAtlas.iconPositions,
+                        showCollisionBoxes: this.showCollisionBoxes,
+                        canonical: this.tileID.canonical,
+                        subdivisionGranularity: options.subdivisionGranularity
+                    });
+                }
+                else if (bucket.hasPattern &&
+                    (bucket instanceof LineBucket ||
+                        bucket instanceof FillBucket ||
+                        bucket instanceof FillExtrusionBucket)) {
+                    recalculateLayers(bucket.layers, this.zoom, availableImages);
+                    bucket.addFeatures(options, this.tileID.canonical, imageAtlas.patternPositions);
+                }
+            }
+            this.status = 'done';
+            return {
+                buckets: Object.values(buckets).filter(b => !b.isEmpty()),
+                featureIndex,
+                collisionBoxArray: this.collisionBoxArray,
+                glyphAtlasImage: glyphAtlas.image,
+                imageAtlas,
+                // Only used for benchmarking:
+                glyphMap: this.returnDependencies ? glyphMap : null,
+                iconMap: this.returnDependencies ? iconMap : null,
+                glyphPositions: this.returnDependencies ? glyphAtlas.positions : null
+            };
+        });
+    }
+}
+function recalculateLayers(layers, zoom, availableImages) {
+    // Layers are shared and may have been used by a WorkerTile with a different zoom.
+    const parameters = new EvaluationParameters(zoom);
+    for (const layer of layers) {
+        layer.recalculate(parameters, availableImages);
+    }
+}
+
+/**
+ * The {@link WorkerSource} implementation that supports {@link VectorTileSource}.
+ * This class is designed to be easily reused to support custom source types
+ * for data formats that can be parsed/converted into an in-memory VectorTile
+ * representation. To do so, override its `loadVectorTile` method.
+ */
+class VectorTileWorkerSource {
+    /**
+     * @param loadVectorData - Optional method for custom loading of a VectorTile
+     * object based on parameters passed from the main-thread Source. See
+     * {@link VectorTileWorkerSource.loadTile}. The default implementation simply
+     * loads the pbf at `params.url`.
+     */
+    constructor(actor, layerIndex, availableImages) {
+        this.actor = actor;
+        this.layerIndex = layerIndex;
+        this.availableImages = availableImages;
+        this.fetching = {};
+        this.loading = {};
+        this.loaded = {};
+    }
+    /**
+     * Loads a vector tile
+     */
+    loadVectorTile(params, abortController) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield getArrayBuffer(params.request, abortController);
+            try {
+                const vectorTile = new VectorTile(new Pbf(response.data));
+                return {
+                    vectorTile,
+                    rawData: response.data,
+                    cacheControl: response.cacheControl,
+                    expires: response.expires
+                };
+            }
+            catch (ex) {
+                const bytes = new Uint8Array(response.data);
+                const isGzipped = bytes[0] === 0x1f && bytes[1] === 0x8b;
+                let errorMessage = `Unable to parse the tile at ${params.request.url}, `;
+                if (isGzipped) {
+                    errorMessage += 'please make sure the data is not gzipped and that you have configured the relevant header in the server';
+                }
+                else {
+                    errorMessage += `got error: ${ex.message}`;
+                }
+                throw new Error(errorMessage);
+            }
+        });
+    }
+    /**
+     * Implements {@link WorkerSource.loadTile}. Delegates to
+     * {@link VectorTileWorkerSource.loadVectorData} (which by default expects
+     * a `params.url` property) for fetching and producing a VectorTile object.
+     */
+    loadTile(params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tileUid = params.uid;
+            const perf = (params && params.request && params.request.collectResourceTiming) ?
+                new RequestPerformance(params.request) : false;
+            const workerTile = new WorkerTile(params);
+            this.loading[tileUid] = workerTile;
+            const abortController = new AbortController();
+            workerTile.abort = abortController;
+            try {
+                const response = yield this.loadVectorTile(params, abortController);
+                delete this.loading[tileUid];
+                if (!response) {
+                    return null;
+                }
+                const rawTileData = response.rawData;
+                const cacheControl = {};
+                if (response.expires)
+                    cacheControl.expires = response.expires;
+                if (response.cacheControl)
+                    cacheControl.cacheControl = response.cacheControl;
+                const resourceTiming = {};
+                if (perf) {
+                    const resourceTimingData = perf.finish();
+                    // it's necessary to eval the result of getEntriesByName() here via parse/stringify
+                    // late evaluation in the main thread causes TypeError: illegal invocation
+                    if (resourceTimingData)
+                        resourceTiming.resourceTiming = JSON.parse(JSON.stringify(resourceTimingData));
+                }
+                workerTile.vectorTile = response.vectorTile;
+                const parsePromise = workerTile.parse(response.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+                this.loaded[tileUid] = workerTile;
+                // keep the original fetching state so that reload tile can pick it up if the original parse is cancelled by reloads' parse
+                this.fetching[tileUid] = { rawTileData, cacheControl, resourceTiming };
+                try {
+                    const result = yield parsePromise;
+                    // Transferring a copy of rawTileData because the worker needs to retain its copy.
+                    return extend$1({ rawTileData: rawTileData.slice(0) }, result, cacheControl, resourceTiming);
+                }
+                finally {
+                    delete this.fetching[tileUid];
+                }
+            }
+            catch (err) {
+                delete this.loading[tileUid];
+                workerTile.status = 'done';
+                this.loaded[tileUid] = workerTile;
+                throw err;
+            }
+        });
+    }
+    /**
+     * Implements {@link WorkerSource.reloadTile}.
+     */
+    reloadTile(params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const uid = params.uid;
+            if (!this.loaded || !this.loaded[uid]) {
+                throw new Error('Should not be trying to reload a tile that was never loaded or has been removed');
+            }
+            const workerTile = this.loaded[uid];
+            workerTile.showCollisionBoxes = params.showCollisionBoxes;
+            if (workerTile.status === 'parsing') {
+                const result = yield workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+                // if we have cancelled the original parse, make sure to pass the rawTileData from the original fetch
+                let parseResult;
+                if (this.fetching[uid]) {
+                    const { rawTileData, cacheControl, resourceTiming } = this.fetching[uid];
+                    delete this.fetching[uid];
+                    parseResult = extend$1({ rawTileData: rawTileData.slice(0) }, result, cacheControl, resourceTiming);
+                }
+                else {
+                    parseResult = result;
+                }
+                return parseResult;
+            }
+            // if there was no vector tile data on the initial load, don't try and re-parse tile
+            if (workerTile.status === 'done' && workerTile.vectorTile) {
+                // this seems like a missing case where cache control is lost? see #3309
+                return workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+            }
+        });
+    }
+    /**
+     * Implements {@link WorkerSource.abortTile}.
+     */
+    abortTile(params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const loading = this.loading;
+            const uid = params.uid;
+            if (loading && loading[uid] && loading[uid].abort) {
+                loading[uid].abort.abort();
+                delete loading[uid];
+            }
+        });
+    }
+    /**
+     * Implements {@link WorkerSource.removeTile}.
+     */
+    removeTile(params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.loaded && this.loaded[params.uid]) {
+                delete this.loaded[params.uid];
+            }
+        });
+    }
+}
+
+class RasterDEMTileWorkerSource {
+    constructor() {
+        this.loaded = {};
+    }
+    loadTile(params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { uid, encoding, rawImageData, redFactor, greenFactor, blueFactor, baseShift } = params;
+            const width = rawImageData.width + 2;
+            const height = rawImageData.height + 2;
+            const imagePixels = isImageBitmap(rawImageData) ?
+                new RGBAImage({ width, height }, yield getImageData(rawImageData, -1, -1, width, height)) :
+                rawImageData;
+            const dem = new DEMData(uid, imagePixels, encoding, redFactor, greenFactor, blueFactor, baseShift);
+            this.loaded = this.loaded || {};
+            this.loaded[uid] = dem;
+            return dem;
+        });
+    }
+    removeTile(params) {
+        const loaded = this.loaded, uid = params.uid;
+        if (loaded && loaded[uid]) {
+            delete loaded[uid];
+        }
+    }
+}
+
+var geojsonRewind;
+var hasRequiredGeojsonRewind;
+
+function requireGeojsonRewind () {
+	if (hasRequiredGeojsonRewind) return geojsonRewind;
+	hasRequiredGeojsonRewind = 1;
+	geojsonRewind = rewind;
+
+	function rewind(gj, outer) {
+	    var type = gj && gj.type, i;
+
+	    if (type === 'FeatureCollection') {
+	        for (i = 0; i < gj.features.length; i++) rewind(gj.features[i], outer);
+
+	    } else if (type === 'GeometryCollection') {
+	        for (i = 0; i < gj.geometries.length; i++) rewind(gj.geometries[i], outer);
+
+	    } else if (type === 'Feature') {
+	        rewind(gj.geometry, outer);
+
+	    } else if (type === 'Polygon') {
+	        rewindRings(gj.coordinates, outer);
+
+	    } else if (type === 'MultiPolygon') {
+	        for (i = 0; i < gj.coordinates.length; i++) rewindRings(gj.coordinates[i], outer);
+	    }
+
+	    return gj;
+	}
+
+	function rewindRings(rings, outer) {
+	    if (rings.length === 0) return;
+
+	    rewindRing(rings[0], outer);
+	    for (var i = 1; i < rings.length; i++) {
+	        rewindRing(rings[i], !outer);
+	    }
+	}
+
+	function rewindRing(ring, dir) {
+	    var area = 0, err = 0;
+	    for (var i = 0, len = ring.length, j = len - 1; i < len; j = i++) {
+	        var k = (ring[i][0] - ring[j][0]) * (ring[j][1] + ring[i][1]);
+	        var m = area + k;
+	        err += Math.abs(area) >= Math.abs(k) ? area - m + k : k - m + area;
+	        area = m;
+	    }
+	    if (area + err >= 0 !== !!dir) ring.reverse();
+	}
+	return geojsonRewind;
+}
+
+var geojsonRewindExports = requireGeojsonRewind();
+var rewind$1 = /*@__PURE__*/getDefaultExportFromCjs$1(geojsonRewindExports);
+
+class n extends VectorTileFeature{constructor(t,r){super(new Pbf,0,r,[],[]),this.feature=t,this.type=t.type,this.properties=t.tags?t.tags:{},"id"in t&&("string"==typeof t.id?this.id=parseInt(t.id,10):"number"!=typeof t.id||isNaN(t.id)||(this.id=t.id));}loadGeometry(){const e=[],r=1===this.feature.type?[this.feature.geometry]:this.feature.geometry;for(const i of r){const r=[];for(const e of i)r.push(new Point(e[0],e[1]));e.push(r);}return e}}class o extends VectorTileLayer{constructor(t,r){super(new Pbf),this.layers={_geojsonTileLayer:this},this.name="_geojsonTileLayer",this.version=r?r.version:1,this.extent=r?r.extent:4096,this.length=t.length,this.features=t;}feature(e){return new n(this.features[e],this.extent)}}function s(t){const r=new Pbf;return function(e,t){for(const r in e.layers)t.writeMessage(3,f,e.layers[r]);}(t,r),r.finish()}function a(e,t){const r={};for(const i in e)r[i]=new o(e[i].features,t),r[i].name=i,r[i].version=t?t.version:1,r[i].extent=t?t.extent:4096;return s({layers:r})}function f(e,t){t.writeVarintField(15,e.version||1),t.writeStringField(1,e.name||""),t.writeVarintField(5,e.extent||4096);const r={keys:[],values:[],keycache:{},valuecache:{}};for(let i=0;i<e.length;i++)r.feature=e.feature(i),t.writeMessage(2,u,r);const i=r.keys;for(const e of i)t.writeStringField(3,e);const n=r.values;for(const e of n)t.writeMessage(4,y,e);}function u(e,t){if(!e.feature)return;const r=e.feature;void 0!==r.id&&t.writeVarintField(1,r.id),t.writeMessage(2,c,e),t.writeVarintField(3,r.type),t.writeMessage(4,p,r);}function c(e,t){for(const r in e.feature?.properties){let i=e.feature.properties[r],n=e.keycache[r];if(null===i)continue;void 0===n&&(e.keys.push(r),n=e.keys.length-1,e.keycache[r]=n),t.writeVarint(n),"string"!=typeof i&&"boolean"!=typeof i&&"number"!=typeof i&&(i=JSON.stringify(i));const o=typeof i+":"+i;let s=e.valuecache[o];void 0===s&&(e.values.push(i),s=e.values.length-1,e.valuecache[o]=s),t.writeVarint(s);}}function l(e,t){return (t<<3)+(7&e)}function h(e){return e<<1^e>>31}function p(e,t){const r=e.loadGeometry(),i=e.type;let n=0,o=0;for(const s of r){let r=1;1===i&&(r=s.length),t.writeVarint(l(1,r));const a=3===i?s.length-1:s.length;for(let e=0;e<a;e++){1===e&&1!==i&&t.writeVarint(l(2,a-1));const r=s[e].x-n,f=s[e].y-o;t.writeVarint(h(r)),t.writeVarint(h(f)),n+=r,o+=f;}3===e.type&&t.writeVarint(l(7,1));}}function y(e,t){const r=typeof e;"string"===r?t.writeStringField(1,e):"boolean"===r?t.writeBooleanField(7,e):"number"===r&&(e%1!=0?t.writeDoubleField(3,e):e<0?t.writeSVarintField(6,e):t.writeVarintField(5,e));}
+
+const ARRAY_TYPES = [
+    Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array,
+    Int32Array, Uint32Array, Float32Array, Float64Array
+];
+
+/** @typedef {Int8ArrayConstructor | Uint8ArrayConstructor | Uint8ClampedArrayConstructor | Int16ArrayConstructor | Uint16ArrayConstructor | Int32ArrayConstructor | Uint32ArrayConstructor | Float32ArrayConstructor | Float64ArrayConstructor} TypedArrayConstructor */
+
+const VERSION = 1; // serialized format version
+const HEADER_SIZE = 8;
+
+class KDBush {
+
+    /**
+     * Creates an index from raw `ArrayBuffer` data.
+     * @param {ArrayBuffer} data
+     */
+    static from(data) {
+        if (!(data instanceof ArrayBuffer)) {
+            throw new Error('Data must be an instance of ArrayBuffer.');
+        }
+        const [magic, versionAndType] = new Uint8Array(data, 0, 2);
+        if (magic !== 0xdb) {
+            throw new Error('Data does not appear to be in a KDBush format.');
+        }
+        const version = versionAndType >> 4;
+        if (version !== VERSION) {
+            throw new Error(`Got v${version} data when expected v${VERSION}.`);
+        }
+        const ArrayType = ARRAY_TYPES[versionAndType & 0x0f];
+        if (!ArrayType) {
+            throw new Error('Unrecognized array type.');
+        }
+        const [nodeSize] = new Uint16Array(data, 2, 1);
+        const [numItems] = new Uint32Array(data, 4, 1);
+
+        return new KDBush(numItems, nodeSize, ArrayType, data);
+    }
+
+    /**
+     * Creates an index that will hold a given number of items.
+     * @param {number} numItems
+     * @param {number} [nodeSize=64] Size of the KD-tree node (64 by default).
+     * @param {TypedArrayConstructor} [ArrayType=Float64Array] The array type used for coordinates storage (`Float64Array` by default).
+     * @param {ArrayBuffer} [data] (For internal use only)
+     */
+    constructor(numItems, nodeSize = 64, ArrayType = Float64Array, data) {
+        if (isNaN(numItems) || numItems < 0) throw new Error(`Unpexpected numItems value: ${numItems}.`);
+
+        this.numItems = +numItems;
+        this.nodeSize = Math.min(Math.max(+nodeSize, 2), 65535);
+        this.ArrayType = ArrayType;
+        this.IndexArrayType = numItems < 65536 ? Uint16Array : Uint32Array;
+
+        const arrayTypeIndex = ARRAY_TYPES.indexOf(this.ArrayType);
+        const coordsByteSize = numItems * 2 * this.ArrayType.BYTES_PER_ELEMENT;
+        const idsByteSize = numItems * this.IndexArrayType.BYTES_PER_ELEMENT;
+        const padCoords = (8 - idsByteSize % 8) % 8;
+
+        if (arrayTypeIndex < 0) {
+            throw new Error(`Unexpected typed array class: ${ArrayType}.`);
+        }
+
+        if (data && (data instanceof ArrayBuffer)) { // reconstruct an index from a buffer
+            this.data = data;
+            this.ids = new this.IndexArrayType(this.data, HEADER_SIZE, numItems);
+            this.coords = new this.ArrayType(this.data, HEADER_SIZE + idsByteSize + padCoords, numItems * 2);
+            this._pos = numItems * 2;
+            this._finished = true;
+        } else { // initialize a new index
+            this.data = new ArrayBuffer(HEADER_SIZE + coordsByteSize + idsByteSize + padCoords);
+            this.ids = new this.IndexArrayType(this.data, HEADER_SIZE, numItems);
+            this.coords = new this.ArrayType(this.data, HEADER_SIZE + idsByteSize + padCoords, numItems * 2);
+            this._pos = 0;
+            this._finished = false;
+
+            // set header
+            new Uint8Array(this.data, 0, 2).set([0xdb, (VERSION << 4) + arrayTypeIndex]);
+            new Uint16Array(this.data, 2, 1)[0] = nodeSize;
+            new Uint32Array(this.data, 4, 1)[0] = numItems;
+        }
+    }
+
+    /**
+     * Add a point to the index.
+     * @param {number} x
+     * @param {number} y
+     * @returns {number} An incremental index associated with the added item (starting from `0`).
+     */
+    add(x, y) {
+        const index = this._pos >> 1;
+        this.ids[index] = index;
+        this.coords[this._pos++] = x;
+        this.coords[this._pos++] = y;
+        return index;
+    }
+
+    /**
+     * Perform indexing of the added points.
+     */
+    finish() {
+        const numAdded = this._pos >> 1;
+        if (numAdded !== this.numItems) {
+            throw new Error(`Added ${numAdded} items when expected ${this.numItems}.`);
+        }
+        // kd-sort both arrays for efficient search
+        sort(this.ids, this.coords, this.nodeSize, 0, this.numItems - 1, 0);
+
+        this._finished = true;
+        return this;
+    }
+
+    /**
+     * Search the index for items within a given bounding box.
+     * @param {number} minX
+     * @param {number} minY
+     * @param {number} maxX
+     * @param {number} maxY
+     * @returns {number[]} An array of indices correponding to the found items.
+     */
+    range(minX, minY, maxX, maxY) {
+        if (!this._finished) throw new Error('Data not yet indexed - call index.finish().');
+
+        const {ids, coords, nodeSize} = this;
+        const stack = [0, ids.length - 1, 0];
+        const result = [];
+
+        // recursively search for items in range in the kd-sorted arrays
+        while (stack.length) {
+            const axis = stack.pop() || 0;
+            const right = stack.pop() || 0;
+            const left = stack.pop() || 0;
+
+            // if we reached "tree node", search linearly
+            if (right - left <= nodeSize) {
+                for (let i = left; i <= right; i++) {
+                    const x = coords[2 * i];
+                    const y = coords[2 * i + 1];
+                    if (x >= minX && x <= maxX && y >= minY && y <= maxY) result.push(ids[i]);
+                }
+                continue;
+            }
+
+            // otherwise find the middle index
+            const m = (left + right) >> 1;
+
+            // include the middle item if it's in range
+            const x = coords[2 * m];
+            const y = coords[2 * m + 1];
+            if (x >= minX && x <= maxX && y >= minY && y <= maxY) result.push(ids[m]);
+
+            // queue search in halves that intersect the query
+            if (axis === 0 ? minX <= x : minY <= y) {
+                stack.push(left);
+                stack.push(m - 1);
+                stack.push(1 - axis);
+            }
+            if (axis === 0 ? maxX >= x : maxY >= y) {
+                stack.push(m + 1);
+                stack.push(right);
+                stack.push(1 - axis);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Search the index for items within a given radius.
+     * @param {number} qx
+     * @param {number} qy
+     * @param {number} r Query radius.
+     * @returns {number[]} An array of indices correponding to the found items.
+     */
+    within(qx, qy, r) {
+        if (!this._finished) throw new Error('Data not yet indexed - call index.finish().');
+
+        const {ids, coords, nodeSize} = this;
+        const stack = [0, ids.length - 1, 0];
+        const result = [];
+        const r2 = r * r;
+
+        // recursively search for items within radius in the kd-sorted arrays
+        while (stack.length) {
+            const axis = stack.pop() || 0;
+            const right = stack.pop() || 0;
+            const left = stack.pop() || 0;
+
+            // if we reached "tree node", search linearly
+            if (right - left <= nodeSize) {
+                for (let i = left; i <= right; i++) {
+                    if (sqDist(coords[2 * i], coords[2 * i + 1], qx, qy) <= r2) result.push(ids[i]);
+                }
+                continue;
+            }
+
+            // otherwise find the middle index
+            const m = (left + right) >> 1;
+
+            // include the middle item if it's in range
+            const x = coords[2 * m];
+            const y = coords[2 * m + 1];
+            if (sqDist(x, y, qx, qy) <= r2) result.push(ids[m]);
+
+            // queue search in halves that intersect the query
+            if (axis === 0 ? qx - r <= x : qy - r <= y) {
+                stack.push(left);
+                stack.push(m - 1);
+                stack.push(1 - axis);
+            }
+            if (axis === 0 ? qx + r >= x : qy + r >= y) {
+                stack.push(m + 1);
+                stack.push(right);
+                stack.push(1 - axis);
+            }
+        }
+
+        return result;
+    }
+}
+
+/**
+ * @param {Uint16Array | Uint32Array} ids
+ * @param {InstanceType<TypedArrayConstructor>} coords
+ * @param {number} nodeSize
+ * @param {number} left
+ * @param {number} right
+ * @param {number} axis
+ */
+function sort(ids, coords, nodeSize, left, right, axis) {
+    if (right - left <= nodeSize) return;
+
+    const m = (left + right) >> 1; // middle index
+
+    // sort ids and coords around the middle index so that the halves lie
+    // either left/right or top/bottom correspondingly (taking turns)
+    select(ids, coords, m, left, right, axis);
+
+    // recursively kd-sort first half and second half on the opposite axis
+    sort(ids, coords, nodeSize, left, m - 1, 1 - axis);
+    sort(ids, coords, nodeSize, m + 1, right, 1 - axis);
+}
+
+/**
+ * Custom Floyd-Rivest selection algorithm: sort ids and coords so that
+ * [left..k-1] items are smaller than k-th item (on either x or y axis)
+ * @param {Uint16Array | Uint32Array} ids
+ * @param {InstanceType<TypedArrayConstructor>} coords
+ * @param {number} k
+ * @param {number} left
+ * @param {number} right
+ * @param {number} axis
+ */
+function select(ids, coords, k, left, right, axis) {
+
+    while (right > left) {
+        if (right - left > 600) {
+            const n = right - left + 1;
+            const m = k - left + 1;
+            const z = Math.log(n);
+            const s = 0.5 * Math.exp(2 * z / 3);
+            const sd = 0.5 * Math.sqrt(z * s * (n - s) / n) * (m - n / 2 < 0 ? -1 : 1);
+            const newLeft = Math.max(left, Math.floor(k - m * s / n + sd));
+            const newRight = Math.min(right, Math.floor(k + (n - m) * s / n + sd));
+            select(ids, coords, k, newLeft, newRight, axis);
+        }
+
+        const t = coords[2 * k + axis];
+        let i = left;
+        let j = right;
+
+        swapItem(ids, coords, left, k);
+        if (coords[2 * right + axis] > t) swapItem(ids, coords, left, right);
+
+        while (i < j) {
+            swapItem(ids, coords, i, j);
+            i++;
+            j--;
+            while (coords[2 * i + axis] < t) i++;
+            while (coords[2 * j + axis] > t) j--;
+        }
+
+        if (coords[2 * left + axis] === t) swapItem(ids, coords, left, j);
+        else {
+            j++;
+            swapItem(ids, coords, j, right);
+        }
+
+        if (j <= k) left = j + 1;
+        if (k <= j) right = j - 1;
+    }
+}
+
+/**
+ * @param {Uint16Array | Uint32Array} ids
+ * @param {InstanceType<TypedArrayConstructor>} coords
+ * @param {number} i
+ * @param {number} j
+ */
+function swapItem(ids, coords, i, j) {
+    swap(ids, i, j);
+    swap(coords, 2 * i, 2 * j);
+    swap(coords, 2 * i + 1, 2 * j + 1);
+}
+
+/**
+ * @param {InstanceType<TypedArrayConstructor>} arr
+ * @param {number} i
+ * @param {number} j
+ */
+function swap(arr, i, j) {
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+}
+
+/**
+ * @param {number} ax
+ * @param {number} ay
+ * @param {number} bx
+ * @param {number} by
+ */
+function sqDist(ax, ay, bx, by) {
+    const dx = ax - bx;
+    const dy = ay - by;
+    return dx * dx + dy * dy;
+}
+
+const defaultOptions$1 = {
+    minZoom: 0,   // min zoom to generate clusters on
+    maxZoom: 16,  // max zoom level to cluster the points on
+    minPoints: 2, // minimum points to form a cluster
+    radius: 40,   // cluster radius in pixels
+    extent: 512,  // tile extent (radius is calculated relative to it)
+    nodeSize: 64, // size of the KD-tree leaf node, affects performance
+    log: false,   // whether to log timing info
+
+    // whether to generate numeric ids for input features (in vector tiles)
+    generateId: false,
+
+    // a reduce function for calculating custom cluster properties
+    reduce: null, // (accumulated, props) => { accumulated.sum += props.sum; }
+
+    // properties to use for individual points when running the reducer
+    map: props => props // props => ({sum: props.my_value})
+};
+
+const fround = Math.fround || (tmp => ((x) => { tmp[0] = +x; return tmp[0]; }))(new Float32Array(1));
+
+const OFFSET_ZOOM = 2;
+const OFFSET_ID = 3;
+const OFFSET_PARENT = 4;
+const OFFSET_NUM = 5;
+const OFFSET_PROP = 6;
+
+class Supercluster {
+    constructor(options) {
+        this.options = Object.assign(Object.create(defaultOptions$1), options);
+        this.trees = new Array(this.options.maxZoom + 1);
+        this.stride = this.options.reduce ? 7 : 6;
+        this.clusterProps = [];
+    }
+
+    load(points) {
+        const {log, minZoom, maxZoom} = this.options;
+
+        if (log) console.time('total time');
+
+        const timerId = `prepare ${  points.length  } points`;
+        if (log) console.time(timerId);
+
+        this.points = points;
+
+        // generate a cluster object for each point and index input points into a KD-tree
+        const data = [];
+
+        for (let i = 0; i < points.length; i++) {
+            const p = points[i];
+            if (!p.geometry) continue;
+
+            const [lng, lat] = p.geometry.coordinates;
+            const x = fround(lngX(lng));
+            const y = fround(latY(lat));
+            // store internal point/cluster data in flat numeric arrays for performance
+            data.push(
+                x, y, // projected point coordinates
+                Infinity, // the last zoom the point was processed at
+                i, // index of the source feature in the original input array
+                -1, // parent cluster id
+                1 // number of points in a cluster
+            );
+            if (this.options.reduce) data.push(0); // noop
+        }
+        let tree = this.trees[maxZoom + 1] = this._createTree(data);
+
+        if (log) console.timeEnd(timerId);
+
+        // cluster points on max zoom, then cluster the results on previous zoom, etc.;
+        // results in a cluster hierarchy across zoom levels
+        for (let z = maxZoom; z >= minZoom; z--) {
+            const now = +Date.now();
+
+            // create a new set of clusters for the zoom and index them with a KD-tree
+            tree = this.trees[z] = this._createTree(this._cluster(tree, z));
+
+            if (log) console.log('z%d: %d clusters in %dms', z, tree.numItems, +Date.now() - now);
+        }
+
+        if (log) console.timeEnd('total time');
+
+        return this;
+    }
+
+    getClusters(bbox, zoom) {
+        let minLng = ((bbox[0] + 180) % 360 + 360) % 360 - 180;
+        const minLat = Math.max(-90, Math.min(90, bbox[1]));
+        let maxLng = bbox[2] === 180 ? 180 : ((bbox[2] + 180) % 360 + 360) % 360 - 180;
+        const maxLat = Math.max(-90, Math.min(90, bbox[3]));
+
+        if (bbox[2] - bbox[0] >= 360) {
+            minLng = -180;
+            maxLng = 180;
+        } else if (minLng > maxLng) {
+            const easternHem = this.getClusters([minLng, minLat, 180, maxLat], zoom);
+            const westernHem = this.getClusters([-180, minLat, maxLng, maxLat], zoom);
+            return easternHem.concat(westernHem);
+        }
+
+        const tree = this.trees[this._limitZoom(zoom)];
+        const ids = tree.range(lngX(minLng), latY(maxLat), lngX(maxLng), latY(minLat));
+        const data = tree.data;
+        const clusters = [];
+        for (const id of ids) {
+            const k = this.stride * id;
+            clusters.push(data[k + OFFSET_NUM] > 1 ? getClusterJSON(data, k, this.clusterProps) : this.points[data[k + OFFSET_ID]]);
+        }
+        return clusters;
+    }
+
+    getChildren(clusterId) {
+        const originId = this._getOriginId(clusterId);
+        const originZoom = this._getOriginZoom(clusterId);
+        const errorMsg = 'No cluster with the specified id.';
+
+        const tree = this.trees[originZoom];
+        if (!tree) throw new Error(errorMsg);
+
+        const data = tree.data;
+        if (originId * this.stride >= data.length) throw new Error(errorMsg);
+
+        const r = this.options.radius / (this.options.extent * Math.pow(2, originZoom - 1));
+        const x = data[originId * this.stride];
+        const y = data[originId * this.stride + 1];
+        const ids = tree.within(x, y, r);
+        const children = [];
+        for (const id of ids) {
+            const k = id * this.stride;
+            if (data[k + OFFSET_PARENT] === clusterId) {
+                children.push(data[k + OFFSET_NUM] > 1 ? getClusterJSON(data, k, this.clusterProps) : this.points[data[k + OFFSET_ID]]);
+            }
+        }
+
+        if (children.length === 0) throw new Error(errorMsg);
+
+        return children;
+    }
+
+    getLeaves(clusterId, limit, offset) {
+        limit = limit || 10;
+        offset = offset || 0;
+
+        const leaves = [];
+        this._appendLeaves(leaves, clusterId, limit, offset, 0);
+
+        return leaves;
+    }
+
+    getTile(z, x, y) {
+        const tree = this.trees[this._limitZoom(z)];
+        const z2 = Math.pow(2, z);
+        const {extent, radius} = this.options;
+        const p = radius / extent;
+        const top = (y - p) / z2;
+        const bottom = (y + 1 + p) / z2;
+
+        const tile = {
+            features: []
+        };
+
+        this._addTileFeatures(
+            tree.range((x - p) / z2, top, (x + 1 + p) / z2, bottom),
+            tree.data, x, y, z2, tile);
+
+        if (x === 0) {
+            this._addTileFeatures(
+                tree.range(1 - p / z2, top, 1, bottom),
+                tree.data, z2, y, z2, tile);
+        }
+        if (x === z2 - 1) {
+            this._addTileFeatures(
+                tree.range(0, top, p / z2, bottom),
+                tree.data, -1, y, z2, tile);
+        }
+
+        return tile.features.length ? tile : null;
+    }
+
+    getClusterExpansionZoom(clusterId) {
+        let expansionZoom = this._getOriginZoom(clusterId) - 1;
+        while (expansionZoom <= this.options.maxZoom) {
+            const children = this.getChildren(clusterId);
+            expansionZoom++;
+            if (children.length !== 1) break;
+            clusterId = children[0].properties.cluster_id;
+        }
+        return expansionZoom;
+    }
+
+    _appendLeaves(result, clusterId, limit, offset, skipped) {
+        const children = this.getChildren(clusterId);
+
+        for (const child of children) {
+            const props = child.properties;
+
+            if (props && props.cluster) {
+                if (skipped + props.point_count <= offset) {
+                    // skip the whole cluster
+                    skipped += props.point_count;
+                } else {
+                    // enter the cluster
+                    skipped = this._appendLeaves(result, props.cluster_id, limit, offset, skipped);
+                    // exit the cluster
+                }
+            } else if (skipped < offset) {
+                // skip a single point
+                skipped++;
+            } else {
+                // add a single point
+                result.push(child);
+            }
+            if (result.length === limit) break;
+        }
+
+        return skipped;
+    }
+
+    _createTree(data) {
+        const tree = new KDBush(data.length / this.stride | 0, this.options.nodeSize, Float32Array);
+        for (let i = 0; i < data.length; i += this.stride) tree.add(data[i], data[i + 1]);
+        tree.finish();
+        tree.data = data;
+        return tree;
+    }
+
+    _addTileFeatures(ids, data, x, y, z2, tile) {
+        for (const i of ids) {
+            const k = i * this.stride;
+            const isCluster = data[k + OFFSET_NUM] > 1;
+
+            let tags, px, py;
+            if (isCluster) {
+                tags = getClusterProperties(data, k, this.clusterProps);
+                px = data[k];
+                py = data[k + 1];
+            } else {
+                const p = this.points[data[k + OFFSET_ID]];
+                tags = p.properties;
+                const [lng, lat] = p.geometry.coordinates;
+                px = lngX(lng);
+                py = latY(lat);
+            }
+
+            const f = {
+                type: 1,
+                geometry: [[
+                    Math.round(this.options.extent * (px * z2 - x)),
+                    Math.round(this.options.extent * (py * z2 - y))
+                ]],
+                tags
+            };
+
+            // assign id
+            let id;
+            if (isCluster || this.options.generateId) {
+                // optionally generate id for points
+                id = data[k + OFFSET_ID];
+            } else {
+                // keep id if already assigned
+                id = this.points[data[k + OFFSET_ID]].id;
+            }
+
+            if (id !== undefined) f.id = id;
+
+            tile.features.push(f);
+        }
+    }
+
+    _limitZoom(z) {
+        return Math.max(this.options.minZoom, Math.min(Math.floor(+z), this.options.maxZoom + 1));
+    }
+
+    _cluster(tree, zoom) {
+        const {radius, extent, reduce, minPoints} = this.options;
+        const r = radius / (extent * Math.pow(2, zoom));
+        const data = tree.data;
+        const nextData = [];
+        const stride = this.stride;
+
+        // loop through each point
+        for (let i = 0; i < data.length; i += stride) {
+            // if we've already visited the point at this zoom level, skip it
+            if (data[i + OFFSET_ZOOM] <= zoom) continue;
+            data[i + OFFSET_ZOOM] = zoom;
+
+            // find all nearby points
+            const x = data[i];
+            const y = data[i + 1];
+            const neighborIds = tree.within(data[i], data[i + 1], r);
+
+            const numPointsOrigin = data[i + OFFSET_NUM];
+            let numPoints = numPointsOrigin;
+
+            // count the number of points in a potential cluster
+            for (const neighborId of neighborIds) {
+                const k = neighborId * stride;
+                // filter out neighbors that are already processed
+                if (data[k + OFFSET_ZOOM] > zoom) numPoints += data[k + OFFSET_NUM];
+            }
+
+            // if there were neighbors to merge, and there are enough points to form a cluster
+            if (numPoints > numPointsOrigin && numPoints >= minPoints) {
+                let wx = x * numPointsOrigin;
+                let wy = y * numPointsOrigin;
+
+                let clusterProperties;
+                let clusterPropIndex = -1;
+
+                // encode both zoom and point index on which the cluster originated -- offset by total length of features
+                const id = ((i / stride | 0) << 5) + (zoom + 1) + this.points.length;
+
+                for (const neighborId of neighborIds) {
+                    const k = neighborId * stride;
+
+                    if (data[k + OFFSET_ZOOM] <= zoom) continue;
+                    data[k + OFFSET_ZOOM] = zoom; // save the zoom (so it doesn't get processed twice)
+
+                    const numPoints2 = data[k + OFFSET_NUM];
+                    wx += data[k] * numPoints2; // accumulate coordinates for calculating weighted center
+                    wy += data[k + 1] * numPoints2;
+
+                    data[k + OFFSET_PARENT] = id;
+
+                    if (reduce) {
+                        if (!clusterProperties) {
+                            clusterProperties = this._map(data, i, true);
+                            clusterPropIndex = this.clusterProps.length;
+                            this.clusterProps.push(clusterProperties);
+                        }
+                        reduce(clusterProperties, this._map(data, k));
+                    }
+                }
+
+                data[i + OFFSET_PARENT] = id;
+                nextData.push(wx / numPoints, wy / numPoints, Infinity, id, -1, numPoints);
+                if (reduce) nextData.push(clusterPropIndex);
+
+            } else { // left points as unclustered
+                for (let j = 0; j < stride; j++) nextData.push(data[i + j]);
+
+                if (numPoints > 1) {
+                    for (const neighborId of neighborIds) {
+                        const k = neighborId * stride;
+                        if (data[k + OFFSET_ZOOM] <= zoom) continue;
+                        data[k + OFFSET_ZOOM] = zoom;
+                        for (let j = 0; j < stride; j++) nextData.push(data[k + j]);
+                    }
+                }
+            }
+        }
+
+        return nextData;
+    }
+
+    // get index of the point from which the cluster originated
+    _getOriginId(clusterId) {
+        return (clusterId - this.points.length) >> 5;
+    }
+
+    // get zoom of the point from which the cluster originated
+    _getOriginZoom(clusterId) {
+        return (clusterId - this.points.length) % 32;
+    }
+
+    _map(data, i, clone) {
+        if (data[i + OFFSET_NUM] > 1) {
+            const props = this.clusterProps[data[i + OFFSET_PROP]];
+            return clone ? Object.assign({}, props) : props;
+        }
+        const original = this.points[data[i + OFFSET_ID]].properties;
+        const result = this.options.map(original);
+        return clone && result === original ? Object.assign({}, result) : result;
+    }
+}
+
+function getClusterJSON(data, i, clusterProps) {
+    return {
+        type: 'Feature',
+        id: data[i + OFFSET_ID],
+        properties: getClusterProperties(data, i, clusterProps),
+        geometry: {
+            type: 'Point',
+            coordinates: [xLng(data[i]), yLat(data[i + 1])]
+        }
+    };
+}
+
+function getClusterProperties(data, i, clusterProps) {
+    const count = data[i + OFFSET_NUM];
+    const abbrev =
+        count >= 10000 ? `${Math.round(count / 1000)  }k` :
+        count >= 1000 ? `${Math.round(count / 100) / 10  }k` : count;
+    const propIndex = data[i + OFFSET_PROP];
+    const properties = propIndex === -1 ? {} : Object.assign({}, clusterProps[propIndex]);
+    return Object.assign(properties, {
+        cluster: true,
+        cluster_id: data[i + OFFSET_ID],
+        point_count: count,
+        point_count_abbreviated: abbrev
+    });
+}
+
+// longitude/latitude to spherical mercator in [0..1] range
+function lngX(lng) {
+    return lng / 360 + 0.5;
+}
+function latY(lat) {
+    const sin = Math.sin(lat * Math.PI / 180);
+    const y = (0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI);
+    return y < 0 ? 0 : y > 1 ? 1 : y;
+}
+
+// spherical mercator to longitude/latitude
+function xLng(x) {
+    return (x - 0.5) * 360;
+}
+function yLat(y) {
+    const y2 = (180 - y * 360) * Math.PI / 180;
+    return 360 * Math.atan(Math.exp(y2)) / Math.PI - 90;
+}
+
+// calculate simplification data using optimized Douglas-Peucker algorithm
+
+function simplify(coords, first, last, sqTolerance) {
+    let maxSqDist = sqTolerance;
+    const mid = first + ((last - first) >> 1);
+    let minPosToMid = last - first;
+    let index;
+
+    const ax = coords[first];
+    const ay = coords[first + 1];
+    const bx = coords[last];
+    const by = coords[last + 1];
+
+    for (let i = first + 3; i < last; i += 3) {
+        const d = getSqSegDist(coords[i], coords[i + 1], ax, ay, bx, by);
+
+        if (d > maxSqDist) {
+            index = i;
+            maxSqDist = d;
+
+        } else if (d === maxSqDist) {
+            // a workaround to ensure we choose a pivot close to the middle of the list,
+            // reducing recursion depth, for certain degenerate inputs
+            // https://github.com/mapbox/geojson-vt/issues/104
+            const posToMid = Math.abs(i - mid);
+            if (posToMid < minPosToMid) {
+                index = i;
+                minPosToMid = posToMid;
+            }
+        }
+    }
+
+    if (maxSqDist > sqTolerance) {
+        if (index - first > 3) simplify(coords, first, index, sqTolerance);
+        coords[index + 2] = maxSqDist;
+        if (last - index > 3) simplify(coords, index, last, sqTolerance);
+    }
+}
+
+// square distance from a point to a segment
+function getSqSegDist(px, py, x, y, bx, by) {
+
+    let dx = bx - x;
+    let dy = by - y;
+
+    if (dx !== 0 || dy !== 0) {
+
+        const t = ((px - x) * dx + (py - y) * dy) / (dx * dx + dy * dy);
+
+        if (t > 1) {
+            x = bx;
+            y = by;
+
+        } else if (t > 0) {
+            x += dx * t;
+            y += dy * t;
+        }
+    }
+
+    dx = px - x;
+    dy = py - y;
+
+    return dx * dx + dy * dy;
+}
+
+function createFeature(id, type, geom, tags) {
+    const feature = {
+        id: id == null ? null : id,
+        type,
+        geometry: geom,
+        tags,
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+        maxY: -Infinity
+    };
+
+    if (type === 'Point' || type === 'MultiPoint' || type === 'LineString') {
+        calcLineBBox(feature, geom);
+
+    } else if (type === 'Polygon') {
+        // the outer ring (ie [0]) contains all inner rings
+        calcLineBBox(feature, geom[0]);
+
+    } else if (type === 'MultiLineString') {
+        for (const line of geom) {
+            calcLineBBox(feature, line);
+        }
+
+    } else if (type === 'MultiPolygon') {
+        for (const polygon of geom) {
+            // the outer ring (ie [0]) contains all inner rings
+            calcLineBBox(feature, polygon[0]);
+        }
+    }
+
+    return feature;
+}
+
+function calcLineBBox(feature, geom) {
+    for (let i = 0; i < geom.length; i += 3) {
+        feature.minX = Math.min(feature.minX, geom[i]);
+        feature.minY = Math.min(feature.minY, geom[i + 1]);
+        feature.maxX = Math.max(feature.maxX, geom[i]);
+        feature.maxY = Math.max(feature.maxY, geom[i + 1]);
+    }
+}
+
+// converts GeoJSON feature into an intermediate projected JSON vector format with simplification data
+
+function convert(data, options) {
+    const features = [];
+    if (data.type === 'FeatureCollection') {
+        for (let i = 0; i < data.features.length; i++) {
+            convertFeature(features, data.features[i], options, i);
+        }
+
+    } else if (data.type === 'Feature') {
+        convertFeature(features, data, options);
+
+    } else {
+        // single geometry or a geometry collection
+        convertFeature(features, {geometry: data}, options);
+    }
+
+    return features;
+}
+
+function convertFeature(features, geojson, options, index) {
+    if (!geojson.geometry) return;
+
+    const coords = geojson.geometry.coordinates;
+    if (coords && coords.length === 0) return;
+
+    const type = geojson.geometry.type;
+    const tolerance = Math.pow(options.tolerance / ((1 << options.maxZoom) * options.extent), 2);
+    let geometry = [];
+    let id = geojson.id;
+    if (options.promoteId) {
+        id = geojson.properties[options.promoteId];
+    } else if (options.generateId) {
+        id = index || 0;
+    }
+    if (type === 'Point') {
+        convertPoint(coords, geometry);
+
+    } else if (type === 'MultiPoint') {
+        for (const p of coords) {
+            convertPoint(p, geometry);
+        }
+
+    } else if (type === 'LineString') {
+        convertLine(coords, geometry, tolerance, false);
+
+    } else if (type === 'MultiLineString') {
+        if (options.lineMetrics) {
+            // explode into linestrings to be able to track metrics
+            for (const line of coords) {
+                geometry = [];
+                convertLine(line, geometry, tolerance, false);
+                features.push(createFeature(id, 'LineString', geometry, geojson.properties));
+            }
+            return;
+        } else {
+            convertLines(coords, geometry, tolerance, false);
+        }
+
+    } else if (type === 'Polygon') {
+        convertLines(coords, geometry, tolerance, true);
+
+    } else if (type === 'MultiPolygon') {
+        for (const polygon of coords) {
+            const newPolygon = [];
+            convertLines(polygon, newPolygon, tolerance, true);
+            geometry.push(newPolygon);
+        }
+    } else if (type === 'GeometryCollection') {
+        for (const singleGeometry of geojson.geometry.geometries) {
+            convertFeature(features, {
+                id,
+                geometry: singleGeometry,
+                properties: geojson.properties
+            }, options, index);
+        }
+        return;
+    } else {
+        throw new Error('Input data is not a valid GeoJSON object.');
+    }
+
+    features.push(createFeature(id, type, geometry, geojson.properties));
+}
+
+function convertPoint(coords, out) {
+    out.push(projectX(coords[0]), projectY(coords[1]), 0);
+}
+
+function convertLine(ring, out, tolerance, isPolygon) {
+    let x0, y0;
+    let size = 0;
+
+    for (let j = 0; j < ring.length; j++) {
+        const x = projectX(ring[j][0]);
+        const y = projectY(ring[j][1]);
+
+        out.push(x, y, 0);
+
+        if (j > 0) {
+            if (isPolygon) {
+                size += (x0 * y - x * y0) / 2; // area
+            } else {
+                size += Math.sqrt(Math.pow(x - x0, 2) + Math.pow(y - y0, 2)); // length
+            }
+        }
+        x0 = x;
+        y0 = y;
+    }
+
+    const last = out.length - 3;
+    out[2] = 1;
+    simplify(out, 0, last, tolerance);
+    out[last + 2] = 1;
+
+    out.size = Math.abs(size);
+    out.start = 0;
+    out.end = out.size;
+}
+
+function convertLines(rings, out, tolerance, isPolygon) {
+    for (let i = 0; i < rings.length; i++) {
+        const geom = [];
+        convertLine(rings[i], geom, tolerance, isPolygon);
+        out.push(geom);
+    }
+}
+
+function projectX(x) {
+    return x / 360 + 0.5;
+}
+
+function projectY(y) {
+    const sin = Math.sin(y * Math.PI / 180);
+    const y2 = 0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
+    return y2 < 0 ? 0 : y2 > 1 ? 1 : y2;
+}
+
+/* clip features between two vertical or horizontal axis-parallel lines:
+ *     |        |
+ *  ___|___     |     /
+ * /   |   \____|____/
+ *     |        |
+ *
+ * k1 and k2 are the line coordinates
+ * axis: 0 for x, 1 for y
+ * minAll and maxAll: minimum and maximum coordinate value for all features
+ */
+function clip(features, scale, k1, k2, axis, minAll, maxAll, options) {
+    k1 /= scale;
+    k2 /= scale;
+
+    if (minAll >= k1 && maxAll < k2) return features; // trivial accept
+    else if (maxAll < k1 || minAll >= k2) return null; // trivial reject
+
+    const clipped = [];
+
+    for (const feature of features) {
+        const geometry = feature.geometry;
+        let type = feature.type;
+
+        const min = axis === 0 ? feature.minX : feature.minY;
+        const max = axis === 0 ? feature.maxX : feature.maxY;
+
+        if (min >= k1 && max < k2) { // trivial accept
+            clipped.push(feature);
+            continue;
+        } else if (max < k1 || min >= k2) { // trivial reject
+            continue;
+        }
+
+        let newGeometry = [];
+
+        if (type === 'Point' || type === 'MultiPoint') {
+            clipPoints(geometry, newGeometry, k1, k2, axis);
+
+        } else if (type === 'LineString') {
+            clipLine$1(geometry, newGeometry, k1, k2, axis, false, options.lineMetrics);
+
+        } else if (type === 'MultiLineString') {
+            clipLines(geometry, newGeometry, k1, k2, axis, false);
+
+        } else if (type === 'Polygon') {
+            clipLines(geometry, newGeometry, k1, k2, axis, true);
+
+        } else if (type === 'MultiPolygon') {
+            for (const polygon of geometry) {
+                const newPolygon = [];
+                clipLines(polygon, newPolygon, k1, k2, axis, true);
+                if (newPolygon.length) {
+                    newGeometry.push(newPolygon);
+                }
+            }
+        }
+
+        if (newGeometry.length) {
+            if (options.lineMetrics && type === 'LineString') {
+                for (const line of newGeometry) {
+                    clipped.push(createFeature(feature.id, type, line, feature.tags));
+                }
+                continue;
+            }
+
+            if (type === 'LineString' || type === 'MultiLineString') {
+                if (newGeometry.length === 1) {
+                    type = 'LineString';
+                    newGeometry = newGeometry[0];
+                } else {
+                    type = 'MultiLineString';
+                }
+            }
+            if (type === 'Point' || type === 'MultiPoint') {
+                type = newGeometry.length === 3 ? 'Point' : 'MultiPoint';
+            }
+
+            clipped.push(createFeature(feature.id, type, newGeometry, feature.tags));
+        }
+    }
+
+    return clipped.length ? clipped : null;
+}
+
+function clipPoints(geom, newGeom, k1, k2, axis) {
+    for (let i = 0; i < geom.length; i += 3) {
+        const a = geom[i + axis];
+
+        if (a >= k1 && a <= k2) {
+            addPoint(newGeom, geom[i], geom[i + 1], geom[i + 2]);
+        }
+    }
+}
+
+function clipLine$1(geom, newGeom, k1, k2, axis, isPolygon, trackMetrics) {
+
+    let slice = newSlice(geom);
+    const intersect = axis === 0 ? intersectX : intersectY;
+    let len = geom.start;
+    let segLen, t;
+
+    for (let i = 0; i < geom.length - 3; i += 3) {
+        const ax = geom[i];
+        const ay = geom[i + 1];
+        const az = geom[i + 2];
+        const bx = geom[i + 3];
+        const by = geom[i + 4];
+        const a = axis === 0 ? ax : ay;
+        const b = axis === 0 ? bx : by;
+        let exited = false;
+
+        if (trackMetrics) segLen = Math.sqrt(Math.pow(ax - bx, 2) + Math.pow(ay - by, 2));
+
+        if (a < k1) {
+            // ---|-->  | (line enters the clip region from the left)
+            if (b > k1) {
+                t = intersect(slice, ax, ay, bx, by, k1);
+                if (trackMetrics) slice.start = len + segLen * t;
+            }
+        } else if (a > k2) {
+            // |  <--|--- (line enters the clip region from the right)
+            if (b < k2) {
+                t = intersect(slice, ax, ay, bx, by, k2);
+                if (trackMetrics) slice.start = len + segLen * t;
+            }
+        } else {
+            addPoint(slice, ax, ay, az);
+        }
+        if (b < k1 && a >= k1) {
+            // <--|---  | or <--|-----|--- (line exits the clip region on the left)
+            t = intersect(slice, ax, ay, bx, by, k1);
+            exited = true;
+        }
+        if (b > k2 && a <= k2) {
+            // |  ---|--> or ---|-----|--> (line exits the clip region on the right)
+            t = intersect(slice, ax, ay, bx, by, k2);
+            exited = true;
+        }
+
+        if (!isPolygon && exited) {
+            if (trackMetrics) slice.end = len + segLen * t;
+            newGeom.push(slice);
+            slice = newSlice(geom);
+        }
+
+        if (trackMetrics) len += segLen;
+    }
+
+    // add the last point
+    let last = geom.length - 3;
+    const ax = geom[last];
+    const ay = geom[last + 1];
+    const az = geom[last + 2];
+    const a = axis === 0 ? ax : ay;
+    if (a >= k1 && a <= k2) addPoint(slice, ax, ay, az);
+
+    // close the polygon if its endpoints are not the same after clipping
+    last = slice.length - 3;
+    if (isPolygon && last >= 3 && (slice[last] !== slice[0] || slice[last + 1] !== slice[1])) {
+        addPoint(slice, slice[0], slice[1], slice[2]);
+    }
+
+    // add the final slice
+    if (slice.length) {
+        newGeom.push(slice);
+    }
+}
+
+function newSlice(line) {
+    const slice = [];
+    slice.size = line.size;
+    slice.start = line.start;
+    slice.end = line.end;
+    return slice;
+}
+
+function clipLines(geom, newGeom, k1, k2, axis, isPolygon) {
+    for (const line of geom) {
+        clipLine$1(line, newGeom, k1, k2, axis, isPolygon, false);
+    }
+}
+
+function addPoint(out, x, y, z) {
+    out.push(x, y, z);
+}
+
+function intersectX(out, ax, ay, bx, by, x) {
+    const t = (x - ax) / (bx - ax);
+    addPoint(out, x, ay + (by - ay) * t, 1);
+    return t;
+}
+
+function intersectY(out, ax, ay, bx, by, y) {
+    const t = (y - ay) / (by - ay);
+    addPoint(out, ax + (bx - ax) * t, y, 1);
+    return t;
+}
+
+function wrap(features, options) {
+    const buffer = options.buffer / options.extent;
+    let merged = features;
+    const left  = clip(features, 1, -1 - buffer, buffer,     0, -1, 2, options); // left world copy
+    const right = clip(features, 1,  1 - buffer, 2 + buffer, 0, -1, 2, options); // right world copy
+
+    if (left || right) {
+        merged = clip(features, 1, -buffer, 1 + buffer, 0, -1, 2, options) || []; // center world copy
+
+        if (left) merged = shiftFeatureCoords(left, 1).concat(merged); // merge left into center
+        if (right) merged = merged.concat(shiftFeatureCoords(right, -1)); // merge right into center
+    }
+
+    return merged;
+}
+
+function shiftFeatureCoords(features, offset) {
+    const newFeatures = [];
+
+    for (let i = 0; i < features.length; i++) {
+        const feature = features[i];
+        const type = feature.type;
+
+        let newGeometry;
+
+        if (type === 'Point' || type === 'MultiPoint' || type === 'LineString') {
+            newGeometry = shiftCoords(feature.geometry, offset);
+
+        } else if (type === 'MultiLineString' || type === 'Polygon') {
+            newGeometry = [];
+            for (const line of feature.geometry) {
+                newGeometry.push(shiftCoords(line, offset));
+            }
+        } else if (type === 'MultiPolygon') {
+            newGeometry = [];
+            for (const polygon of feature.geometry) {
+                const newPolygon = [];
+                for (const line of polygon) {
+                    newPolygon.push(shiftCoords(line, offset));
+                }
+                newGeometry.push(newPolygon);
+            }
+        }
+
+        newFeatures.push(createFeature(feature.id, type, newGeometry, feature.tags));
+    }
+
+    return newFeatures;
+}
+
+function shiftCoords(points, offset) {
+    const newPoints = [];
+    newPoints.size = points.size;
+
+    if (points.start !== undefined) {
+        newPoints.start = points.start;
+        newPoints.end = points.end;
+    }
+
+    for (let i = 0; i < points.length; i += 3) {
+        newPoints.push(points[i] + offset, points[i + 1], points[i + 2]);
+    }
+    return newPoints;
+}
+
+// Transforms the coordinates of each feature in the given tile from
+// mercator-projected space into (extent x extent) tile space.
+function transformTile(tile, extent) {
+    if (tile.transformed) return tile;
+
+    const z2 = 1 << tile.z;
+    const tx = tile.x;
+    const ty = tile.y;
+
+    for (const feature of tile.features) {
+        const geom = feature.geometry;
+        const type = feature.type;
+
+        feature.geometry = [];
+
+        if (type === 1) {
+            for (let j = 0; j < geom.length; j += 2) {
+                feature.geometry.push(transformPoint(geom[j], geom[j + 1], extent, z2, tx, ty));
+            }
+        } else {
+            for (let j = 0; j < geom.length; j++) {
+                const ring = [];
+                for (let k = 0; k < geom[j].length; k += 2) {
+                    ring.push(transformPoint(geom[j][k], geom[j][k + 1], extent, z2, tx, ty));
+                }
+                feature.geometry.push(ring);
+            }
+        }
+    }
+
+    tile.transformed = true;
+
+    return tile;
+}
+
+function transformPoint(x, y, extent, z2, tx, ty) {
+    return [
+        Math.round(extent * (x * z2 - tx)),
+        Math.round(extent * (y * z2 - ty))];
+}
+
+function createTile(features, z, tx, ty, options) {
+    const tolerance = z === options.maxZoom ? 0 : options.tolerance / ((1 << z) * options.extent);
+    const tile = {
+        features: [],
+        numPoints: 0,
+        numSimplified: 0,
+        numFeatures: features.length,
+        source: null,
+        x: tx,
+        y: ty,
+        z,
+        transformed: false,
+        minX: 2,
+        minY: 1,
+        maxX: -1,
+        maxY: 0
+    };
+    for (const feature of features) {
+        addFeature$1(tile, feature, tolerance, options);
+    }
+    return tile;
+}
+
+function addFeature$1(tile, feature, tolerance, options) {
+    const geom = feature.geometry;
+    const type = feature.type;
+    const simplified = [];
+
+    tile.minX = Math.min(tile.minX, feature.minX);
+    tile.minY = Math.min(tile.minY, feature.minY);
+    tile.maxX = Math.max(tile.maxX, feature.maxX);
+    tile.maxY = Math.max(tile.maxY, feature.maxY);
+
+    if (type === 'Point' || type === 'MultiPoint') {
+        for (let i = 0; i < geom.length; i += 3) {
+            simplified.push(geom[i], geom[i + 1]);
+            tile.numPoints++;
+            tile.numSimplified++;
+        }
+
+    } else if (type === 'LineString') {
+        addLine(simplified, geom, tile, tolerance, false, false);
+
+    } else if (type === 'MultiLineString' || type === 'Polygon') {
+        for (let i = 0; i < geom.length; i++) {
+            addLine(simplified, geom[i], tile, tolerance, type === 'Polygon', i === 0);
+        }
+
+    } else if (type === 'MultiPolygon') {
+
+        for (let k = 0; k < geom.length; k++) {
+            const polygon = geom[k];
+            for (let i = 0; i < polygon.length; i++) {
+                addLine(simplified, polygon[i], tile, tolerance, true, i === 0);
+            }
+        }
+    }
+
+    if (simplified.length) {
+        let tags = feature.tags || null;
+
+        if (type === 'LineString' && options.lineMetrics) {
+            tags = {};
+            for (const key in feature.tags) tags[key] = feature.tags[key];
+            tags['mapbox_clip_start'] = geom.start / geom.size;
+            tags['mapbox_clip_end'] = geom.end / geom.size;
+        }
+
+        const tileFeature = {
+            geometry: simplified,
+            type: type === 'Polygon' || type === 'MultiPolygon' ? 3 :
+            (type === 'LineString' || type === 'MultiLineString' ? 2 : 1),
+            tags
+        };
+        if (feature.id !== null) {
+            tileFeature.id = feature.id;
+        }
+        tile.features.push(tileFeature);
+    }
+}
+
+function addLine(result, geom, tile, tolerance, isPolygon, isOuter) {
+    const sqTolerance = tolerance * tolerance;
+
+    if (tolerance > 0 && (geom.size < (isPolygon ? sqTolerance : tolerance))) {
+        tile.numPoints += geom.length / 3;
+        return;
+    }
+
+    const ring = [];
+
+    for (let i = 0; i < geom.length; i += 3) {
+        if (tolerance === 0 || geom[i + 2] > sqTolerance) {
+            tile.numSimplified++;
+            ring.push(geom[i], geom[i + 1]);
+        }
+        tile.numPoints++;
+    }
+
+    if (isPolygon) rewind(ring, isOuter);
+
+    result.push(ring);
+}
+
+function rewind(ring, clockwise) {
+    let area = 0;
+    for (let i = 0, len = ring.length, j = len - 2; i < len; j = i, i += 2) {
+        area += (ring[i] - ring[j]) * (ring[i + 1] + ring[j + 1]);
+    }
+    if (area > 0 === clockwise) {
+        for (let i = 0, len = ring.length; i < len / 2; i += 2) {
+            const x = ring[i];
+            const y = ring[i + 1];
+            ring[i] = ring[len - 2 - i];
+            ring[i + 1] = ring[len - 1 - i];
+            ring[len - 2 - i] = x;
+            ring[len - 1 - i] = y;
+        }
+    }
+}
+
+const defaultOptions = {
+    maxZoom: 14,            // max zoom to preserve detail on
+    indexMaxZoom: 5,        // max zoom in the tile index
+    indexMaxPoints: 100000, // max number of points per tile in the tile index
+    tolerance: 3,           // simplification tolerance (higher means simpler)
+    extent: 4096,           // tile extent
+    buffer: 64,             // tile buffer on each side
+    lineMetrics: false,     // whether to calculate line metrics
+    promoteId: null,        // name of a feature property to be promoted to feature.id
+    generateId: false,      // whether to generate feature ids. Cannot be used with promoteId
+    debug: 0                // logging level (0, 1 or 2)
+};
+
+class GeoJSONVT {
+    constructor(data, options) {
+        options = this.options = extend(Object.create(defaultOptions), options);
+
+        const debug = options.debug;
+
+        if (debug) console.time('preprocess data');
+
+        if (options.maxZoom < 0 || options.maxZoom > 24) throw new Error('maxZoom should be in the 0-24 range');
+        if (options.promoteId && options.generateId) throw new Error('promoteId and generateId cannot be used together.');
+
+        // projects and adds simplification info
+        let features = convert(data, options);
+
+        // tiles and tileCoords are part of the public API
+        this.tiles = {};
+        this.tileCoords = [];
+
+        if (debug) {
+            console.timeEnd('preprocess data');
+            console.log('index: maxZoom: %d, maxPoints: %d', options.indexMaxZoom, options.indexMaxPoints);
+            console.time('generate tiles');
+            this.stats = {};
+            this.total = 0;
+        }
+
+        // wraps features (ie extreme west and extreme east)
+        features = wrap(features, options);
+
+        // start slicing from the top tile down
+        if (features.length) this.splitTile(features, 0, 0, 0);
+
+        if (debug) {
+            if (features.length) console.log('features: %d, points: %d', this.tiles[0].numFeatures, this.tiles[0].numPoints);
+            console.timeEnd('generate tiles');
+            console.log('tiles generated:', this.total, JSON.stringify(this.stats));
+        }
+    }
+
+    // splits features from a parent tile to sub-tiles.
+    // z, x, and y are the coordinates of the parent tile
+    // cz, cx, and cy are the coordinates of the target tile
+    //
+    // If no target tile is specified, splitting stops when we reach the maximum
+    // zoom or the number of points is low as specified in the options.
+    splitTile(features, z, x, y, cz, cx, cy) {
+
+        const stack = [features, z, x, y];
+        const options = this.options;
+        const debug = options.debug;
+
+        // avoid recursion by using a processing queue
+        while (stack.length) {
+            y = stack.pop();
+            x = stack.pop();
+            z = stack.pop();
+            features = stack.pop();
+
+            const z2 = 1 << z;
+            const id = toID(z, x, y);
+            let tile = this.tiles[id];
+
+            if (!tile) {
+                if (debug > 1) console.time('creation');
+
+                tile = this.tiles[id] = createTile(features, z, x, y, options);
+                this.tileCoords.push({z, x, y});
+
+                if (debug) {
+                    if (debug > 1) {
+                        console.log('tile z%d-%d-%d (features: %d, points: %d, simplified: %d)',
+                            z, x, y, tile.numFeatures, tile.numPoints, tile.numSimplified);
+                        console.timeEnd('creation');
+                    }
+                    const key = `z${  z}`;
+                    this.stats[key] = (this.stats[key] || 0) + 1;
+                    this.total++;
+                }
+            }
+
+            // save reference to original geometry in tile so that we can drill down later if we stop now
+            tile.source = features;
+
+            // if it's the first-pass tiling
+            if (cz == null) {
+                // stop tiling if we reached max zoom, or if the tile is too simple
+                if (z === options.indexMaxZoom || tile.numPoints <= options.indexMaxPoints) continue;
+            // if a drilldown to a specific tile
+            } else if (z === options.maxZoom || z === cz) {
+                // stop tiling if we reached base zoom or our target tile zoom
+                continue;
+            } else if (cz != null) {
+                // stop tiling if it's not an ancestor of the target tile
+                const zoomSteps = cz - z;
+                if (x !== cx >> zoomSteps || y !== cy >> zoomSteps) continue;
+            }
+
+            // if we slice further down, no need to keep source geometry
+            tile.source = null;
+
+            if (features.length === 0) continue;
+
+            if (debug > 1) console.time('clipping');
+
+            // values we'll use for clipping
+            const k1 = 0.5 * options.buffer / options.extent;
+            const k2 = 0.5 - k1;
+            const k3 = 0.5 + k1;
+            const k4 = 1 + k1;
+
+            let tl = null;
+            let bl = null;
+            let tr = null;
+            let br = null;
+
+            let left  = clip(features, z2, x - k1, x + k3, 0, tile.minX, tile.maxX, options);
+            let right = clip(features, z2, x + k2, x + k4, 0, tile.minX, tile.maxX, options);
+            features = null;
+
+            if (left) {
+                tl = clip(left, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
+                bl = clip(left, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
+                left = null;
+            }
+
+            if (right) {
+                tr = clip(right, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
+                br = clip(right, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
+                right = null;
+            }
+
+            if (debug > 1) console.timeEnd('clipping');
+
+            stack.push(tl || [], z + 1, x * 2,     y * 2);
+            stack.push(bl || [], z + 1, x * 2,     y * 2 + 1);
+            stack.push(tr || [], z + 1, x * 2 + 1, y * 2);
+            stack.push(br || [], z + 1, x * 2 + 1, y * 2 + 1);
+        }
+    }
+
+    getTile(z, x, y) {
+        z = +z;
+        x = +x;
+        y = +y;
+
+        const options = this.options;
+        const {extent, debug} = options;
+
+        if (z < 0 || z > 24) return null;
+
+        const z2 = 1 << z;
+        x = (x + z2) & (z2 - 1); // wrap tile x coordinate
+
+        const id = toID(z, x, y);
+        if (this.tiles[id]) return transformTile(this.tiles[id], extent);
+
+        if (debug > 1) console.log('drilling down to z%d-%d-%d', z, x, y);
+
+        let z0 = z;
+        let x0 = x;
+        let y0 = y;
+        let parent;
+
+        while (!parent && z0 > 0) {
+            z0--;
+            x0 = x0 >> 1;
+            y0 = y0 >> 1;
+            parent = this.tiles[toID(z0, x0, y0)];
+        }
+
+        if (!parent || !parent.source) return null;
+
+        // if we found a parent tile containing the original geometry, we can drill down from it
+        if (debug > 1) {
+            console.log('found parent tile z%d-%d-%d', z0, x0, y0);
+            console.time('drilling down');
+        }
+        this.splitTile(parent.source, z0, x0, y0, z, x, y);
+        if (debug > 1) console.timeEnd('drilling down');
+
+        return this.tiles[id] ? transformTile(this.tiles[id], extent) : null;
+    }
+}
+
+function toID(z, x, y) {
+    return (((1 << z) * y + x) * 32) + z;
+}
+
+function extend(dest, src) {
+    for (const i in src) dest[i] = src[i];
+    return dest;
+}
+
+function geojsonvt(data, options) {
+    return new GeoJSONVT(data, options);
+}
+
+/**
+ * The {@link WorkerSource} implementation that supports {@link GeoJSONSource}.
+ * This class is designed to be easily reused to support custom source types
+ * for data formats that can be parsed/converted into an in-memory GeoJSON
+ * representation. To do so, create it with
+ * `new GeoJSONWorkerSource(actor, layerIndex, customLoadGeoJSONFunction)`.
+ * For a full example, see [mapbox-gl-topojson](https://github.com/developmentseed/mapbox-gl-topojson).
+ */
+class GeoJSONWorkerSource extends VectorTileWorkerSource {
+    constructor() {
+        super(...arguments);
+        this._dataUpdateable = new Map();
+    }
+    loadVectorTile(params, _abortController) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const canonical = params.tileID.canonical;
+            if (!this._geoJSONIndex) {
+                throw new Error('Unable to parse the data into a cluster or geojson');
+            }
+            const geoJSONTile = this._geoJSONIndex.getTile(canonical.z, canonical.x, canonical.y);
+            if (!geoJSONTile) {
+                return null;
+            }
+            const geojsonWrapper = new o(geoJSONTile.features, { version: 2, extent: EXTENT$1 });
+            // Encode the geojson-vt tile into binary vector tile form.  This
+            // is a convenience that allows `FeatureIndex` to operate the same way
+            // across `VectorTileSource` and `GeoJSONSource` data.
+            let pbf = s(geojsonWrapper);
+            if (pbf.byteOffset !== 0 || pbf.byteLength !== pbf.buffer.byteLength) {
+                // Compatibility with node Buffer (https://github.com/mapbox/pbf/issues/35)
+                pbf = new Uint8Array(pbf);
+            }
+            return {
+                vectorTile: geojsonWrapper,
+                rawData: pbf.buffer
+            };
+        });
+    }
+    /**
+     * Fetches (if appropriate), parses, and index geojson data into tiles. This
+     * preparatory method must be called before {@link GeoJSONWorkerSource.loadTile}
+     * can correctly serve up tiles.
+     *
+     * Defers to {@link GeoJSONWorkerSource.loadAndProcessGeoJSON} for the pre-processing.
+     *
+     * When a `loadData` request comes in while a previous one is being processed,
+     * the previous one is aborted.
+     *
+     * @param params - the parameters
+     * @returns a promise that resolves when the data is loaded and parsed into a GeoJSON object
+     */
+    loadData(params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            (_a = this._pendingRequest) === null || _a === void 0 ? void 0 : _a.abort();
+            const perf = (params && params.request && params.request.collectResourceTiming) ?
+                new RequestPerformance(params.request) : false;
+            this._pendingRequest = new AbortController();
+            try {
+                this._pendingData = this.loadAndProcessGeoJSON(params, this._pendingRequest);
+                const data = yield this._pendingData;
+                this._geoJSONIndex = params.cluster ?
+                    new Supercluster(getSuperclusterOptions(params)).load(data.features) :
+                    geojsonvt(data, params.geojsonVtOptions);
+                this.loaded = {};
+                const result = { data };
+                if (perf) {
+                    const resourceTimingData = perf.finish();
+                    // it's necessary to eval the result of getEntriesByName() here via parse/stringify
+                    // late evaluation in the main thread causes TypeError: illegal invocation
+                    if (resourceTimingData) {
+                        result.resourceTiming = {};
+                        result.resourceTiming[params.source] = JSON.parse(JSON.stringify(resourceTimingData));
+                    }
+                }
+                return result;
+            }
+            catch (err) {
+                delete this._pendingRequest;
+                if (isAbortError(err)) {
+                    return { abandoned: true };
+                }
+                throw err;
+            }
+        });
+    }
+    /**
+     * Allows to get the source's actual GeoJSON.
+     *
+     * @returns a promise which is resolved with the source's actual GeoJSON
+     */
+    getData() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this._pendingData;
+        });
+    }
+    /**
+    * Implements {@link WorkerSource.reloadTile}.
+    *
+    * If the tile is loaded, uses the implementation in VectorTileWorkerSource.
+    * Otherwise, such as after a setData() call, we load the tile fresh.
+    *
+    * @param params - the parameters
+    * @returns A promise that resolves when the tile is reloaded
+    */
+    reloadTile(params) {
+        const loaded = this.loaded, uid = params.uid;
+        if (loaded && loaded[uid]) {
+            return super.reloadTile(params);
+        }
+        else {
+            return this.loadTile(params);
+        }
+    }
+    /**
+     * Fetch, parse and process GeoJSON according to the given params.
+     *
+     * Defers to {@link GeoJSONWorkerSource.loadGeoJSON} for the fetching and parsing.
+     *
+     * @param params - the parameters
+     * @param abortController - the abort controller that allows aborting this operation
+     * @returns a promise that is resolved with the processes GeoJSON
+     */
+    loadAndProcessGeoJSON(params, abortController) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let data = yield this.loadGeoJSON(params, abortController);
+            delete this._pendingRequest;
+            if (typeof data !== 'object') {
+                throw new Error(`Input data given to '${params.source}' is not a valid GeoJSON object.`);
+            }
+            rewind$1(data, true);
+            if (params.filter) {
+                const compiled = createExpression(params.filter, { type: 'boolean', 'property-type': 'data-driven', overridable: false, transition: false });
+                if (compiled.result === 'error')
+                    throw new Error(compiled.value.map(err => `${err.key}: ${err.message}`).join(', '));
+                const features = data.features.filter(feature => compiled.value.evaluate({ zoom: 0 }, feature));
+                data = { type: 'FeatureCollection', features };
+            }
+            return data;
+        });
+    }
+    /**
+     * Fetch and parse GeoJSON according to the given params.
+     *
+     * GeoJSON is loaded and parsed from `params.url` if it exists, or else
+     * expected as a literal (string or object) `params.data`.
+     *
+     * @param params - the parameters
+     * @param abortController - the abort controller that allows aborting this operation
+     * @returns a promise that resolves when the data is loaded
+     */
+    loadGeoJSON(params, abortController) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { promoteId } = params;
+            if (params.request) {
+                const response = yield getJSON(params.request, abortController);
+                this._dataUpdateable = isUpdateableGeoJSON(response.data, promoteId) ? toUpdateable(response.data, promoteId) : undefined;
+                return response.data;
+            }
+            if (typeof params.data === 'string') {
+                try {
+                    const parsed = JSON.parse(params.data);
+                    this._dataUpdateable = isUpdateableGeoJSON(parsed, promoteId) ? toUpdateable(parsed, promoteId) : undefined;
+                    return parsed;
+                }
+                catch (_a) {
+                    throw new Error(`Input data given to '${params.source}' is not a valid GeoJSON object.`);
+                }
+            }
+            if (!params.dataDiff) {
+                throw new Error(`Input data given to '${params.source}' is not a valid GeoJSON object.`);
+            }
+            if (!this._dataUpdateable) {
+                throw new Error(`Cannot update existing geojson data in ${params.source}`);
+            }
+            applySourceDiff(this._dataUpdateable, params.dataDiff, promoteId);
+            return { type: 'FeatureCollection', features: Array.from(this._dataUpdateable.values()) };
+        });
+    }
+    removeSource(_params) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._pendingRequest) {
+                this._pendingRequest.abort();
+            }
+        });
+    }
+    getClusterExpansionZoom(params) {
+        return this._geoJSONIndex.getClusterExpansionZoom(params.clusterId);
+    }
+    getClusterChildren(params) {
+        return this._geoJSONIndex.getChildren(params.clusterId);
+    }
+    getClusterLeaves(params) {
+        return this._geoJSONIndex.getLeaves(params.clusterId, params.limit, params.offset);
+    }
+}
+function getSuperclusterOptions({ superclusterOptions, clusterProperties }) {
+    if (!clusterProperties || !superclusterOptions)
+        return superclusterOptions;
+    const mapExpressions = {};
+    const reduceExpressions = {};
+    const globals = { accumulated: null, zoom: 0 };
+    const feature = { properties: null };
+    const propertyNames = Object.keys(clusterProperties);
+    for (const key of propertyNames) {
+        const [operator, mapExpression] = clusterProperties[key];
+        const mapExpressionParsed = createExpression(mapExpression);
+        const reduceExpressionParsed = createExpression(typeof operator === 'string' ? [operator, ['accumulated'], ['get', key]] : operator);
+        mapExpressions[key] = mapExpressionParsed.value;
+        reduceExpressions[key] = reduceExpressionParsed.value;
+    }
+    superclusterOptions.map = (pointProperties) => {
+        feature.properties = pointProperties;
+        const properties = {};
+        for (const key of propertyNames) {
+            properties[key] = mapExpressions[key].evaluate(globals, feature);
+        }
+        return properties;
+    };
+    superclusterOptions.reduce = (accumulated, clusterProperties) => {
+        feature.properties = clusterProperties;
+        for (const key of propertyNames) {
+            globals.accumulated = accumulated[key];
+            accumulated[key] = reduceExpressions[key].evaluate(globals, feature);
+        }
+    };
+    return superclusterOptions;
+}
+
+/**
+ * The Worker class responsible for background thread related execution
+ */
+let Worker$1 = class Worker {
+    constructor(self) {
+        this.self = self;
+        this.actor = new Actor(self);
+        this.layerIndexes = {};
+        this.availableImages = {};
+        this.workerSources = {};
+        this.demWorkerSources = {};
+        this.externalWorkerSourceTypes = {};
+        this.globalStates = new Map();
+        this.self.registerWorkerSource = (name, WorkerSource) => {
+            if (this.externalWorkerSourceTypes[name]) {
+                throw new Error(`Worker source with name "${name}" already registered.`);
+            }
+            this.externalWorkerSourceTypes[name] = WorkerSource;
+        };
+        this.self.addProtocol = addProtocol;
+        this.self.removeProtocol = removeProtocol;
+        // This is invoked by the RTL text plugin when the download via the `importScripts` call has finished, and the code has been parsed.
+        this.self.registerRTLTextPlugin = (rtlTextPlugin) => {
+            rtlWorkerPlugin.setMethods(rtlTextPlugin);
+        };
+        this.actor.registerMessageHandler("LDT" /* MessageType.loadDEMTile */, (mapId, params) => {
+            return this._getDEMWorkerSource(mapId, params.source).loadTile(params);
+        });
+        this.actor.registerMessageHandler("RDT" /* MessageType.removeDEMTile */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            this._getDEMWorkerSource(mapId, params.source).removeTile(params);
+        }));
+        this.actor.registerMessageHandler("GCEZ" /* MessageType.getClusterExpansionZoom */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            return this._getWorkerSource(mapId, params.type, params.source).getClusterExpansionZoom(params);
+        }));
+        this.actor.registerMessageHandler("GCC" /* MessageType.getClusterChildren */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            return this._getWorkerSource(mapId, params.type, params.source).getClusterChildren(params);
+        }));
+        this.actor.registerMessageHandler("GCL" /* MessageType.getClusterLeaves */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            return this._getWorkerSource(mapId, params.type, params.source).getClusterLeaves(params);
+        }));
+        this.actor.registerMessageHandler("LD" /* MessageType.loadData */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).loadData(params);
+        });
+        this.actor.registerMessageHandler("GD" /* MessageType.getData */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).getData();
+        });
+        this.actor.registerMessageHandler("LT" /* MessageType.loadTile */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).loadTile(params);
+        });
+        this.actor.registerMessageHandler("RT" /* MessageType.reloadTile */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).reloadTile(params);
+        });
+        this.actor.registerMessageHandler("AT" /* MessageType.abortTile */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).abortTile(params);
+        });
+        this.actor.registerMessageHandler("RMT" /* MessageType.removeTile */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).removeTile(params);
+        });
+        this.actor.registerMessageHandler("RS" /* MessageType.removeSource */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            if (!this.workerSources[mapId] ||
+                !this.workerSources[mapId][params.type] ||
+                !this.workerSources[mapId][params.type][params.source]) {
+                return;
+            }
+            const worker = this.workerSources[mapId][params.type][params.source];
+            delete this.workerSources[mapId][params.type][params.source];
+            if (worker.removeSource !== undefined) {
+                worker.removeSource(params);
+            }
+        }));
+        this.actor.registerMessageHandler("RM" /* MessageType.removeMap */, (mapId) => __awaiter(this, void 0, void 0, function* () {
+            delete this.layerIndexes[mapId];
+            delete this.availableImages[mapId];
+            delete this.workerSources[mapId];
+            delete this.demWorkerSources[mapId];
+            this.globalStates.delete(mapId);
+        }));
+        this.actor.registerMessageHandler("SR" /* MessageType.setReferrer */, (_mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            this.referrer = params;
+        }));
+        this.actor.registerMessageHandler("SRPS" /* MessageType.syncRTLPluginState */, (mapId, params) => {
+            return this._syncRTLPluginState(mapId, params);
+        });
+        this.actor.registerMessageHandler("IS" /* MessageType.importScript */, (_mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            this.self.importScripts(params);
+        }));
+        this.actor.registerMessageHandler("SI" /* MessageType.setImages */, (mapId, params) => {
+            return this._setImages(mapId, params);
+        });
+        this.actor.registerMessageHandler("UL" /* MessageType.updateLayers */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            this._getLayerIndex(mapId).update(params.layers, params.removedIds, this._getGlobalState(mapId));
+        }));
+        this.actor.registerMessageHandler("UGS" /* MessageType.updateGlobalState */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            const globalState = this._getGlobalState(mapId);
+            for (const key in params) {
+                globalState[key] = params[key];
+            }
+        }));
+        this.actor.registerMessageHandler("SL" /* MessageType.setLayers */, (mapId, params) => __awaiter(this, void 0, void 0, function* () {
+            this._getLayerIndex(mapId).replace(params, this._getGlobalState(mapId));
+        }));
+    }
+    _getGlobalState(mapId) {
+        let state = this.globalStates.get(mapId);
+        if (!state) {
+            state = {};
+            this.globalStates.set(mapId, state);
+        }
+        return state;
+    }
+    _setImages(mapId, images) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.availableImages[mapId] = images;
+            for (const workerSource in this.workerSources[mapId]) {
+                const ws = this.workerSources[mapId][workerSource];
+                for (const source in ws) {
+                    ws[source].availableImages = images;
+                }
+            }
+        });
+    }
+    _syncRTLPluginState(mapId, incomingState) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const state = yield rtlWorkerPlugin.syncState(incomingState, this.self.importScripts);
+            return state;
+        });
+    }
+    _getAvailableImages(mapId) {
+        let availableImages = this.availableImages[mapId];
+        if (!availableImages) {
+            availableImages = [];
+        }
+        return availableImages;
+    }
+    _getLayerIndex(mapId) {
+        let layerIndexes = this.layerIndexes[mapId];
+        if (!layerIndexes) {
+            layerIndexes = this.layerIndexes[mapId] = new StyleLayerIndex();
+        }
+        return layerIndexes;
+    }
+    /**
+     * This is basically a lazy initialization of a worker per mapId and sourceType and sourceName
+     * @param mapId - the mapId
+     * @param sourceType - the source type - 'vector' for example
+     * @param sourceName - the source name - 'osm' for example
+     * @returns a new instance or a cached one
+     */
+    _getWorkerSource(mapId, sourceType, sourceName) {
+        if (!this.workerSources[mapId])
+            this.workerSources[mapId] = {};
+        if (!this.workerSources[mapId][sourceType])
+            this.workerSources[mapId][sourceType] = {};
+        if (!this.workerSources[mapId][sourceType][sourceName]) {
+            // use a wrapped actor so that we can attach a target mapId param
+            // to any messages invoked by the WorkerSource, this is very important when there are multiple maps
+            const actor = {
+                sendAsync: (message, abortController) => {
+                    message.targetMapId = mapId;
+                    return this.actor.sendAsync(message, abortController);
+                }
+            };
+            switch (sourceType) {
+                case 'vector':
+                    this.workerSources[mapId][sourceType][sourceName] = new VectorTileWorkerSource(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
+                    break;
+                case 'geojson':
+                    this.workerSources[mapId][sourceType][sourceName] = new GeoJSONWorkerSource(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
+                    break;
+                default:
+                    this.workerSources[mapId][sourceType][sourceName] = new (this.externalWorkerSourceTypes[sourceType])(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
+                    break;
+            }
+        }
+        return this.workerSources[mapId][sourceType][sourceName];
+    }
+    /**
+     * This is basically a lazy initialization of a worker per mapId and source
+     * @param mapId - the mapId
+     * @param sourceType - the source type - 'raster-dem' for example
+     * @returns a new instance or a cached one
+     */
+    _getDEMWorkerSource(mapId, sourceType) {
+        if (!this.demWorkerSources[mapId])
+            this.demWorkerSources[mapId] = {};
+        if (!this.demWorkerSources[mapId][sourceType]) {
+            this.demWorkerSources[mapId][sourceType] = new RasterDEMTileWorkerSource();
+        }
+        return this.demWorkerSources[mapId][sourceType];
+    }
+};
+if (isWorker(self)) {
+    self.worker = new Worker$1(self);
 }
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
@@ -59604,10 +63149,10 @@ function drawExtrusionTiles(painter, source, layer, coords, depthMode, stencilMo
     }
 }
 
-const layout$6 = createLayout([
+const layout$4 = createLayout([
     { name: 'a_pos', components: 2, type: 'Int16' }
 ], 4);
-const { members: members$4, size: size$4, alignment: alignment$4 } = layout$6;
+const { members, size, alignment } = layout$4;
 
 const VERTEX_MIN_VALUE = -32768; // -(2^15)
 // Extrude is in range 0..7, which will be mapped to -1..1 in the shader.
@@ -59697,7 +63242,7 @@ class CircleBucket {
     }
     upload(context) {
         if (!this.uploaded) {
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$4);
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members);
             this.indexBuffer = context.createIndexBuffer(this.indexArray);
         }
         this.programConfigurations.upload(context);
@@ -62399,8 +65944,8 @@ function resolveTokens(properties, text) {
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
-let layout$5;
-const getLayout$3 = () => layout$5 = layout$5 || new Properties({
+let layout$3;
+const getLayout$3 = () => layout$3 = layout$3 || new Properties({
     "symbol-placement": new DataConstantProperty(v8Spec["layout_symbol"]["symbol-placement"]),
     "symbol-spacing": new DataConstantProperty(v8Spec["layout_symbol"]["symbol-spacing"]),
     "symbol-avoid-edges": new DataConstantProperty(v8Spec["layout_symbol"]["symbol-avoid-edges"]),
@@ -64199,333 +67744,6 @@ class PauseablePlacement {
     }
 }
 
-const ARRAY_TYPES = [
-    Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array,
-    Int32Array, Uint32Array, Float32Array, Float64Array
-];
-
-/** @typedef {Int8ArrayConstructor | Uint8ArrayConstructor | Uint8ClampedArrayConstructor | Int16ArrayConstructor | Uint16ArrayConstructor | Int32ArrayConstructor | Uint32ArrayConstructor | Float32ArrayConstructor | Float64ArrayConstructor} TypedArrayConstructor */
-
-const VERSION = 1; // serialized format version
-const HEADER_SIZE = 8;
-
-class KDBush {
-
-    /**
-     * Creates an index from raw `ArrayBuffer` data.
-     * @param {ArrayBuffer} data
-     */
-    static from(data) {
-        if (!(data instanceof ArrayBuffer)) {
-            throw new Error('Data must be an instance of ArrayBuffer.');
-        }
-        const [magic, versionAndType] = new Uint8Array(data, 0, 2);
-        if (magic !== 0xdb) {
-            throw new Error('Data does not appear to be in a KDBush format.');
-        }
-        const version = versionAndType >> 4;
-        if (version !== VERSION) {
-            throw new Error(`Got v${version} data when expected v${VERSION}.`);
-        }
-        const ArrayType = ARRAY_TYPES[versionAndType & 0x0f];
-        if (!ArrayType) {
-            throw new Error('Unrecognized array type.');
-        }
-        const [nodeSize] = new Uint16Array(data, 2, 1);
-        const [numItems] = new Uint32Array(data, 4, 1);
-
-        return new KDBush(numItems, nodeSize, ArrayType, data);
-    }
-
-    /**
-     * Creates an index that will hold a given number of items.
-     * @param {number} numItems
-     * @param {number} [nodeSize=64] Size of the KD-tree node (64 by default).
-     * @param {TypedArrayConstructor} [ArrayType=Float64Array] The array type used for coordinates storage (`Float64Array` by default).
-     * @param {ArrayBuffer} [data] (For internal use only)
-     */
-    constructor(numItems, nodeSize = 64, ArrayType = Float64Array, data) {
-        if (isNaN(numItems) || numItems < 0) throw new Error(`Unpexpected numItems value: ${numItems}.`);
-
-        this.numItems = +numItems;
-        this.nodeSize = Math.min(Math.max(+nodeSize, 2), 65535);
-        this.ArrayType = ArrayType;
-        this.IndexArrayType = numItems < 65536 ? Uint16Array : Uint32Array;
-
-        const arrayTypeIndex = ARRAY_TYPES.indexOf(this.ArrayType);
-        const coordsByteSize = numItems * 2 * this.ArrayType.BYTES_PER_ELEMENT;
-        const idsByteSize = numItems * this.IndexArrayType.BYTES_PER_ELEMENT;
-        const padCoords = (8 - idsByteSize % 8) % 8;
-
-        if (arrayTypeIndex < 0) {
-            throw new Error(`Unexpected typed array class: ${ArrayType}.`);
-        }
-
-        if (data && (data instanceof ArrayBuffer)) { // reconstruct an index from a buffer
-            this.data = data;
-            this.ids = new this.IndexArrayType(this.data, HEADER_SIZE, numItems);
-            this.coords = new this.ArrayType(this.data, HEADER_SIZE + idsByteSize + padCoords, numItems * 2);
-            this._pos = numItems * 2;
-            this._finished = true;
-        } else { // initialize a new index
-            this.data = new ArrayBuffer(HEADER_SIZE + coordsByteSize + idsByteSize + padCoords);
-            this.ids = new this.IndexArrayType(this.data, HEADER_SIZE, numItems);
-            this.coords = new this.ArrayType(this.data, HEADER_SIZE + idsByteSize + padCoords, numItems * 2);
-            this._pos = 0;
-            this._finished = false;
-
-            // set header
-            new Uint8Array(this.data, 0, 2).set([0xdb, (VERSION << 4) + arrayTypeIndex]);
-            new Uint16Array(this.data, 2, 1)[0] = nodeSize;
-            new Uint32Array(this.data, 4, 1)[0] = numItems;
-        }
-    }
-
-    /**
-     * Add a point to the index.
-     * @param {number} x
-     * @param {number} y
-     * @returns {number} An incremental index associated with the added item (starting from `0`).
-     */
-    add(x, y) {
-        const index = this._pos >> 1;
-        this.ids[index] = index;
-        this.coords[this._pos++] = x;
-        this.coords[this._pos++] = y;
-        return index;
-    }
-
-    /**
-     * Perform indexing of the added points.
-     */
-    finish() {
-        const numAdded = this._pos >> 1;
-        if (numAdded !== this.numItems) {
-            throw new Error(`Added ${numAdded} items when expected ${this.numItems}.`);
-        }
-        // kd-sort both arrays for efficient search
-        sort(this.ids, this.coords, this.nodeSize, 0, this.numItems - 1, 0);
-
-        this._finished = true;
-        return this;
-    }
-
-    /**
-     * Search the index for items within a given bounding box.
-     * @param {number} minX
-     * @param {number} minY
-     * @param {number} maxX
-     * @param {number} maxY
-     * @returns {number[]} An array of indices correponding to the found items.
-     */
-    range(minX, minY, maxX, maxY) {
-        if (!this._finished) throw new Error('Data not yet indexed - call index.finish().');
-
-        const {ids, coords, nodeSize} = this;
-        const stack = [0, ids.length - 1, 0];
-        const result = [];
-
-        // recursively search for items in range in the kd-sorted arrays
-        while (stack.length) {
-            const axis = stack.pop() || 0;
-            const right = stack.pop() || 0;
-            const left = stack.pop() || 0;
-
-            // if we reached "tree node", search linearly
-            if (right - left <= nodeSize) {
-                for (let i = left; i <= right; i++) {
-                    const x = coords[2 * i];
-                    const y = coords[2 * i + 1];
-                    if (x >= minX && x <= maxX && y >= minY && y <= maxY) result.push(ids[i]);
-                }
-                continue;
-            }
-
-            // otherwise find the middle index
-            const m = (left + right) >> 1;
-
-            // include the middle item if it's in range
-            const x = coords[2 * m];
-            const y = coords[2 * m + 1];
-            if (x >= minX && x <= maxX && y >= minY && y <= maxY) result.push(ids[m]);
-
-            // queue search in halves that intersect the query
-            if (axis === 0 ? minX <= x : minY <= y) {
-                stack.push(left);
-                stack.push(m - 1);
-                stack.push(1 - axis);
-            }
-            if (axis === 0 ? maxX >= x : maxY >= y) {
-                stack.push(m + 1);
-                stack.push(right);
-                stack.push(1 - axis);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Search the index for items within a given radius.
-     * @param {number} qx
-     * @param {number} qy
-     * @param {number} r Query radius.
-     * @returns {number[]} An array of indices correponding to the found items.
-     */
-    within(qx, qy, r) {
-        if (!this._finished) throw new Error('Data not yet indexed - call index.finish().');
-
-        const {ids, coords, nodeSize} = this;
-        const stack = [0, ids.length - 1, 0];
-        const result = [];
-        const r2 = r * r;
-
-        // recursively search for items within radius in the kd-sorted arrays
-        while (stack.length) {
-            const axis = stack.pop() || 0;
-            const right = stack.pop() || 0;
-            const left = stack.pop() || 0;
-
-            // if we reached "tree node", search linearly
-            if (right - left <= nodeSize) {
-                for (let i = left; i <= right; i++) {
-                    if (sqDist(coords[2 * i], coords[2 * i + 1], qx, qy) <= r2) result.push(ids[i]);
-                }
-                continue;
-            }
-
-            // otherwise find the middle index
-            const m = (left + right) >> 1;
-
-            // include the middle item if it's in range
-            const x = coords[2 * m];
-            const y = coords[2 * m + 1];
-            if (sqDist(x, y, qx, qy) <= r2) result.push(ids[m]);
-
-            // queue search in halves that intersect the query
-            if (axis === 0 ? qx - r <= x : qy - r <= y) {
-                stack.push(left);
-                stack.push(m - 1);
-                stack.push(1 - axis);
-            }
-            if (axis === 0 ? qx + r >= x : qy + r >= y) {
-                stack.push(m + 1);
-                stack.push(right);
-                stack.push(1 - axis);
-            }
-        }
-
-        return result;
-    }
-}
-
-/**
- * @param {Uint16Array | Uint32Array} ids
- * @param {InstanceType<TypedArrayConstructor>} coords
- * @param {number} nodeSize
- * @param {number} left
- * @param {number} right
- * @param {number} axis
- */
-function sort(ids, coords, nodeSize, left, right, axis) {
-    if (right - left <= nodeSize) return;
-
-    const m = (left + right) >> 1; // middle index
-
-    // sort ids and coords around the middle index so that the halves lie
-    // either left/right or top/bottom correspondingly (taking turns)
-    select(ids, coords, m, left, right, axis);
-
-    // recursively kd-sort first half and second half on the opposite axis
-    sort(ids, coords, nodeSize, left, m - 1, 1 - axis);
-    sort(ids, coords, nodeSize, m + 1, right, 1 - axis);
-}
-
-/**
- * Custom Floyd-Rivest selection algorithm: sort ids and coords so that
- * [left..k-1] items are smaller than k-th item (on either x or y axis)
- * @param {Uint16Array | Uint32Array} ids
- * @param {InstanceType<TypedArrayConstructor>} coords
- * @param {number} k
- * @param {number} left
- * @param {number} right
- * @param {number} axis
- */
-function select(ids, coords, k, left, right, axis) {
-
-    while (right > left) {
-        if (right - left > 600) {
-            const n = right - left + 1;
-            const m = k - left + 1;
-            const z = Math.log(n);
-            const s = 0.5 * Math.exp(2 * z / 3);
-            const sd = 0.5 * Math.sqrt(z * s * (n - s) / n) * (m - n / 2 < 0 ? -1 : 1);
-            const newLeft = Math.max(left, Math.floor(k - m * s / n + sd));
-            const newRight = Math.min(right, Math.floor(k + (n - m) * s / n + sd));
-            select(ids, coords, k, newLeft, newRight, axis);
-        }
-
-        const t = coords[2 * k + axis];
-        let i = left;
-        let j = right;
-
-        swapItem(ids, coords, left, k);
-        if (coords[2 * right + axis] > t) swapItem(ids, coords, left, right);
-
-        while (i < j) {
-            swapItem(ids, coords, i, j);
-            i++;
-            j--;
-            while (coords[2 * i + axis] < t) i++;
-            while (coords[2 * j + axis] > t) j--;
-        }
-
-        if (coords[2 * left + axis] === t) swapItem(ids, coords, left, j);
-        else {
-            j++;
-            swapItem(ids, coords, j, right);
-        }
-
-        if (j <= k) left = j + 1;
-        if (k <= j) right = j - 1;
-    }
-}
-
-/**
- * @param {Uint16Array | Uint32Array} ids
- * @param {InstanceType<TypedArrayConstructor>} coords
- * @param {number} i
- * @param {number} j
- */
-function swapItem(ids, coords, i, j) {
-    swap(ids, i, j);
-    swap(coords, 2 * i, 2 * j);
-    swap(coords, 2 * i + 1, 2 * j + 1);
-}
-
-/**
- * @param {InstanceType<TypedArrayConstructor>} arr
- * @param {number} i
- * @param {number} j
- */
-function swap(arr, i, j) {
-    const tmp = arr[i];
-    arr[i] = arr[j];
-    arr[j] = tmp;
-}
-
-/**
- * @param {number} ax
- * @param {number} ay
- * @param {number} bx
- * @param {number} by
- */
-function sqDist(ax, ay, bx, by) {
-    const dx = ax - bx;
-    const dy = ay - by;
-    return dx * dx + dy * dy;
-}
-
 /*
     The CrossTileSymbolIndex generally works on the assumption that
     a conceptual "unique symbol" can be identified by the text of
@@ -64833,8 +68051,8 @@ class BackgroundStyleLayer extends StyleLayer {
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
-let layout$4;
-const getLayout$2 = () => layout$4 = layout$4 || new Properties({
+let layout$2;
+const getLayout$2 = () => layout$2 = layout$2 || new Properties({
     "circle-sort-key": new DataDrivenProperty(v8Spec["layout_circle"]["circle-sort-key"]),
 });
 let paint$6;
@@ -64982,437 +68200,6 @@ class ColorReliefStyleLayer extends StyleLayer {
     hasOffscreenPass() {
         return this.visibility !== 'none' && !!this.colorRampTextures;
     }
-}
-
-const layout$3 = createLayout([
-    { name: 'a_pos', components: 2, type: 'Int16' },
-    { name: 'a_normal_ed', components: 4, type: 'Int16' },
-], 4);
-const centroidAttributes = createLayout([
-    { name: 'a_centroid', components: 2, type: 'Int16' }
-], 4);
-const { members: members$3, size: size$3, alignment: alignment$3 } = layout$3;
-
-function hasPattern(type, layers, options) {
-    const patterns = options.patternDependencies;
-    let hasPattern = false;
-    for (const layer of layers) {
-        const patternProperty = layer.paint.get(`${type}-pattern`);
-        if (!patternProperty.isConstant()) {
-            hasPattern = true;
-        }
-        const constantPattern = patternProperty.constantOr(null);
-        if (constantPattern) {
-            hasPattern = true;
-            patterns[constantPattern.to] = true;
-            patterns[constantPattern.from] = true;
-        }
-    }
-    return hasPattern;
-}
-function addPatternDependencies(type, layers, patternFeature, parameters, options) {
-    const { zoom } = parameters;
-    const patterns = options.patternDependencies;
-    for (const layer of layers) {
-        const patternProperty = layer.paint.get(`${type}-pattern`);
-        const patternPropertyValue = patternProperty.value;
-        if (patternPropertyValue.kind !== 'constant') {
-            let min = patternPropertyValue.evaluate({ zoom: zoom - 1 }, patternFeature, {}, options.availableImages);
-            let mid = patternPropertyValue.evaluate({ zoom }, patternFeature, {}, options.availableImages);
-            let max = patternPropertyValue.evaluate({ zoom: zoom + 1 }, patternFeature, {}, options.availableImages);
-            min = min && min.name ? min.name : min;
-            mid = mid && mid.name ? mid.name : mid;
-            max = max && max.name ? max.name : max;
-            // add to patternDependencies
-            patterns[min] = true;
-            patterns[mid] = true;
-            patterns[max] = true;
-            // save for layout
-            patternFeature.patterns[layer.id] = { min, mid, max };
-        }
-    }
-    return patternFeature;
-}
-
-/**
- * This function will take any "mesh" and fill in into vertex buffers, breaking it up into multiple drawcalls as needed
- * if too many (\>65535) vertices are used.
- * This function is mainly intended for use with subdivided geometry, since sometimes subdivision might generate
- * more vertices than what fits into 16 bit indices.
- *
- * Accepts a triangle mesh, optionally with a line list (for fill outlines) as well. The triangle and line segments are expected to share a single vertex buffer.
- *
- * Mutates the provided `segmentsTriangles` and `segmentsLines` SegmentVectors,
- * `vertexArray`, `triangleIndexArray` and optionally `lineIndexArray`.
- * Does not mutate the input `flattened` vertices, `triangleIndices` and `lineList`.
- * @param addVertex - A function for adding a new vertex into `vertexArray`. We might sometimes want to add more values per vertex than just X and Y coordinates, which can be handled in this function.
- * @param segmentsTriangles - The segment array for triangle draw calls. New segments will be placed here.
- * @param vertexArray - The vertex array into which new vertices are placed by the provided `addVertex` function.
- * @param triangleIndexArray - Index array for drawing triangles. New triangle indices are placed here.
- * @param flattened - The input flattened array or vertex coordinates.
- * @param triangleIndices - Triangle indices into `flattened`.
- * @param segmentsLines - Segment array for line draw calls. New segments will be placed here. Only needed if the mesh also contains lines.
- * @param lineIndexArray - Index array for drawing lines. New triangle indices are placed here. Only needed if the mesh also contains lines.
- * @param lineList - Line indices into `flattened`. Only needed if the mesh also contains lines.
- */
-function fillLargeMeshArrays(addVertex, segmentsTriangles, vertexArray, triangleIndexArray, flattened, triangleIndices, segmentsLines, lineIndexArray, lineList) {
-    const numVertices = flattened.length / 2;
-    const hasLines = segmentsLines && lineIndexArray && lineList;
-    if (numVertices < SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
-        // The fast path - no segmentation needed
-        const triangleSegment = segmentsTriangles.prepareSegment(numVertices, vertexArray, triangleIndexArray);
-        const triangleIndex = triangleSegment.vertexLength;
-        for (let i = 0; i < triangleIndices.length; i += 3) {
-            triangleIndexArray.emplaceBack(triangleIndex + triangleIndices[i], triangleIndex + triangleIndices[i + 1], triangleIndex + triangleIndices[i + 2]);
-        }
-        triangleSegment.vertexLength += numVertices;
-        triangleSegment.primitiveLength += triangleIndices.length / 3;
-        let lineIndicesStart;
-        let lineSegment;
-        if (hasLines) {
-            // Note that segment creation must happen *before* we add vertices into the vertex buffer
-            lineSegment = segmentsLines.prepareSegment(numVertices, vertexArray, lineIndexArray);
-            lineIndicesStart = lineSegment.vertexLength;
-            lineSegment.vertexLength += numVertices;
-        }
-        // Add vertices into vertex buffer
-        for (let i = 0; i < flattened.length; i += 2) {
-            addVertex(flattened[i], flattened[i + 1]);
-        }
-        if (hasLines) {
-            for (let listIndex = 0; listIndex < lineList.length; listIndex++) {
-                const lineIndices = lineList[listIndex];
-                for (let i = 1; i < lineIndices.length; i += 2) {
-                    lineIndexArray.emplaceBack(lineIndicesStart + lineIndices[i - 1], lineIndicesStart + lineIndices[i]);
-                }
-                lineSegment.primitiveLength += lineIndices.length / 2;
-            }
-        }
-    }
-    else {
-        // Assumption: the incoming triangle indices use vertices in roughly linear order,
-        // for example a grid of quads where both vertices and quads are created row by row would satisfy this.
-        // Some completely random arbitrary vertex/triangle order would not.
-        // Thus, if we encounter a vertex that doesn't fit into MAX_VERTEX_ARRAY_LENGTH,
-        // we can just stop appending into the old segment and start a new segment and only append to the new segment,
-        // copying vertices that are already present in the old segment into the new segment if needed,
-        // because there will not be too many of such vertices.
-        // Normally, (out)lines share the same vertex buffer as triangles, but since we need to somehow split it into several drawcalls,
-        // it is easier to just consider (out)lines separately and duplicate their vertices.
-        fillSegmentsTriangles(segmentsTriangles, vertexArray, triangleIndexArray, flattened, triangleIndices, addVertex);
-        if (hasLines) {
-            fillSegmentsLines(segmentsLines, vertexArray, lineIndexArray, flattened, lineList, addVertex);
-        }
-        // Triangles and lines share the same vertex buffer, and they usually also share the same vertices.
-        // But this method might create the vertices for triangles and for lines separately, and thus increasing the vertex count
-        // of the triangle and line segments by different amounts.
-        // The non-splitting fillLargeMeshArrays logic (and old fill-bucket logic) assumes the vertex counts to be the same,
-        // and forcing both SegmentVectors to return a new segment upon next prepare call satisfies this.
-        segmentsTriangles.forceNewSegmentOnNextPrepare();
-        segmentsLines === null || segmentsLines === void 0 ? void 0 : segmentsLines.forceNewSegmentOnNextPrepare();
-    }
-}
-/**
- * Determines the new index of a vertex given by its old index.
- * @param actualVertexIndices - Array that maps the old index of a given vertex to a new index in the final vertex buffer.
- * @param flattened - Old vertex buffer.
- * @param addVertex - Function for creating a new vertex in the final vertex buffer.
- * @param totalVerticesCreated - Reference to an int holding how many vertices were added to the final vertex buffer.
- * @param oldIndex - The old index of the desired vertex.
- * @param needsCopy - Whether to duplicate the desired vertex in the final vertex buffer.
- * @param segment - The current segment.
- * @returns Index of the vertex in the final vertex array.
- */
-function copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, oldIndex, needsCopy, segment) {
-    if (needsCopy) {
-        const newIndex = totalVerticesCreated.count;
-        addVertex(flattened[oldIndex * 2], flattened[oldIndex * 2 + 1]);
-        actualVertexIndices[oldIndex] = totalVerticesCreated.count;
-        totalVerticesCreated.count++;
-        segment.vertexLength++;
-        return newIndex;
-    }
-    else {
-        return actualVertexIndices[oldIndex];
-    }
-}
-function fillSegmentsTriangles(segmentsTriangles, vertexArray, triangleIndexArray, flattened, triangleIndices, addVertex) {
-    // Array, or rather a map of [vertex index in the original data] -> index of the latest copy of this vertex in the final vertex buffer.
-    const actualVertexIndices = [];
-    for (let i = 0; i < flattened.length / 2; i++) {
-        actualVertexIndices.push(-1);
-    }
-    const totalVerticesCreated = { count: 0 };
-    let currentSegmentCutoff = 0;
-    let segment = segmentsTriangles.getOrCreateLatestSegment(vertexArray, triangleIndexArray);
-    let baseVertex = segment.vertexLength;
-    for (let primitiveEndIndex = 2; primitiveEndIndex < triangleIndices.length; primitiveEndIndex += 3) {
-        const i0 = triangleIndices[primitiveEndIndex - 2];
-        const i1 = triangleIndices[primitiveEndIndex - 1];
-        const i2 = triangleIndices[primitiveEndIndex];
-        let i0needsVertexCopy = actualVertexIndices[i0] < currentSegmentCutoff;
-        let i1needsVertexCopy = actualVertexIndices[i1] < currentSegmentCutoff;
-        let i2needsVertexCopy = actualVertexIndices[i2] < currentSegmentCutoff;
-        const vertexCopyCount = (i0needsVertexCopy ? 1 : 0) + (i1needsVertexCopy ? 1 : 0) + (i2needsVertexCopy ? 1 : 0);
-        // Will needed vertex copies fit into this segment?
-        if (segment.vertexLength + vertexCopyCount > SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
-            // Break up into a new segment if not.
-            segment = segmentsTriangles.createNewSegment(vertexArray, triangleIndexArray);
-            currentSegmentCutoff = totalVerticesCreated.count;
-            i0needsVertexCopy = true;
-            i1needsVertexCopy = true;
-            i2needsVertexCopy = true;
-            baseVertex = 0;
-        }
-        const actualIndex0 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i0, i0needsVertexCopy, segment);
-        const actualIndex1 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i1, i1needsVertexCopy, segment);
-        const actualIndex2 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i2, i2needsVertexCopy, segment);
-        triangleIndexArray.emplaceBack(baseVertex + actualIndex0 - currentSegmentCutoff, baseVertex + actualIndex1 - currentSegmentCutoff, baseVertex + actualIndex2 - currentSegmentCutoff);
-        segment.primitiveLength++;
-    }
-}
-function fillSegmentsLines(segmentsLines, vertexArray, lineIndexArray, flattened, lineList, addVertex) {
-    // Array, or rather a map of [vertex index in the original data] -> index of the latest copy of this vertex in the final vertex buffer.
-    const actualVertexIndices = [];
-    for (let i = 0; i < flattened.length / 2; i++) {
-        actualVertexIndices.push(-1);
-    }
-    const totalVerticesCreated = { count: 0 };
-    let currentSegmentCutoff = 0;
-    let segment = segmentsLines.getOrCreateLatestSegment(vertexArray, lineIndexArray);
-    let baseVertex = segment.vertexLength;
-    for (let lineListIndex = 0; lineListIndex < lineList.length; lineListIndex++) {
-        const currentLine = lineList[lineListIndex];
-        for (let lineVertex = 1; lineVertex < lineList[lineListIndex].length; lineVertex += 2) {
-            const i0 = currentLine[lineVertex - 1];
-            const i1 = currentLine[lineVertex];
-            let i0needsVertexCopy = actualVertexIndices[i0] < currentSegmentCutoff;
-            let i1needsVertexCopy = actualVertexIndices[i1] < currentSegmentCutoff;
-            const vertexCopyCount = (i0needsVertexCopy ? 1 : 0) + (i1needsVertexCopy ? 1 : 0);
-            // Will needed vertex copies fit into this segment?
-            if (segment.vertexLength + vertexCopyCount > SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
-                // Break up into a new segment if not.
-                segment = segmentsLines.createNewSegment(vertexArray, lineIndexArray);
-                currentSegmentCutoff = totalVerticesCreated.count;
-                i0needsVertexCopy = true;
-                i1needsVertexCopy = true;
-                baseVertex = 0;
-            }
-            const actualIndex0 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i0, i0needsVertexCopy, segment);
-            const actualIndex1 = copyOrReuseVertex(actualVertexIndices, flattened, addVertex, totalVerticesCreated, i1, i1needsVertexCopy, segment);
-            lineIndexArray.emplaceBack(baseVertex + actualIndex0 - currentSegmentCutoff, baseVertex + actualIndex1 - currentSegmentCutoff);
-            segment.primitiveLength++;
-        }
-    }
-}
-
-const EARCUT_MAX_RINGS$1 = 500;
-const FACTOR = Math.pow(2, 13);
-function addVertex(vertexArray, x, y, nx, ny, nz, t, e) {
-    vertexArray.emplaceBack(
-    // a_pos
-    x, y, 
-    // a_normal_ed: 3-component normal and 1-component edgedistance
-    Math.floor(nx * FACTOR) * 2 + t, ny * FACTOR * 2, nz * FACTOR * 2, 
-    // edgedistance (used for wrapping patterns around extrusion sides)
-    Math.round(e));
-}
-class FillExtrusionBucket {
-    constructor(options) {
-        this.zoom = options.zoom;
-        this.overscaling = options.overscaling;
-        this.layers = options.layers;
-        this.layerIds = this.layers.map(layer => layer.id);
-        this.index = options.index;
-        this.hasPattern = false;
-        this.layoutVertexArray = new FillExtrusionLayoutArray();
-        this.centroidVertexArray = new PosArray();
-        this.indexArray = new TriangleIndexArray();
-        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
-        this.segments = new SegmentVector();
-        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
-    }
-    populate(features, options, canonical) {
-        this.features = [];
-        this.hasPattern = hasPattern('fill-extrusion', this.layers, options);
-        for (const { feature, id, index, sourceLayerIndex } of features) {
-            const needGeometry = this.layers[0]._featureFilter.needGeometry;
-            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
-            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
-                continue;
-            const bucketFeature = {
-                id,
-                sourceLayerIndex,
-                index,
-                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
-                properties: feature.properties,
-                type: feature.type,
-                patterns: {}
-            };
-            if (this.hasPattern) {
-                this.features.push(addPatternDependencies('fill-extrusion', this.layers, bucketFeature, { zoom: this.zoom }, options));
-            }
-            else {
-                this.addFeature(bucketFeature, bucketFeature.geometry, index, canonical, {}, options.subdivisionGranularity);
-            }
-            options.featureIndex.insert(feature, bucketFeature.geometry, index, sourceLayerIndex, this.index, true);
-        }
-    }
-    addFeatures(options, canonical, imagePositions) {
-        for (const feature of this.features) {
-            const { geometry } = feature;
-            this.addFeature(feature, geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
-        }
-    }
-    update(states, vtLayer, imagePositions) {
-        if (!this.stateDependentLayers.length)
-            return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
-            imagePositions
-        });
-    }
-    isEmpty() {
-        return this.layoutVertexArray.length === 0 && this.centroidVertexArray.length === 0;
-    }
-    uploadPending() {
-        return !this.uploaded || this.programConfigurations.needsUpload;
-    }
-    upload(context) {
-        if (!this.uploaded) {
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$3);
-            this.centroidVertexBuffer = context.createVertexBuffer(this.centroidVertexArray, centroidAttributes.members, true);
-            this.indexBuffer = context.createIndexBuffer(this.indexArray);
-        }
-        this.programConfigurations.upload(context);
-        this.uploaded = true;
-    }
-    destroy() {
-        if (!this.layoutVertexBuffer)
-            return;
-        this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
-        this.programConfigurations.destroy();
-        this.segments.destroy();
-        this.centroidVertexBuffer.destroy();
-    }
-    addFeature(feature, geometry, index, canonical, imagePositions, subdivisionGranularity) {
-        for (const polygon of classifyRings$1(geometry, EARCUT_MAX_RINGS$1)) {
-            // Compute polygon centroid to calculate elevation in GPU
-            const centroid = { x: 0, y: 0, sampleCount: 0 };
-            const oldVertexCount = this.layoutVertexArray.length;
-            this.processPolygon(centroid, canonical, feature, polygon, subdivisionGranularity);
-            const addedVertices = this.layoutVertexArray.length - oldVertexCount;
-            const centroidX = Math.floor(centroid.x / centroid.sampleCount);
-            const centroidY = Math.floor(centroid.y / centroid.sampleCount);
-            for (let i = 0; i < addedVertices; i++) {
-                this.centroidVertexArray.emplaceBack(centroidX, centroidY);
-            }
-        }
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
-    }
-    processPolygon(centroid, canonical, feature, polygon, subdivisionGranularity) {
-        if (polygon.length < 1) {
-            return;
-        }
-        if (isEntirelyOutside(polygon[0])) {
-            return;
-        }
-        // Only consider the un-subdivided polygon outer ring for centroid calculation
-        for (const ring of polygon) {
-            if (ring.length === 0) {
-                continue;
-            }
-            // Here we don't mind if a hole ring is entirely outside, unlike when generating geometry later.
-            accumulatePointsToCentroid(centroid, ring);
-        }
-        const segmentReference = {
-            segment: this.segments.prepareSegment(4, this.layoutVertexArray, this.indexArray)
-        };
-        const granularity = subdivisionGranularity.fill.getGranularityForZoomLevel(canonical.z);
-        const isPolygon = VectorTileFeature.types[feature.type] === 'Polygon';
-        for (const ring of polygon) {
-            if (ring.length === 0) {
-                continue;
-            }
-            if (isEntirelyOutside(ring)) {
-                continue;
-            }
-            const subdividedRing = subdivideVertexLine(ring, granularity, isPolygon);
-            this._generateSideFaces(subdividedRing, segmentReference);
-        }
-        // Only triangulate and draw the area of the feature if it is a polygon
-        // Other feature types (e.g. LineString) do not have area, so triangulation is pointless / undefined
-        if (!isPolygon)
-            return;
-        // Do not generate outlines, since outlines already got subdivided earlier.
-        const subdividedPolygon = subdividePolygon(polygon, canonical, granularity, false);
-        const vertexArray = this.layoutVertexArray;
-        fillLargeMeshArrays((x, y) => {
-            addVertex(vertexArray, x, y, 0, 0, 1, 1, 0);
-        }, this.segments, this.layoutVertexArray, this.indexArray, subdividedPolygon.verticesFlattened, subdividedPolygon.indicesTriangles);
-    }
-    /**
-     * Generates side faces for the supplied geometry. Assumes `geometry` to be a line string, like the output of {@link subdivideVertexLine}.
-     * For rings, it is assumed that the first and last vertex of `geometry` are equal.
-     */
-    _generateSideFaces(geometry, segmentReference) {
-        let edgeDistance = 0;
-        for (let p = 1; p < geometry.length; p++) {
-            const p1 = geometry[p];
-            const p2 = geometry[p - 1];
-            if (isBoundaryEdge(p1, p2)) {
-                continue;
-            }
-            if (segmentReference.segment.vertexLength + 4 > SegmentVector.MAX_VERTEX_ARRAY_LENGTH) {
-                segmentReference.segment = this.segments.prepareSegment(4, this.layoutVertexArray, this.indexArray);
-            }
-            const perp = p1.sub(p2)._perp()._unit();
-            const dist = p2.dist(p1);
-            if (edgeDistance + dist > 32768)
-                edgeDistance = 0;
-            addVertex(this.layoutVertexArray, p1.x, p1.y, perp.x, perp.y, 0, 0, edgeDistance);
-            addVertex(this.layoutVertexArray, p1.x, p1.y, perp.x, perp.y, 0, 1, edgeDistance);
-            edgeDistance += dist;
-            addVertex(this.layoutVertexArray, p2.x, p2.y, perp.x, perp.y, 0, 0, edgeDistance);
-            addVertex(this.layoutVertexArray, p2.x, p2.y, perp.x, perp.y, 0, 1, edgeDistance);
-            const bottomRight = segmentReference.segment.vertexLength;
-            // ┌──────┐
-            // │ 0  1 │ Counter-clockwise winding order.
-            // │      │ Triangle 1: 0 => 2 => 1
-            // │ 2  3 │ Triangle 2: 1 => 2 => 3
-            // └──────┘
-            this.indexArray.emplaceBack(bottomRight, bottomRight + 2, bottomRight + 1);
-            this.indexArray.emplaceBack(bottomRight + 1, bottomRight + 2, bottomRight + 3);
-            segmentReference.segment.vertexLength += 4;
-            segmentReference.segment.primitiveLength += 2;
-        }
-    }
-}
-/**
- * Accumulates geometry to centroid. Geometry can be either a polygon ring, a line string or a closed line string.
- * In case of a polygon ring or line ring, the last vertex is ignored if it is the same as the first vertex.
- */
-function accumulatePointsToCentroid(centroid, geometry) {
-    for (let i = 0; i < geometry.length; i++) {
-        const p = geometry[i];
-        if (i === geometry.length - 1 && geometry[0].x === p.x && geometry[0].y === p.y) {
-            continue;
-        }
-        centroid.x += p.x;
-        centroid.y += p.y;
-        centroid.sampleCount++;
-    }
-}
-register('FillExtrusionBucket', FillExtrusionBucket, { omit: ['layers', 'features'] });
-function isBoundaryEdge(p1, p2) {
-    return (p1.x === p2.x && (p1.x < 0 || p1.x > EXTENT$1)) ||
-        (p1.y === p2.y && (p1.y < 0 || p1.y > EXTENT$1));
-}
-function isEntirelyOutside(ring) {
-    return ring.every(p => p.x < 0) ||
-        ring.every(p => p.x > EXTENT$1) ||
-        ring.every(p => p.y < 0) ||
-        ring.every(p => p.y > EXTENT$1);
 }
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
@@ -65593,122 +68380,6 @@ function projectQueryGeometry(queryGeometry, pixelPosMatrix, z) {
     return projectedQueryGeometry;
 }
 
-const layout$2 = createLayout([
-    { name: 'a_pos', components: 2, type: 'Int16' }
-], 4);
-const { members: members$2, size: size$2, alignment: alignment$2 } = layout$2;
-
-const EARCUT_MAX_RINGS = 500;
-class FillBucket {
-    constructor(options) {
-        this.zoom = options.zoom;
-        this.overscaling = options.overscaling;
-        this.layers = options.layers;
-        this.layerIds = this.layers.map(layer => layer.id);
-        this.index = options.index;
-        this.hasPattern = false;
-        this.patternFeatures = [];
-        this.layoutVertexArray = new FillLayoutArray();
-        this.indexArray = new TriangleIndexArray();
-        this.indexArray2 = new LineIndexArray();
-        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
-        this.segments = new SegmentVector();
-        this.segments2 = new SegmentVector();
-        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
-    }
-    populate(features, options, canonical) {
-        this.hasPattern = hasPattern('fill', this.layers, options);
-        const fillSortKey = this.layers[0].layout.get('fill-sort-key');
-        const sortFeaturesByKey = !fillSortKey.isConstant();
-        const bucketFeatures = [];
-        for (const { feature, id, index, sourceLayerIndex } of features) {
-            const needGeometry = this.layers[0]._featureFilter.needGeometry;
-            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
-            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
-                continue;
-            const sortKey = sortFeaturesByKey ?
-                fillSortKey.evaluate(evaluationFeature, {}, canonical, options.availableImages) :
-                undefined;
-            const bucketFeature = {
-                id,
-                properties: feature.properties,
-                type: feature.type,
-                sourceLayerIndex,
-                index,
-                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
-                patterns: {},
-                sortKey
-            };
-            bucketFeatures.push(bucketFeature);
-        }
-        if (sortFeaturesByKey) {
-            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
-        }
-        for (const bucketFeature of bucketFeatures) {
-            const { geometry, index, sourceLayerIndex } = bucketFeature;
-            if (this.hasPattern) {
-                const patternFeature = addPatternDependencies('fill', this.layers, bucketFeature, { zoom: this.zoom }, options);
-                // pattern features are added only once the pattern is loaded into the image atlas
-                // so are stored during populate until later updated with positions by tile worker in addFeatures
-                this.patternFeatures.push(patternFeature);
-            }
-            else {
-                this.addFeature(bucketFeature, geometry, index, canonical, {}, options.subdivisionGranularity);
-            }
-            const feature = features[index].feature;
-            options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this.index);
-        }
-    }
-    update(states, vtLayer, imagePositions) {
-        if (!this.stateDependentLayers.length)
-            return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
-            imagePositions
-        });
-    }
-    addFeatures(options, canonical, imagePositions) {
-        for (const feature of this.patternFeatures) {
-            this.addFeature(feature, feature.geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
-        }
-    }
-    isEmpty() {
-        return this.layoutVertexArray.length === 0;
-    }
-    uploadPending() {
-        return !this.uploaded || this.programConfigurations.needsUpload;
-    }
-    upload(context) {
-        if (!this.uploaded) {
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$2);
-            this.indexBuffer = context.createIndexBuffer(this.indexArray);
-            this.indexBuffer2 = context.createIndexBuffer(this.indexArray2);
-        }
-        this.programConfigurations.upload(context);
-        this.uploaded = true;
-    }
-    destroy() {
-        if (!this.layoutVertexBuffer)
-            return;
-        this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
-        this.indexBuffer2.destroy();
-        this.programConfigurations.destroy();
-        this.segments.destroy();
-        this.segments2.destroy();
-    }
-    addFeature(feature, geometry, index, canonical, imagePositions, subdivisionGranularity) {
-        for (const polygon of classifyRings$1(geometry, EARCUT_MAX_RINGS)) {
-            const subdivided = subdividePolygon(polygon, canonical, subdivisionGranularity.fill.getGranularityForZoomLevel(canonical.z));
-            const vertexArray = this.layoutVertexArray;
-            fillLargeMeshArrays((x, y) => {
-                vertexArray.emplaceBack(x, y);
-            }, this.segments, this.layoutVertexArray, this.indexArray, subdivided.verticesFlattened, subdivided.indicesTriangles, this.segments2, this.indexArray2, subdivided.indicesLineList);
-        }
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
-    }
-}
-register('FillBucket', FillBucket, { omit: ['layers', 'patternFeatures'] });
-
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
 let layout$1;
@@ -65795,467 +68466,6 @@ class HillshadeStyleLayer extends StyleLayer {
     }
 }
 
-const lineLayoutAttributes = createLayout([
-    { name: 'a_pos_normal', components: 2, type: 'Int16' },
-    { name: 'a_data', components: 4, type: 'Uint8' }
-], 4);
-const { members: members$1, size: size$1, alignment: alignment$1 } = lineLayoutAttributes;
-
-const lineLayoutAttributesExt = createLayout([
-    { name: 'a_uv_x', components: 1, type: 'Float32' },
-    { name: 'a_split_index', components: 1, type: 'Float32' },
-]);
-const { members, size, alignment } = lineLayoutAttributesExt;
-
-// NOTE ON EXTRUDE SCALE:
-// scale the extrusion vector so that the normal length is this value.
-// contains the "texture" normals (-1..1). this is distinct from the extrude
-// normals for line joins, because the x-value remains 0 for the texture
-// normal array, while the extrude normal actually moves the vertex to create
-// the acute/bevelled line join.
-const EXTRUDE_SCALE = 63;
-/*
- * Sharp corners cause dashed lines to tilt because the distance along the line
- * is the same at both the inner and outer corners. To improve the appearance of
- * dashed lines we add extra points near sharp corners so that a smaller part
- * of the line is tilted.
- *
- * COS_HALF_SHARP_CORNER controls how sharp a corner has to be for us to add an
- * extra vertex. The default is 75 degrees.
- *
- * The newly created vertices are placed SHARP_CORNER_OFFSET pixels from the corner.
- */
-const COS_HALF_SHARP_CORNER = Math.cos(75 / 2 * (Math.PI / 180));
-const SHARP_CORNER_OFFSET = 15;
-// Angle per triangle for approximating round line joins.
-const DEG_PER_TRIANGLE = 20;
-// The number of bits that is used to store the line distance in the buffer.
-const LINE_DISTANCE_BUFFER_BITS = 15;
-// We don't have enough bits for the line distance as we'd like to have, so
-// use this value to scale the line distance (in tile units) down to a smaller
-// value. This lets us store longer distances while sacrificing precision.
-const LINE_DISTANCE_SCALE = 1 / 2;
-// The maximum line distance, in tile units, that fits in the buffer.
-const MAX_LINE_DISTANCE = Math.pow(2, LINE_DISTANCE_BUFFER_BITS - 1) / LINE_DISTANCE_SCALE;
-/**
- * @internal
- * Line bucket class
- */
-class LineBucket {
-    constructor(options) {
-        this.zoom = options.zoom;
-        this.overscaling = options.overscaling;
-        this.layers = options.layers;
-        this.layerIds = this.layers.map(layer => layer.id);
-        this.index = options.index;
-        this.hasPattern = false;
-        this.patternFeatures = [];
-        this.lineClipsArray = [];
-        this.gradients = {};
-        this.layers.forEach(layer => {
-            this.gradients[layer.id] = {};
-        });
-        this.layoutVertexArray = new LineLayoutArray();
-        this.layoutVertexArray2 = new LineExtLayoutArray();
-        this.indexArray = new TriangleIndexArray();
-        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
-        this.segments = new SegmentVector();
-        this.maxLineLength = 0;
-        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
-    }
-    populate(features, options, canonical) {
-        this.hasPattern = hasPattern('line', this.layers, options);
-        const lineSortKey = this.layers[0].layout.get('line-sort-key');
-        const sortFeaturesByKey = !lineSortKey.isConstant();
-        const bucketFeatures = [];
-        for (const { feature, id, index, sourceLayerIndex } of features) {
-            const needGeometry = this.layers[0]._featureFilter.needGeometry;
-            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
-            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
-                continue;
-            const sortKey = sortFeaturesByKey ?
-                lineSortKey.evaluate(evaluationFeature, {}, canonical) :
-                undefined;
-            const bucketFeature = {
-                id,
-                properties: feature.properties,
-                type: feature.type,
-                sourceLayerIndex,
-                index,
-                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
-                patterns: {},
-                sortKey
-            };
-            bucketFeatures.push(bucketFeature);
-        }
-        if (sortFeaturesByKey) {
-            bucketFeatures.sort((a, b) => {
-                return (a.sortKey) - (b.sortKey);
-            });
-        }
-        for (const bucketFeature of bucketFeatures) {
-            const { geometry, index, sourceLayerIndex } = bucketFeature;
-            if (this.hasPattern) {
-                const patternBucketFeature = addPatternDependencies('line', this.layers, bucketFeature, { zoom: this.zoom }, options);
-                // pattern features are added only once the pattern is loaded into the image atlas
-                // so are stored during populate until later updated with positions by tile worker in addFeatures
-                this.patternFeatures.push(patternBucketFeature);
-            }
-            else {
-                this.addFeature(bucketFeature, geometry, index, canonical, {}, options.subdivisionGranularity);
-            }
-            const feature = features[index].feature;
-            options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this.index);
-        }
-    }
-    update(states, vtLayer, imagePositions) {
-        if (!this.stateDependentLayers.length)
-            return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
-            imagePositions
-        });
-    }
-    addFeatures(options, canonical, imagePositions) {
-        for (const feature of this.patternFeatures) {
-            this.addFeature(feature, feature.geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
-        }
-    }
-    isEmpty() {
-        return this.layoutVertexArray.length === 0;
-    }
-    uploadPending() {
-        return !this.uploaded || this.programConfigurations.needsUpload;
-    }
-    upload(context) {
-        if (!this.uploaded) {
-            if (this.layoutVertexArray2.length !== 0) {
-                this.layoutVertexBuffer2 = context.createVertexBuffer(this.layoutVertexArray2, members);
-            }
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$1);
-            this.indexBuffer = context.createIndexBuffer(this.indexArray);
-        }
-        this.programConfigurations.upload(context);
-        this.uploaded = true;
-    }
-    destroy() {
-        if (!this.layoutVertexBuffer)
-            return;
-        this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
-        this.programConfigurations.destroy();
-        this.segments.destroy();
-    }
-    lineFeatureClips(feature) {
-        if (!!feature.properties && Object.prototype.hasOwnProperty.call(feature.properties, 'mapbox_clip_start') && Object.prototype.hasOwnProperty.call(feature.properties, 'mapbox_clip_end')) {
-            const start = +feature.properties['mapbox_clip_start'];
-            const end = +feature.properties['mapbox_clip_end'];
-            return { start, end };
-        }
-    }
-    addFeature(feature, geometry, index, canonical, imagePositions, subdivisionGranularity) {
-        const layout = this.layers[0].layout;
-        const join = layout.get('line-join').evaluate(feature, {});
-        const cap = layout.get('line-cap');
-        const miterLimit = layout.get('line-miter-limit');
-        const roundLimit = layout.get('line-round-limit');
-        this.lineClips = this.lineFeatureClips(feature);
-        for (const line of geometry) {
-            this.addLine(line, feature, join, cap, miterLimit, roundLimit, canonical, subdivisionGranularity);
-        }
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
-    }
-    addLine(vertices, feature, join, cap, miterLimit, roundLimit, canonical, subdivisionGranularity) {
-        this.distance = 0;
-        this.scaledDistance = 0;
-        this.totalDistance = 0;
-        // First, subdivide the line if needed (mostly for globe rendering)
-        const granularity = canonical ? subdivisionGranularity.line.getGranularityForZoomLevel(canonical.z) : 1;
-        vertices = subdivideVertexLine(vertices, granularity);
-        if (this.lineClips) {
-            this.lineClipsArray.push(this.lineClips);
-            // Calculate the total distance, in tile units, of this tiled line feature
-            for (let i = 0; i < vertices.length - 1; i++) {
-                this.totalDistance += vertices[i].dist(vertices[i + 1]);
-            }
-            this.updateScaledDistance();
-            this.maxLineLength = Math.max(this.maxLineLength, this.totalDistance);
-        }
-        const isPolygon = VectorTileFeature.types[feature.type] === 'Polygon';
-        // If the line has duplicate vertices at the ends, adjust start/length to remove them.
-        let len = vertices.length;
-        while (len >= 2 && vertices[len - 1].equals(vertices[len - 2])) {
-            len--;
-        }
-        let first = 0;
-        while (first < len - 1 && vertices[first].equals(vertices[first + 1])) {
-            first++;
-        }
-        // Ignore invalid geometry.
-        if (len < (isPolygon ? 3 : 2))
-            return;
-        if (join === 'bevel')
-            miterLimit = 1.05;
-        const sharpCornerOffset = this.overscaling <= 16 ?
-            SHARP_CORNER_OFFSET * EXTENT$1 / (512 * this.overscaling) :
-            0;
-        // we could be more precise, but it would only save a negligible amount of space
-        const segment = this.segments.prepareSegment(len * 10, this.layoutVertexArray, this.indexArray);
-        let currentVertex;
-        let prevVertex;
-        let nextVertex;
-        let prevNormal;
-        let nextNormal;
-        // the last two vertices added
-        this.e1 = this.e2 = -1;
-        if (isPolygon) {
-            currentVertex = vertices[len - 2];
-            nextNormal = vertices[first].sub(currentVertex)._unit()._perp();
-        }
-        for (let i = first; i < len; i++) {
-            nextVertex = i === len - 1 ?
-                (isPolygon ? vertices[first + 1] : undefined) : // if it's a polygon, treat the last vertex like the first
-                vertices[i + 1]; // just the next vertex
-            // if two consecutive vertices exist, skip the current one
-            if (nextVertex && vertices[i].equals(nextVertex))
-                continue;
-            if (nextNormal)
-                prevNormal = nextNormal;
-            if (currentVertex)
-                prevVertex = currentVertex;
-            currentVertex = vertices[i];
-            // Calculate the normal towards the next vertex in this line. In case
-            // there is no next vertex, pretend that the line is continuing straight,
-            // meaning that we are just using the previous normal.
-            nextNormal = nextVertex ? nextVertex.sub(currentVertex)._unit()._perp() : prevNormal;
-            // If we still don't have a previous normal, this is the beginning of a
-            // non-closed line, so we're doing a straight "join".
-            prevNormal = prevNormal || nextNormal;
-            // Determine the normal of the join extrusion. It is the angle bisector
-            // of the segments between the previous line and the next line.
-            // In the case of 180° angles, the prev and next normals cancel each other out:
-            // prevNormal + nextNormal = (0, 0), its magnitude is 0, so the unit vector would be
-            // undefined. In that case, we're keeping the joinNormal at (0, 0), so that the cosHalfAngle
-            // below will also become 0 and miterLength will become Infinity.
-            let joinNormal = prevNormal.add(nextNormal);
-            if (joinNormal.x !== 0 || joinNormal.y !== 0) {
-                joinNormal._unit();
-            }
-            /*  joinNormal     prevNormal
-             *             ↖      ↑
-             *                .________. prevVertex
-             *                |
-             * nextNormal  ←  |  currentVertex
-             *                |
-             *     nextVertex !
-             *
-             */
-            // calculate cosines of the angle (and its half) using dot product
-            const cosAngle = prevNormal.x * nextNormal.x + prevNormal.y * nextNormal.y;
-            const cosHalfAngle = joinNormal.x * nextNormal.x + joinNormal.y * nextNormal.y;
-            // Calculate the length of the miter (the ratio of the miter to the width)
-            // as the inverse of cosine of the angle between next and join normals
-            const miterLength = cosHalfAngle !== 0 ? 1 / cosHalfAngle : Infinity;
-            // approximate angle from cosine
-            const approxAngle = 2 * Math.sqrt(2 - 2 * cosHalfAngle);
-            const isSharpCorner = cosHalfAngle < COS_HALF_SHARP_CORNER && prevVertex && nextVertex;
-            const lineTurnsLeft = prevNormal.x * nextNormal.y - prevNormal.y * nextNormal.x > 0;
-            if (isSharpCorner && i > first) {
-                const prevSegmentLength = currentVertex.dist(prevVertex);
-                if (prevSegmentLength > 2 * sharpCornerOffset) {
-                    const newPrevVertex = currentVertex.sub(currentVertex.sub(prevVertex)._mult(sharpCornerOffset / prevSegmentLength)._round());
-                    this.updateDistance(prevVertex, newPrevVertex);
-                    this.addCurrentVertex(newPrevVertex, prevNormal, 0, 0, segment);
-                    prevVertex = newPrevVertex;
-                }
-            }
-            // The join if a middle vertex, otherwise the cap.
-            const middleVertex = prevVertex && nextVertex;
-            let currentJoin = middleVertex ? join : isPolygon ? 'butt' : cap;
-            if (middleVertex && currentJoin === 'round') {
-                if (miterLength < roundLimit) {
-                    currentJoin = 'miter';
-                }
-                else if (miterLength <= 2) {
-                    currentJoin = 'fakeround';
-                }
-            }
-            if (currentJoin === 'miter' && miterLength > miterLimit) {
-                currentJoin = 'bevel';
-            }
-            if (currentJoin === 'bevel') {
-                // The maximum extrude length is 128 / 63 = 2 times the width of the line
-                // so if miterLength >= 2 we need to draw a different type of bevel here.
-                if (miterLength > 2)
-                    currentJoin = 'flipbevel';
-                // If the miterLength is really small and the line bevel wouldn't be visible,
-                // just draw a miter join to save a triangle.
-                if (miterLength < miterLimit)
-                    currentJoin = 'miter';
-            }
-            // Calculate how far along the line the currentVertex is
-            if (prevVertex)
-                this.updateDistance(prevVertex, currentVertex);
-            if (currentJoin === 'miter') {
-                joinNormal._mult(miterLength);
-                this.addCurrentVertex(currentVertex, joinNormal, 0, 0, segment);
-            }
-            else if (currentJoin === 'flipbevel') {
-                // miter is too big, flip the direction to make a beveled join
-                if (miterLength > 100) {
-                    // Almost parallel lines
-                    joinNormal = nextNormal.mult(-1);
-                }
-                else {
-                    const bevelLength = miterLength * prevNormal.add(nextNormal).mag() / prevNormal.sub(nextNormal).mag();
-                    joinNormal._perp()._mult(bevelLength * (lineTurnsLeft ? -1 : 1));
-                }
-                this.addCurrentVertex(currentVertex, joinNormal, 0, 0, segment);
-                this.addCurrentVertex(currentVertex, joinNormal.mult(-1), 0, 0, segment);
-            }
-            else if (currentJoin === 'bevel' || currentJoin === 'fakeround') {
-                const offset = -Math.sqrt(miterLength * miterLength - 1);
-                const offsetA = lineTurnsLeft ? offset : 0;
-                const offsetB = lineTurnsLeft ? 0 : offset;
-                // Close previous segment with a bevel
-                if (prevVertex) {
-                    this.addCurrentVertex(currentVertex, prevNormal, offsetA, offsetB, segment);
-                }
-                if (currentJoin === 'fakeround') {
-                    // The join angle is sharp enough that a round join would be visible.
-                    // Bevel joins fill the gap between segments with a single pie slice triangle.
-                    // Create a round join by adding multiple pie slices. The join isn't actually round, but
-                    // it looks like it is at the sizes we render lines at.
-                    // pick the number of triangles for approximating round join by based on the angle between normals
-                    const n = Math.round((approxAngle * 180 / Math.PI) / DEG_PER_TRIANGLE);
-                    for (let m = 1; m < n; m++) {
-                        let t = m / n;
-                        if (t !== 0.5) {
-                            // approximate spherical interpolation https://observablehq.com/@mourner/approximating-geometric-slerp
-                            const t2 = t - 0.5;
-                            const A = 1.0904 + cosAngle * (-3.2452 + cosAngle * (3.55645 - cosAngle * 1.43519));
-                            const B = 0.848013 + cosAngle * (-1.06021 + cosAngle * 0.215638);
-                            t = t + t * t2 * (t - 1) * (A * t2 * t2 + B);
-                        }
-                        const extrude = nextNormal.sub(prevNormal)._mult(t)._add(prevNormal)._unit()._mult(lineTurnsLeft ? -1 : 1);
-                        this.addHalfVertex(currentVertex, extrude.x, extrude.y, false, lineTurnsLeft, 0, segment);
-                    }
-                }
-                if (nextVertex) {
-                    // Start next segment
-                    this.addCurrentVertex(currentVertex, nextNormal, -offsetA, -offsetB, segment);
-                }
-            }
-            else if (currentJoin === 'butt') {
-                this.addCurrentVertex(currentVertex, joinNormal, 0, 0, segment); // butt cap
-            }
-            else if (currentJoin === 'square') {
-                const offset = prevVertex ? 1 : -1; // closing or starting square cap
-                this.addCurrentVertex(currentVertex, joinNormal, offset, offset, segment);
-            }
-            else if (currentJoin === 'round') {
-                if (prevVertex) {
-                    // Close previous segment with butt
-                    this.addCurrentVertex(currentVertex, prevNormal, 0, 0, segment);
-                    // Add round cap or linejoin at end of segment
-                    this.addCurrentVertex(currentVertex, prevNormal, 1, 1, segment, true);
-                }
-                if (nextVertex) {
-                    // Add round cap before first segment
-                    this.addCurrentVertex(currentVertex, nextNormal, -1, -1, segment, true);
-                    // Start next segment with a butt
-                    this.addCurrentVertex(currentVertex, nextNormal, 0, 0, segment);
-                }
-            }
-            if (isSharpCorner && i < len - 1) {
-                const nextSegmentLength = currentVertex.dist(nextVertex);
-                if (nextSegmentLength > 2 * sharpCornerOffset) {
-                    const newCurrentVertex = currentVertex.add(nextVertex.sub(currentVertex)._mult(sharpCornerOffset / nextSegmentLength)._round());
-                    this.updateDistance(currentVertex, newCurrentVertex);
-                    this.addCurrentVertex(newCurrentVertex, nextNormal, 0, 0, segment);
-                    currentVertex = newCurrentVertex;
-                }
-            }
-        }
-    }
-    /**
-     * Add two vertices to the buffers.
-     *
-     * @param p - the line vertex to add buffer vertices for
-     * @param normal - vertex normal
-     * @param endLeft - extrude to shift the left vertex along the line
-     * @param endRight - extrude to shift the left vertex along the line
-     * @param segment - the segment object to add the vertex to
-     * @param round - whether this is a round cap
-     */
-    addCurrentVertex(p, normal, endLeft, endRight, segment, round = false) {
-        // left and right extrude vectors, perpendicularly shifted by endLeft/endRight
-        const leftX = normal.x + normal.y * endLeft;
-        const leftY = normal.y - normal.x * endLeft;
-        const rightX = -normal.x + normal.y * endRight;
-        const rightY = -normal.y - normal.x * endRight;
-        this.addHalfVertex(p, leftX, leftY, round, false, endLeft, segment);
-        this.addHalfVertex(p, rightX, rightY, round, true, -endRight, segment);
-        // There is a maximum "distance along the line" that we can store in the buffers.
-        // When we get close to the distance, reset it to zero and add the vertex again with
-        // a distance of zero. The max distance is determined by the number of bits we allocate
-        // to `linesofar`.
-        if (this.distance > MAX_LINE_DISTANCE / 2 && this.totalDistance === 0) {
-            this.distance = 0;
-            this.updateScaledDistance();
-            this.addCurrentVertex(p, normal, endLeft, endRight, segment, round);
-        }
-    }
-    addHalfVertex({ x, y }, extrudeX, extrudeY, round, up, dir, segment) {
-        const totalDistance = this.lineClips ? this.scaledDistance * (MAX_LINE_DISTANCE - 1) : this.scaledDistance;
-        // scale down so that we can store longer distances while sacrificing precision.
-        const linesofarScaled = totalDistance * LINE_DISTANCE_SCALE;
-        this.layoutVertexArray.emplaceBack(
-        // a_pos_normal
-        // Encode round/up the least significant bits
-        (x << 1) + (round ? 1 : 0), (y << 1) + (up ? 1 : 0), 
-        // a_data
-        // add 128 to store a byte in an unsigned byte
-        Math.round(EXTRUDE_SCALE * extrudeX) + 128, Math.round(EXTRUDE_SCALE * extrudeY) + 128, 
-        // Encode the -1/0/1 direction value into the first two bits of .z of a_data.
-        // Combine it with the lower 6 bits of `linesofarScaled` (shifted by 2 bits to make
-        // room for the direction value). The upper 8 bits of `linesofarScaled` are placed in
-        // the `w` component.
-        ((dir === 0 ? 0 : (dir < 0 ? -1 : 1)) + 1) | ((linesofarScaled & 0x3F) << 2), linesofarScaled >> 6);
-        // Constructs a second vertex buffer with higher precision line progress
-        if (this.lineClips) {
-            const progressRealigned = this.scaledDistance - this.lineClips.start;
-            const endClipRealigned = this.lineClips.end - this.lineClips.start;
-            const uvX = progressRealigned / endClipRealigned;
-            this.layoutVertexArray2.emplaceBack(uvX, this.lineClipsArray.length);
-        }
-        const e = segment.vertexLength++;
-        if (this.e1 >= 0 && this.e2 >= 0) {
-            this.indexArray.emplaceBack(this.e1, e, this.e2);
-            segment.primitiveLength++;
-        }
-        if (up) {
-            this.e2 = e;
-        }
-        else {
-            this.e1 = e;
-        }
-    }
-    updateScaledDistance() {
-        // Knowing the ratio of the full linestring covered by this tiled feature, as well
-        // as the total distance (in tile units) of this tiled feature, and the distance
-        // (in tile units) of the current vertex, we can determine the relative distance
-        // of this vertex along the full linestring feature and scale it to [0, 2^15)
-        this.scaledDistance = this.lineClips ?
-            this.lineClips.start + (this.lineClips.end - this.lineClips.start) * this.distance / this.totalDistance :
-            this.distance;
-    }
-    updateDistance(prev, next) {
-        this.distance += prev.dist(next);
-        this.updateScaledDistance();
-    }
-}
-register('LineBucket', LineBucket, { omit: ['layers', 'patternFeatures'] });
-
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
 let layout;
@@ -66293,7 +68503,7 @@ class LineFloorwidthProperty extends DataDrivenProperty {
         return super.possiblyEvaluate(value, parameters);
     }
     evaluate(value, globals, feature, featureState) {
-        globals = extend({}, globals, { zoom: Math.floor(globals.zoom) });
+        globals = extend$1({}, globals, { zoom: Math.floor(globals.zoom) });
         return super.evaluate(value, globals, feature, featureState);
     }
 }
@@ -66623,5 +68833,5 @@ registerSymbol();
 // ===== UTILITIES =====
 registerUtilityShaders();
 
-export { AJAXError, AttributionControl, BoxZoomHandler, Camera, CanonicalTileID, CanvasSource, CooperativeGesturesHandler, DOM, DoubleClickZoomHandler, DragPanHandler, DragRotateHandler, EdgeInsets, ErrorEvent, EvaluationParameters, Event, Evented, FullscreenControl, GeoJSONSource, GeolocateControl, GlobeControl, HandlerManager, Hash, ImageRequest, ImageSource, KeyboardHandler, LngLat, LngLatBounds, LogoControl, Map$1 as Map, MapMouseEvent, MapTouchEvent, MapWheelEvent, Marker, MercatorCameraHelper, MercatorCoordinate, MercatorTransform, NavigationControl, Painter, PerformanceMarkers, PerformanceUtils, Point, Popup, RGBAImage, RasterDEMTileSource, RasterTileSource, RenderToTexture, RequestManager, ScaleControl, ScrollZoomHandler, Style, TaskQueue, Terrain, TerrainControl, TwoFingersTouchPitchHandler, TwoFingersTouchRotateHandler, TwoFingersTouchZoomHandler, TwoFingersTouchZoomRotateHandler, VectorTileSource, VideoSource, addProtocol, addSourceType, browser, clearPrewarmedResources, config, coveringTiles, createCalculateTileZoomFunction, createTileMesh, defaultAttributionControlOptions, defaultLocale, extend, getJSON, getMaxParallelImageRequests, getRTLTextPluginStatus, getVersion, getWorkerCount, getWorkerUrl, importScriptInWorkers, isAbortError, isFramebufferNotCompleteError, isImageBitmap, packageJSON, pick, prewarm, registerBackground, registerCanvasSource, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerGeoJSONSource, registerHeatmap, registerHillshade, registerImageSource, registerLine, registerRaster, registerRasterDEMSource, registerRasterSource, registerSymbol, registerUtilityShaders, registerVectorSource, registerVideoSource, removeProtocol, setMaxParallelImageRequests, setRTLTextPlugin, setWorkerCount, setWorkerUrl, throttle, uniqueId, warnOnce, webpSupported };
+export { AJAXError, AttributionControl, BoxZoomHandler, Camera, CanonicalTileID, CanvasSource, CooperativeGesturesHandler, DOM, DoubleClickZoomHandler, DragPanHandler, DragRotateHandler, EdgeInsets, ErrorEvent, EvaluationParameters, Event, Evented, FullscreenControl, GeoJSONSource, GeolocateControl, GlobeControl, HandlerManager, Hash, ImageRequest, ImageSource, KeyboardHandler, LngLat, LngLatBounds, LogoControl, Map$1 as Map, MapMouseEvent, MapTouchEvent, MapWheelEvent, Marker, MercatorCameraHelper, MercatorCoordinate, MercatorTransform, NavigationControl, Painter, PerformanceMarkers, PerformanceUtils, Point, Popup, RGBAImage, RasterDEMTileSource, RasterTileSource, RenderToTexture, RequestManager, ScaleControl, ScrollZoomHandler, Style, TaskQueue, Terrain, TerrainControl, TwoFingersTouchPitchHandler, TwoFingersTouchRotateHandler, TwoFingersTouchZoomHandler, TwoFingersTouchZoomRotateHandler, VectorTileSource, VideoSource, Worker$1 as Worker, addProtocol, addSourceType, browser, clearPrewarmedResources, config, coveringTiles, createCalculateTileZoomFunction, createTileMesh, defaultAttributionControlOptions, defaultLocale, extend$1 as extend, getJSON, getMaxParallelImageRequests, getRTLTextPluginStatus, getVersion, getWorkerCount, getWorkerUrl, importScriptInWorkers, isAbortError, isFramebufferNotCompleteError, isImageBitmap, packageJSON, pick, prewarm, registerBackground, registerCanvasSource, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerGeoJSONSource, registerHeatmap, registerHillshade, registerImageSource, registerLine, registerRaster, registerRasterDEMSource, registerRasterSource, registerSymbol, registerUtilityShaders, registerVectorSource, registerVideoSource, removeProtocol, setMaxParallelImageRequests, setRTLTextPlugin, setWorkerCount, setWorkerUrl, throttle, uniqueId, warnOnce, webpSupported };
 //# sourceMappingURL=maplibre-gl-csp-dev.mjs.map
