@@ -134,7 +134,10 @@ function setWorkerCount(count: number) { WorkerPool.workerCount = count; }
 function getMaxParallelImageRequests() { return config.MAX_PARALLEL_IMAGE_REQUESTS; }
 function setMaxParallelImageRequests(numRequests: number) { config.MAX_PARALLEL_IMAGE_REQUESTS = numRequests; }
 function getWorkerUrl() { return config.WORKER_URL; }
-function setWorkerUrl(value: string) { config.WORKER_URL = value; }
+function setWorkerUrl(value: string, module = false) {
+    config.WORKER_URL = value;
+    config.WORKER_IS_MODULE = module;
+}
 function importScriptInWorkers(workerUrl: string) { return getGlobalDispatcher().broadcast(MessageType.importScript, workerUrl); }
 
 export {
