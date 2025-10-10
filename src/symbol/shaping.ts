@@ -14,7 +14,7 @@ import {TextFit} from '../style/style_image';
 import type {ImagePosition} from '../render/image_atlas';
 import {IMAGE_PADDING} from '../render/image_atlas';
 import type {Rect, GlyphPosition} from '../render/glyph_atlas';
-import {type Formatted, type FormattedSection, type VerticalAlign} from '@maplibre/maplibre-gl-style-spec';
+import type {Formatted, FormattedSection, VerticalAlign} from '@maplibre/maplibre-gl-style-spec';
 
 enum WritingMode {
     none = 0,
@@ -874,7 +874,7 @@ function shapeImageSection(
     // Difference between height of an image and one EM at max line scale.
     // Pushes current line down if an image size is over 1 EM at max line scale.
     const imageOffset = (vertical ? size[0] : size[1]) * section.scale - ONE_EM * lineMaxScale;
-    
+
     return {rect, metrics, baselineOffset, imageOffset};
 }
 

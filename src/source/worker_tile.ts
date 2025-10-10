@@ -1,9 +1,6 @@
 import {FeatureIndex} from '../data/feature_index';
 import {CollisionBoxArray} from '../data/array_types.g';
 import {DictionaryCoder} from '../util/dictionary_coder';
-import {LineBucket} from '../data/bucket/line_bucket';
-import {FillBucket} from '../data/bucket/fill_bucket';
-import {FillExtrusionBucket} from '../data/bucket/fill_extrusion_bucket';
 import {warnOnce, mapObject} from '../util/util';
 import {ImageAtlas} from '../render/image_atlas';
 import {GlyphAtlas} from '../render/glyph_atlas';
@@ -164,7 +161,8 @@ export class WorkerTile {
 
         for (const key in buckets) {
             const bucket = buckets[key];
-            if (registry.symbol.SymbolBucket && bucket instanceof registry.symbol.SymbolBucket) {
+
+            if (bucket instanceof registry.bucket.symbol) {
                 recalculateLayers(bucket.layers, this.zoom, availableImages);
                 registry.symbol.performSymbolLayout?.({
                     bucket,
@@ -177,9 +175,9 @@ export class WorkerTile {
                     subdivisionGranularity: options.subdivisionGranularity
                 });
             } else if (bucket.hasPattern &&
-                (bucket instanceof LineBucket ||
-                bucket instanceof FillBucket ||
-                bucket instanceof FillExtrusionBucket)) {
+                (bucket instanceof registry.bucket.line ||
+                 bucket instanceof registry.bucket.fill ||
+                 bucket instanceof registry.bucket['fill-extrusion'])) {
                 recalculateLayers(bucket.layers, this.zoom, availableImages);
                 bucket.addFeatures(options, this.tileID.canonical, imageAtlas.patternPositions);
             }

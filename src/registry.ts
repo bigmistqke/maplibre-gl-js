@@ -4,6 +4,31 @@ import type {StyleLayer} from './style/style_layer';
 import type {Painter, RenderOptions} from './render/painter';
 import type {SourceCache} from './source/source_cache';
 import type {OverscaledTileID} from './source/tile_id';
+import type {CanvasSource} from './source/canvas_source';
+import type {GeoJSONSource} from './source/geojson_source';
+import type {ImageSource} from './source/image_source';
+import type {RasterDEMTileSource} from './source/raster_dem_tile_source';
+import type {RasterTileSource} from './source/raster_tile_source';
+import type {VectorTileSource} from './source/vector_tile_source';
+import type {VideoSource} from './source/video_source';
+import type {BackgroundStyleLayer} from './style/style_layer/background_style_layer';
+import type {CircleStyleLayer} from './style/style_layer/circle_style_layer';
+import type {ColorReliefStyleLayer} from './style/style_layer/color_relief_style_layer';
+import type {FillExtrusionStyleLayer} from './style/style_layer/fill_extrusion_style_layer';
+import type {FillStyleLayer} from './style/style_layer/fill_style_layer';
+import type {HeatmapStyleLayer} from './style/style_layer/heatmap_style_layer';
+import type {HillshadeStyleLayer} from './style/style_layer/hillshade_style_layer';
+import type {LineStyleLayer} from './style/style_layer/line_style_layer';
+import type {RasterStyleLayer} from './style/style_layer/raster_style_layer';
+import type {SymbolStyleLayer} from './style/style_layer/symbol_style_layer';
+import type {CircleBucket} from './data/bucket/circle_bucket';
+import type {FillBucket} from './data/bucket/fill_bucket';
+import type {FillExtrusionBucket} from './data/bucket/fill_extrusion_bucket';
+import type {HeatmapBucket} from './data/bucket/heatmap_bucket';
+import type {LineBucket} from './data/bucket/line_bucket';
+import type {SymbolBucket} from './data/bucket/symbol_bucket';
+import type {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
+import type {PauseablePlacement} from './style/pauseable_placement';
 
 /**
  * Draw function type - handles rendering for a specific layer type
@@ -20,32 +45,6 @@ export type DrawFunction = (
  * Symbol system function type for lazy initialization
  */
 export type PerformSymbolLayoutFunction = (args: any) => void;
-
-// Source types
-import type {CanvasSource} from './source/canvas_source';
-import type {GeoJSONSource} from './source/geojson_source';
-import type {ImageSource} from './source/image_source';
-import type {RasterDEMTileSource} from './source/raster_dem_tile_source';
-import type {RasterTileSource} from './source/raster_tile_source';
-import type {VectorTileSource} from './source/vector_tile_source';
-import type {VideoSource} from './source/video_source';
-
-// Layer types
-import type {BackgroundStyleLayer} from './style/style_layer/background_style_layer';
-import type {CircleStyleLayer} from './style/style_layer/circle_style_layer';
-import type {ColorReliefStyleLayer} from './style/style_layer/color_relief_style_layer';
-import type {FillExtrusionStyleLayer} from './style/style_layer/fill_extrusion_style_layer';
-import type {FillStyleLayer} from './style/style_layer/fill_style_layer';
-import type {HeatmapStyleLayer} from './style/style_layer/heatmap_style_layer';
-import type {HillshadeStyleLayer} from './style/style_layer/hillshade_style_layer';
-import type {LineStyleLayer} from './style/style_layer/line_style_layer';
-import type {RasterStyleLayer} from './style/style_layer/raster_style_layer';
-import type {SymbolStyleLayer} from './style/style_layer/symbol_style_layer';
-
-// Symbol types
-import type {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
-import type {PauseablePlacement} from './style/pauseable_placement';
-import type {SymbolBucket} from './data/bucket/symbol_bucket';
 
 /**
  * Layer factory function type for registry
@@ -141,6 +140,19 @@ export interface ShaderRegistry {
 };
 
 /**
+ * Bucket registry type with specific bucket type keys
+ * Buckets process vector tile data into GPU-ready buffers
+ */
+export interface BucketRegistry {
+    circle?: typeof CircleBucket;
+    fill?: typeof FillBucket;
+    'fill-extrusion'?: typeof FillExtrusionBucket;
+    heatmap?: typeof HeatmapBucket;
+    line?: typeof LineBucket;
+    symbol?: typeof SymbolBucket;
+};
+
+/**
  * Symbol dependencies registry type
  */
 export interface SymbolRegistry {
@@ -152,12 +164,13 @@ export interface SymbolRegistry {
 
 /**
  * Global registries for tree-shaking
- * Set these to register sources, layers, draws, and shaders
+ * Set these to register sources, layers, draws, shaders, and buckets
  */
 export const registry = {
     source: {} as SourceRegistry,
     layer: {} as LayerRegistry,
     draw: {} as DrawFunctionRegistry,
     shader: {} as ShaderRegistry,
+    bucket: {} as BucketRegistry,
     symbol: {} as SymbolRegistry
 };

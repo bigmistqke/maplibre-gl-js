@@ -1,14 +1,15 @@
-import {type Painter, type RenderOptions} from './painter';
-import {type Tile} from '../source/tile';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
-import {type OverscaledTileID} from '../source/tile_id';
 import {drawTerrain} from './draw_terrain';
-import {type Style} from '../style/style';
-import {type Terrain} from './terrain';
 import {RenderPool} from '../gl/render_pool';
-import {type Texture} from './texture';
+import {registry} from '../registry';
+
+import type {Tile} from '../source/tile';
+import type {Painter, RenderOptions} from './painter';
+import type {OverscaledTileID} from '../source/tile_id';
+import type {Style} from '../style/style';
+import type {Terrain} from './terrain';
+import type {Texture} from './texture';
 import type {StyleLayer} from '../style/style_layer';
-import { registry } from '../registry';
 
 /**
  * lookup table which layers should rendered to texture

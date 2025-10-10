@@ -1,11 +1,12 @@
 import {StencilMode} from '../gl/stencil_mode';
 import {DepthMode} from '../gl/depth_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
-import {type Program} from './program';
 import {circleUniformValues} from './program/circle_program';
 import {SegmentVector} from '../data/segment';
-import {type OverscaledTileID} from '../source/tile_id';
+import {translatePosition} from '../util/util';
 
+import type {Program} from './program';
+import type {OverscaledTileID} from '../source/tile_id';
 import type {Painter, RenderOptions} from './painter';
 import type {SourceCache} from '../source/source_cache';
 import type {CircleStyleLayer} from '../style/style_layer/circle_style_layer';
@@ -16,7 +17,6 @@ import type {IndexBuffer} from '../gl/index_buffer';
 import type {UniformValues} from './uniform_binding';
 import type {CircleUniformsType} from './program/circle_program';
 import type {TerrainData} from '../render/terrain';
-import {translatePosition} from '../util/util';
 import type {ProjectionData} from '../geo/projection/projection_data';
 
 type TileRenderState = {
