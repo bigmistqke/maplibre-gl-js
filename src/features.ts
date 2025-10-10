@@ -89,6 +89,15 @@ import {VideoSource} from './source/video_source';
 import {PauseablePlacement} from './style/pauseable_placement';
 import {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
 import {performSymbolLayout} from './symbol/symbol_layout';
+import {MercatorProjection} from './geo/projection/mercator_projection';
+import {MercatorTransform} from './geo/projection/mercator_transform';
+import {MercatorCameraHelper} from './geo/projection/mercator_camera_helper';
+import {GlobeProjection} from './geo/projection/globe_projection';
+import {GlobeTransform} from './geo/projection/globe_transform';
+import {GlobeCameraHelper} from './geo/projection/globe_camera_helper';
+import {VerticalPerspectiveProjection} from './geo/projection/vertical_perspective_projection';
+import {VerticalPerspectiveTransform} from './geo/projection/vertical_perspective_transform';
+import {VerticalPerspectiveCameraHelper} from './geo/projection/vertical_perspective_camera_helper';
 import {SymbolBucket, SymbolBuffers, CollisionBuffers} from './data/bucket/symbol_bucket';
 import {BackgroundStyleLayer} from './style/style_layer/background_style_layer';
 import {CircleStyleLayer} from './style/style_layer/circle_style_layer';
@@ -347,4 +356,56 @@ export function registerVectorSource() {
  */
 export function registerVideoSource() {
     registry.source.video = VideoSource;
+}
+
+// ===== PROJECTIONS =====
+
+/**
+ * Registers Mercator projection support.
+ * Enables flat 2D map rendering with mercator projection.
+ * This is the most common projection for 2D maps.
+ *
+ * Note: Mercator is also the built-in fallback, so calling this
+ * function is optional unless you need explicit mercator projection
+ * selection in the style spec.
+ */
+export function registerMercatorProjection() {
+    registry.projection.mercator =  {
+        projection: MercatorProjection,
+        transform: MercatorTransform,
+        cameraHelper: MercatorCameraHelper,
+    };
+}
+
+/**
+ * Registers Vertical Perspective projection support.
+ * Enables pure 3D globe rendering at all zoom levels.
+ * This projection always shows the earth as a sphere.
+ */
+export function registerVerticalPerspectiveProjection() {
+    registry.projection['vertical-perspective'] = {
+        projection: VerticalPerspectiveProjection,
+        transform: VerticalPerspectiveTransform,
+        cameraHelper: VerticalPerspectiveCameraHelper,
+    };
+}
+
+/**
+ * Registers Globe projection support.
+ * Enables smart globe view that interpolates between 3D globe and flat mercator
+ * based on zoom level (globe when zoomed out, mercator when zoomed in).
+ *
+ * This internally registers both mercator and vertical-perspective projections
+ * since globe interpolates between them.
+ */
+export function registerGlobeProjection() {
+    // Globe relies on both mercator and vertical-perspective
+    registerMercatorProjection();
+    registerVerticalPerspectiveProjection();
+
+    registry.projection.globe = {
+        projection: GlobeProjection,
+        transform: GlobeTransform,
+        cameraHelper: GlobeCameraHelper
+    };
 }

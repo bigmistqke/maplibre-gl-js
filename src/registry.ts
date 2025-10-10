@@ -31,6 +31,17 @@ import type {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
 import type {PauseablePlacement} from './style/pauseable_placement';
 import type {Terrain} from './render/terrain';
 import type {Tile} from './source/tile';
+import type {Projection} from './geo/projection/projection';
+import type {ITransform} from './geo/transform_interface';
+import type {ICameraHelper} from './geo/projection/camera_helper';
+import {type MercatorProjection} from './geo/projection/mercator_projection';
+import {type MercatorCameraHelper, type MercatorTransform} from './core';
+import {type GlobeTransform} from './geo/projection/globe_transform';
+import {type GlobeCameraHelper} from './geo/projection/globe_camera_helper';
+import {type GlobeProjection} from './geo/projection/globe_projection';
+import {type VerticalPerspectiveProjection} from './geo/projection/vertical_perspective_projection';
+import {type VerticalPerspectiveTransform} from './geo/projection/vertical_perspective_transform';
+import {type VerticalPerspectiveCameraHelper} from './geo/projection/vertical_perspective_camera_helper';
 
 /**
  * Draw function type - handles rendering for a specific layer type
@@ -200,6 +211,38 @@ export interface TerrainRegistry {
 };
 
 /**
+ * Projection factory function type
+ * Returns projection, transform, and camera helper instances
+ */
+export type ProjectionKind = {
+    projection: new () => Projection;
+    transform: new () => ITransform;
+    cameraHelper: new () => ICameraHelper;
+};
+
+/**
+ * Projection registry type
+ * Note: Mercator is available as a built-in fallback, but can also be explicitly registered
+ */
+export interface ProjectionRegistry {
+    mercator?: {
+        projection: typeof MercatorProjection;
+        transform: typeof MercatorTransform;
+        cameraHelper: typeof MercatorCameraHelper;
+    };
+    globe?: {
+        projection: typeof GlobeProjection;
+        transform: typeof GlobeTransform;
+        cameraHelper: typeof GlobeCameraHelper;
+    };
+    'vertical-perspective'?: {
+        projection: typeof VerticalPerspectiveProjection;
+        transform: typeof VerticalPerspectiveTransform;
+        cameraHelper: typeof VerticalPerspectiveCameraHelper;
+    };
+};
+
+/**
  * Global registries for tree-shaking
  * Set these to register sources, layers, draws, shaders, and buckets
  */
@@ -210,5 +253,6 @@ export const registry = {
     shader: {} as ShaderRegistry,
     bucket: {} as BucketRegistry,
     symbol: {} as SymbolRegistry,
-    terrain: {} as TerrainRegistry
+    terrain: {} as TerrainRegistry,
+    projection: {} as ProjectionRegistry
 };

@@ -116,6 +116,11 @@ export {
     registerSymbol,
     // Utilities
     registerUtilityShaders,
+    registerTerrain,
+    // Projections
+    registerMercatorProjection,
+    registerVerticalPerspectiveProjection,
+    registerGlobeProjection,
 } from './features';
 
 export type * from '@maplibre/maplibre-gl-style-spec';

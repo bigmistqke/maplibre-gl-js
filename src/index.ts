@@ -35,6 +35,8 @@ import {
     registerSymbol,
     // Utilities
     registerUtilityShaders,
+    registerGlobeProjection,
+    registerTerrain
 } from './core';
 
 // ===== SOURCES =====
@@ -57,6 +59,9 @@ registerHillshade();
 registerLine();
 registerRaster();
 registerSymbol();
+
+registerTerrain();
+registerGlobeProjection();
 
 // ===== UTILITIES =====
 registerUtilityShaders();
