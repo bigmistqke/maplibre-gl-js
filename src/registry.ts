@@ -29,6 +29,8 @@ import type {LineBucket} from './data/bucket/line_bucket';
 import type {SymbolBucket} from './data/bucket/symbol_bucket';
 import type {CrossTileSymbolIndex} from './symbol/cross_tile_symbol_index';
 import type {PauseablePlacement} from './style/pauseable_placement';
+import type {Terrain} from './render/terrain';
+import type {Tile} from './source/tile';
 
 /**
  * Draw function type - handles rendering for a specific layer type
@@ -39,6 +41,32 @@ export type DrawFunction = (
     layer: StyleLayer,
     coords: Array<OverscaledTileID>,
     renderOptions: RenderOptions
+) => void;
+
+/**
+ * Terrain draw function type - handles rendering terrain
+ */
+export type DrawTerrainFunction = (
+    painter: Painter,
+    terrain: Terrain,
+    tiles: Array<Tile>,
+    renderOptions: RenderOptions
+) => void;
+
+/**
+ * Terrain depth draw function type
+ */
+export type DrawTerrainDepthFunction = (
+    painter: Painter,
+    terrain: Terrain
+) => void;
+
+/**
+ * Terrain coords draw function type
+ */
+export type DrawTerrainCoordsFunction = (
+    painter: Painter,
+    terrain: Terrain
 ) => void;
 
 /**
@@ -163,6 +191,15 @@ export interface SymbolRegistry {
 };
 
 /**
+ * Terrain dependencies registry type
+ */
+export interface TerrainRegistry {
+    drawTerrain?: DrawTerrainFunction;
+    drawDepth?: DrawTerrainDepthFunction;
+    drawCoords?: DrawTerrainCoordsFunction;
+};
+
+/**
  * Global registries for tree-shaking
  * Set these to register sources, layers, draws, shaders, and buckets
  */
@@ -172,5 +209,6 @@ export const registry = {
     draw: {} as DrawFunctionRegistry,
     shader: {} as ShaderRegistry,
     bucket: {} as BucketRegistry,
-    symbol: {} as SymbolRegistry
+    symbol: {} as SymbolRegistry,
+    terrain: {} as TerrainRegistry
 };

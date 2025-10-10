@@ -19,7 +19,6 @@ import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
-import {drawDepth, drawCoords} from './draw_terrain';
 import {type OverscaledTileID} from '../source/tile_id';
 import {drawSky, drawAtmosphere} from './draw_sky';
 import {Mesh} from './mesh';
@@ -630,8 +629,8 @@ export class Painter {
         mat4.copy(prevMatrix, currMatrix);
         this.terrainFacilitator.renderTime = Date.now();
         this.terrainFacilitator.dirty = false;
-        drawDepth(this, this.style.map.terrain);
-        drawCoords(this, this.style.map.terrain);
+        registry.terrain.drawDepth?.(this, this.style.map.terrain);
+        registry.terrain.drawCoords?.(this, this.style.map.terrain);
     }
 
     renderLayer(painter: Painter, sourceCache: SourceCache, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {

@@ -78,6 +78,7 @@ import {drawHillshade} from './render/draw_hillshade';
 import {drawLine} from './render/draw_line';
 import {drawRaster} from './render/draw_raster';
 import {drawSymbols} from './render/draw_symbol';
+import {drawTerrain, drawDepth, drawCoords} from './render/draw_terrain';
 import {CanvasSource} from './source/canvas_source';
 import {GeoJSONSource} from './source/geojson_source';
 import {ImageSource} from './source/image_source';
@@ -258,6 +259,20 @@ export function registerSymbol() {
     registry.symbol.performSymbolLayout = performSymbolLayout;
 }
 
+/**
+ * Registers the Terrain feature.
+ * Enables 3D terrain rendering from DEM data.
+ */
+export function registerTerrain() {
+    registry.shader.terrain = prepare(terrainFrag, terrainVert);
+    registry.shader.terrainDepth = prepare(terrainDepthFrag, terrainVertDepth);
+    registry.shader.terrainCoords = prepare(terrainCoordsFrag, terrainVertCoords);
+
+    registry.terrain.drawTerrain = drawTerrain;
+    registry.terrain.drawDepth = drawDepth;
+    registry.terrain.drawCoords = drawCoords;
+}
+
 // ===== UTILITY SHADERS =====
 
 /**
@@ -274,9 +289,6 @@ export function registerUtilityShaders() {
     registry.shader.projectionMercator = prepare('', projectionMercatorVert);
     registry.shader.projectionGlobe = prepare('', projectionGlobeVert);
     registry.shader.sky = prepare(skyFrag, skyVert);
-    registry.shader.terrain = prepare(terrainFrag, terrainVert);
-    registry.shader.terrainDepth = prepare(terrainDepthFrag, terrainVertDepth);
-    registry.shader.terrainCoords = prepare(terrainCoordsFrag, terrainVertCoords);
 }
 
 // ===== SOURCES =====
