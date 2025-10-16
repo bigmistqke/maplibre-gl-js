@@ -1,4 +1,4 @@
-import {type Subscription, isWorker, subscribe} from './util';
+import {type Subscription, isWorker, subscribe, assertedNotNullish } from './util';
 import {serialize, deserialize, type Serialized} from './web_worker_transfer';
 import {ThrottledInvoker} from './throttled_invoker';
 
@@ -57,7 +57,7 @@ export class Actor implements IActor {
     target: ActorTarget;
     mapId: string | number | null;
     resolveRejects: { [x: string]: ResolveReject};
-    name: string;
+    name: string | undefined;
     tasks: { [x: string]: MessageData };
     taskQueue: Array<string>;
     abortControllers: { [x: number | string]: AbortController };
@@ -72,7 +72,7 @@ export class Actor implements IActor {
      */
     constructor(target: ActorTarget, mapId?: string | number) {
         this.target = target;
-        this.mapId = mapId;
+        this.mapId = mapId ?? null;
         this.resolveRejects = {};
         this.tasks = {};
         this.taskQueue = [];
@@ -84,7 +84,7 @@ export class Actor implements IActor {
     }
 
     registerMessageHandler<T extends MessageType>(type: T, handler: MessageHandler<T>) {
-        this.messageHandlers[type] = handler;
+        this.messageHandlers[type] = handler as unknown as MessageHandler<MessageType>;
     }
 
     /**
@@ -182,6 +182,9 @@ export class Actor implements IActor {
             return;
         }
         const id = this.taskQueue.shift();
+        if (!id) {
+            return;
+        }
         const task = this.tasks[id];
         delete this.tasks[id];
         // Schedule another process call if we know there's more to process _before_ invoking the
@@ -211,11 +214,15 @@ export class Actor implements IActor {
             if (task.error) {
                 resolveReject.reject(deserialize(task.error) as Error);
             } else {
-                resolveReject.resolve(deserialize(task.data));
+                resolveReject.resolve(deserialize(task.data) as RequestResponseMessageMap[MessageType][1]);
             }
             return;
         }
-        if (!this.messageHandlers[task.type]) {
+        if (task.type === '<cancel>') {
+            return;
+        }
+        const handler = this.messageHandlers[task.type];
+        if (!handler) {
             this.completeTask(id, new Error(`Could not find a registered handler for ${task.type}, map ID: ${this.mapId}, available handlers: ${Object.keys(this.messageHandlers).join(', ')}`));
             return;
         }
@@ -223,14 +230,14 @@ export class Actor implements IActor {
         const abortController = new AbortController();
         this.abortControllers[id] = abortController;
         try {
-            const data = await this.messageHandlers[task.type](task.sourceMapId, params, abortController);
+            const data = await handler(task.sourceMapId as string | number, params, abortController);
             this.completeTask(id, null, data);
         } catch (err) {
-            this.completeTask(id, err);
+            this.completeTask(id, err instanceof Error ? err : new Error(String(err)));
         }
     }
 
-    completeTask(id: string, err: Error, data?: RequestResponseMessageMap[MessageType][1]) {
+    completeTask(id: string, err: Error | null, data?: RequestResponseMessageMap[MessageType][1]) {
         const buffers: Array<Transferable> = [];
         delete this.abortControllers[id];
         const responseMessage: MessageData = {

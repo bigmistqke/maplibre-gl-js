@@ -3,7 +3,7 @@
  * Invocation requests are ignored until the function was actually invoked.
  */
 export class ThrottledInvoker {
-    _channel: MessageChannel;
+    _channel: MessageChannel | undefined;
     _triggered: boolean;
     _methodToThrottle: Function;
 

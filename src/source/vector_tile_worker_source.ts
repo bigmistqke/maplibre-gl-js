@@ -2,7 +2,7 @@ import {type ExpiryData, getArrayBuffer} from '../util/ajax';
 
 import Protobuf from 'pbf';
 import {WorkerTile} from './worker_tile';
-import {extend} from '../util/util';
+import {extend, assertedNotNullish } from '../util/util';
 import {RequestPerformance} from '../util/performance';
 
 import type {
@@ -63,8 +63,8 @@ export class VectorTileWorkerSource implements WorkerSource {
     /**
      * Loads a vector tile
      */
-    async loadVectorTile(params: WorkerTileParameters, abortController: AbortController): Promise<LoadVectorTileResult> {
-        const response = await getArrayBuffer(params.request, abortController);
+    async loadVectorTile(params: WorkerTileParameters, abortController: AbortController): Promise<LoadVectorTileResult | null> {
+        const response = await getArrayBuffer(assertedNotNullish(params.request), abortController);
         try {
             const vectorTile = new VectorTile(new Protobuf(response.data));
             return {
@@ -76,11 +76,11 @@ export class VectorTileWorkerSource implements WorkerSource {
         } catch (ex) {
             const bytes = new Uint8Array(response.data);
             const isGzipped = bytes[0] === 0x1f && bytes[1] === 0x8b;
-            let errorMessage = `Unable to parse the tile at ${params.request.url}, `;
+            let errorMessage = `Unable to parse the tile at ${assertedNotNullish(params.request).url}, `;
             if (isGzipped) {
                 errorMessage += 'please make sure the data is not gzipped and that you have configured the relevant header in the server';
             } else {
-                errorMessage += `got error: ${ex.message}`;
+                errorMessage += `got error: ${ex instanceof Error ? ex.message : String(ex)}`;
             }
             throw new Error(errorMessage);
         }
@@ -147,7 +147,7 @@ export class VectorTileWorkerSource implements WorkerSource {
     /**
      * Implements {@link WorkerSource.reloadTile}.
      */
-    async reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult> {
+    async reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult | null> {
         const uid = params.uid;
         if (!this.loaded || !this.loaded[uid]) {
             throw new Error('Should not be trying to reload a tile that was never loaded or has been removed');
@@ -155,7 +155,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         const workerTile = this.loaded[uid];
         workerTile.showCollisionBoxes = params.showCollisionBoxes;
         if (workerTile.status === 'parsing') {
-            const result = await workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+            const result = await workerTile.parse(assertedNotNullish(workerTile.vectorTile), this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
             // if we have cancelled the original parse, make sure to pass the rawTileData from the original fetch
             let parseResult: WorkerTileResult;
             if (this.fetching[uid]) {
@@ -173,6 +173,7 @@ export class VectorTileWorkerSource implements WorkerSource {
             // this seems like a missing case where cache control is lost? see #3309
             return workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
         }
+        return null;
     }
 
     /**

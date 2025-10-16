@@ -13,7 +13,7 @@ export const MercatorShaderDefine = '#define PROJECTION_MERCATOR';
 export const MercatorShaderVariantKey = 'mercator';
 
 export class MercatorProjection implements Projection {
-    private _cachedMesh: Mesh = null;
+    private _cachedMesh: Mesh | null = null;
 
     get name(): 'mercator' {
         return 'mercator';

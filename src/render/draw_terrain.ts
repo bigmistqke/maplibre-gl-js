@@ -7,6 +7,7 @@ import {CullFaceMode} from '../gl/cull_face_mode';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {ColorMode} from '../gl/color_mode';
 import {type Terrain} from './terrain';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * Redraw the Depth Framebuffer
@@ -80,16 +81,17 @@ function drawTerrain(painter: Painter, terrain: Terrain, tiles: Array<Tile>, ren
 
     context.bindFramebuffer.set(null);
     context.viewport.set([0, 0, painter.width, painter.height]);
+    const painterStyle = assertedNotNullish(painter.style);
 
     for (const tile of tiles) {
         const mesh = terrain.getTerrainMesh(tile.tileID);
-        const texture = painter.renderToTexture.getTexture(tile);
+        const texture = assertedNotNullish(painter.renderToTexture).getTexture(tile);
         const terrainData = terrain.getTerrainData(tile.tileID);
         context.activeTexture.set(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture.texture);
         const eleDelta = terrain.getMeshFrameDelta(tr.zoom);
         const fogMatrix = tr.calculateFogMatrix(tile.tileID.toUnwrapped());
-        const uniformValues = terrainUniformValues(eleDelta, fogMatrix, painter.style.sky, tr.pitch, isRenderingGlobe);
+        const uniformValues = terrainUniformValues(eleDelta, fogMatrix, assertedNotNullish(painterStyle.sky), tr.pitch, isRenderingGlobe);
         const projectionData = tr.getProjectionData({overscaledTileID: tile.tileID, applyTerrainMatrix: false, applyGlobeMatrix: true});
         program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, colorMode, CullFaceMode.backCCW, uniformValues, terrainData, projectionData, 'terrain', mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
     }

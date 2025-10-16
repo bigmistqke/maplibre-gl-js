@@ -8,7 +8,7 @@ import type {
 import {getImageData, isImageBitmap} from '../util/util';
 
 export class RasterDEMTileWorkerSource {
-    actor: Actor;
+    actor?: Actor;
     loaded: {[_: string]: DEMData};
 
     constructor() {
@@ -20,7 +20,7 @@ export class RasterDEMTileWorkerSource {
         const width = rawImageData.width + 2;
         const height = rawImageData.height + 2;
         const imagePixels: RGBAImage | ImageData = isImageBitmap(rawImageData) ?
-            new RGBAImage({width, height}, await getImageData(rawImageData, -1, -1, width, height)) :
+            new RGBAImage({width, height}, await getImageData(rawImageData, -1, -1, width, height) as Uint8ClampedArray<ArrayBuffer>) :
             rawImageData;
         const dem = new DEMData(uid, imagePixels, encoding, redFactor, greenFactor, blueFactor, baseShift);
         this.loaded = this.loaded || {};

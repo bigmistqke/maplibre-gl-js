@@ -2,6 +2,7 @@
 import {RGBAImage} from '../util/image';
 import {register} from '../util/web_worker_transfer';
 import potpack from 'potpack';
+import {assertedNotNullish} from '../util/util';
 
 import type {StyleImage} from '../style/style_image';
 import {type TextFit} from '../style/style_image';
@@ -14,14 +15,14 @@ const IMAGE_PADDING: number = 1;
 export {IMAGE_PADDING};
 
 export class ImagePosition {
-    paddedRect: Rect;
-    pixelRatio: number;
-    version: number;
-    stretchY: Array<[number, number]>;
-    stretchX: Array<[number, number]>;
-    content: [number, number, number, number];
-    textFitWidth: TextFit;
-    textFitHeight: TextFit;
+    paddedRect: Rect ;
+    pixelRatio: number ;
+    version: number | undefined;
+    stretchY: Array<[number, number]> | undefined;
+    stretchX: Array<[number, number]> | undefined;
+    content: [number, number, number, number] | undefined;
+    textFitWidth: TextFit | undefined;
+    textFitHeight: TextFit | undefined;
 
     constructor(paddedRect: Rect, {
         pixelRatio,
@@ -73,16 +74,16 @@ export class ImagePosition {
  */
 export class ImageAtlas {
     image: RGBAImage;
-    iconPositions: {[_: string]: ImagePosition};
-    patternPositions: {[_: string]: ImagePosition};
+    iconPositions: Record<string, ImagePosition>;
+    patternPositions: Record<string, ImagePosition>;
     haveRenderCallbacks: Array<string>;
-    uploaded: boolean;
+    uploaded?: boolean;
 
     constructor(icons: GetImagesResponse, patterns: GetImagesResponse) {
-        const iconPositions = {}, patternPositions = {};
+        const iconPositions: Record<string, ImagePosition> = {}, patternPositions: Record<string, ImagePosition> = {};
         this.haveRenderCallbacks = [];
 
-        const bins = [];
+        const bins: Rect[] = [];
 
         this.addImages(icons, iconPositions, bins);
         this.addImages(patterns, patternPositions, bins);
@@ -92,24 +93,26 @@ export class ImageAtlas {
 
         for (const id in icons) {
             const src = icons[id];
+            const srcData = assertedNotNullish(src.data);
             const bin = iconPositions[id].paddedRect;
-            RGBAImage.copy(src.data, image, {x: 0, y: 0}, {x: bin.x + IMAGE_PADDING, y: bin.y + IMAGE_PADDING}, src.data);
+            RGBAImage.copy(srcData, image, {x: 0, y: 0}, {x: bin.x + IMAGE_PADDING, y: bin.y + IMAGE_PADDING}, srcData);
         }
 
         for (const id in patterns) {
             const src = patterns[id];
+            const srcData = assertedNotNullish(src.data);
             const bin = patternPositions[id].paddedRect;
             const x = bin.x + IMAGE_PADDING,
                 y = bin.y + IMAGE_PADDING,
-                w = src.data.width,
-                h = src.data.height;
+                w = srcData.width,
+                h = srcData.height;
 
-            RGBAImage.copy(src.data, image, {x: 0, y: 0}, {x, y}, src.data);
+            RGBAImage.copy(srcData, image, {x: 0, y: 0}, {x, y}, srcData);
             // Add 1 pixel wrapped padding on each side of the image.
-            RGBAImage.copy(src.data, image, {x: 0, y: h - 1}, {x, y: y - 1}, {width: w, height: 1}); // T
-            RGBAImage.copy(src.data, image, {x: 0, y:     0}, {x, y: y + h}, {width: w, height: 1}); // B
-            RGBAImage.copy(src.data, image, {x: w - 1, y: 0}, {x: x - 1, y}, {width: 1, height: h}); // L
-            RGBAImage.copy(src.data, image, {x: 0,     y: 0}, {x: x + w, y}, {width: 1, height: h}); // R
+            RGBAImage.copy(srcData, image, {x: 0, y: h - 1}, {x, y: y - 1}, {width: w, height: 1}); // T
+            RGBAImage.copy(srcData, image, {x: 0, y:     0}, {x, y: y + h}, {width: w, height: 1}); // B
+            RGBAImage.copy(srcData, image, {x: w - 1, y: 0}, {x: x - 1, y}, {width: 1, height: h}); // L
+            RGBAImage.copy(srcData, image, {x: 0,     y: 0}, {x: x + w, y}, {width: 1, height: h}); // R
         }
 
         this.image = image;
@@ -117,14 +120,15 @@ export class ImageAtlas {
         this.patternPositions = patternPositions;
     }
 
-    addImages(images: {[_: string]: StyleImage}, positions: {[_: string]: ImagePosition}, bins: Array<Rect>) {
+    addImages(images: Record<string, StyleImage>, positions: Record<string, ImagePosition>, bins: Array<Rect>) {
         for (const id in images) {
             const src = images[id];
+            const srcData = assertedNotNullish(src.data);
             const bin = {
                 x: 0,
                 y: 0,
-                w: src.data.width + 2 * IMAGE_PADDING,
-                h: src.data.height + 2 * IMAGE_PADDING,
+                w: srcData.width + 2 * IMAGE_PADDING,
+                h: srcData.height + 2 * IMAGE_PADDING,
             };
             bins.push(bin);
             positions[id] = new ImagePosition(bin, src);
@@ -138,19 +142,19 @@ export class ImageAtlas {
     patchUpdatedImages(imageManager: ImageManager, texture: Texture) {
         imageManager.dispatchRenderCallbacks(this.haveRenderCallbacks);
         for (const name in imageManager.updatedImages) {
-            this.patchUpdatedImage(this.iconPositions[name], imageManager.getImage(name), texture);
-            this.patchUpdatedImage(this.patternPositions[name], imageManager.getImage(name), texture);
+            this.patchUpdatedImage(assertedNotNullish(this.iconPositions[name]), imageManager.getImage(name), texture);
+            this.patchUpdatedImage(assertedNotNullish(this.patternPositions[name]), imageManager.getImage(name), texture);
         }
     }
 
-    patchUpdatedImage(position: ImagePosition, image: StyleImage, texture: Texture) {
+    patchUpdatedImage(position: ImagePosition | undefined, image: StyleImage | undefined, texture: Texture) {
         if (!position || !image) return;
 
         if (position.version === image.version) return;
 
         position.version = image.version;
         const [x, y] = position.tl;
-        texture.update(image.data, undefined, {x, y});
+        texture.update(assertedNotNullish(image.data), undefined, {x, y});
     }
 
 }

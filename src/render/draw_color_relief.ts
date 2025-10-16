@@ -6,6 +6,7 @@ import {type ColorMode} from '../gl/color_mode';
 import {
     colorReliefUniformValues
 } from './program/color_relief_program';
+import {assertedNotNullish} from '../util/util';
 
 import type {Painter, RenderOptions} from './painter';
 import type {SourceCache} from '../source/source_cache';
@@ -17,8 +18,8 @@ export function drawColorRelief(painter: Painter, sourceCache: SourceCache, laye
     if (!tileIDs.length) return;
 
     const {isRenderingToTexture} = renderOptions;
-    const projection = painter.style.projection;
-    const useSubdivision = projection.useSubdivision;
+    const projection = assertedNotNullish(painter.style).projection;
+    const useSubdivision = assertedNotNullish(projection).useSubdivision;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
     const colorMode = painter.colorModeForRenderPass();
@@ -48,12 +49,12 @@ function renderColorRelief(
     useBorder: boolean,
     isRenderingToTexture: boolean
 ) {
-    const projection = painter.style.projection;
+    const projection = assertedNotNullish(painter.style).projection;
     const context = painter.context;
     const transform = painter.transform;
     const gl = context.gl;
     const program = painter.useProgram('colorRelief');
-    const align = !painter.options.moving;
+    const align = !assertedNotNullish(painter.options).moving;
 
     let firstTile = true;
     let colorRampSize = 0;
@@ -63,13 +64,13 @@ function renderColorRelief(
         const dem = tile.dem;
         if(firstTile) {
             const maxLength = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-            const {elevationTexture, colorTexture} = layer.getColorRampTextures(context, maxLength, dem.getUnpackVector());
+            const {elevationTexture, colorTexture} = layer.getColorRampTextures(context, maxLength, assertedNotNullish(dem).getUnpackVector());
             context.activeTexture.set(gl.TEXTURE1);
             elevationTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
             context.activeTexture.set(gl.TEXTURE4);
             colorTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
             firstTile = false;
-            colorRampSize = elevationTexture.size[0];
+            colorRampSize = assertedNotNullish(elevationTexture.size)[0];
         }
 
         if (!dem || !dem.data) {
@@ -82,7 +83,7 @@ function renderColorRelief(
         context.activeTexture.set(gl.TEXTURE0);
 
         context.pixelStoreUnpackPremultiplyAlpha.set(false);
-        tile.demTexture = tile.demTexture || painter.getTileTexture(textureStride);
+        tile.demTexture = tile.demTexture || assertedNotNullish(painter.getTileTexture(assertedNotNullish(textureStride)), 'Expected painter.getTileTexture to return defined value');
         if (tile.demTexture) {
             const demTexture = tile.demTexture;
             demTexture.update(pixelData, {premultiply: false});
@@ -92,9 +93,9 @@ function renderColorRelief(
             tile.demTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
         }
 
-        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
+        const mesh = assertedNotNullish(projection).getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
 
-        const terrainData = painter.style.map.terrain?.getTerrainData(coord);
+        const terrainData = assertedNotNullish(painter.style).map.terrain?.getTerrainData(coord);
 
         const projectionData = transform.getProjectionData({
             overscaledTileID: coord,
@@ -104,6 +105,6 @@ function renderColorRelief(
         });
 
         program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW,
-            colorReliefUniformValues(layer, tile.dem, colorRampSize), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+            colorReliefUniformValues(layer, assertedNotNullish(tile.dem), colorRampSize), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
     }
 }

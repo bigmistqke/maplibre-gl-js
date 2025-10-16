@@ -1,5 +1,5 @@
 import {type RequestParameters, makeRequest, sameOrigin, type GetResourceResponse} from './ajax';
-import {arrayBufferToImageBitmap, arrayBufferToImage, extend, isWorker, isImageBitmap} from './util';
+import {arrayBufferToImageBitmap, arrayBufferToImage, extend, isWorker, isImageBitmap, assertedNotNullish } from './util';
 import {webpSupported} from './webp_supported';
 import {config} from './config';
 import {createAbortError} from './abort_error';
@@ -11,7 +11,7 @@ export type ImageRequestQueueItem  = {
     requestParameters: RequestParameters;
     supportImageRefresh: boolean;
     state: 'queued' | 'running' | 'completed';
-    abortController: AbortController;
+    abortController?: AbortController;
     onError: (error: Error) => void;
     onSuccess: (response: GetResourceResponse<HTMLImageElement | ImageBitmap | null>) => void;
 };
@@ -90,7 +90,7 @@ export namespace ImageRequest {
      */
     const isThrottled = (): boolean => {
         for (const key of Object.keys(throttleControlCallbacks)) {
-            if (throttleControlCallbacks[key]()) {
+            if (throttleControlCallbacks[key as unknown as keyof typeof throttleControlCallbacks]()) {
                 return true;
             }
         }
@@ -161,8 +161,8 @@ export namespace ImageRequest {
         currentParallelImageRequests++;
 
         const getImagePromise = canUseHTMLImageElement ?
-            getImageUsingHtmlImage(requestParameters, abortController) :
-            makeRequest(requestParameters, abortController);
+            getImageUsingHtmlImage(requestParameters, abortController!) :
+            makeRequest(requestParameters, abortController!);
 
         try {
             const response = await getImagePromise;
@@ -178,7 +178,7 @@ export namespace ImageRequest {
             }
         } catch (err) {
             delete itemInQueue.abortController;
-            onError(err);
+            onError(err instanceof Error ? err : new Error(String(err)));
         } finally {
             currentParallelImageRequests--;
             processQueue();
@@ -199,8 +199,8 @@ export namespace ImageRequest {
             numImageRequests < maxImageRequests && imageRequestQueue.length > 0;
             numImageRequests++) {
 
-            const topItemInQueue: ImageRequestQueueItem = imageRequestQueue.shift();
-            if (topItemInQueue.abortController.signal.aborted) {
+            const topItemInQueue: ImageRequestQueueItem = assertedNotNullish(imageRequestQueue.shift());
+            if (topItemInQueue.abortController?.signal.aborted) {
                 numImageRequests--;
                 continue;
             }

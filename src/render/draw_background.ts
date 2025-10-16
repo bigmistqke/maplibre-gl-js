@@ -11,20 +11,24 @@ import type {SourceCache} from '../source/source_cache';
 import type {BackgroundStyleLayer} from '../style/style_layer/background_style_layer';
 import {type OverscaledTileID} from '../source/tile_id';
 import {coveringTiles} from '../geo/projection/covering_tiles';
+import {assertedNotNullish} from '../util/util';
 
-export function drawBackground(painter: Painter, sourceCache: SourceCache, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const color = layer.paint.get('background-color');
-    const opacity = layer.paint.get('background-opacity');
+export function drawBackground(painter: Painter, sourceCache: SourceCache | undefined, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+    const layerPaint = assertedNotNullish(layer.paint);
+    const color = layerPaint.get('background-color');
+    const opacity = layerPaint.get('background-opacity');
 
     if (opacity === 0) return;
+
+    const painterStyle = assertedNotNullish(painter.style);
 
     const {isRenderingToTexture} = renderOptions;
     const context = painter.context;
     const gl = context.gl;
-    const projection = painter.style.projection;
+    const projection = assertedNotNullish(painterStyle.projection);
     const transform = painter.transform;
     const tileSize = transform.tileSize;
-    const image = layer.paint.get('background-pattern');
+    const image = layerPaint.get('background-pattern');
 
     if (painter.isPatternMissing(image)) return;
 
@@ -35,15 +39,15 @@ export function drawBackground(painter: Painter, sourceCache: SourceCache, layer
     const depthMode = painter.getDepthModeForSublayer(0, pass === 'opaque' ? DepthMode.ReadWrite : DepthMode.ReadOnly);
     const colorMode = painter.colorModeForRenderPass();
     const program = painter.useProgram(image ? 'backgroundPattern' : 'background');
-    const tileIDs = coords ? coords : coveringTiles(transform, {tileSize, terrain: painter.style.map.terrain});
+    const tileIDs = coords ? coords : coveringTiles(transform, {tileSize, terrain: painterStyle.map.terrain});
 
     if (image) {
         context.activeTexture.set(gl.TEXTURE0);
-        painter.imageManager.bind(painter.context);
+        assertedNotNullish(painter.imageManager).bind(painter.context);
     }
 
-    const crossfade = layer.getCrossfadeParameters();
-    
+    const crossfade = assertedNotNullish(layer.getCrossfadeParameters());
+
     for (const tileID of tileIDs) {
         const projectionData = transform.getProjectionData({
             overscaledTileID: tileID,
@@ -54,7 +58,7 @@ export function drawBackground(painter: Painter, sourceCache: SourceCache, layer
         const uniformValues = image ?
             backgroundPatternUniformValues(opacity, painter, image, {tileID, tileSize}, crossfade) :
             backgroundUniformValues(opacity, color);
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(tileID);
+        const terrainData = painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(tileID);
 
         // For globe rendering, background uses tile meshes *without* borders and no stencil clipping.
         // This works assuming the tileIDs list contains only tiles of the same zoom level.

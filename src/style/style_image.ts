@@ -1,6 +1,7 @@
 import {type RGBAImage} from '../util/image';
 
 import type {Map} from '../ui/map';
+import { assertedNotNullish } from "../util/util";
 
 export type SpriteJSON = {[id: string]: StyleImageMetadata & {
     width: number;
@@ -24,7 +25,7 @@ export type SpriteOnDemandStyleImage = {
  * The style's image metadata
  */
 export type StyleImageData = {
-    data: RGBAImage;
+    data: RGBAImage | null;
     version?: number;
     hasRenderCallback?: boolean;
     userImage?: StyleImageInterface;
@@ -180,7 +181,7 @@ export function renderStyleImage(image: StyleImage) {
     if (userImage && userImage.render) {
         const updated = userImage.render();
         if (updated) {
-            image.data.replace(new Uint8Array(userImage.data.buffer));
+            assertedNotNullish(image.data).replace(new Uint8Array(userImage.data.buffer) as Uint8Array<ArrayBuffer>);
             return true;
         }
     }

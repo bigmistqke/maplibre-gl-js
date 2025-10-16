@@ -21,12 +21,12 @@ export type TextureImage = TexImageSource | DataTextureImage;
  */
 export class Texture {
     context: Context;
-    size: [number, number];
-    texture: WebGLTexture;
+    size?: [number, number];
+    texture: WebGLTexture | null;
     format: TextureFormat;
-    filter: TextureFilter;
-    wrap: TextureWrap;
-    useMipmap: boolean;
+    filter?: TextureFilter;
+    wrap?: TextureWrap;
+    useMipmap?: boolean;
 
     constructor(context: Context, image: TextureImage, format: TextureFormat, options?: {
         premultiply?: boolean;
@@ -107,7 +107,7 @@ export class Texture {
     }
 
     isSizePowerOfTwo() {
-        return this.size[0] === this.size[1] && (Math.log(this.size[0]) / Math.LN2) % 1 === 0;
+        return this.size && this.size[0] === this.size[1] && (Math.log(this.size[0]) / Math.LN2) % 1 === 0;
     }
 
     destroy() {

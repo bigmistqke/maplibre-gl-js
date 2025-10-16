@@ -3,6 +3,7 @@ import type {Map} from '../../ui/map';
 import {type mat4} from 'gl-matrix';
 import {type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {ProjectionData} from '../../geo/projection/projection_data';
+import { assertedNotNullish } from "../../util/util";
 
 /**
 * Input arguments exposed by custom render function.
@@ -295,13 +296,13 @@ export class CustomStyleLayer extends StyleLayer {
 
     onAdd = (map: Map) => {
         if (this.implementation.onAdd) {
-            this.implementation.onAdd(map, map.painter.context.gl);
+            this.implementation.onAdd(map, assertedNotNullish(map.painter).context.gl);
         }
     };
 
     onRemove = (map: Map) => {
         if (this.implementation.onRemove) {
-            this.implementation.onRemove(map, map.painter.context.gl);
+            this.implementation.onRemove(map, assertedNotNullish(map.painter).context.gl);
         }
     };
 }

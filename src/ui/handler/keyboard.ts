@@ -26,8 +26,8 @@ const defaultOptions = {
  */
 export class KeyboardHandler implements Handler {
     _tr: TransformProvider;
-    _enabled: boolean;
-    _active: boolean;
+    _enabled: boolean | undefined;
+    _active: boolean | undefined;
     _panStep: number;
     _bearingStep: number;
     _pitchStep: number;
@@ -166,7 +166,7 @@ export class KeyboardHandler implements Handler {
      * interaction is enabled.
      */
     isEnabled() {
-        return this._enabled;
+        return !!this._enabled;
     }
 
     /**
@@ -177,7 +177,7 @@ export class KeyboardHandler implements Handler {
      * start of a zoom/rotate gesture.
      */
     isActive() {
-        return this._active;
+        return !!this._active;
     }
 
     /**

@@ -1,30 +1,31 @@
 import {DepthMode} from '../gl/depth_mode';
 import {StencilMode} from '../gl/stencil_mode';
+import {assertedNotNullish} from '../util/util';
 
 import type {Painter, RenderOptions} from './painter';
 import type {SourceCache} from '../source/source_cache';
 import type {CustomRenderMethodInput, CustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
-export function drawCustom(painter: Painter, sourceCache: SourceCache, layer: CustomStyleLayer, renderOptions: RenderOptions) {
+export function drawCustom(painter: Painter, sourceCache: SourceCache | undefined, layer: CustomStyleLayer, renderOptions: RenderOptions) {
 
     const {isRenderingGlobe} = renderOptions;
     const context = painter.context;
     const implementation = layer.implementation;
-    const projection = painter.style.projection;
+    const projection = assertedNotNullish(painter.style).projection;
     const transform = painter.transform;
 
     const projectionData = transform.getProjectionDataForCustomLayer(isRenderingGlobe);
 
     const customLayerArgs: CustomRenderMethodInput = {
-        farZ: transform.farZ,
-        nearZ: transform.nearZ,
+        farZ: assertedNotNullish(transform.farZ),
+        nearZ: assertedNotNullish(transform.nearZ),
         fov: transform.fov * Math.PI / 180, // fov converted to radians
         modelViewProjectionMatrix: transform.modelViewProjectionMatrix,
         projectionMatrix: transform.projectionMatrix,
         shaderData: {
-            variantName: projection.shaderVariantName,
-            vertexShaderPrelude: `const float PI = 3.141592653589793;\nuniform mat4 u_projection_matrix;\n${projection.shaderPreludeCode.vertexSource}`,
-            define: projection.shaderDefine,
+            variantName: assertedNotNullish(projection).shaderVariantName,
+            vertexShaderPrelude: `const float PI = 3.141592653589793;\nuniform mat4 u_projection_matrix;\n${assertedNotNullish(projection).shaderPreludeCode.vertexSource}`,
+            define: assertedNotNullish(projection).shaderDefine,
         },
         defaultProjectionData: projectionData,
     };

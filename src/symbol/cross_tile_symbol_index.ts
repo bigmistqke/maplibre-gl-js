@@ -8,6 +8,7 @@ import type {OverscaledTileID} from '../source/tile_id';
 import type {SymbolBucket} from '../data/bucket/symbol_bucket';
 import type {StyleLayer} from '../style/style_layer';
 import type {Tile} from '../source/tile';
+import { assertedNotNullish } from "../util/util";
 
 /*
     The CrossTileSymbolIndex generally works on the assumption that
@@ -58,12 +59,13 @@ class TileLayerIndex {
             const positions = symbols.map(symbolInstance => ({x: Math.floor(symbolInstance.anchorX * roundingFactor), y: Math.floor(symbolInstance.anchorY * roundingFactor)}));
             const crossTileIDs = symbols.map(v => v.crossTileID);
             const entry: SymbolsByKeyEntry = {positions, crossTileIDs};
+            const entryPositions = assertedNotNullish(entry.positions);
 
             // once we get too many symbols for a given key, it becomes much faster to index it before queries
-            if (entry.positions.length > KDBUSH_THRESHHOLD) {
+            if (entryPositions.length > KDBUSH_THRESHHOLD) {
 
-                const index = new KDBush(entry.positions.length, 16, Uint16Array);
-                for (const {x, y} of entry.positions) index.add(x, y);
+                const index = new KDBush(entryPositions.length, 16, Uint16Array);
+                for (const {x, y} of entryPositions) index.add(x, y);
                 index.finish();
 
                 // clear all references to the original positions data
@@ -206,7 +208,7 @@ class CrossTileSymbolLayerIndex {
         if (wrapDelta !== 0) {
             for (const zoom in this.indexes) {
                 const zoomIndexes = this.indexes[zoom];
-                const newZoomIndex = {};
+                const newZoomIndex: Record<string, TileLayerIndex> = {};
                 for (const key in zoomIndexes) {
                     // change the tileID's wrap and add it to a new index
                     const index = zoomIndexes[key];
@@ -236,8 +238,8 @@ class CrossTileSymbolLayerIndex {
             }
         }
 
-        for (let i = 0; i < bucket.symbolInstances.length; i++) {
-            const symbolInstance = bucket.symbolInstances.get(i);
+        for (let i = 0; i < assertedNotNullish(bucket.symbolInstances).length; i++) {
+            const symbolInstance = assertedNotNullish(bucket.symbolInstances).get(i);
             symbolInstance.crossTileID = 0;
         }
 
@@ -252,20 +254,20 @@ class CrossTileSymbolLayerIndex {
                 for (const id in zoomIndexes) {
                     const childIndex = zoomIndexes[id];
                     if (childIndex.tileID.isChildOf(tileID)) {
-                        childIndex.findMatches(bucket.symbolInstances, tileID, zoomCrossTileIDs);
+                        childIndex.findMatches(assertedNotNullish(bucket.symbolInstances), tileID, zoomCrossTileIDs);
                     }
                 }
             } else {
                 const parentCoord = tileID.scaledTo(Number(zoom));
                 const parentIndex = zoomIndexes[parentCoord.key];
                 if (parentIndex) {
-                    parentIndex.findMatches(bucket.symbolInstances, tileID, zoomCrossTileIDs);
+                    parentIndex.findMatches(assertedNotNullish(bucket.symbolInstances), tileID, zoomCrossTileIDs);
                 }
             }
         }
 
-        for (let i = 0; i < bucket.symbolInstances.length; i++) {
-            const symbolInstance = bucket.symbolInstances.get(i);
+        for (let i = 0; i < assertedNotNullish(bucket.symbolInstances).length; i++) {
+            const symbolInstance = assertedNotNullish(bucket.symbolInstances).get(i);
             if (!symbolInstance.crossTileID) {
                 // symbol did not match any known symbol, assign a new id
                 symbolInstance.crossTileID = crossTileIDs.generate();
@@ -276,7 +278,7 @@ class CrossTileSymbolLayerIndex {
         if (this.indexes[tileID.overscaledZ] === undefined) {
             this.indexes[tileID.overscaledZ] = {};
         }
-        this.indexes[tileID.overscaledZ][tileID.key] = new TileLayerIndex(tileID, bucket.symbolInstances, bucket.bucketInstanceId);
+        this.indexes[tileID.overscaledZ][tileID.key] = new TileLayerIndex(tileID, assertedNotNullish(bucket.symbolInstances), assertedNotNullish(bucket.bucketInstanceId));
 
         return true;
     }
@@ -327,7 +329,7 @@ export class CrossTileSymbolIndex {
         }
 
         let symbolBucketsChanged = false;
-        const currentBucketIDs = {};
+        const currentBucketIDs: Record<number, boolean> = {};
 
         layerIndex.handleWrapJump(lng);
 
@@ -354,7 +356,7 @@ export class CrossTileSymbolIndex {
     }
 
     pruneUnusedLayers(usedLayers: Array<string>) {
-        const usedLayerMap = {};
+        const usedLayerMap: Record<string, boolean> = {};
         usedLayers.forEach((usedLayer) => {
             usedLayerMap[usedLayer] = true;
         });

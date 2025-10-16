@@ -10,7 +10,7 @@ import Point from '@mapbox/point-geometry';
 import {now} from '../util/time_control';
 import {OverscaledTileID} from './tile_id';
 import {SourceFeatureState} from './source_state';
-import {getEdgeTiles} from '../util/util';
+import {getEdgeTiles, assertedNotNullish } from '../util/util';
 import {config} from '../util/config';
 
 import type {Source} from './source';
@@ -19,7 +19,7 @@ import type {Style} from '../style/style';
 import type {Dispatcher} from '../util/dispatcher';
 import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
 import type {TileState} from './tile';
-import type {ICanonicalTileID, SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {ICanonicalTileID, Point2D, SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {MapSourceDataEvent} from '../ui/events';
 import type {Terrain} from '../render/terrain';
 import type {CanvasSourceSpecification} from './canvas_source';
@@ -48,8 +48,8 @@ type TileResult = {
 export class SourceCache extends Evented {
     id: string;
     dispatcher: Dispatcher;
-    map: Map;
-    style: Style;
+    map: Map | undefined;
+    style: Style | undefined;
 
     _source: Source;
 
@@ -59,22 +59,22 @@ export class SourceCache extends Evented {
      * if the source type does not come with a TileJSON, the flag signifies the
      * source data has loaded (i.e geojson has been tiled on the worker and is ready)
      */
-    _sourceLoaded: boolean;
+    _sourceLoaded: boolean | undefined;
 
-    _sourceErrored: boolean;
+    _sourceErrored: boolean | undefined;
     _tiles: Record<string, Tile>;
-    _prevLng: number;
+    _prevLng: number | undefined;
     _cache: TileCache;
     _timers: Record<string, ReturnType<typeof setTimeout>>;
     _maxTileCacheSize: number;
     _maxTileCacheZoomLevels: number;
-    _paused: boolean;
-    _shouldReloadOnResume: boolean;
-    transform: ITransform;
-    terrain: Terrain;
-    used: boolean;
-    usedForTerrain: boolean;
-    tileSize: number;
+    _paused: boolean | undefined;
+    _shouldReloadOnResume: boolean | undefined;
+    transform: ITransform | undefined;
+    terrain: Terrain | undefined;
+    used: boolean | undefined;
+    usedForTerrain: boolean | undefined;
+    tileSize: number | undefined;
     _state: SourceFeatureState;
     _didEmitContent: boolean;
     _updated: boolean;
@@ -105,8 +105,8 @@ export class SourceCache extends Evented {
         this._tiles = {};
         this._cache = new TileCache(0, (tile) => this._unloadTile(tile));
         this._timers = {};
-        this._maxTileCacheSize = null;
-        this._maxTileCacheZoomLevels = null;
+        this._maxTileCacheSize = 0;
+        this._maxTileCacheZoomLevels = 0;
         this._rasterFadeDuration = 0;
         this._maxFadingAncestorLevels = 5;
 
@@ -117,8 +117,8 @@ export class SourceCache extends Evented {
 
     onAdd(map: Map) {
         this.map = map;
-        this._maxTileCacheSize = map ? map._maxTileCacheSize : null;
-        this._maxTileCacheZoomLevels = map ? map._maxTileCacheZoomLevels : null;
+        this._maxTileCacheSize = map?._maxTileCacheSize ?? 0;
+        this._maxTileCacheZoomLevels = map?._maxTileCacheZoomLevels ?? 0;
         if (this._source && this._source.onAdd) {
             this._source.onAdd(map);
         }
@@ -172,13 +172,13 @@ export class SourceCache extends Evented {
         try {
             await this._source.loadTile(tile);
             this._tileLoaded(tile, id, state);
-        } catch (err) {
+        } catch (err: unknown) {
             tile.state = 'errored';
-            if ((err as any).status !== 404) {
-                this._source.fire(new ErrorEvent(err, {tile}));
+            if ((err as {status?: number}).status !== 404) {
+                this._source.fire(new ErrorEvent(err instanceof Error ? err : new Error(String(err)), {tile}));
             } else {
                 // continue to try loading parent/children tiles if a tile doesn't exist (404)
-                this.update(this.transform, this.terrain);
+                this.update(assertedNotNullish(this.transform), this.terrain);
             }
         }
     }
@@ -208,7 +208,7 @@ export class SourceCache extends Evented {
         for (const i in this._tiles) {
             const tile = this._tiles[i];
             tile.upload(context);
-            tile.prepare(this.map.style.imageManager);
+            tile.prepare(assertedNotNullish(assertedNotNullish(this.map).style).imageManager);
         }
     }
 
@@ -228,8 +228,8 @@ export class SourceCache extends Evented {
             return renderables.sort((a_: Tile, b_: Tile) => {
                 const a = a_.tileID;
                 const b = b_.tileID;
-                const rotatedA = (new Point(a.canonical.x, a.canonical.y))._rotate(-this.transform.bearingInRadians);
-                const rotatedB = (new Point(b.canonical.x, b.canonical.y))._rotate(-this.transform.bearingInRadians);
+                const rotatedA = (new Point(a.canonical.x, a.canonical.y))._rotate(-assertedNotNullish(this.transform).bearingInRadians);
+                const rotatedB = (new Point(b.canonical.x, b.canonical.y))._rotate(-assertedNotNullish(this.transform).bearingInRadians);
                 return a.overscaledZ - b.overscaledZ || rotatedB.y - rotatedA.y || rotatedB.x - rotatedA.x;
             }).map(tile => tile.tileID.key);
         }
@@ -311,12 +311,13 @@ export class SourceCache extends Evented {
             const borderId = renderables[i];
             if (tile.neighboringTiles && tile.neighboringTiles[borderId]) {
                 const borderTile = this.getTileByID(borderId);
+                if (!borderTile) continue;
                 fillBorder(tile, borderTile);
                 fillBorder(borderTile, tile);
             }
         }
 
-        function fillBorder(tile, borderTile) {
+        function fillBorder(tile: Tile, borderTile: Tile) {
             tile.needsHillshadePrepare = true;
             tile.needsTerrainPrepare = true;
             let dx = borderTile.tileID.canonical.x - tile.tileID.canonical.x;
@@ -346,13 +347,13 @@ export class SourceCache extends Evented {
      * Get a specific tile by TileID
      */
     getTile(tileID: OverscaledTileID): Tile {
-        return this.getTileByID(tileID.key);
+        return assertedNotNullish(this.getTileByID(tileID.key));
     }
 
     /**
      * Get a specific tile by id
      */
-    getTileByID(id: string): Tile {
+    getTileByID(id: string): Tile | undefined {
         return this._tiles[id];
     }
 
@@ -545,7 +546,7 @@ export class SourceCache extends Evented {
                 .map((unwrapped) => new OverscaledTileID(unwrapped.canonical.z, unwrapped.wrap, unwrapped.canonical.z, unwrapped.canonical.x, unwrapped.canonical.y));
         } else {
             idealTileIDs = coveringTiles(transform, {
-                tileSize: this.usedForTerrain ? this.tileSize : this._source.tileSize,
+                tileSize: (this.usedForTerrain ? this.tileSize : this._source.tileSize ?? this.tileSize) ?? 512,
                 minzoom: this._source.minzoom,
                 maxzoom: this._source.maxzoom,
                 roundZoom: this.usedForTerrain ? false : this._source.roundZoom,
@@ -555,7 +556,7 @@ export class SourceCache extends Evented {
             });
 
             if (this._source.hasTile) {
-                idealTileIDs = idealTileIDs.filter((coord) => this._source.hasTile(coord));
+                idealTileIDs = idealTileIDs.filter((coord) => assertedNotNullish(this._source.hasTile)(coord));
             }
         }
 
@@ -624,7 +625,7 @@ export class SourceCache extends Evented {
 
             // for tile with symbols - hold for fade - then remove
             if (!tile.holdingForSymbolFade()) {
-                tile.setSymbolHoldDuration(this.map._fadeDuration);
+                tile.setSymbolHoldDuration(assertedNotNullish(this.map)._fadeDuration ?? 0);
             } else if (tile.symbolFadeFinished()) {
                 this._removeTile(key);
             }
@@ -668,7 +669,7 @@ export class SourceCache extends Evented {
         const checked: Record<string, boolean> = {};
         const minCoveringZoom = Math.max(zoom - SourceCache.maxOverzooming, this._source.minzoom);
 
-        let missingIdealTiles = {};
+        let missingIdealTiles: Record<string, OverscaledTileID> = {};
         for (const idealID of idealTileIDs) {
             const idealTile = this._addTile(idealID);
 
@@ -900,7 +901,7 @@ export class SourceCache extends Evented {
      * Add a tile, given its coordinate, to the pyramid.
      */
     _addTile(tileID: OverscaledTileID): Tile {
-        let tile = this._tiles[tileID.key];
+        let tile: Tile | null | undefined = this._tiles[tileID.key];
         if (tile)
             return tile;
 
@@ -1111,9 +1112,9 @@ export class SourceCache extends Evented {
             // planet except for what should be inside it.
             const bounds = Bounds.fromPoints(geom);
             bounds.shrinkBy(Math.min(bounds.width(), bounds.height()) * 0.001);
-            const projected = bounds.map(project);
+            const projected = bounds.map(project as unknown as (point: Point2D) => Point2D);
 
-            const newBounds = Bounds.fromPoints(transformed); 
+            const newBounds = Bounds.fromPoints(transformed);
 
             if (!newBounds.covers(projected)) {
                 transformed = transformed.map((coord) => coord.x > 0.5 ?
@@ -1216,6 +1217,6 @@ function compareTileId(a: OverscaledTileID, b: OverscaledTileID): number {
     return a.overscaledZ - b.overscaledZ || bWrap - aWrap || b.canonical.y - a.canonical.y || b.canonical.x - a.canonical.x;
 }
 
-function isRasterType(type) {
+function isRasterType(type: string): boolean {
     return type === 'raster' || type === 'image' || type === 'video';
 }

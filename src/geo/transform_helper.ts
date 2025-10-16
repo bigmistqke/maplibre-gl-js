@@ -1,7 +1,7 @@
 import {LngLat, type LngLatLike} from './lng_lat';
 import {LngLatBounds} from './lng_lat_bounds';
 import Point from '@mapbox/point-geometry';
-import {wrap, clamp, degreesToRadians, radiansToDegrees, zoomScale, MAX_VALID_LATITUDE, scaleZoom} from '../util/util';
+import {wrap, clamp, degreesToRadians, radiansToDegrees, zoomScale, MAX_VALID_LATITUDE, scaleZoom, assertedNotNullish} from '../util/util';
 import {mat4, mat2} from 'gl-matrix';
 import {EdgeInsets} from './edge_insets';
 import {altitudeFromMercatorZ, MercatorCoordinate, mercatorZfromAltitude} from './mercator_coordinate';
@@ -105,8 +105,8 @@ export class TransformHelper implements ITransformGetters {
 
     _tileSize: number; // constant
     _tileZoom: number; // integer zoom level for tiles
-    _lngRange: [number, number];
-    _latRange: [number, number];
+    _lngRange: [number, number] | undefined | null;
+    _latRange: [number, number] | undefined;
     _scale: number; // computed based on zoom
     _width: number;
     _height: number;
@@ -135,19 +135,19 @@ export class TransformHelper implements ITransformGetters {
     _center: LngLat;
     _elevation: number;
     _minElevationForCurrentTile: number;
-    _pixelPerMeter: number;
+    _pixelPerMeter: number | undefined;
     _edgeInsets: EdgeInsets;
     _unmodified: boolean;
 
-    _constraining: boolean;
-    _rotationMatrix: mat2;
-    _pixelsToGLUnits: [number, number];
-    _pixelsToClipSpaceMatrix: mat4;
-    _clipSpaceToPixelsMatrix: mat4;
-    _cameraToCenterDistance: number;
+    _constraining: boolean | undefined;
+    _rotationMatrix: mat2 | undefined;
+    _pixelsToGLUnits: [number, number] | undefined;
+    _pixelsToClipSpaceMatrix: mat4 | undefined;
+    _clipSpaceToPixelsMatrix: mat4 | undefined;
+    _cameraToCenterDistance: number | undefined;
 
-    _nearZ: number;
-    _farZ: number;
+    _nearZ: number | undefined;
+    _farZ: number | undefined;
     _autoCalculateNearFarZ: boolean;
 
     _constrain: TransformConstrainFunction;
@@ -216,8 +216,8 @@ export class TransformHelper implements ITransformGetters {
         this._calcMatrices();
     }
 
-    get pixelsToClipSpaceMatrix(): mat4 { return this._pixelsToClipSpaceMatrix; }
-    get clipSpaceToPixelsMatrix(): mat4 { return this._clipSpaceToPixelsMatrix; }
+    get pixelsToClipSpaceMatrix(): mat4 | undefined { return this._pixelsToClipSpaceMatrix; }
+    get clipSpaceToPixelsMatrix(): mat4 | undefined { return this._clipSpaceToPixelsMatrix; }
 
     get minElevationForCurrentTile(): number { return this._minElevationForCurrentTile; }
     setMinElevationForCurrentTile(ele: number) {
@@ -243,10 +243,10 @@ export class TransformHelper implements ITransformGetters {
      */
     get bearingInRadians(): number { return this._bearingInRadians; }
 
-    get lngRange(): [number, number] { return this._lngRange; }
-    get latRange(): [number, number] { return this._latRange; }
+    get lngRange(): [number, number] | undefined | null { return this._lngRange; }
+    get latRange(): [number, number] | undefined { return this._latRange; }
 
-    get pixelsToGLUnits(): [number, number] { return this._pixelsToGLUnits; }
+    get pixelsToGLUnits(): [number, number] | undefined { return this._pixelsToGLUnits; }
 
     get minZoom(): number { return this._minZoom; }
     setMinZoom(zoom: number) {
@@ -286,7 +286,7 @@ export class TransformHelper implements ITransformGetters {
 
         this._renderWorldCopies = renderWorldCopies;
     }
-    
+
     get constrain(): TransformConstrainFunction { return this._constrain; }
     setConstrain(constrain?: TransformConstrainFunction | null) {
         if (!constrain) {
@@ -327,7 +327,7 @@ export class TransformHelper implements ITransformGetters {
         mat2.rotate(this._rotationMatrix, this._rotationMatrix, -this._bearingInRadians);
     }
 
-    get rotationMatrix(): mat2 { return this._rotationMatrix; }
+    get rotationMatrix(): mat2 | undefined { return this._rotationMatrix; }
 
     get pitchInRadians(): number {
         return this._pitchInRadians;
@@ -423,14 +423,14 @@ export class TransformHelper implements ITransformGetters {
     /**
      * @internal
      */
-    get pixelsPerMeter(): number { return this._pixelPerMeter; }
+    get pixelsPerMeter(): number | undefined { return this._pixelPerMeter; }
 
     get unmodified(): boolean { return this._unmodified; }
 
-    get cameraToCenterDistance(): number { return this._cameraToCenterDistance; }
+    get cameraToCenterDistance(): number | undefined { return this._cameraToCenterDistance; }
 
-    get nearZ(): number { return this._nearZ; }
-    get farZ(): number { return this._farZ; }
+    get nearZ(): number | undefined { return this._nearZ; }
+    get farZ(): number | undefined { return this._farZ; }
     get autoCalculateNearFarZ(): boolean { return this._autoCalculateNearFarZ; }
     overrideNearFarZ(nearZ: number, farZ: number): void {
         this._autoCalculateNearFarZ = false;
@@ -592,8 +592,8 @@ export class TransformHelper implements ITransformGetters {
         // center point scale factor, which we use to recompute the center point. We repeat until the error is very small.
         // This typically takes about 5 iterations.
         let metersPerMercUnit = altitudeFromMercatorZ(1, camMercator.y);
-        let centerMercator: MercatorCoordinate;
-        let dMercator: number;
+        let centerMercator: MercatorCoordinate = null!;
+        let dMercator: number  = null!;
         let iter = 0;
         const maxIter = 10;
         do {
@@ -618,7 +618,7 @@ export class TransformHelper implements ITransformGetters {
 
         // Find the current camera position
         const originalPixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
-        const cameraToCenterDistanceMeters = this.cameraToCenterDistance / originalPixelPerMeter;
+        const cameraToCenterDistanceMeters = assertedNotNullish(this.cameraToCenterDistance) / originalPixelPerMeter;
         const origCenterMercator = MercatorCoordinate.fromLngLat(this.center, this.elevation);
         const cameraMercator = cameraMercatorCoordinateFromCenterAndRotation(this.center, this.elevation, this.pitch, this.bearing, cameraToCenterDistanceMeters);
 
@@ -639,18 +639,18 @@ export class TransformHelper implements ITransformGetters {
     }
 
     getCameraAltitude(): number {
-        const altitude = Math.cos(this.pitchInRadians) * this._cameraToCenterDistance / this._pixelPerMeter;
+        const altitude = Math.cos(this.pitchInRadians) * assertedNotNullish(this._cameraToCenterDistance) / assertedNotNullish(this._pixelPerMeter);
         return altitude + this.elevation;
     }
 
     getCameraLngLat(): LngLat {
         const pixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
-        const cameraToCenterDistanceMeters = this.cameraToCenterDistance / pixelPerMeter;
+        const cameraToCenterDistanceMeters = assertedNotNullish(this.cameraToCenterDistance) / pixelPerMeter;
         const camMercator = cameraMercatorCoordinateFromCenterAndRotation(this.center, this.elevation, this.pitch, this.bearing, cameraToCenterDistanceMeters);
         return camMercator.toLngLat();
     }
 
-    getMercatorTileCoordinates(overscaledTileID: OverscaledTileID): [number, number, number, number] {
+    getMercatorTileCoordinates(overscaledTileID: OverscaledTileID | null): [number, number, number, number] {
         if (!overscaledTileID) {
             return [0, 0, 1, 1];
         }

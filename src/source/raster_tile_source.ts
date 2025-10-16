@@ -1,4 +1,4 @@
-import {extend, pick} from '../util/util';
+import {extend, pick, assertedNotNullish } from '../util/util';
 
 import {ImageRequest} from '../util/image_request';
 
@@ -54,20 +54,20 @@ export class RasterTileSource extends Evented implements Source {
     id: string;
     minzoom: number;
     maxzoom: number;
-    url: string;
+    url: string | undefined;
     scheme: string;
     tileSize: number;
 
-    bounds: [number, number, number, number];
-    tileBounds: TileBounds;
+    bounds: [number, number, number, number] | undefined;
+    tileBounds: TileBounds | undefined;
     roundZoom: boolean;
     dispatcher: Dispatcher;
-    map: Map;
-    tiles: Array<string>;
+    map: Map | undefined;
+    tiles: Array<string> | undefined;
 
     _loaded: boolean;
     _options: RasterSourceSpecification | RasterDEMSourceSpecification;
-    _tileJSONRequest: AbortController;
+    _tileJSONRequest: AbortController | undefined;
 
     constructor(id: string, options: RasterSourceSpecification | RasterDEMSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) {
         super();
@@ -92,8 +92,8 @@ export class RasterTileSource extends Evented implements Source {
         this.fire(new Event('dataloading', {dataType: 'source'}));
         this._tileJSONRequest = new AbortController();
         try {
-            const tileJSON = await loadTileJson(this._options, this.map._requestManager, this._tileJSONRequest);
-            this._tileJSONRequest = null;
+            const tileJSON = await loadTileJson(this._options, assertedNotNullish(this.map)._requestManager, this._tileJSONRequest);
+            this._tileJSONRequest = undefined;
             this._loaded = true;
             if (tileJSON) {
                 extend(this, tileJSON);
@@ -105,10 +105,10 @@ export class RasterTileSource extends Evented implements Source {
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'metadata'}));
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'content', sourceDataChanged}));
             }
-        } catch (err) {
-            this._tileJSONRequest = null;
+        } catch (err: unknown) {
+            this._tileJSONRequest = undefined;
             this._loaded = true; // let's pretend it's loaded so the source will be ignored
-            this.fire(new ErrorEvent(err));
+            this.fire(new ErrorEvent(err instanceof Error ? err : new Error(String(err))));
         }
     }
 
@@ -124,14 +124,14 @@ export class RasterTileSource extends Evented implements Source {
     onRemove() {
         if (this._tileJSONRequest) {
             this._tileJSONRequest.abort();
-            this._tileJSONRequest = null;
+            this._tileJSONRequest = undefined;
         }
     }
 
     setSourceProperty(callback: Function) {
         if (this._tileJSONRequest) {
             this._tileJSONRequest.abort();
-            this._tileJSONRequest = null;
+            this._tileJSONRequest = undefined;
         }
 
         callback();
@@ -175,23 +175,23 @@ export class RasterTileSource extends Evented implements Source {
     }
 
     async loadTile(tile: Tile): Promise<void> {
-        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme);
+        const url = tile.tileID.canonical.url(assertedNotNullish(this.tiles), assertedNotNullish(this.map).getPixelRatio(), this.scheme);
         tile.abortController = new AbortController();
         try {
-            const response = await ImageRequest.getImage(this.map._requestManager.transformRequest(url, ResourceType.Tile), tile.abortController, this.map._refreshExpiredTiles);
+            const response = await ImageRequest.getImage(assertedNotNullish(this.map)._requestManager.transformRequest(url, ResourceType.Tile), tile.abortController, assertedNotNullish(this.map)._refreshExpiredTiles);
             delete tile.abortController;
             if (tile.aborted) {
                 tile.state = 'unloaded';
                 return;
             }
             if (response && response.data) {
-                if (this.map._refreshExpiredTiles && (response.cacheControl || response.expires)) {
+                if (assertedNotNullish(this.map)._refreshExpiredTiles && (response.cacheControl || response.expires)) {
                     tile.setExpiryData({cacheControl: response.cacheControl, expires: response.expires});
                 }
-                const context = this.map.painter.context;
+                const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
                 const gl = context.gl;
                 const img = response.data;
-                tile.texture = this.map.painter.getTileTexture(img.width);
+                tile.texture = assertedNotNullish(assertedNotNullish(this.map).painter).getTileTexture(img.width);
                 if (tile.texture) {
                     tile.texture.update(img, {useMipmap: true});
                 } else {
@@ -220,7 +220,7 @@ export class RasterTileSource extends Evented implements Source {
 
     async unloadTile(tile: Tile) {
         if (tile.texture) {
-            this.map.painter.saveTileTexture(tile.texture);
+            assertedNotNullish(assertedNotNullish(this.map).painter).saveTileTexture(tile.texture);
         }
     }
 

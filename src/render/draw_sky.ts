@@ -15,6 +15,7 @@ import {ColorMode} from '../gl/color_mode';
 import type {Painter} from './painter';
 import {type Context} from '../gl/context';
 import {getGlobeRadiusPixels} from '../geo/projection/globe_utils';
+import {assertedNotNullish} from '../util/util';
 
 function getMesh(context: Context, sky: Sky): Mesh {
     // Create the Sky mesh the first time we need it
@@ -43,7 +44,7 @@ export function drawSky(painter: Painter, sky: Sky) {
     const context = painter.context;
     const gl = context.gl;
 
-    const skyUniforms = skyUniformValues(sky, painter.style.map.transform, painter.pixelRatio);
+    const skyUniforms = skyUniformValues(sky, assertedNotNullish(painter.style).map.transform, assertedNotNullish(painter.pixelRatio));
 
     const depthMode = new DepthMode(gl.LEQUAL, DepthMode.ReadWrite, [0, 1]);
     const stencilMode = StencilMode.disabled;
@@ -58,12 +59,12 @@ export function drawSky(painter: Painter, sky: Sky) {
 }
 
 function getSunPos(light: Light, transform: IReadonlyTransform): vec3 {
-    const _lp = light.properties.get('position');
+    const _lp = assertedNotNullish(light.properties).get('position');
     const lightPos = [-_lp.x, -_lp.y, -_lp.z] as vec3;
 
     const lightMat = mat4.identity(new Float64Array(16) as any);
 
-    if (light.properties.get('anchor') === 'map') {
+    if (assertedNotNullish(light.properties).get('anchor') === 'map') {
         mat4.rotateZ(lightMat, lightMat, transform.rollInRadians);
         mat4.rotateX(lightMat, lightMat, -transform.pitchInRadians);
         mat4.rotateZ(lightMat, lightMat, transform.bearingInRadians);
@@ -86,7 +87,7 @@ export function drawAtmosphere(painter: Painter, sky: Sky, light: Light) {
     const sunPos = getSunPos(light, painter.transform);
 
     const projectionData = transform.getProjectionData({overscaledTileID: null, applyGlobeMatrix: true, applyTerrainMatrix: true});
-    const atmosphereBlend = sky.properties.get('atmosphere-blend') * projectionData.projectionTransition;
+    const atmosphereBlend = assertedNotNullish(sky.properties).get('atmosphere-blend') * projectionData.projectionTransition;
 
     if (atmosphereBlend === 0) {
         // Don't draw anything if atmosphere is fully transparent
@@ -113,5 +114,5 @@ export function drawAtmosphere(painter: Painter, sky: Sky, light: Light) {
 
     const mesh = getMesh(context, sky);
 
-    program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, ColorMode.alphaBlended, CullFaceMode.disabled, uniformValues, null, null, 'atmosphere', mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+    program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, ColorMode.alphaBlended, CullFaceMode.disabled, uniformValues, null, null, 'atmosphere', assertedNotNullish(mesh.vertexBuffer), assertedNotNullish(mesh.indexBuffer), mesh.segments);
 }

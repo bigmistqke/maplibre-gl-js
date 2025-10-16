@@ -1,4 +1,4 @@
-let supportsGeolocation;
+ let supportsGeolocation: boolean | undefined;
 
 export async function checkGeolocationSupport(forceRecalculation = false): Promise<boolean> {
     if (supportsGeolocation !== undefined && !forceRecalculation) {

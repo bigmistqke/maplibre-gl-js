@@ -11,91 +11,89 @@ type Point2D = {
     y: number;
 };
 
-function createImage(image: any, {
-    width,
-    height
-}: Size, channels: number, data?: Uint8Array | Uint8ClampedArray) {
-    if (!data) {
-        data = new Uint8Array(width * height * channels);
-    } else if (data instanceof Uint8ClampedArray) {
-        data = new Uint8Array(data.buffer);
-    } else if (data.length !== width * height * channels) {
-        throw new RangeError(`mismatched image size. expected: ${data.length} but got: ${width * height * channels}`);
-    }
-    image.width = width;
-    image.height = height;
-    image.data = data;
-    return image;
-}
+class BaseImage {
+    /**
+     * data must be a Uint8Array instead of Uint8ClampedArray because texImage2D does not support Uint8ClampedArray in all browsers.
+     */
+    data: Uint8Array<ArrayBuffer>;
+    width: number;
+    height: number;
 
-function resizeImage(image: any, {
-    width,
-    height
-}: Size, channels: number) {
-    if (width === image.width && height === image.height) {
-        return;
+    constructor({width, height}: Size, channels: number, data?: Uint8Array<ArrayBuffer> | Uint8ClampedArray<ArrayBuffer>) {
+        if (!data) {
+            data = new Uint8Array(width * height * channels);
+        } else if (data instanceof Uint8ClampedArray) {
+            data = new Uint8Array(data.buffer);
+        } else if (data.length !== width * height * channels) {
+            throw new RangeError(`mismatched image size. expected: ${data.length} but got: ${width * height * channels}`);
+        }
+        this.width = width;
+        this.height = height;
+        this.data = data;
     }
 
-    const newImage = createImage({}, {width, height}, channels);
+    resize({width, height}: Size, channels: number) {
+        if (width === this.width && height === this.height) {
+            return;
+        }
 
-    copyImage(image, newImage, {x: 0, y: 0}, {x: 0, y: 0}, {
-        width: Math.min(image.width, width),
-        height: Math.min(image.height, height)
-    }, channels);
+        const newImage = new BaseImage({width, height}, channels);
 
-    image.width = width;
-    image.height = height;
-    image.data = newImage.data;
-}
+        BaseImage.copy(this, newImage, {x: 0, y: 0}, {x: 0, y: 0}, {
+            width: Math.min(this.width, width),
+            height: Math.min(this.height, height)
+        }, channels);
 
-function copyImage(srcImg: any, dstImg: any, srcPt: Point2D, dstPt: Point2D, size: Size, channels: number) {
-    if (size.width === 0 || size.height === 0) {
+        this.width = width;
+        this.height = height;
+        this.data = newImage.data;
+    }
+
+    static copy(srcImg: any, dstImg: any, srcPt: Point2D, dstPt: Point2D, size: Size, channels: number) {
+        if (size.width === 0 || size.height === 0) {
+            return dstImg;
+        }
+
+        if (size.width > srcImg.width ||
+            size.height > srcImg.height ||
+            srcPt.x > srcImg.width - size.width ||
+            srcPt.y > srcImg.height - size.height) {
+            throw new RangeError('out of range source coordinates for image copy');
+        }
+
+        if (size.width > dstImg.width ||
+            size.height > dstImg.height ||
+            dstPt.x > dstImg.width - size.width ||
+            dstPt.y > dstImg.height - size.height) {
+            throw new RangeError('out of range destination coordinates for image copy');
+        }
+
+        const srcData = srcImg.data;
+        const dstData = dstImg.data;
+
+        if (srcData === dstData) throw new Error('srcData equals dstData, so image is already copied');
+
+        for (let y = 0; y < size.height; y++) {
+            const srcOffset = ((srcPt.y + y) * srcImg.width + srcPt.x) * channels;
+            const dstOffset = ((dstPt.y + y) * dstImg.width + dstPt.x) * channels;
+            for (let i = 0; i < size.width * channels; i++) {
+                dstData[dstOffset + i] = srcData[srcOffset + i];
+            }
+        }
         return dstImg;
     }
-
-    if (size.width > srcImg.width ||
-        size.height > srcImg.height ||
-        srcPt.x > srcImg.width - size.width ||
-        srcPt.y > srcImg.height - size.height) {
-        throw new RangeError('out of range source coordinates for image copy');
-    }
-
-    if (size.width > dstImg.width ||
-        size.height > dstImg.height ||
-        dstPt.x > dstImg.width - size.width ||
-        dstPt.y > dstImg.height - size.height) {
-        throw new RangeError('out of range destination coordinates for image copy');
-    }
-
-    const srcData = srcImg.data;
-    const dstData = dstImg.data;
-
-    if (srcData === dstData) throw new Error('srcData equals dstData, so image is already copied');
-
-    for (let y = 0; y < size.height; y++) {
-        const srcOffset = ((srcPt.y + y) * srcImg.width + srcPt.x) * channels;
-        const dstOffset = ((dstPt.y + y) * dstImg.width + dstPt.x) * channels;
-        for (let i = 0; i < size.width * channels; i++) {
-            dstData[dstOffset + i] = srcData[srcOffset + i];
-        }
-    }
-    return dstImg;
 }
 
 /**
  * An image with alpha color value
  */
-export class AlphaImage {
-    width: number;
-    height: number;
-    data: Uint8Array;
-
-    constructor(size: Size, data?: Uint8Array | Uint8ClampedArray) {
-        createImage(this, size, 1, data);
+export class AlphaImage extends BaseImage {
+    constructor(size: Size, data?: Uint8Array<ArrayBuffer> | Uint8ClampedArray<ArrayBuffer>) {
+        super(size, 1, data);
     }
 
     resize(size: Size) {
-        resizeImage(this, size, 1);
+        super.resize(size, 1);
     }
 
     clone() {
@@ -103,7 +101,7 @@ export class AlphaImage {
     }
 
     static copy(srcImg: AlphaImage, dstImg: AlphaImage, srcPt: Point2D, dstPt: Point2D, size: Size) {
-        copyImage(srcImg, dstImg, srcPt, dstPt, size, 1);
+        BaseImage.copy(srcImg, dstImg, srcPt, dstPt, size, 1);
     }
 }
 
@@ -111,26 +109,18 @@ export class AlphaImage {
  * An object to store image data not premultiplied, because ImageData is not premultiplied.
  * UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
  */
-export class RGBAImage {
-    width: number;
-    height: number;
-
-    /**
-     * data must be a Uint8Array instead of Uint8ClampedArray because texImage2D does not support Uint8ClampedArray in all browsers.
-     */
-    data: Uint8Array;
-
-    constructor(size: Size, data?: Uint8Array | Uint8ClampedArray) {
-        createImage(this, size, 4, data);
+export class RGBAImage extends BaseImage {
+    constructor(size: Size, data?: Uint8Array<ArrayBuffer> | Uint8ClampedArray<ArrayBuffer>) {
+        super(size, 4, data);
     }
 
     resize(size: Size) {
-        resizeImage(this, size, 4);
+        super.resize(size, 4);
     }
 
-    replace(data: Uint8Array | Uint8ClampedArray, copy?: boolean) {
+    replace(data: Uint8Array<ArrayBuffer> | Uint8ClampedArray<ArrayBuffer>, copy?: boolean) {
         if (copy) {
-            this.data.set(data);
+            this.data?.set(data);
         } else if (data instanceof Uint8ClampedArray) {
             this.data = new Uint8Array(data.buffer);
         } else {
@@ -139,11 +129,11 @@ export class RGBAImage {
     }
 
     clone() {
-        return new RGBAImage({width: this.width, height: this.height}, new Uint8Array(this.data));
+        return new RGBAImage({width: this.width ?? 0, height: this.height ?? 0}, new Uint8Array(this.data ?? []));
     }
 
     static copy(srcImg: RGBAImage | ImageData, dstImg: RGBAImage, srcPt: Point2D, dstPt: Point2D, size: Size) {
-        copyImage(srcImg, dstImg, srcPt, dstPt, size, 4);
+        BaseImage.copy(srcImg, dstImg, srcPt, dstPt, size, 4);
     }
 
     setPixel(row: number, col: number, value: Color) {

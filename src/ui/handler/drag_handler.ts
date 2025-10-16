@@ -2,6 +2,7 @@ import {DOM} from '../../util/dom';
 import type Point from '@mapbox/point-geometry';
 import {type DragMoveStateManager} from './drag_move_state_manager';
 import {type Handler} from '../handler_manager';
+import { assertedNotNullish } from "../../util/util";
 
 interface DragMovementResult {
     bearingDelta?: number;
@@ -36,7 +37,7 @@ export interface DragMoveHandler<T extends DragMovementResult, E extends Event> 
     dragEnd: (e: E) => void;
 }
 
-export type DragMoveHandlerOptions<T, E extends Event> = {
+export type DragMoveHandlerOptions<T extends DragMovementResult, E extends Event> = {
     /**
      * If the movement is shorter than this value, consider it a click.
      */
@@ -53,7 +54,7 @@ export type DragMoveHandlerOptions<T, E extends Event> = {
      * A method used to assign the dragStart, dragMove, and dragEnd methods to the relevant event handlers, as well as assigning the contextmenu handler
      * @param handler - the handler
      */
-    assignEvents: (handler: DragMoveHandler<T, E>) => void;
+    assignEvents: (handler: DragHandler<T, E>) => void;
     /**
      * Should the move start on the "start" event, or should it start on the first valid move.
      */
@@ -80,10 +81,10 @@ export class DragHandler<T extends DragMovementResult, E extends Event> implemen
     _clickTolerance: number;
     _moveFunction: DragMoveFunction<T>;
     _activateOnStart: boolean;
-    _active: boolean;
+    _active: boolean | undefined;
     _enabled: boolean;
-    _moved: boolean;
-    _lastPoint: Point | null;
+    _moved: boolean | undefined;
+    _lastPoint: Point | null | undefined;
     _moveStateManager: DragMoveStateManager<E>;
 
     constructor(options: DragMoveHandlerOptions<T, E>) {
@@ -113,9 +114,9 @@ export class DragHandler<T extends DragMovementResult, E extends Event> implemen
         }
     }
 
-    dragStart(e: E, point: Point);
-    dragStart(e: E, point: Point[]);
-    dragStart(e: E, point: Point | Point[]) {
+    dragStart(e: E, point: Point): void;
+    dragStart(e: E, point: Point[]): void;
+    dragStart(e: E, point: Point | Point[]): void {
         if (!this.isEnabled() || this._lastPoint) return;
 
         if (!this._moveStateManager.isValidStartEvent(e)) return;
@@ -126,9 +127,9 @@ export class DragHandler<T extends DragMovementResult, E extends Event> implemen
         if (this._activateOnStart && this._lastPoint) this._active = true;
     }
 
-    dragMove(e: E, point: Point);
-    dragMove(e: E, point: Point[]);
-    dragMove(e: E, point: Point | Point[]) {
+    dragMove(e: E, point: Point): T | void;
+    dragMove(e: E, point: Point[]): T | void;
+    dragMove(e: E, point: Point | Point[]): T | void {
         if (!this.isEnabled()) return;
         const lastPoint = this._lastPoint;
         if (!lastPoint) return;
@@ -168,8 +169,8 @@ export class DragHandler<T extends DragMovementResult, E extends Event> implemen
         return this._enabled;
     }
 
-    isActive() {
-        return this._active;
+    isActive(): boolean {
+        return !!this._active;
     }
 
     getClickTolerance() {

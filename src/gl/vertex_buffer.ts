@@ -6,6 +6,7 @@ import type {
 
 import type {Program} from '../render/program';
 import type {Context} from '../gl/context';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * An Enum for AttributeType
@@ -31,7 +32,7 @@ export class VertexBuffer {
     itemSize: number;
     dynamicDraw: boolean;
     context: Context;
-    buffer: WebGLBuffer;
+    buffer: WebGLBuffer | undefined;
 
     /**
      * @param dynamicDraw - Whether this buffer will be repeatedly updated.
@@ -39,14 +40,14 @@ export class VertexBuffer {
     constructor(context: Context, array: StructArray, attributes: ReadonlyArray<StructArrayMember>, dynamicDraw?: boolean) {
         this.length = array.length;
         this.attributes = attributes;
-        this.itemSize = array.bytesPerElement;
-        this.dynamicDraw = dynamicDraw;
+        this.itemSize = assertedNotNullish(array.bytesPerElement);
+        this.dynamicDraw = assertedNotNullish(dynamicDraw);
 
         this.context = context;
         const gl = context.gl;
         this.buffer = gl.createBuffer();
         context.bindVertexBuffer.set(this.buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, array.arrayBuffer, this.dynamicDraw ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, assertedNotNullish(array.arrayBuffer), this.dynamicDraw ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
 
         if (!this.dynamicDraw) {
             delete array.arrayBuffer;
@@ -61,13 +62,13 @@ export class VertexBuffer {
         if (array.length !== this.length) throw new Error(`Length of new data is ${array.length}, which doesn't match current length of ${this.length}`);
         const gl = this.context.gl;
         this.bind();
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, array.arrayBuffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, assertedNotNullish(array.arrayBuffer));
     }
 
     enableAttributes(gl: WebGLRenderingContext|WebGL2RenderingContext, program: Program<any>) {
         for (let j = 0; j < this.attributes.length; j++) {
             const member = this.attributes[j];
-            const attribIndex: number | void = program.attributes[member.name];
+            const attribIndex: number | void = assertedNotNullish(program.attributes)[member.name];
             if (attribIndex !== undefined) {
                 gl.enableVertexAttribArray(attribIndex);
             }
@@ -83,13 +84,13 @@ export class VertexBuffer {
     setVertexAttribPointers(gl: WebGLRenderingContext|WebGL2RenderingContext, program: Program<any>, vertexOffset?: number | null) {
         for (let j = 0; j < this.attributes.length; j++) {
             const member = this.attributes[j];
-            const attribIndex: number | void = program.attributes[member.name];
+            const attribIndex: number | void = assertedNotNullish(program.attributes)[member.name];
 
             if (attribIndex !== undefined) {
                 gl.vertexAttribPointer(
                     attribIndex,
                     member.components,
-                    gl[AttributeType[member.type]],
+                    (gl as any)[AttributeType[member.type]],
                     false,
                     this.itemSize,
                     member.offset + (this.itemSize * (vertexOffset || 0))

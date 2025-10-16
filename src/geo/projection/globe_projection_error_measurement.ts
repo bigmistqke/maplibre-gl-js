@@ -3,7 +3,7 @@ import {ColorMode} from '../../gl/color_mode';
 import {CullFaceMode} from '../../gl/cull_face_mode';
 import {DepthMode} from '../../gl/depth_mode';
 import {StencilMode} from '../../gl/stencil_mode';
-import {warnOnce} from '../../util/util';
+import {assertedNotNullish, warnOnce} from '../../util/util';
 import {projectionErrorMeasurementUniformValues} from '../../render/program/projection_error_measurement_program';
 import {Mesh} from '../../render/mesh';
 import {SegmentVector} from '../../data/segment';
@@ -53,10 +53,10 @@ export class ProjectionErrorMeasurement {
     private readonly _texFormat: number;
     private readonly _texType: number;
 
-    private _fullscreenTriangle: Mesh;
-    private _fbo: Framebuffer;
-    private _resultBuffer: Uint8Array;
-    private _pbo: WebGLBuffer;
+    private _fullscreenTriangle: Mesh | null;
+    private _fbo: Framebuffer | null;
+    private _resultBuffer: Uint8Array | null;
+    private _pbo: WebGLBuffer | null = null;
     private _cachedRenderContext: ProjectionGPUContext;
 
     private _measuredError: number = 0; // Result of last measurement
@@ -70,8 +70,8 @@ export class ProjectionErrorMeasurement {
     // There is never more than one readback waiting
     private _readbackQueue: {
         frameNumberIssued: number; // Frame number when the data was first computed
-        sync: WebGLSync;
-    } = null;
+        sync: WebGLSync | null;
+    } | null = null;
 
     public constructor(renderContext: ProjectionGPUContext) {
         this._cachedRenderContext = renderContext;
@@ -120,8 +120,8 @@ export class ProjectionErrorMeasurement {
 
     public destroy() {
         const gl = this._cachedRenderContext.context.gl;
-        this._fullscreenTriangle.destroy();
-        this._fbo.destroy();
+        this._fullscreenTriangle?.destroy();
+        this._fbo?.destroy();
         gl.deleteBuffer(this._pbo);
         this._fullscreenTriangle = null;
         this._fbo = null;
@@ -153,8 +153,8 @@ export class ProjectionErrorMeasurement {
         const context = this._cachedRenderContext.context;
         const gl = context.gl;
         context.activeTexture.set(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, this._fbo.colorAttachment.get());
-        context.bindFramebuffer.set(this._fbo.framebuffer);
+        gl.bindTexture(gl.TEXTURE_2D, this._fbo?.colorAttachment.get() ?? null);
+        context.bindFramebuffer.set(this._fbo?.framebuffer);
     }
 
     private _renderErrorTexture(input: number, outputExpected: number): void {
@@ -172,8 +172,8 @@ export class ProjectionErrorMeasurement {
             DepthMode.disabled, StencilMode.disabled,
             ColorMode.unblended, CullFaceMode.disabled,
             projectionErrorMeasurementUniformValues(input, outputExpected), null, null,
-            '$clipping', this._fullscreenTriangle.vertexBuffer, this._fullscreenTriangle.indexBuffer,
-            this._fullscreenTriangle.segments);
+            '$clipping', this._fullscreenTriangle?.vertexBuffer ?? null, this._fullscreenTriangle?.indexBuffer ?? null,
+            this._fullscreenTriangle?.segments ?? null);
 
         if (this._pbo && isWebGL2(gl)) {
             // Read back into PBO
@@ -202,7 +202,7 @@ export class ProjectionErrorMeasurement {
 
         if (this._pbo && this._readbackQueue && isWebGL2(gl)) {
             // WebGL 2 path
-            const waitResult = gl.clientWaitSync(this._readbackQueue.sync, 0, 0);
+            const waitResult = gl.clientWaitSync(assertedNotNullish(this._readbackQueue.sync), 0, 0);
 
             if (waitResult === gl.WAIT_FAILED) {
                 warnOnce('WebGL2 clientWaitSync failed.');
@@ -216,7 +216,7 @@ export class ProjectionErrorMeasurement {
             }
 
             gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this._pbo);
-            gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, this._resultBuffer, 0, 4);
+            gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, assertedNotNullish(this._resultBuffer), 0, 4);
             gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
         } else {
             // WebGL1 compatible
@@ -226,7 +226,7 @@ export class ProjectionErrorMeasurement {
 
         // If we made it here, _resultBuffer contains the new measurement
         this._readbackQueue = null;
-        this._measuredError = ProjectionErrorMeasurement._parseRGBA8float(this._resultBuffer);
+        this._measuredError = ProjectionErrorMeasurement._parseRGBA8float(assertedNotNullish(this._resultBuffer));
         this._lastReadbackFrame = this._updateCount;
     }
 

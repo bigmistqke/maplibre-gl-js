@@ -1,6 +1,6 @@
 import {type mat4, vec3, vec4} from 'gl-matrix';
 import {Aabb} from './aabb';
-import {pointPlaneSignedDistance, rayPlaneIntersection} from '../util';
+import {pointPlaneSignedDistance, rayPlaneIntersection, assertedNotNullish } from '../util';
 
 export class Frustum {
 
@@ -43,7 +43,7 @@ export class Frustum {
 
         if (horizonPlane) {
             // A horizon clipping plane was supplied.
-            adjustFarPlaneByHorizonPlane(frustumCoords, frustumPlanePointIndices[0], horizonPlane, flippedNearFar);
+            adjustFarPlaneByHorizonPlane(frustumCoords, frustumPlanePointIndices[0], horizonPlane, assertedNotNullish(flippedNearFar));
         }
 
         const frustumPlanes = frustumPlanePointIndices.map((p: number[]) => {
@@ -161,7 +161,7 @@ function getIdealNearFarPlaneDistance(horizonPlane: vec4, nearPlaneNormalized: v
     // Project the view vector onto the horizon plane
     const projectedViewDirection = vec3.sub([] as any, nearPlaneNormalized as vec3, vec3.scale([] as any, normalizedHorizonPlane as vec3, vec3.dot(nearPlaneNormalized as vec3, normalizedHorizonPlane as vec3)));
     const projectedViewLength = vec3.len(projectedViewDirection);
-    
+
     // projectedViewLength will be 0 if the camera is looking straight down
     if (projectedViewLength > 0) {
         // Find the radius and center of the horizon circle (the horizon circle is the intersection of the planet's sphere and the horizon plane).

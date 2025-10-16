@@ -89,7 +89,7 @@ export function pointPlaneSignedDistance(
  * Finds an intersection points of three planes. Returns `null` if no such (single) point exists.
  * The planes *must* be in Hessian normal form - their xyz components must form a unit vector.
  */
-export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4): vec3 | null {
+export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4): vec3 {
     // https://mathworld.wolfram.com/Plane-PlaneIntersection.html
     const det = mat3.determinant([
         plane0[0], plane0[1], plane0[2],
@@ -97,7 +97,7 @@ export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4)
         plane2[0], plane2[1], plane2[2]
     ] as mat3);
     if (det === 0) {
-        return null;
+        throw new Error('Expected determinant to be not 0');
     }
     const cross12 = vec3.cross([] as any, [plane1[0], plane1[1], plane1[2]], [plane2[0], plane2[1], plane2[2]]);
     const cross20 = vec3.cross([] as any, [plane2[0], plane2[1], plane2[2]], [plane0[0], plane0[1], plane0[2]]);
@@ -132,7 +132,7 @@ export function rayPlaneIntersection(origin: vec3, direction: vec3, plane: vec4)
 export function solveQuadratic(a: number, b: number, c: number): {
     t0: number;
     t1: number;
-} {
+} | null {
     const d = b * b - 4 * a * c;
     if (d < 0 || (a === 0 && b === 0)) {
         return null;
@@ -246,7 +246,7 @@ export function distanceOfAnglesRadians(radiansA: number, radiansB: number): num
  * Modulo function, as opposed to javascript's `%`, which is a remainder.
  * This functions will return positive values, even if the first operand is negative.
  */
-export function mod(n, m) {
+export function mod(n: number, m: number) {
     return ((n % m) + m) % m;
 }
 
@@ -422,8 +422,8 @@ export function keysDifference<S, T>(
 export function extend<T extends {}, U>(dest: T, source: U): T & U;
 export function extend<T extends {}, U, V>(dest: T, source1: U, source2: V): T & U & V;
 export function extend<T extends {}, U, V, W>(dest: T, source1: U, source2: V, source3: W): T & U & V & W;
-export function extend(dest: object, ...sources: Array<any>): any;
-export function extend(dest: object, ...sources: Array<any>): any {
+export function extend(dest: Record<string, any>, ...sources: Array<any>): any;
+export function extend(dest: Record<string, any>, ...sources: Array<any>): any {
     for (const src of sources) {
         for (const k in src) {
             dest[k] = src[k];
@@ -501,8 +501,8 @@ export function scaleZoom(scale: number) { return Math.log(scale) / Math.LN2; }
  * Create an object by mapping all the values of an existing object while
  * preserving their keys.
  */
-export function mapObject(input: any, iterator: Function, context?: any): any {
-    const output = {};
+export function mapObject(this: any, input: any, iterator: Function, context?: any): any {
+    const output: Record<string, any> = {};
     for (const key in input) {
         output[key] = iterator.call(context || this, input[key], key, input);
     }
@@ -512,8 +512,8 @@ export function mapObject(input: any, iterator: Function, context?: any): any {
 /**
  * Create an object by filtering out values of an existing object.
  */
-export function filterObject(input: any, iterator: Function, context?: any): any {
-    const output = {};
+export function filterObject(this: any, input: any, iterator: Function, context?: any): any {
+    const output: Record<string, any> = {};
     for (const key in input) {
         if (iterator.call(context || this, input[key], key, input)) {
             output[key] = input[key];
@@ -536,8 +536,8 @@ export function deepEqual(a?: unknown | null, b?: unknown | null): boolean {
         }
         return true;
     }
-    if (typeof a === 'object' && a !== null && b !== null) {
-        if (!(typeof b === 'object')) return false;
+    if (isRecord(a) && b !== null) {
+        if (!isRecord(b)) return false;
         const keys = Object.keys(a);
         if (keys.length !== Object.keys(b).length) return false;
         for (const key in a) {
@@ -675,7 +675,7 @@ export function parseCacheControl(cacheControl: string): any {
     // Taken from [Wreck](https://github.com/hapijs/wreck)
     const re = /(?:^|(?:\s*\,\s*))([^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)(?:\=(?:([^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)|(?:\"((?:[^"\\]|\\.)*)\")))?/g;
 
-    const header = {};
+    const header: Record<string, any> = {};
     cacheControl.replace(re, ($0, $1, $2, $3) => {
         const value = $2 || $3;
         header[$1] = value ? value.toLowerCase() : true;
@@ -691,7 +691,7 @@ export function parseCacheControl(cacheControl: string): any {
     return header;
 }
 
-let _isSafari = null;
+let _isSafari: boolean | null = null;
 
 /**
  * Returns true when run in WebKit derived browsers.
@@ -714,7 +714,7 @@ export function isSafari(scope: any): boolean {
     return _isSafari;
 }
 
-export function storageAvailable(type: string): boolean {
+export function storageAvailable(type: keyof typeof window): boolean {
     try {
         const storage = window[type];
         storage.setItem('_mapbox_test_', 1);
@@ -766,7 +766,7 @@ export const arrayBufferToImageBitmap = async (data: ArrayBuffer): Promise<Image
     try {
         return createImageBitmap(blob);
     } catch (e) {
-        throw new Error(`Could not load image because of ${e.message}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
+        throw new Error(`Could not load image because of ${(e as Error).message}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
     }
 };
 
@@ -911,7 +911,7 @@ export function readImageDataUsingOffscreenCanvas(
     if (!offscreenCanvas || !offscreenCanvasContext) {
         // Dem tiles are typically 256x256
         offscreenCanvas = new OffscreenCanvas(origWidth, origHeight);
-        offscreenCanvasContext = offscreenCanvas.getContext('2d', {willReadFrequently: true});
+        offscreenCanvasContext = assertedNotNullish(offscreenCanvas.getContext('2d', {willReadFrequently: true}));
     }
 
     offscreenCanvas.width = origWidth;
@@ -1140,13 +1140,83 @@ const pointableEvents = {
 };
 
 export function isTouchableEvent(event: Event, eventType: string): event is TouchEvent {
-    return touchableEvents[eventType] && 'touches' in event;
+    return touchableEvents[eventType as keyof typeof touchableEvents] && 'touches' in event;
 }
 
 export function isPointableEvent(event: Event, eventType: string): event is MouseEvent {
-    return pointableEvents[eventType] && (event instanceof MouseEvent || event instanceof WheelEvent);
+    return pointableEvents[eventType as keyof typeof pointableEvents] && (event instanceof MouseEvent || event instanceof WheelEvent);
 }
 
 export function isTouchableOrPointableType(eventType: string): boolean {
-    return touchableEvents[eventType] || pointableEvents[eventType];
+    return touchableEvents[eventType as keyof typeof touchableEvents] || pointableEvents[eventType as keyof typeof pointableEvents];
+}
+
+export function assertedNotNullish<T>(value: T, message?: string):  NonNullable<T>{
+    if(!isNotNullish(value)){
+        throw new Error(message ?? `Expected ${value} to be defined.`);
+    }
+    return value;
+}
+
+export function isNotNullish<T>(value: T):value is NonNullable<T> {
+    return !(isNullish(value));
+}
+
+export function isNullish(value: any):value is null | undefined {
+    return value === undefined || value === null;
+}
+
+/**
+ * Type guard that checks if a value is an array.
+ *
+ * @template T - The expected type of array elements
+ * @param value - The value to check
+ * @returns True if the value is an array, false otherwise
+ * @example
+ * if (isArray(data)) {
+ *   // data is now typed as unknown[]
+ *   console.log(data.length);
+ * }
+ *
+ * @example
+ * const result = isArray<string>(value);
+ * // Type guard for string arrays
+ */
+export function isRecord(
+    value: unknown
+): value is Record<string | number | symbol, any> {
+    return typeof value === 'object' && value !== null;
+}
+
+export function assertNotNullish<T>(
+    val: T | undefined | null | void,
+    message = 'Expected value to not be nullish'
+): asserts val is T {
+    assert(isNotNullish(val), message);
+}
+
+/**
+ * Asserts that a condition is truthy and throws an error if it's not.
+ * Uses TypeScript assertion signatures to provide type narrowing.
+ *
+ * @param condition - The condition to assert
+ * @param message - Optional error message (defaults to 'assertion error')
+ * @throws Throws an Error if the condition is falsy
+ * @example
+ * assert(user.id, 'User ID is required');
+ * assert(items.length > 0, 'Items array cannot be empty');
+ *
+ * @example
+ * // TypeScript type narrowing
+ * const value: string | null = getValue();
+ * assert(value);
+ * // value is now typed as string (not null)
+ */
+export function assert(
+    condition: any,
+    message = 'assertion error'
+): asserts condition {
+    if (!condition) {
+        throw new Error(message);
+    }
 }

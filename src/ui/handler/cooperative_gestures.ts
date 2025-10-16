@@ -3,6 +3,7 @@ import {Event} from '../../util/evented';
 import {type Handler} from '../handler_manager';
 
 import type {Map} from '../map';
+import { assertedNotNullish } from "../../util/util";
 
 /**
  * The {@link CooperativeGesturesHandler} options object for the gesture settings
@@ -27,7 +28,7 @@ export type GestureOptions = boolean;
 export class CooperativeGesturesHandler implements Handler {
     _options: GestureOptions;
     _map: Map;
-    _container: HTMLElement;
+    _container: HTMLElement | undefined;
     /**
      * This is the key that will allow to bypass the cooperative gesture protection
      */
@@ -103,9 +104,9 @@ export class CooperativeGesturesHandler implements Handler {
         this._map.fire(new Event('cooperativegestureprevented', {gestureType, originalEvent}));
 
         // Alert user how to scroll/pan
-        this._container.classList.add('maplibregl-show');
+        assertedNotNullish(this._container).classList.add('maplibregl-show');
         setTimeout(() => {
-            this._container.classList.remove('maplibregl-show');
+            assertedNotNullish(this._container).classList.remove('maplibregl-show');
         }, 100);
     }
 }

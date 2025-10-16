@@ -2,6 +2,7 @@ import {DOM} from '../../util/dom';
 
 import type {Map} from '../map';
 import type {ControlPosition, IControl} from './control';
+import { assertedNotNullish } from "../../util/util";
 
 /**
  * The unit type for length to use for the {@link ScaleControl}
@@ -46,8 +47,8 @@ const defaultOptions: ScaleControlOptions = {
  * ```
  */
 export class ScaleControl implements IControl {
-    _map: Map;
-    _container: HTMLElement;
+    _map: Map | undefined;
+    _container: HTMLElement | undefined;
     options: ScaleControlOptions;
 
     /**
@@ -62,7 +63,7 @@ export class ScaleControl implements IControl {
     }
 
     _onMove = () => {
-        updateScale(this._map, this._container, this.options);
+        updateScale(assertedNotNullish(this._map), assertedNotNullish(this._container), this.options);
     };
 
     /** {@inheritDoc IControl.onAdd} */
@@ -78,8 +79,8 @@ export class ScaleControl implements IControl {
 
     /** {@inheritDoc IControl.onRemove} */
     onRemove() {
-        DOM.remove(this._container);
-        this._map.off('move', this._onMove);
+        DOM.remove(assertedNotNullish(this._container));
+        assertedNotNullish(this._map).off('move', this._onMove);
         this._map = undefined;
     }
 
@@ -90,7 +91,7 @@ export class ScaleControl implements IControl {
      */
     setUnit = (unit: Unit) => {
         this.options.unit = unit;
-        updateScale(this._map, this._container, this.options);
+        updateScale(assertedNotNullish(this._map), assertedNotNullish(this._container), this.options);
     };
 }
 
@@ -138,12 +139,12 @@ function setScale(container: HTMLElement, maxWidth: number, maxDistance: number,
     container.innerHTML = `${distance}&nbsp;${unit}`;
 }
 
-function getDecimalRoundNum(d) {
+function getDecimalRoundNum(d: number): number {
     const multiplier = Math.pow(10, Math.ceil(-Math.log(d) / Math.LN10));
     return Math.round(d * multiplier) / multiplier;
 }
 
-function getRoundNum(num) {
+function getRoundNum(num: number): number {
     const pow10 = Math.pow(10, (`${Math.floor(num)}`).length - 1);
     let d = num / pow10;
 

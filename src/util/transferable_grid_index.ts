@@ -16,6 +16,10 @@ OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 */
+import { assertedNotNullish } from "../util/util";
+
+type IntersectionTest = (x1: number, y1: number,x2: number, y2: number) => boolean;
+type Cells = Array<Int32Array<ArrayBuffer> | Array<number> | null>;
 
 const NUM_PARAMS = 3;
 
@@ -24,11 +28,11 @@ export type SerializedGrid = {
 };
 
 export class TransferableGridIndex {
-    cells: number[][];
-    arrayBuffer: ArrayBuffer;
+    cells: Cells;
+    arrayBuffer?: ArrayBuffer;
     d: number;
-    keys: number[];
-    bboxes: number[];
+    keys: number[] | Int32Array<ArrayBuffer>;
+    bboxes: number[] | Int32Array<ArrayBuffer>;
     n: number;
     extent: number;
     padding: number;
@@ -37,8 +41,8 @@ export class TransferableGridIndex {
     min: number;
     max: number;
 
-    constructor(extent: number | ArrayBuffer, n?: number, padding?: number) {
-        const cells = this.cells = [];
+    constructor(extent: number | ArrayBuffer, n = 0, padding = 0) {
+        const cells: Cells = this.cells = [];
 
         if (extent instanceof ArrayBuffer) {
             this.arrayBuffer = extent;
@@ -55,13 +59,14 @@ export class TransferableGridIndex {
             }
             const keysOffset = array[NUM_PARAMS + cells.length];
             const bboxesOffset = array[NUM_PARAMS + cells.length + 1];
-            this.keys = array.subarray(keysOffset, bboxesOffset) as any as number[];
-            this.bboxes = array.subarray(bboxesOffset) as any as number[];
+
+            this.keys = array.subarray(keysOffset, bboxesOffset) ;
+            this.bboxes = array.subarray(bboxesOffset);
 
             this.insert = this._insertReadonly;
 
         } else {
-            this.d = n + 2 * padding;
+            this.d = (n ?? 0) + 2 * (padding ?? 0);
             for (let i = 0; i < this.d * this.d; i++) {
                 cells.push([]);
             }
@@ -80,12 +85,20 @@ export class TransferableGridIndex {
         this.max = extent + p;
     }
 
+    // TODO: TypeScript strict mode - keys/bboxes are typed as number[] | Int32Array but push() only exists on arrays.
+    // The design assumes insert() is replaced with _insertReadonly() when initialized from ArrayBuffer.
+    // Consider refactoring to use separate mutable/immutable classes or proper type narrowing.
     insert(key: number, x1: number, y1: number, x2: number, y2: number) {
         this._forEachCell(x1, y1, x2, y2, this._insertCell, this.uid++, undefined, undefined);
+        // @ts-expect-error - see TODO above
         this.keys.push(key);
+        // @ts-expect-error - see TODO above
         this.bboxes.push(x1);
+        // @ts-expect-error - see TODO above
         this.bboxes.push(y1);
+        // @ts-expect-error - see TODO above
         this.bboxes.push(x2);
+        // @ts-expect-error - see TODO above
         this.bboxes.push(y2);
     }
 
@@ -94,10 +107,11 @@ export class TransferableGridIndex {
     }
 
     _insertCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, uid: number) {
-        this.cells[cellIndex].push(uid);
+        // @ts-expect-error - see TODO above insert() - cells contain arrays when mutable
+        assertedNotNullish(this.cells[cellIndex]).push(uid);
     }
 
-    query(x1: number, y1: number, x2: number, y2: number, intersectionTest?: Function): number[] {
+    query(x1: number, y1: number, x2: number, y2: number, intersectionTest?: IntersectionTest): number[] {
         const min = this.min;
         const max = this.max;
         if (x1 <= min && y1 <= min && max <= x2 && max <= y2 && !intersectionTest) {
@@ -107,14 +121,14 @@ export class TransferableGridIndex {
             return Array.prototype.slice.call(this.keys);
 
         } else {
-            const result = [];
-            const seenUids = {};
+            const result: number[] = [];
+            const seenUids: Record<string, boolean> = {};
             this._forEachCell(x1, y1, x2, y2, this._queryCell, result, seenUids, intersectionTest);
             return result;
         }
     }
 
-    _queryCell(x1: number, y1: number, x2: number, y2:number, cellIndex:number, result, seenUids, intersectionTest: Function) {
+    _queryCell(x1: number, y1: number, x2: number, y2:number, cellIndex:number, result: number[], seenUids: Record<string, boolean>, intersectionTest?: IntersectionTest) {
         const cell = this.cells[cellIndex];
         if (cell !== null) {
             const keys = this.keys;
@@ -139,7 +153,8 @@ export class TransferableGridIndex {
         }
     }
 
-    _forEachCell(x1: number, y1: number, x2:number, y2:number, fn: Function, arg1, arg2, intersectionTest) {
+    _forEachCell<TArg1, TArg2, TCallback extends (x1: number, y1: number,x2: number, y2: number,cellIndex: number, arg1: TArg1, arg2: TArg2, intersectionTest?: IntersectionTest) => any>
+    (x1: number, y1: number, x2:number, y2:number, fn: TCallback, arg1: TArg1, arg2: TArg2, intersectionTest?: IntersectionTest) {
         const cx1 = this._convertToCellCoord(x1);
         const cy1 = this._convertToCellCoord(y1);
         const cx2 = this._convertToCellCoord(x2);
@@ -157,11 +172,11 @@ export class TransferableGridIndex {
         }
     }
 
-    _convertFromCellCoord (x) {
+    _convertFromCellCoord (x: number) {
         return (x - this.padding) / this.scale;
     }
 
-    _convertToCellCoord(x) {
+    _convertToCellCoord(x: number) {
         return Math.max(0, Math.min(this.d - 1, Math.floor(x * this.scale) + this.padding));
     }
 
@@ -171,10 +186,7 @@ export class TransferableGridIndex {
         const cells = this.cells;
 
         const metadataLength = NUM_PARAMS + this.cells.length + 1 + 1;
-        let totalCellLength = 0;
-        for (let i = 0; i < this.cells.length; i++) {
-            totalCellLength += this.cells[i].length;
-        }
+        const totalCellLength = this.cells.reduce((sum, cell) => sum + (cell?.length ?? 0), 0);
 
         const array = new Int32Array(metadataLength + totalCellLength + this.keys.length + this.bboxes.length);
         array[0] = this.extent;
@@ -184,6 +196,9 @@ export class TransferableGridIndex {
         let offset = metadataLength;
         for (let k = 0; k < cells.length; k++) {
             const cell = cells[k];
+            if(cell === null){
+                continue;
+            }
             array[NUM_PARAMS + k] = offset;
             array.set(cell, offset);
             offset += cell.length;

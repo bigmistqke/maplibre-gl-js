@@ -28,11 +28,13 @@ import type {FeatureStates} from '../../source/source_state';
 import type {ImagePosition} from '../../render/image_atlas';
 import type {VectorTileLayer} from '@mapbox/vector-tile';
 import {type CircleGranularity} from '../../render/subdivision_granularity_settings';
+import type {StructArray} from '../../util/struct_array';
+import {assertedNotNullish} from '../../util/util';
 
 const VERTEX_MIN_VALUE = -32768; // -(2^15)
 
 // Extrude is in range 0..7, which will be mapped to -1..1 in the shader.
-function addCircleVertex(layoutVertexArray, x, y, extrudeX, extrudeY) {
+function addCircleVertex(layoutVertexArray:StructArray, x: number, y: number, extrudeX: number, extrudeY: number) {
     // We pack circle position and extrude into range 0..65535, but vertices are stored as *signed* 16-bit integers, so we need to offset the number by 2^15.
     layoutVertexArray.emplaceBack(
         VERTEX_MIN_VALUE + (x * 8) + extrudeX,
@@ -52,19 +54,19 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
     overscaling: number;
     layerIds: Array<string>;
     layers: Array<Layer>;
-    stateDependentLayers: Array<Layer>;
+    stateDependentLayers?: Array<Layer>;
     stateDependentLayerIds: Array<string>;
 
     layoutVertexArray: CircleLayoutArray;
-    layoutVertexBuffer: VertexBuffer;
+    layoutVertexBuffer?: VertexBuffer;
 
     indexArray: TriangleIndexArray;
-    indexBuffer: IndexBuffer;
+    indexBuffer?: IndexBuffer;
 
     hasDependencies: boolean;
     programConfigurations: ProgramConfigurationSet<Layer>;
     segments: SegmentVector;
-    uploaded: boolean;
+    uploaded?: boolean;
 
     constructor(options: BucketParameters<Layer>) {
         this.zoom = options.zoom;
@@ -93,11 +95,11 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
         // Heatmap layers are handled in this bucket and have no evaluated properties, so we check our access
         if (styleLayer.type === 'circle') {
             const circleStyle = (styleLayer as CircleStyleLayer);
-            circleSortKey = circleStyle.layout.get('circle-sort-key');
+            circleSortKey = assertedNotNullish(circleStyle.layout).get('circle-sort-key');
             sortFeaturesByKey = !circleSortKey.isConstant();
 
             // Circles that are "printed" onto the map surface should be tessellated to follow the globe's curvature.
-            subdivide = subdivide || circleStyle.paint.get('circle-pitch-alignment') === 'map';
+            subdivide = subdivide || assertedNotNullish(circleStyle.paint).get('circle-pitch-alignment') === 'map';
         }
 
         const granularity = subdivide ? options.subdivisionGranularity.circle : 1;
@@ -109,7 +111,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
             if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical)) continue;
 
             const sortKey = sortFeaturesByKey ?
-                circleSortKey.evaluate(evaluationFeature, {}, canonical) :
+                assertedNotNullish(circleSortKey).evaluate(evaluationFeature, {}, canonical) :
                 undefined;
 
             const bucketFeature: BucketFeature = {
@@ -128,7 +130,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
         }
 
         if (sortFeaturesByKey) {
-            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
+            bucketFeatures.sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0));
         }
 
         for (const bucketFeature of bucketFeatures) {
@@ -141,7 +143,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
     }
 
     update(states: FeatureStates, vtLayer: VectorTileLayer, imagePositions: {[_: string]: ImagePosition}) {
-        if (!this.stateDependentLayers.length) return;
+        if (!this.stateDependentLayers?.length) return;
         this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
             imagePositions
         });
@@ -167,7 +169,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
     destroy() {
         if (!this.layoutVertexBuffer) return;
         this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
+        this.indexBuffer?.destroy();
         this.programConfigurations.destroy();
         this.segments.destroy();
     }
@@ -232,7 +234,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
             }
         }
 
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, {imagePositions: {}, canonical});
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length ?? 0, feature, index, {imagePositions: {}, canonical});
     }
 }
 

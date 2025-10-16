@@ -3,6 +3,7 @@ import {loadGlyphRange} from '../style/load_glyph_range';
 import TinySDF from '@mapbox/tiny-sdf';
 import {unicodeBlockLookup} from '../util/is_char_in_unicode_block';
 import {AlphaImage} from '../util/image';
+import {assertedNotNullish} from '../util/util';
 
 import type {StyleGlyph} from '../style/style_glyph';
 import type {RequestManager} from '../util/request_manager';
@@ -24,9 +25,9 @@ type Entry = {
 
 export class GlyphManager {
     requestManager: RequestManager;
-    localIdeographFontFamily: string | false;
+    localIdeographFontFamily: string | false | undefined;
     entries: {[stack: string]: Entry};
-    url: string;
+    url?: string | null;
     lang?: string;
 
     // exposed as statics to enable stubbing in unit tests
@@ -45,7 +46,7 @@ export class GlyphManager {
     }
 
     async getGlyphs(glyphs: {[stack: string]: Array<number>}): Promise<GetGlyphsResponse> {
-        const glyphsPromises: Promise<{stack: string; id: number; glyph: StyleGlyph}>[] = [];
+        const glyphsPromises: Promise<{stack: string; id: number; glyph: StyleGlyph|null}>[] = [];
 
         for (const stack in glyphs) {
             for (const id of glyphs[stack]) {
@@ -72,7 +73,7 @@ export class GlyphManager {
         return result;
     }
 
-    async _getAndCacheGlyphsPromise(stack: string, id: number): Promise<{stack: string; id: number; glyph: StyleGlyph}> {
+    async _getAndCacheGlyphsPromise(stack: string, id: number): Promise<{stack: string; id: number; glyph: StyleGlyph | null}> {
         let entry = this.entries[stack];
         if (!entry) {
             entry = this.entries[stack] = {
@@ -87,7 +88,7 @@ export class GlyphManager {
             return {stack, id, glyph};
         }
 
-        glyph = this._tinySDF(entry, stack, id);
+        glyph = this._tinySDF(entry, stack, id) ?? null;
         if (glyph) {
             entry.glyphs[id] = glyph;
             return {stack, id, glyph};
@@ -107,18 +108,18 @@ export class GlyphManager {
         }
 
         if (!entry.requests[range]) {
-            const promise = GlyphManager.loadGlyphRange(stack, range, this.url, this.requestManager);
+            const promise = GlyphManager.loadGlyphRange(stack, range, this.url!, this.requestManager);
             entry.requests[range] = promise;
         }
 
         const response = await entry.requests[range];
         for (const id in response) {
             if (!this._doesCharSupportLocalGlyph(+id)) {
-                entry.glyphs[+id] = response[+id];
+                entry.glyphs[+id] = assertedNotNullish(response[+id]);
             }
         }
         entry.ranges[range] = true;
-        return {stack, id, glyph: response[id] || null};
+        return {stack, id, glyph: assertedNotNullish(response[id]) || null};
     }
 
     _doesCharSupportLocalGlyph(id: number): boolean {
@@ -139,17 +140,17 @@ export class GlyphManager {
         unicodeBlockLookup['CJK Symbols and Punctuation'](id) || // 、。〃〄々〆〇〈〉《》「...
         unicodeBlockLookup['Halfwidth and Fullwidth Forms'](id) // ！？＂＃＄％＆...
         );
-         
+
     }
 
-    _tinySDF(entry: Entry, stack: string, id: number): StyleGlyph {
+    _tinySDF(entry: Entry, stack: string, id: number): StyleGlyph | undefined {
         const fontFamily = this.localIdeographFontFamily;
         if (!fontFamily) {
-            return;
+            return undefined;
         }
 
         if (!this._doesCharSupportLocalGlyph(id)) {
-            return;
+            return undefined;
         }
 
         // Client-generated glyphs are rendered at 2x texture scale,
@@ -198,7 +199,7 @@ export class GlyphManager {
 
         return {
             id,
-            bitmap: new AlphaImage({width: char.width || 30 * textureScale, height: char.height || 30 * textureScale}, char.data),
+            bitmap: new AlphaImage({width: char.width || 30 * textureScale, height: char.height || 30 * textureScale}, assertedNotNullish(char.data) as Uint8ClampedArray<ArrayBuffer>),
             metrics: {
                 width: char.glyphWidth / textureScale || 24,
                 height: char.glyphHeight / textureScale || 24,

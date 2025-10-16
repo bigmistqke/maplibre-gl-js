@@ -1,6 +1,6 @@
 import {Event, ErrorEvent, Evented} from '../util/evented';
 
-import {extend, warnOnce} from '../util/util';
+import {extend, warnOnce, assertedNotNullish } from '../util/util';
 import {EXTENT} from '../data/extent';
 import {ResourceType} from '../util/request_manager';
 import {browser} from '../util/browser';
@@ -115,7 +115,7 @@ export class GeoJSONSource extends Evented implements Source {
     minzoom: number;
     maxzoom: number;
     tileSize: number;
-    attribution: string;
+    attribution: string | undefined;
     promoteId: PromoteIdSpecification;
 
     isTileClipped: boolean;
@@ -123,7 +123,7 @@ export class GeoJSONSource extends Evented implements Source {
     _data: GeoJSON.GeoJSON | string | undefined;
     _options: GeoJSONSourceInternalOptions;
     workerOptions: GeoJSONWorkerOptions;
-    map: Map;
+    map: Map | undefined;
     actor: Actor;
     _isUpdatingWorker: boolean;
     _pendingWorkerUpdate: { data?: GeoJSON.GeoJSON | string; diff?: GeoJSONSourceDiff };
@@ -155,12 +155,12 @@ export class GeoJSONSource extends Evented implements Source {
         this._data = options.data;
         this._options = extend({}, options);
 
-        this._collectResourceTiming = options.collectResourceTiming;
+        this._collectResourceTiming = options.collectResourceTiming ?? false;
 
         if (options.maxzoom !== undefined) this.maxzoom = options.maxzoom;
         if (options.type) this.type = options.type;
         if (options.attribution) this.attribution = options.attribution;
-        this.promoteId = options.promoteId;
+        this.promoteId = options.promoteId as PromoteIdSpecification;
 
         if (options.clusterMaxZoom !== undefined && this.maxzoom <= options.clusterMaxZoom) {
             warnOnce(`The maxzoom value "${this.maxzoom}" is expected to be greater than the clusterMaxZoom value "${options.clusterMaxZoom}".`);
@@ -182,7 +182,7 @@ export class GeoJSONSource extends Evented implements Source {
                 generateId: options.generateId || false
             },
             superclusterOptions: {
-                maxZoom: this._getClusterMaxZoom(options.clusterMaxZoom),
+                maxZoom: this._getClusterMaxZoom(assertedNotNullish(options.clusterMaxZoom)),
                 minPoints: Math.max(2, options.clusterMinPoints || 2),
                 extent: EXTENT,
                 radius: this._pixelsToTileUnits(options.clusterRadius || 50),
@@ -259,12 +259,12 @@ export class GeoJSONSource extends Evented implements Source {
      */
     async getData(): Promise<GeoJSON.GeoJSON> {
         const options: LoadGeoJSONParameters = extend({type: this.type}, this.workerOptions);
-        return this.actor.sendAsync({type: MessageType.getData, data: options});
+        return assertedNotNullish(await this.actor.sendAsync({type: MessageType.getData, data: options}));
     }
 
     private getCoordinatesFromGeometry(geometry: GeoJSON.Geometry): number[] {
         if (geometry.type === 'GeometryCollection') {
-            return geometry.geometries.map((g: Exclude<GeoJSON.Geometry, GeoJSON.GeometryCollection>) => g.coordinates).flat(Infinity) as number[];
+            return assertedNotNullish(geometry.geometries.map((g) => (g as Exclude<GeoJSON.Geometry, GeoJSON.GeometryCollection>).coordinates)).flat(Infinity) as number[];
         }
         return geometry.coordinates.flat(Infinity) as number[];
     }
@@ -310,9 +310,10 @@ export class GeoJSONSource extends Evented implements Source {
     setClusterOptions(options: SetClusterOptions): this {
         this.workerOptions.cluster = options.cluster;
         if (options) {
-            if (options.clusterRadius !== undefined) this.workerOptions.superclusterOptions.radius = this._pixelsToTileUnits(options.clusterRadius);
+            const superclusterOptions = assertedNotNullish(this.workerOptions.superclusterOptions);
+            if (options.clusterRadius !== undefined) superclusterOptions.radius = this._pixelsToTileUnits(options.clusterRadius);
             if (options.clusterMaxZoom !== undefined) {
-                this.workerOptions.superclusterOptions.maxZoom = this._getClusterMaxZoom(options.clusterMaxZoom);
+                superclusterOptions.maxZoom = this._getClusterMaxZoom(options.clusterMaxZoom);
             }
         }
         this._updateWorkerData();
@@ -392,7 +393,7 @@ export class GeoJSONSource extends Evented implements Source {
         const options: LoadGeoJSONParameters = extend({type: this.type}, this.workerOptions);
         if (data) {
             if (typeof data === 'string') {
-                options.request = this.map._requestManager.transformRequest(browser.resolveURL(data as string), ResourceType.Source);
+                options.request = assertedNotNullish(this.map)._requestManager.transformRequest(browser.resolveURL(data as string), ResourceType.Source);
                 options.request.collectResourceTiming = this._collectResourceTiming;
             } else {
                 options.data = JSON.stringify(data);
@@ -416,7 +417,7 @@ export class GeoJSONSource extends Evented implements Source {
 
             this._data = result.data;
 
-            let resourceTiming: PerformanceResourceTiming[] = null;
+            let resourceTiming: PerformanceResourceTiming[] | undefined;
             if (result.resourceTiming && result.resourceTiming[this.id]) {
                 resourceTiming = result.resourceTiming[this.id].slice(0);
             }
@@ -430,13 +431,13 @@ export class GeoJSONSource extends Evented implements Source {
             // know its ok to start requesting tiles.
             this.fire(new Event('data', {...eventData, sourceDataType: 'metadata'}));
             this.fire(new Event('data', {...eventData, sourceDataType: 'content'}));
-        } catch (err) {
+        } catch (err: unknown) {
             this._isUpdatingWorker = false;
             if (this._removed) {
                 this.fire(new Event('dataabort', {dataType: 'source'}));
                 return;
             }
-            this.fire(new ErrorEvent(err));
+            this.fire(new ErrorEvent(err instanceof Error ? err : new Error(String(err))));
         } finally {
             // If there is more pending data, update worker again.
             if (this._pendingWorkerUpdate.data || this._pendingWorkerUpdate.diff) {
@@ -460,10 +461,10 @@ export class GeoJSONSource extends Evented implements Source {
             maxZoom: this.maxzoom,
             tileSize: this.tileSize,
             source: this.id,
-            pixelRatio: this.map.getPixelRatio(),
-            showCollisionBoxes: this.map.showCollisionBoxes,
-            promoteId: this.promoteId,
-            subdivisionGranularity: this.map.style.projection.subdivisionGranularity
+            pixelRatio: assertedNotNullish(this.map).getPixelRatio(),
+            showCollisionBoxes: assertedNotNullish(this.map).showCollisionBoxes,
+            promoteId: this.promoteId as PromoteIdSpecification,
+            subdivisionGranularity: assertedNotNullish(assertedNotNullish(assertedNotNullish(this.map).style).projection).subdivisionGranularity
         };
 
         tile.abortController = new AbortController();
@@ -472,7 +473,7 @@ export class GeoJSONSource extends Evented implements Source {
         tile.unloadVectorData();
 
         if (!tile.aborted) {
-            tile.loadVectorData(data, this.map.painter, message ===  MessageType.reloadTile);
+            tile.loadVectorData(data, assertedNotNullish(this.map).painter, message ===  MessageType.reloadTile);
         }
     }
 
@@ -498,7 +499,7 @@ export class GeoJSONSource extends Evented implements Source {
         return extend({}, this._options, {
             type: this.type,
             data: this._data
-        });
+        }) as GeoJSONSourceSpecification;
     }
 
     hasTransition() {

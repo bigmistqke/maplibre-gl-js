@@ -2,6 +2,7 @@ import {DOM} from '../../util/dom';
 
 import type {Map} from '../map';
 import type {ControlPosition, IControl} from './control';
+import { assertedNotNullish } from "../../util/util";
 
 /**
  * The {@link LogoControl} options object
@@ -26,9 +27,9 @@ export type LogoControlOptions = {
  **/
 export class LogoControl implements IControl {
     options: LogoControlOptions;
-    _map: Map;
-    _compact: boolean;
-    _container: HTMLElement;
+    _map: Map | undefined;
+    _compact: boolean | undefined;
+    _container: HTMLElement | undefined;
 
     /**
      * @param options - the control's options
@@ -63,17 +64,17 @@ export class LogoControl implements IControl {
 
     /** {@inheritDoc IControl.onRemove} */
     onRemove() {
-        DOM.remove(this._container);
-        this._map.off('resize', this._updateCompact);
+        DOM.remove(assertedNotNullish(this._container));
+        assertedNotNullish(this._map).off('resize', this._updateCompact);
         this._map = undefined;
         this._compact = undefined;
     }
 
     _updateCompact = () => {
-        const containerChildren = this._container.children;
+        const containerChildren = assertedNotNullish(this._container).children;
         if (containerChildren.length) {
             const anchor = containerChildren[0];
-            if (this._map.getCanvasContainer().offsetWidth <= 640 || this._compact) {
+            if (assertedNotNullish(this._map).getCanvasContainer().offsetWidth <= 640 || this._compact) {
                 if (this._compact !== false) {
                     anchor.classList.add('maplibregl-compact');
                 }

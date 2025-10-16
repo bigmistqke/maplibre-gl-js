@@ -1,5 +1,6 @@
 import {getJSON} from '../util/ajax';
 import {RequestPerformance} from '../util/performance';
+// @ts-expect-error - no types available for geojson-rewind
 import rewind from '@mapbox/geojson-rewind';
 import {fromVectorTileJs, GeoJSONWrapper} from '@maplibre/vt-pbf';
 import {EXTENT} from '../data/extent';
@@ -18,6 +19,7 @@ import type {LoadVectorTileResult} from './vector_tile_worker_source';
 import type {RequestParameters} from '../util/ajax';
 import {isUpdateableGeoJSON, type GeoJSONSourceDiff, applySourceDiff, toUpdateable, type GeoJSONFeatureId} from './geojson_source_diff';
 import type {ClusterIDAndSource, GeoJSONWorkerSourceLoadDataResult, RemoveSourceParams} from '../util/actor_messages';
+import { assertedNotNullish } from "../util/util";
 
 /**
  * The geojson worker options that can be passed to the worker
@@ -64,10 +66,10 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
      * data may even need to be loaded via a URL). This promise resolves with a ready-to-be-consumed GeoJSON which is
      * ready to be returned by the `getData` method.
      */
-    _pendingData: Promise<GeoJSON.GeoJSON>;
-    _pendingRequest: AbortController;
-    _geoJSONIndex: GeoJSONIndex;
-    _dataUpdateable = new Map<GeoJSONFeatureId, GeoJSON.Feature>();
+    _pendingData: Promise<GeoJSON.GeoJSON> | undefined;
+    _pendingRequest: AbortController | undefined;
+    _geoJSONIndex: GeoJSONIndex | undefined;
+    _dataUpdateable: Map<GeoJSONFeatureId, GeoJSON.Feature> | undefined = new Map<GeoJSONFeatureId, GeoJSON.Feature>();
 
     override async loadVectorTile(params: WorkerTileParameters, _abortController: AbortController): Promise<LoadVectorTileResult | null> {
         const canonical = params.tileID.canonical;
@@ -92,7 +94,7 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
         }
 
         return {
-            vectorTile: geojsonWrapper,
+            vectorTile: geojsonWrapper as unknown as import('@mapbox/vector-tile').VectorTile,
             rawData: pbf.buffer
         };
     }
@@ -123,7 +125,7 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
 
             this._geoJSONIndex = params.cluster ?
                 new Supercluster(getSuperclusterOptions(params)).load((data as any).features) :
-                geojsonvt(data, params.geojsonVtOptions);
+                geojsonvt(data, assertedNotNullish(params.geojsonVtOptions));
 
             this.loaded = {};
 
@@ -132,15 +134,15 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
                 const resourceTimingData = perf.finish();
                 // it's necessary to eval the result of getEntriesByName() here via parse/stringify
                 // late evaluation in the main thread causes TypeError: illegal invocation
-                if (resourceTimingData) {
+                if (resourceTimingData && params.source) {
                     result.resourceTiming = {};
                     result.resourceTiming[params.source] = JSON.parse(JSON.stringify(resourceTimingData));
                 }
             }
             return result;
-        } catch (err) {
+        } catch (err: unknown) {
             delete this._pendingRequest;
-            if (isAbortError(err)) {
+            if (err instanceof Error && isAbortError(err)) {
                 return {abandoned: true};
             }
             throw err;
@@ -152,7 +154,7 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
      *
      * @returns a promise which is resolved with the source's actual GeoJSON
      */
-    async getData(): Promise<GeoJSON.GeoJSON> {
+    async getData(): Promise<GeoJSON.GeoJSON | undefined> {
         return this._pendingData;
     }
 
@@ -165,7 +167,7 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
     * @param params - the parameters
     * @returns A promise that resolves when the tile is reloaded
     */
-    reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult> {
+    reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult | null> {
         const loaded = this.loaded,
             uid = params.uid;
 
@@ -199,7 +201,7 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
             if (compiled.result === 'error')
                 throw new Error(compiled.value.map(err => `${err.key}: ${err.message}`).join(', '));
 
-            const features = (data as any).features.filter(feature => compiled.value.evaluate({zoom: 0}, feature));
+            const features = (data as any).features.filter((feature: GeoJSON.Feature) => compiled.value.evaluate({zoom: 0}, feature as unknown as import('@maplibre/maplibre-gl-style-spec').Feature));
             data = {type: 'FeatureCollection', features};
         }
 
@@ -268,14 +270,14 @@ export class GeoJSONWorkerSource extends VectorTileWorkerSource {
 function getSuperclusterOptions({superclusterOptions, clusterProperties}: LoadGeoJSONParameters) {
     if (!clusterProperties || !superclusterOptions) return superclusterOptions;
 
-    const mapExpressions = {};
-    const reduceExpressions = {};
-    const globals = {accumulated: null, zoom: 0};
-    const feature = {properties: null};
+    const mapExpressions: Record<string, any> = {};
+    const reduceExpressions: Record<string, any> = {};
+    const globals: {accumulated: any; zoom: number} = {accumulated: null, zoom: 0};
+    const feature: {properties: any} = {properties: null};
     const propertyNames = Object.keys(clusterProperties);
 
     for (const key of propertyNames) {
-        const [operator, mapExpression] = clusterProperties[key];
+        const [operator, mapExpression] = (clusterProperties as unknown as Record<string, [any, any]>)[key];
 
         const mapExpressionParsed = createExpression(mapExpression);
         const reduceExpressionParsed = createExpression(
@@ -287,14 +289,14 @@ function getSuperclusterOptions({superclusterOptions, clusterProperties}: LoadGe
 
     superclusterOptions.map = (pointProperties) => {
         feature.properties = pointProperties;
-        const properties = {};
+        const properties: Record<string, any> = {};
         for (const key of propertyNames) {
             properties[key] = mapExpressions[key].evaluate(globals, feature);
         }
         return properties;
     };
-    superclusterOptions.reduce = (accumulated, clusterProperties) => {
-        feature.properties = clusterProperties;
+    superclusterOptions.reduce = (accumulated: Record<string, any>, clusterProps) => {
+        feature.properties = clusterProps;
         for (const key of propertyNames) {
             globals.accumulated = accumulated[key];
             accumulated[key] = reduceExpressions[key].evaluate(globals, feature);

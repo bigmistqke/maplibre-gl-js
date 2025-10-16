@@ -7,6 +7,7 @@ import {ValidationError} from '@maplibre/maplibre-gl-style-spec';
 import type {Map} from '../ui/map';
 import type {Dispatcher} from '../util/dispatcher';
 import type {Evented} from '../util/evented';
+import { assertedNotNullish } from "../util/util";
 
 /**
  * Options to add a canvas source type to the map.
@@ -66,18 +67,18 @@ export type CanvasSourceSpecification = {
 export class CanvasSource extends ImageSource {
     options: CanvasSourceSpecification;
     animate: boolean;
-    canvas: HTMLCanvasElement;
-    width: number;
-    height: number;
+    canvas: HTMLCanvasElement | undefined;
+    width: number | undefined;
+    height: number | undefined;
     /**
      * Enables animation. The image will be copied from the canvas to the map on each frame.
      */
-    play: () => void;
+    play: (() => void) | undefined;
     /**
      * Disables animation. The map will display a static copy of the canvas image.
      */
-    pause: () => void;
-    _playing: boolean;
+    pause: (() => void) | undefined;
+    _playing: boolean | undefined;
 
     /** @internal */
     constructor(id: string, options: CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) {
@@ -110,7 +111,7 @@ export class CanvasSource extends ImageSource {
         if (!this.canvas) {
             this.canvas = (this.options.canvas instanceof HTMLCanvasElement) ?
                 this.options.canvas :
-                document.getElementById(this.options.canvas) as HTMLCanvasElement;
+                document.getElementById(assertedNotNullish(this.options.canvas)) as HTMLCanvasElement;
             // cast to HTMLCanvasElement in else of ternary
             // should we do a safety check and throw if it's not actually HTMLCanvasElement?
         }
@@ -124,7 +125,7 @@ export class CanvasSource extends ImageSource {
 
         this.play = function() {
             this._playing = true;
-            this.map.triggerRepaint();
+            assertedNotNullish(this.map).triggerRepaint();
         };
 
         this.pause = function() {
@@ -143,29 +144,29 @@ export class CanvasSource extends ImageSource {
      * @returns The HTML `canvas` element.
      */
     getCanvas(): HTMLCanvasElement {
-        return this.canvas;
+        return assertedNotNullish(this.canvas);
     }
 
     onAdd(map: Map) {
         this.map = map;
         this.load();
         if (this.canvas) {
-            if (this.animate) this.play();
+            if (this.animate) assertedNotNullish(this.play)();
         }
     }
 
     onRemove() {
-        this.pause();
+        assertedNotNullish(this.pause)();
     }
 
     prepare() {
         let resize = false;
-        if (this.canvas.width !== this.width) {
-            this.width = this.canvas.width;
+        if (assertedNotNullish(this.canvas).width !== this.width) {
+            this.width = assertedNotNullish(this.canvas).width;
             resize = true;
         }
-        if (this.canvas.height !== this.height) {
-            this.height = this.canvas.height;
+        if (assertedNotNullish(this.canvas).height !== this.height) {
+            this.height = assertedNotNullish(this.canvas).height;
             resize = true;
         }
 
@@ -173,13 +174,13 @@ export class CanvasSource extends ImageSource {
 
         if (Object.keys(this.tiles).length === 0) return; // not enough data for current position
 
-        const context = this.map.painter.context;
+        const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
         const gl = context.gl;
 
         if (!this.texture) {
-            this.texture = new Texture(context, this.canvas, gl.RGBA, {premultiply: true});
+            this.texture = new Texture(context, assertedNotNullish(this.canvas), gl.RGBA, {premultiply: true});
         } else if (resize || this._playing) {
-            this.texture.update(this.canvas, {premultiply: true});
+            this.texture.update(assertedNotNullish(this.canvas), {premultiply: true});
         }
 
         let newTilesLoaded = false;
@@ -204,12 +205,12 @@ export class CanvasSource extends ImageSource {
         };
     }
 
-    hasTransition() {
-        return this._playing;
+    hasTransition(): boolean {
+        return this._playing ?? false;
     }
 
     _hasInvalidDimensions() {
-        for (const x of [this.canvas.width, this.canvas.height]) {
+        for (const x of [assertedNotNullish(this.canvas).width, assertedNotNullish(this.canvas).height]) {
             if (isNaN(x) || x <= 0) return true;
         }
         return false;

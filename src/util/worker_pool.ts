@@ -14,7 +14,7 @@ export class WorkerPool {
     active: {
         [_ in number | string]: boolean;
     };
-    workers: Array<ActorTarget>;
+    workers?: Array<ActorTarget>;
 
     constructor() {
         this.active = {};
@@ -37,10 +37,10 @@ export class WorkerPool {
     release(mapId: number | string) {
         delete this.active[mapId];
         if (this.numActive() === 0) {
-            this.workers.forEach((w) => {
-                w.terminate();
+            this.workers?.forEach((w) => {
+                w.terminate?.();
             });
-            this.workers = null;
+            this.workers = undefined;
         }
     }
 

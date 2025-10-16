@@ -3,9 +3,9 @@ export const webpSupported = {
     testSupport
 };
 
-let glForTesting: WebGLRenderingContext|WebGL2RenderingContext;
+let glForTesting: WebGLRenderingContext|WebGL2RenderingContext|null;
 let webpCheckComplete = false;
-let webpImgTest;
+let webpImgTest: HTMLImageElement;
 let webpImgTestOnloadComplete = false;
 
 if (typeof document !== 'undefined') {

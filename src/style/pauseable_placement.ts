@@ -6,6 +6,7 @@ import type {SymbolStyleLayer} from './style_layer/symbol_style_layer';
 import type {Tile} from '../source/tile';
 import type {BucketPart} from '../symbol/placement';
 import type {Terrain} from '../render/terrain';
+import { assertedNotNullish } from "../util/util";
 
 class LayerPlacement {
     _sortAcrossTiles: boolean;
@@ -17,8 +18,8 @@ class LayerPlacement {
     _bucketParts: Array<BucketPart>;
 
     constructor(styleLayer: SymbolStyleLayer) {
-        this._sortAcrossTiles = styleLayer.layout.get('symbol-z-order') !== 'viewport-y' &&
-            !styleLayer.layout.get('symbol-sort-key').isConstant();
+        this._sortAcrossTiles = assertedNotNullish(styleLayer.layout).get('symbol-z-order') !== 'viewport-y' &&
+            !assertedNotNullish(styleLayer.layout).get('symbol-sort-key').isConstant();
 
         this._currentTileIndex = 0;
         this._currentPartIndex = 0;
@@ -64,7 +65,7 @@ export class PauseablePlacement {
     _currentPlacementIndex: number;
     _forceFullPlacement: boolean;
     _showCollisionBoxes: boolean;
-    _inProgressLayer: LayerPlacement;
+    _inProgressLayer: LayerPlacement | undefined;
 
     constructor(
         transform: ITransform,
@@ -110,7 +111,7 @@ export class PauseablePlacement {
                     this._inProgressLayer = new LayerPlacement(layer as any as SymbolStyleLayer);
                 }
 
-                const pausePlacement = this._inProgressLayer.continuePlacement(layerTiles[layer.source], this.placement, this._showCollisionBoxes, layer, shouldPausePlacement);
+                const pausePlacement = this._inProgressLayer.continuePlacement(layerTiles[assertedNotNullish(layer.source)], this.placement, this._showCollisionBoxes, layer, shouldPausePlacement);
 
                 if (pausePlacement) {
                     // We didn't finish placing all layers within 2ms,

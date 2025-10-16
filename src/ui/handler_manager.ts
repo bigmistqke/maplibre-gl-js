@@ -17,7 +17,7 @@ import {DragPanHandler} from './handler/shim/drag_pan';
 import {DragRotateHandler} from './handler/shim/drag_rotate';
 import {TwoFingersTouchZoomRotateHandler} from './handler/shim/two_fingers_touch';
 import {CooperativeGesturesHandler} from './handler/cooperative_gestures';
-import {extend, isPointableEvent, isTouchableEvent, isTouchableOrPointableType} from '../util/util';
+import {extend, isPointableEvent, isTouchableEvent, isTouchableOrPointableType, assertedNotNullish } from '../util/util';
 import {browser} from '../util/browser';
 import Point from '@mapbox/point-geometry';
 import {type MapControlsDeltas} from '../geo/projection/camera_helper';
@@ -28,8 +28,8 @@ import type {Terrain} from '../render/terrain';
 const isMoving = (p: EventsInProgress) => p.zoom || p.drag || p.roll || p.pitch || p.rotate;
 
 class RenderFrameEvent extends Event {
-    type: 'renderFrame';
-    timeStamp: number;
+    override readonly type!: 'renderFrame';
+    timeStamp: number | undefined;
 }
 
 /**
@@ -116,7 +116,7 @@ export type HandlerResult = {
 
 export type EventInProgress = {
     handlerName: string;
-    originalEvent: Event;
+    originalEvent: Event | undefined;
 };
 
 export type EventsInProgress = {
@@ -146,22 +146,22 @@ export class HandlerManager {
     _handlers: Array<{
         handlerName: string;
         handler: Handler;
-        allowed: Array<string>;
+        allowed?: Array<string>;
     }>;
     _eventsInProgress: EventsInProgress;
-    _frameId: number;
+    _frameId: number | undefined;
     _inertia: HandlerInertia;
     _bearingSnap: number;
     _handlersById: {[x: string]: Handler};
-    _updatingCamera: boolean;
-    _changes: Array<[HandlerResult, EventsInProgress, {[handlerName: string]: Event}]>;
-    _terrainMovement: boolean;
-    _zoom: {handlerName: string};
-    _previousActiveHandlers: {[x: string]: Handler};
+    _updatingCamera: boolean | undefined;
+    _changes: Array<[HandlerResult, EventsInProgress, {[handlerName: string]: Event | undefined}]>;
+    _terrainMovement: boolean | undefined;
+    _zoom: {handlerName: string} | undefined;
+    _previousActiveHandlers: {[x: string]: Handler} | undefined;
     _listeners: Array<[Window | Document | HTMLElement, string, {
         passive?: boolean;
         capture?: boolean;
-    } | undefined]>;
+    } | undefined]> | undefined;
 
     constructor(map: Map, options: CompleteMapOptions) {
         this._map = map;
@@ -171,7 +171,7 @@ export class HandlerManager {
         this._changes = [];
 
         this._inertia = new HandlerInertia(map);
-        this._bearingSnap = options.bearingSnap;
+        this._bearingSnap = assertedNotNullish(options.bearingSnap, 'Expected bearingSnap to be defined in options');
         this._previousActiveHandlers = {};
 
         // Track whether map is currently moving, to compute start/move/end events
@@ -221,28 +221,31 @@ export class HandlerManager {
         ];
 
         for (const [target, type, listenerOptions] of this._listeners) {
-            DOM.addEventListener(target, type, target === document ? this.handleWindowEvent : this.handleEvent, listenerOptions);
+            const handler = (assertedNotNullish(target) === document ? this.handleWindowEvent : this.handleEvent) as EventListener;
+            DOM.addEventListener(target, type, handler, listenerOptions);
         }
     }
 
     destroy() {
-        for (const [target, type, listenerOptions] of this._listeners) {
-            DOM.removeEventListener(target, type, target === document ? this.handleWindowEvent : this.handleEvent, listenerOptions);
+        for (const [target, type, listenerOptions] of assertedNotNullish(this._listeners)) {
+            const handler = (assertedNotNullish(target) === document ? this.handleWindowEvent : this.handleEvent) as EventListener;
+            DOM.removeEventListener(target, type, handler, listenerOptions);
         }
     }
 
     _addDefaultHandlers(options: CompleteMapOptions) {
         const map = this._map;
         const el = map.getCanvasContainer();
-        this._add('mapEvent', new MapEventHandler(map, options));
+        const clickTolerance = assertedNotNullish(options.clickTolerance, 'Expected clickTolerance to be defined in options');
+        this._add('mapEvent', new MapEventHandler(map, {clickTolerance}));
 
-        const boxZoom = map.boxZoom = new BoxZoomHandler(map, options);
+        const boxZoom = map.boxZoom = new BoxZoomHandler(map, {clickTolerance});
         this._add('boxZoom', boxZoom);
         if (options.interactive && options.boxZoom) {
             boxZoom.enable();
         }
 
-        const cooperativeGestures = map.cooperativeGestures = new CooperativeGesturesHandler(map, options.cooperativeGestures);
+        const cooperativeGestures = map.cooperativeGestures = new CooperativeGesturesHandler(map, !!options.cooperativeGestures);
         this._add('cooperativeGestures', cooperativeGestures);
         if (options.cooperativeGestures) {
             cooperativeGestures.enable();
@@ -266,10 +269,13 @@ export class HandlerManager {
             map.touchPitch.enable(options.touchPitch);
         }
         const getCenter = () => map.project(map.getCenter());
-        const mouseRotate = generateMouseRotationHandler(options, getCenter);
-        const mousePitch = generateMousePitchHandler(options);
-        const mouseRoll = generateMouseRollHandler(options, getCenter);
-        map.dragRotate = new DragRotateHandler(options, mouseRotate, mousePitch, mouseRoll);
+        const mouseRotate = generateMouseRotationHandler({clickTolerance}, getCenter);
+        const mousePitch = generateMousePitchHandler({clickTolerance});
+        const mouseRoll = generateMouseRollHandler({clickTolerance}, getCenter);
+        map.dragRotate = new DragRotateHandler({
+            pitchWithRotate: assertedNotNullish(options.pitchWithRotate, 'Expected pitchWithRotate to be defined'),
+            rollEnabled: assertedNotNullish(options.rollEnabled, 'Expected rollEnabled to be defined')
+        }, mouseRotate, mousePitch, mouseRoll);
         this._add('mouseRotate', mouseRotate, ['mousePitch']);
         this._add('mousePitch', mousePitch, ['mouseRotate', 'mouseRoll']);
         this._add('mouseRoll', mouseRoll, ['mousePitch']);
@@ -277,8 +283,8 @@ export class HandlerManager {
             map.dragRotate.enable();
         }
 
-        const mousePan = generateMousePanHandler(options);
-        const touchPan = new TouchPanHandler(options, map);
+        const mousePan = generateMousePanHandler({clickTolerance});
+        const touchPan = new TouchPanHandler({clickTolerance}, map);
         map.dragPan = new DragPanHandler(el, mousePan, touchPan);
         this._add('mousePan', mousePan);
         this._add('touchPan', touchPan, ['touchZoom', 'touchRotate']);
@@ -304,7 +310,7 @@ export class HandlerManager {
         }
 
         const keyboard = map.keyboard = new KeyboardHandler(map);
-        this._add('keyboard', keyboard);
+        this._add('keyboard', assertedNotNullish(keyboard));
         if (options.interactive && options.keyboard) {
             map.keyboard.enable();
         }
@@ -335,7 +341,7 @@ export class HandlerManager {
     }
 
     isZooming() {
-        return !!this._eventsInProgress.zoom || this._map.scrollZoom.isZooming();
+        return !!this._eventsInProgress.zoom || assertedNotNullish(this._map.scrollZoom).isZooming();
     }
     isRotating() {
         return !!this._eventsInProgress.rotate;
@@ -345,7 +351,7 @@ export class HandlerManager {
         return Boolean(isMoving(this._eventsInProgress)) || this.isZooming();
     }
 
-    _blockedByActive(activeHandlers: {[x: string]: Handler}, allowed: Array<string>, myName: string) {
+    _blockedByActive(activeHandlers: {[x: string]: Handler}, allowed: Array<string> | undefined, myName: string) {
         for (const name in activeHandlers) {
             if (name === myName) continue;
             if (!allowed || allowed.indexOf(name) < 0) {
@@ -388,31 +394,34 @@ export class HandlerManager {
 
         const mergedHandlerResult: HandlerResult = {needsRenderFrame: false};
         const eventsInProgress: EventsInProgress = {};
-        const activeHandlers = {};
+        const activeHandlers: Record<string, Handler> = {};
 
         for (const {handlerName, handler, allowed} of this._handlers) {
             if (!handler.isEnabled()) continue;
 
-            let data: HandlerResult;
+            let data: HandlerResult | undefined;
             if (this._blockedByActive(activeHandlers, allowed, handlerName)) {
                 handler.reset();
 
             } else {
-                if (handler[eventName || e.type]) {
+                const handlerMethod = (handler as unknown as Record<string, unknown>)[eventName || e.type] as Handler[keyof Handler];
+                if (handlerMethod) {
                     if (isPointableEvent(e, eventName || e.type)){
                         const point = DOM.mousePos(this._map.getCanvas(), e);
-                        data = handler[eventName || e.type](e, point);
+                        data = (handlerMethod as (e: MouseEvent, point: Point) => HandlerResult | void)(e as MouseEvent, point) || undefined;
                     } else if (isTouchableEvent(e, eventName || e.type)) {
-                        const eventTouches = e.touches;
+                        const eventTouches = (e as TouchEvent).touches;
                         const mapTouches = this._getMapTouches(eventTouches);
                         const points = DOM.touchPos(this._map.getCanvas(), mapTouches);
-                        data = handler[eventName || e.type](e, points, mapTouches);
+                        data = (handlerMethod as (e: TouchEvent, points: Point[], mapTouches: TouchList) => HandlerResult | void)(e as TouchEvent, points, mapTouches) || undefined;
                     } else if (!isTouchableOrPointableType(eventName || e.type)) {
-                        data = handler[eventName || e.type](e);
+                        data = (handlerMethod as (e: Event) => HandlerResult | void)(e) || undefined;
                     }
-                    this.mergeHandlerResult(mergedHandlerResult, eventsInProgress, data, handlerName, inputEvent);
-                    if (data && data.needsRenderFrame) {
-                        this._triggerRenderFrame();
+                    if (data) {
+                        this.mergeHandlerResult(mergedHandlerResult, eventsInProgress, data, handlerName, inputEvent);
+                        if (data.needsRenderFrame) {
+                            this._triggerRenderFrame();
+                        }
                     }
                 }
             }
@@ -422,7 +431,7 @@ export class HandlerManager {
             }
         }
 
-        const deactivatedHandlers: {[handlerName: string]: Event} = {};
+        const deactivatedHandlers: {[handlerName: string]: Event | undefined} = {};
         for (const name in this._previousActiveHandlers) {
             if (!activeHandlers[name]) {
                 deactivatedHandlers[name] = inputEvent;
@@ -531,11 +540,11 @@ export class HandlerManager {
         }
 
         const deltasForHelper: MapControlsDeltas = {
-            panDelta,
-            zoomDelta,
-            rollDelta,
-            pitchDelta,
-            bearingDelta,
+            panDelta: panDelta || new Point(0, 0),
+            zoomDelta: zoomDelta || 0,
+            rollDelta: rollDelta || 0,
+            pitchDelta: pitchDelta || 0,
+            bearingDelta: bearingDelta || 0,
             around,
         };
 
@@ -607,19 +616,21 @@ export class HandlerManager {
         cameraHelper.handleMapControlsPan(deltasForHelper, tr, preZoomAroundLoc);
     }
 
-    _fireEvents(newEventsInProgress: EventsInProgress, deactivatedHandlers: {[handlerName: string]: Event}, allowEndAnimation: boolean) {
+    _fireEvents(newEventsInProgress: EventsInProgress, deactivatedHandlers: {[handlerName: string]: Event | undefined}, allowEndAnimation: boolean) {
 
         const wasMoving = isMoving(this._eventsInProgress);
         const nowMoving = isMoving(newEventsInProgress);
 
-        const startEvents = {};
+        const startEvents: Record<string, Event | undefined> = {};
 
-        for (const eventName in newEventsInProgress) {
-            const {originalEvent} = newEventsInProgress[eventName];
-            if (!this._eventsInProgress[eventName]) {
-                startEvents[`${eventName}start`] = originalEvent;
+        for (const eventName of Object.keys(newEventsInProgress) as Array<keyof EventsInProgress>) {
+            const eventInProgress = newEventsInProgress[eventName];
+            if (eventInProgress) {
+                if (!this._eventsInProgress[eventName]) {
+                    startEvents[`${eventName}start`] = eventInProgress.originalEvent;
+                }
+                this._eventsInProgress[eventName] = eventInProgress;
             }
-            this._eventsInProgress[eventName] = newEventsInProgress[eventName];
         }
 
         // fire start events only after this._eventsInProgress has been updated
@@ -635,20 +646,25 @@ export class HandlerManager {
             this._fireEvent('move', nowMoving.originalEvent);
         }
 
-        for (const eventName in newEventsInProgress) {
-            const {originalEvent} = newEventsInProgress[eventName];
-            this._fireEvent(eventName, originalEvent);
+        for (const eventName of Object.keys(newEventsInProgress) as Array<keyof EventsInProgress>) {
+            const eventInProgress = newEventsInProgress[eventName];
+            if (eventInProgress) {
+                this._fireEvent(eventName, eventInProgress.originalEvent);
+            }
         }
 
-        const endEvents = {};
+        const endEvents: Record<string, Event | undefined> = {};
 
-        let originalEndEvent;
-        for (const eventName in this._eventsInProgress) {
-            const {handlerName, originalEvent} = this._eventsInProgress[eventName];
-            if (!this._handlersById[handlerName].isActive()) {
-                delete this._eventsInProgress[eventName];
-                originalEndEvent = deactivatedHandlers[handlerName] || originalEvent;
-                endEvents[`${eventName}end`] = originalEndEvent;
+        let originalEndEvent: Event | undefined;
+        for (const eventName of Object.keys(this._eventsInProgress) as Array<keyof EventsInProgress>) {
+            const eventInProgress = this._eventsInProgress[eventName];
+            if (eventInProgress) {
+                const {handlerName, originalEvent} = eventInProgress;
+                if (!this._handlersById[handlerName].isActive()) {
+                    delete this._eventsInProgress[eventName];
+                    originalEndEvent = deactivatedHandlers[handlerName] || originalEvent;
+                    endEvents[`${eventName}end`] = originalEndEvent;
+                }
             }
         }
 
@@ -669,9 +685,9 @@ export class HandlerManager {
         }
         if (allowEndAnimation && finishedMoving) {
             this._updatingCamera = true;
-            const inertialEase = this._inertia._onMoveEnd(this._map.dragPan._inertiaOptions);
+            const inertialEase = this._inertia._onMoveEnd(assertedNotNullish(this._map.dragPan)._inertiaOptions);
 
-            const shouldSnapToNorth = bearing => bearing !== 0 && -this._bearingSnap < bearing && bearing < this._bearingSnap;
+            const shouldSnapToNorth = (bearing: number) => bearing !== 0 && -this._bearingSnap < bearing && bearing < this._bearingSnap;
 
             if (inertialEase && (inertialEase.essential || !browser.prefersReducedMotion)) {
                 if (shouldSnapToNorth(inertialEase.bearing || this._map.getBearing())) {
@@ -698,7 +714,7 @@ export class HandlerManager {
         this._map.triggerRepaint();
         return this._map._renderTaskQueue.add(timeStamp => {
             delete this._frameId;
-            this.handleEvent(new RenderFrameEvent('renderFrame', {timeStamp}));
+            assertedNotNullish(this.handleEvent(new RenderFrameEvent('renderFrame', {timeStamp})));
             this._applyChanges();
         });
     }

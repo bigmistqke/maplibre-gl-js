@@ -9,7 +9,7 @@ import {type VectorTileLayer, type VectorTileFeature, VectorTile} from '@mapbox/
 import Protobuf from 'pbf';
 import {GeoJSONFeature} from '../util/vectortile_to_geojson';
 import type {MapGeoJSONFeature} from '../util/vectortile_to_geojson';
-import {mapObject, extend} from '../util/util';
+import {mapObject, extend, assertedNotNullish} from '../util/util';
 import {type OverscaledTileID} from '../source/tile_id';
 import {register} from '../util/web_worker_transfer';
 import {EvaluationParameters} from '../style/evaluation_parameters';
@@ -38,7 +38,7 @@ type QueryParameters = {
         layers?: Set<string> | null;
         availableImages?: Array<string>;
         globalState?: Record<string, any>;
-    };
+    } | undefined;
 };
 
 export type QueryResults = {
@@ -64,13 +64,13 @@ export class FeatureIndex {
     featureIndexArray: FeatureIndexArray;
     promoteId?: PromoteIdSpecification;
 
-    rawTileData: ArrayBuffer;
-    bucketLayerIDs: Array<Array<string>>;
+    rawTileData?: ArrayBuffer;
+    bucketLayerIDs?: Array<Array<string>>;
 
-    vtLayers: {[_: string]: VectorTileLayer};
-    sourceLayerCoder: DictionaryCoder;
+    vtLayers?: {[_: string]: VectorTileLayer};
+    sourceLayerCoder?: DictionaryCoder;
 
-    constructor(tileID: OverscaledTileID, promoteId?: PromoteIdSpecification | null) {
+    constructor(tileID: OverscaledTileID, promoteId?: PromoteIdSpecification) {
         this.tileID = tileID;
         this.x = tileID.canonical.x;
         this.y = tileID.canonical.y;
@@ -110,7 +110,7 @@ export class FeatureIndex {
 
     loadVTLayers(): {[_: string]: VectorTileLayer} {
         if (!this.vtLayers) {
-            this.vtLayers = new VectorTile(new Protobuf(this.rawTileData)).layers;
+            this.vtLayers = new VectorTile(new Protobuf(this.rawTileData!)).layers;
             this.sourceLayerCoder = new DictionaryCoder(this.vtLayers ? Object.keys(this.vtLayers).sort() : ['_geojsonTileLayer']);
         }
         return this.vtLayers;
@@ -125,7 +125,7 @@ export class FeatureIndex {
     ): QueryResults {
         this.loadVTLayers();
 
-        const params = args.params;
+        const params = assertedNotNullish(args.params);
         const pixelsToTileUnits = EXTENT / args.tileSize / args.scale;
         const filter = featureFilter(params.filter, params.globalState);
 
@@ -138,7 +138,7 @@ export class FeatureIndex {
         const cameraBounds = Bounds.fromPoints(args.cameraQueryGeometry).expandBy(queryPadding);
         const matching3D = this.grid3D.query(
             cameraBounds.minX, cameraBounds.minY, cameraBounds.maxX, cameraBounds.maxY,
-            (bx1, by1, bx2, by2) => {
+            (bx1: number, by1: number, bx2: number, by2: number) => {
                 return polygonIntersectsBox(args.cameraQueryGeometry, bx1 - queryPadding, by1 - queryPadding, bx2 + queryPadding, by2 + queryPadding);
             });
 
@@ -158,7 +158,7 @@ export class FeatureIndex {
             previousIndex = index;
 
             const match = this.featureIndexArray.get(index);
-            let featureGeometry = null;
+            let featureGeometry: Array<Array<Point>> | null = null;
             this.loadMatchingFeature(
                 result,
                 match.bucketIndex,
@@ -175,7 +175,7 @@ export class FeatureIndex {
                         featureGeometry = loadGeometry(feature);
                     }
 
-                    return styleLayer.queryIntersectsFeature({
+                    return styleLayer.queryIntersectsFeature?.({
                         queryGeometry,
                         feature,
                         featureState,
@@ -186,7 +186,7 @@ export class FeatureIndex {
                         pixelPosMatrix: args.pixelPosMatrix,
                         unwrappedTileID: this.tileID.toUnwrapped(),
                         getElevation: args.getElevation
-                    });
+                    }) ?? false;
                 }
             );
         }
@@ -200,8 +200,8 @@ export class FeatureIndex {
         sourceLayerIndex: number,
         featureIndex: number,
         filter: FeatureFilter,
-        filterLayerIDs: Set<string> | undefined,
-        availableImages: Array<string>,
+        filterLayerIDs: Set<string> | undefined | null,
+        availableImages: Array<string> | undefined,
         styleLayers: {[_: string]: StyleLayer},
         serializedLayers: {[_: string]: any},
         sourceFeatureState?: SourceFeatureState,
@@ -212,13 +212,15 @@ export class FeatureIndex {
             id: string | number | void
         ) => boolean | number) {
 
-        const layerIDs = this.bucketLayerIDs[bucketIndex];
-        if (filterLayerIDs && !layerIDs.some(id => filterLayerIDs.has(id)))
+        const layerIDs = this.bucketLayerIDs?.[bucketIndex];
+        if (filterLayerIDs && !layerIDs?.some(id => filterLayerIDs.has(id)))
             return;
 
-        const sourceLayerName = this.sourceLayerCoder.decode(sourceLayerIndex);
-        const sourceLayer = this.vtLayers[sourceLayerName];
-        const feature = sourceLayer.feature(featureIndex);
+        const sourceLayerName = this.sourceLayerCoder?.decode(sourceLayerIndex);
+        const sourceLayer = sourceLayerName ? this.vtLayers?.[sourceLayerName] : undefined;
+        const feature = sourceLayer?.feature(featureIndex);
+
+        if (!feature || !sourceLayerName || !layerIDs) return;
 
         if (filter.needGeometry) {
             const evaluationFeature = toEvaluationFeature(feature, true);
@@ -249,7 +251,6 @@ export class FeatureIndex {
             }
 
             const serializedLayer = extend({}, serializedLayers[layerID]);
-
             serializedLayer.paint = evaluateProperties(serializedLayer.paint, styleLayer.paint, feature, featureState, availableImages);
             serializedLayer.layout = evaluateProperties(serializedLayer.layout, styleLayer.layout, feature, featureState, availableImages);
 
@@ -305,7 +306,7 @@ export class FeatureIndex {
     }
 
     hasLayer(id: string) {
-        for (const layerIDs of this.bucketLayerIDs) {
+        for (const layerIDs of this.bucketLayerIDs ?? []) {
             for (const layerID of layerIDs) {
                 if (id === layerID) return true;
             }
@@ -314,8 +315,8 @@ export class FeatureIndex {
         return false;
     }
 
-    getId(feature: VectorTileFeature, sourceLayerId: string): string | number {
-        let id: string | number = feature.id;
+    getId(feature: VectorTileFeature, sourceLayerId: string): string | number  | undefined {
+        let id: number | string | undefined = feature.id;
         if (this.promoteId) {
             const propName = typeof this.promoteId === 'string' ? this.promoteId : this.promoteId[sourceLayerId];
             id = feature.properties[propName] as string | number;
@@ -336,13 +337,13 @@ register(
     {omit: ['rawTileData', 'sourceLayerCoder']}
 );
 
-function evaluateProperties(serializedProperties, styleLayerProperties, feature, featureState, availableImages) {
-    return mapObject(serializedProperties, (property, key) => {
+function evaluateProperties(serializedProperties: Record<string, unknown>, styleLayerProperties: unknown, feature: unknown, featureState: unknown, availableImages: Array<unknown> | undefined) {
+    return mapObject(serializedProperties, (property: unknown, key: string) => {
         const prop = styleLayerProperties instanceof PossiblyEvaluated ? styleLayerProperties.get(key) : null;
-        return prop && prop.evaluate ? prop.evaluate(feature, featureState, availableImages) : prop;
+        return prop && typeof prop === 'object' && prop.evaluate ? prop.evaluate(feature, featureState, availableImages) : prop;
     });
 }
 
-function topDownFeatureComparator(a, b) {
+function topDownFeatureComparator(a: number, b: number) {
     return b - a;
 }

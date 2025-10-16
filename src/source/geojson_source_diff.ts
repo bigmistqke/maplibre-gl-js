@@ -1,3 +1,5 @@
+import { assertedNotNullish } from "../util/util";
+
 /**
  * A way to identify a feature, either by string or by number
  */
@@ -54,7 +56,7 @@ export type GeoJSONFeatureDiff = {
 export type UpdateableGeoJSON = GeoJSON.Feature | GeoJSON.FeatureCollection | undefined;
 
 function getFeatureId(feature: GeoJSON.Feature, promoteId?: string): GeoJSONFeatureId | undefined {
-    return promoteId ? feature.properties[promoteId] : feature.id;
+    return promoteId ? assertedNotNullish(feature.properties)[promoteId] : feature.id;
 }
 
 export function isUpdateableGeoJSON(data: GeoJSON.GeoJSON | undefined, promoteId?: string): data is UpdateableGeoJSON {
@@ -139,7 +141,7 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
             // be careful to clone the feature and/or properties objects to avoid mutating our input
             const cloneFeature = update.newGeometry || update.removeAllProperties;
             // note: removeAllProperties gives us a new properties object, so we can skip the clone step
-            const cloneProperties = !update.removeAllProperties && (update.removeProperties?.length > 0 || update.addOrUpdateProperties?.length > 0);
+            const cloneProperties = !update.removeAllProperties && (assertedNotNullish(update.removeProperties?.length)> 0 || assertedNotNullish(update.addOrUpdateProperties?.length) > 0);
             if (cloneFeature || cloneProperties) {
                 feature = {...feature};
                 updateable.set(update.id, feature);
@@ -154,16 +156,19 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
 
             if (update.removeAllProperties) {
                 feature.properties = {};
-            } else if (update.removeProperties?.length > 0) {
-                for (const prop of update.removeProperties) {
+            } else if (assertedNotNullish(update.removeProperties?.length)> 0) {
+                for (const prop of assertedNotNullish(update.removeProperties)) {
                     if (Object.prototype.hasOwnProperty.call(feature.properties, prop)) {
-                        delete feature.properties[prop];
+                        delete assertedNotNullish(feature.properties)[prop];
                     }
                 }
             }
 
-            if (update.addOrUpdateProperties?.length > 0) {
-                for (const {key, value} of update.addOrUpdateProperties) {
+            if (assertedNotNullish(update.addOrUpdateProperties?.length)> 0) {
+                if (!feature.properties) {
+                    feature.properties = {};
+                }
+                for (const {key, value} of assertedNotNullish(update.addOrUpdateProperties)) {
                     feature.properties[key] = value;
                 }
             }
@@ -192,7 +197,7 @@ export function mergeSourceDiffs(
     if (newDiff.remove) {
         const newRemovedSet = new Set(newDiff.remove);
         if (merged.add) {
-            merged.add = merged.add.filter(f => !newRemovedSet.has(f.id));
+            merged.add = merged.add.filter(f => !newRemovedSet.has(assertedNotNullish(f.id)));
         }
         if (merged.update) {
             merged.update = merged.update.filter(f => !newRemovedSet.has(f.id));
@@ -238,7 +243,7 @@ export function mergeSourceDiffs(
     }
 
     if (merged.remove && merged.add) {
-        merged.remove = merged.remove.filter(id => merged.add.findIndex((f) => f.id === id) === -1);
+        merged.remove = merged.remove.filter(id => assertedNotNullish(merged.add).findIndex((f) => f.id === id) === -1);
     }
 
     return merged;

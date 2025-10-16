@@ -10,6 +10,7 @@ import type {Map} from '../ui/map';
 import type {Dispatcher} from '../util/dispatcher';
 import type {Evented} from '../util/evented';
 import type {VideoSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import { assertedNotNullish } from "../util/util";
 
 /**
  * A data source containing video.
@@ -53,8 +54,8 @@ import type {VideoSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
  */
 export class VideoSource extends ImageSource {
     options: VideoSourceSpecification;
-    urls: Array<string>;
-    video: HTMLVideoElement;
+    urls: Array<string> | undefined;
+    video: HTMLVideoElement | undefined;
     roundZoom: boolean;
 
     constructor(id: string, options: VideoSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) {
@@ -70,7 +71,7 @@ export class VideoSource extends ImageSource {
 
         this.urls = [];
         for (const url of options.urls) {
-            this.urls.push(this.map._requestManager.transformRequest(url, ResourceType.Source).url);
+            this.urls.push(assertedNotNullish(this.map)._requestManager.transformRequest(url, ResourceType.Source).url);
         }
         try {
             const video = await getVideo(this.urls);
@@ -84,7 +85,7 @@ export class VideoSource extends ImageSource {
             // Start repainting when video starts playing. hasTransition() will then return
             // true to trigger additional frames as long as the videos continues playing.
             this.video.addEventListener('playing', () => {
-                this.map.triggerRepaint();
+                assertedNotNullish(this.map).triggerRepaint();
             });
 
             if (this.map) {
@@ -92,8 +93,8 @@ export class VideoSource extends ImageSource {
             }
 
             this._finishLoading();
-        } catch (err) {
-            this.fire(new ErrorEvent(err));
+        } catch (err: unknown) {
+            this.fire(new ErrorEvent(err instanceof Error ? err : new Error(String(err))));
         }
     }
 
@@ -133,7 +134,7 @@ export class VideoSource extends ImageSource {
      * @returns The HTML `video` element.
      */
     getVideo(): HTMLVideoElement {
-        return this.video;
+        return assertedNotNullish(this.video);
     }
 
     onAdd(map: Map) {
@@ -150,19 +151,19 @@ export class VideoSource extends ImageSource {
      * Sets the video's coordinates and re-renders the map.
      */
     prepare(): this {
-        if (Object.keys(this.tiles).length === 0 || this.video.readyState < 2) {
-            return; // not enough data for current position
+        if (Object.keys(this.tiles).length === 0 || assertedNotNullish(this.video).readyState < 2) {
+            return this; // not enough data for current position
         }
 
-        const context = this.map.painter.context;
+        const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
         const gl = context.gl;
 
         if (!this.texture) {
-            this.texture = new Texture(context, this.video, gl.RGBA);
+            this.texture = new Texture(context, assertedNotNullish(this.video), gl.RGBA);
             this.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-        } else if (!this.video.paused) {
+        } else if (!assertedNotNullish(this.video).paused) {
             this.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, assertedNotNullish(this.video));
         }
 
         let newTilesLoaded = false;
@@ -178,17 +179,18 @@ export class VideoSource extends ImageSource {
         if (newTilesLoaded) {
             this.fire(new Event('data', {dataType: 'source', sourceDataType: 'idle', sourceId: this.id}));
         }
+        return this;
     }
 
     serialize(): VideoSourceSpecification {
         return {
             type: 'video',
-            urls: this.urls,
+            urls: assertedNotNullish(this.urls),
             coordinates: this.coordinates
         };
     }
 
-    hasTransition() {
-        return this.video && !this.video.paused;
+    hasTransition(): boolean {
+        return !!this.video && !this.video.paused;
     }
 }

@@ -122,6 +122,7 @@
     "st": "^3.0.3",
     "stylelint": "^16.25.0",
     "stylelint-config-standard": "^39.0.1",
+    "ts-morph": "^27.0.2",
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
     "typedoc": "^0.28.14",
@@ -169,7 +170,8 @@
     "benchmark": "node --no-warnings --loader ts-node/esm test/bench/run-benchmarks.ts",
     "gl-stats": "node --no-warnings --loader ts-node/esm test/bench/gl-stats.ts",
     "prepare": "npm run codegen",
-    "typecheck": "tsc --noEmit && tsc --project tsconfig.dist.json",
+    "typecheck": "tsc --noEmit",
+    "typecheck:no-tests": "tsc --noEmit -p tsconfig.no-tests.json",
     "tsnode": "node --experimental-loader=ts-node/esm --no-warnings"
   },
   "files": [

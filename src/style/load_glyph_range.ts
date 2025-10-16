@@ -22,7 +22,7 @@ export async function loadGlyphRange(fontstack: string,
     if (!response || !response.data) {
         throw new Error(`Could not load glyph range. range: ${range}, ${begin}-${end}`);
     }
-    const glyphs = {};
+    const glyphs: {[_: number]: StyleGlyph | null} = {};
 
     for (const glyph of parseGlyphPbf(response.data)) {
         glyphs[glyph.id] = glyph;

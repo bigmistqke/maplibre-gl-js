@@ -16,14 +16,14 @@ export type ColorRampParams = {
  * return a RGBA image representing that ramp expression.
  */
 export function renderColorRamp(params: ColorRampParams): RGBAImage {
-    const evaluationGlobals = {};
+    const evaluationGlobals: Record<string, number> = {};
     const width = params.resolution || 256;
     const height = params.clips ? params.clips.length : 1;
     const image = params.image || new RGBAImage({width, height});
 
     if (!isPowerOfTwo(width)) throw new Error(`width is not a power of 2 - ${width}`);
 
-    const renderPixel = (stride, index, progress) => {
+    const renderPixel = (stride: number, index: number, progress: number) => {
         evaluationGlobals[params.evaluationKey] = progress;
         const pxColor = params.expression.evaluate(evaluationGlobals as any);
         image.setPixel(stride / 4 / width, index / 4, pxColor);

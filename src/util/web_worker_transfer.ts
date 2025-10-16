@@ -2,7 +2,7 @@ import {TransferableGridIndex} from './transferable_grid_index';
 import {Color, CompoundExpression, expressions, ResolvedImage, StylePropertyFunction,
     StyleExpression, ZoomDependentExpression, ZoomConstantExpression} from '@maplibre/maplibre-gl-style-spec';
 import {AJAXError} from './ajax';
-import {isImageBitmap} from './util';
+import {isImageBitmap, assertedNotNullish, assertNotNullish } from './util';
 
 /**
  * A class that is serialized to and json, that can be constructed back to the original class in the worker or in the main thread
@@ -160,7 +160,7 @@ export function serialize(input: unknown, transferables?: Array<Transferable> | 
                 transferables.push(input.data.buffer);
             }
         }
-        return input;
+        return input as Serialized;
     }
 
     if (Array.isArray(input)) {
@@ -174,6 +174,7 @@ export function serialize(input: unknown, transferables?: Array<Transferable> | 
     if (typeof input !== 'object') {
         throw new Error(`can't serialize object of type ${typeof input}`);
     }
+    assertNotNullish(input);
     const classRegistryKey = getClassRegistryKey(input);
     if (!classRegistryKey) {
         throw new Error(`can't serialize object of unregistered class ${input.constructor.name}`);
@@ -188,13 +189,13 @@ export function serialize(input: unknown, transferables?: Array<Transferable> | 
         // approach for objects whose members include instances of dynamic
         // StructArray types. Once we refactor StructArray to be static,
         // we can remove this complexity.
-        (klass.serialize(input, transferables) as SerializedObject) : {};
+        (klass.serialize(input, assertedNotNullish(transferables)) as SerializedObject) : {};
 
     if (!klass.serialize) {
         for (const key in input) {
             if (!input.hasOwnProperty(key)) continue;
             if (registry[classRegistryKey].omit.indexOf(key) >= 0) continue;
-            const property = input[key];
+            const property = (input as Record<string, unknown>)[key];
             properties[key] = registry[classRegistryKey].shallow.indexOf(key) >= 0 ?
                 property :
                 serialize(property, transferables);
@@ -227,7 +228,7 @@ export function deserialize(input: Serialized): unknown {
         return input.map(deserialize);
     }
 
-    if (typeof input !== 'object') {
+    if (typeof input !== 'object' || input === null) {
         throw new Error(`can't deserialize object of type ${typeof input}`);
     }
     const classRegistryKey = getClassRegistryKey(input) || 'Object';

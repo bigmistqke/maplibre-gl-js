@@ -2,6 +2,7 @@
 import type {StructArray} from '../util/struct_array';
 import type {TriangleIndexArray, LineIndexArray, LineStripIndexArray} from '../data/index_array_type';
 import type {Context} from '../gl/context';
+import { assertedNotNullish } from '../util/util';
 
 /**
  * @internal
@@ -9,7 +10,7 @@ import type {Context} from '../gl/context';
  */
 export class IndexBuffer {
     context: Context;
-    buffer: WebGLBuffer;
+    buffer: WebGLBuffer | undefined;
     dynamicDraw: boolean;
 
     constructor(context: Context, array: TriangleIndexArray | LineIndexArray | LineStripIndexArray, dynamicDraw?: boolean) {
@@ -24,7 +25,7 @@ export class IndexBuffer {
         this.context.unbindVAO();
 
         context.bindElementBuffer.set(this.buffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, array.arrayBuffer, this.dynamicDraw ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, assertedNotNullish(array.arrayBuffer), this.dynamicDraw ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
 
         if (!this.dynamicDraw) {
             delete array.arrayBuffer;
@@ -42,7 +43,7 @@ export class IndexBuffer {
         // See https://github.com/mapbox/mapbox-gl-js/issues/5620
         this.context.unbindVAO();
         this.bind();
-        gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, array.arrayBuffer);
+        gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, assertedNotNullish(array.arrayBuffer));
     }
 
     destroy() {

@@ -1,5 +1,6 @@
 import type Point from '@mapbox/point-geometry';
 import type {Anchor} from './anchor';
+import { assertedNotNullish } from "../util/util";
 
 /**
  * Labels placed around really sharp angles aren't readable. Check if any
@@ -61,7 +62,7 @@ export function checkMaxAngle(line: Array<Point>, anchor: Anchor, labelLength: n
 
         // remove corners that are far enough away from the list of recent anchors
         while (anchorDistance - recentCorners[0].distance > windowSize) {
-            recentAngleDelta -= recentCorners.shift().angleDelta;
+            recentAngleDelta -= assertedNotNullish(recentCorners.shift()).angleDelta;
         }
 
         // the sum of angles within the window area exceeds the maximum allowed value. check fails.

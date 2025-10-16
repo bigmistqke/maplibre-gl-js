@@ -5,6 +5,7 @@ import {GLOBAL_DISPATCHER_ID, makeRequest} from './ajax';
 import type {WorkerPool} from './worker_pool';
 import type {RequestResponseMessageMap} from './actor_messages';
 import {MessageType} from './actor_messages';
+import { assertedNotNullish } from "../util/util";
 
 /**
  * Responsible for sending messages from a {@link Source} to an associated worker source (usually with the same name).
@@ -69,7 +70,7 @@ export function getGlobalDispatcher(): Dispatcher {
     if (!globalDispatcher) {
         globalDispatcher = new Dispatcher(getGlobalWorkerPool(), GLOBAL_DISPATCHER_ID);
         globalDispatcher.registerMessageHandler(MessageType.getResource, (_mapId, params, abortController) => {
-            return makeRequest(params, abortController);
+            return makeRequest(params, assertedNotNullish(abortController));
         });
     }
     return globalDispatcher;

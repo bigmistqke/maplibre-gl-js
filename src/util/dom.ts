@@ -39,19 +39,19 @@ export class DOM {
 
     public static disableDrag() {
         if (DOM.docStyle && DOM.selectProp) {
-            DOM.userSelect = DOM.docStyle[DOM.selectProp];
-            DOM.docStyle[DOM.selectProp] = 'none';
+            DOM.userSelect = (DOM.docStyle as unknown as Record<string, string>)[DOM.selectProp];
+            (DOM.docStyle as unknown as Record<string, string>)[DOM.selectProp] = 'none';
         }
     }
 
     public static enableDrag() {
         if (DOM.docStyle && DOM.selectProp) {
-            DOM.docStyle[DOM.selectProp] = DOM.userSelect;
+            (DOM.docStyle as unknown as Record<string, string>)[DOM.selectProp] = DOM.userSelect;
         }
     }
 
     public static setTransform(el: HTMLElement, value: string) {
-        el.style[DOM.transformProp] = value;
+        (el.style as unknown as Record<string, string>)[DOM.transformProp] = value;
     }
 
     public static addEventListener(target: HTMLElement | Window | Document, type: string, callback: EventListenerOrEventListenerObject, options: {
@@ -77,7 +77,7 @@ export class DOM {
     }
 
     // Suppress the next click, but only if it's immediate.
-    private static suppressClickInternal(e) {
+    private static suppressClickInternal(e: MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
         window.removeEventListener('click', DOM.suppressClickInternal, true);
@@ -161,6 +161,7 @@ export class DOM {
             if (val.includes('javascript:') || val.includes('data:')) return true;
         }
         if (name.startsWith('on')) return true;
+        return false;
     }
 
     /**

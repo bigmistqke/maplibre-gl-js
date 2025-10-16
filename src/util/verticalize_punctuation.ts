@@ -86,6 +86,8 @@ export const verticalizedCharacterMap = {
     '｣': '﹂'
 };
 
+type VerticalizedCharacter = keyof typeof verticalizedCharacterMap;
+
 export function verticalizePunctuation(input: string) {
     let output = '';
 
@@ -94,12 +96,12 @@ export function verticalizePunctuation(input: string) {
         const prevCharCode = input.charCodeAt(i - 1) || null;
 
         const canReplacePunctuation = (
-            (!nextCharCode || !charHasRotatedVerticalOrientation(nextCharCode) || verticalizedCharacterMap[input[i + 1]]) &&
-            (!prevCharCode || !charHasRotatedVerticalOrientation(prevCharCode) || verticalizedCharacterMap[input[i - 1]])
+            (!nextCharCode || !charHasRotatedVerticalOrientation(nextCharCode) || input[i + 1] in verticalizedCharacterMap) &&
+            (!prevCharCode || !charHasRotatedVerticalOrientation(prevCharCode) || input[i - 1] in verticalizedCharacterMap)
         );
 
-        if (canReplacePunctuation && verticalizedCharacterMap[input[i]]) {
-            output += verticalizedCharacterMap[input[i]];
+        if (canReplacePunctuation && input[i] in verticalizedCharacterMap) {
+            output += verticalizedCharacterMap[input[i] as VerticalizedCharacter];
         } else {
             output += input[i];
         }

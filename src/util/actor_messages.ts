@@ -73,7 +73,7 @@ export type GetGlyphsParameters = {
  */
 export type GetGlyphsResponse = {
     [stack: string]: {
-        [id: number]: StyleGlyph;
+        [id: number]: StyleGlyph | null;
     };
 };
 
@@ -137,9 +137,9 @@ export type RequestResponseMessageMap = {
     [MessageType.getClusterChildren]: [ClusterIDAndSource, Array<GeoJSON.Feature>];
     [MessageType.getClusterLeaves]: [GetClusterLeavesParams, Array<GeoJSON.Feature>];
     [MessageType.loadData]: [LoadGeoJSONParameters, GeoJSONWorkerSourceLoadDataResult];
-    [MessageType.getData]: [LoadGeoJSONParameters, GeoJSON.GeoJSON];
-    [MessageType.loadTile]: [WorkerTileParameters, WorkerTileResult];
-    [MessageType.reloadTile]: [WorkerTileParameters, WorkerTileResult];
+    [MessageType.getData]: [LoadGeoJSONParameters, GeoJSON.GeoJSON | undefined];
+    [MessageType.loadTile]: [WorkerTileParameters, WorkerTileResult | null];
+    [MessageType.reloadTile]: [WorkerTileParameters, WorkerTileResult | null];
     [MessageType.getGlyphs]: [GetGlyphsParameters, GetGlyphsResponse];
     [MessageType.getImages]: [GetImagesParameters, GetImagesResponse];
     [MessageType.setImages]: [string[], void];

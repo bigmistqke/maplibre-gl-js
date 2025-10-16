@@ -3,6 +3,7 @@ import Queue from 'tinyqueue';
 import Point from '@mapbox/point-geometry';
 import {distToSegmentSquared} from './intersection_tests';
 import {Bounds} from '../geo/bounds';
+import {assertedNotNullish} from './util';
 
 /**
  * Finds an approximation of a polygon's Pole Of Inaccessibility https://en.wikipedia.org/wiki/Pole_of_inaccessibility
@@ -24,7 +25,7 @@ export function findPoleOfInaccessibility(
     let h = cellSize / 2;
 
     // a priority queue of cells in order of their "potential" (max distance to polygon)
-    const cellQueue = new Queue([], compareMax);
+    const cellQueue = new Queue<Cell>([], compareMax);
 
     const {minX, minY, maxX, maxY} = bounds;
     if (cellSize === 0) return new Point(minX, minY);
@@ -42,7 +43,7 @@ export function findPoleOfInaccessibility(
 
     while (cellQueue.length) {
         // pick the most promising cell from the queue
-        const cell = cellQueue.pop();
+        const cell = assertedNotNullish(cellQueue.pop());
 
         // update the best cell if we found a better one
         if (cell.d > bestCell.d || !bestCell.d) {
@@ -70,19 +71,25 @@ export function findPoleOfInaccessibility(
     return bestCell.p;
 }
 
-function compareMax(a, b) {
+function compareMax(a: { max: number }, b: { max: number }) {
     return b.max - a.max;
 }
 
-function Cell(x, y, h, polygon) {
-    this.p = new Point(x, y);
-    this.h = h; // half the cell size
-    this.d = pointToPolygonDist(this.p, polygon); // distance from cell center to polygon
-    this.max = this.d + this.h * Math.SQRT2; // max distance to polygon within a cell
+class Cell {
+    p: Point;
+    h: number;
+    d: number;
+    max: number;
+    constructor(x: number, y: number, h: number, polygon: Point[][]){
+        this.p = new Point(x, y);
+        this.h = h; // half the cell size
+        this.d = pointToPolygonDist(this.p, polygon); // distance from cell center to polygon
+        this.max = this.d + this.h * Math.SQRT2; // max distance to polygon within a cell
+    }
 }
 
 // signed distance from point to polygon outline (negative if point is outside)
-function pointToPolygonDist(p, polygon) {
+function pointToPolygonDist(p: Point, polygon: string | any[]) {
     let inside = false;
     let minDistSq = Infinity;
 
@@ -104,7 +111,7 @@ function pointToPolygonDist(p, polygon) {
 }
 
 // get polygon centroid
-function getCentroidCell(polygon) {
+function getCentroidCell(polygon: any[]) {
     let area = 0;
     let x = 0;
     let y = 0;

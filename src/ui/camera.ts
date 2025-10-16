@@ -1,4 +1,4 @@
-import {extend, wrap, defaultEasing, pick, scaleZoom} from '../util/util';
+import {extend, wrap, defaultEasing, pick, scaleZoom, assertedNotNullish} from '../util/util';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 import {browser} from '../util/browser';
 import {now} from '../util/time_control';
@@ -256,51 +256,51 @@ export type CameraUpdateTransformFunction =  (next: {
 export abstract class Camera extends Evented {
     transform: ITransform;
     cameraHelper: ICameraHelper;
-    terrain: Terrain;
-    handlers: HandlerManager;
+    terrain: Terrain | undefined;
+    handlers: HandlerManager | undefined;
 
     _moving: boolean;
     _zooming: boolean;
-    _rotating: boolean;
-    _pitching: boolean;
-    _rolling: boolean;
-    _padding: boolean;
+    _rotating: boolean | undefined;
+    _pitching: boolean | undefined;
+    _rolling: boolean | undefined;
+    _padding: boolean | undefined;
 
     _bearingSnap: number;
-    _easeStart: number;
+    _easeStart: number | undefined;
     _easeOptions: {
         duration?: number;
         easing?: (_: number) => number;
-    };
-    _easeId: string | void;
+    } | undefined;
+    _easeId: string | void | undefined;
 
-    _onEaseFrame: (_: number) => void;
-    _onEaseEnd: (easeId?: string) => void;
-    _easeFrameId: TaskID;
+    _onEaseFrame: ((_: number) => void) | undefined;
+    _onEaseEnd: ((easeId?: string) => void) | undefined;
+    _easeFrameId: TaskID | undefined;
 
     /**
      * @internal
      * holds the geographical coordinate of the target
      */
-    _elevationCenter: LngLat;
+    _elevationCenter: LngLat | undefined;
     /**
      * @internal
      * holds the targ altitude value, = center elevation of the target.
      * This value may changes during flight, because new terrain-tiles loads during flight.
      */
-    _elevationTarget: number;
+    _elevationTarget: number | undefined;
     /**
      * @internal
      * holds the start altitude value, = center elevation before animation begins
      * this value will recalculated during flight in respect of changing _elevationTarget values,
      * so the linear interpolation between start and target keeps smooth and without jumps.
      */
-    _elevationStart: number;
+    _elevationStart: number | undefined;
     /**
      * @internal
      * Saves the current state of the elevation freeze - this is used during map movement to prevent "rocky" camera movement.
      */
-    _elevationFreeze: boolean;
+    _elevationFreeze: boolean | undefined;
     /**
      * @internal
      * Used to track accumulated changes during continuous interaction
@@ -310,7 +310,7 @@ export abstract class Camera extends Evented {
      * A callback used to defer camera updates or apply arbitrary constraints.
      * If specified, this Camera instance can be used as a stateless component in React etc.
      */
-    transformCameraUpdate: CameraUpdateTransformFunction | null;
+    transformCameraUpdate: CameraUpdateTransformFunction | null | undefined;
 
     /**
      * @internal
@@ -319,7 +319,7 @@ export abstract class Camera extends Evented {
      * to sea level and will not automatically update. Defaults to true. Needs to be set to false to
      * keep the camera above ground when pitch \> 90 degrees.
      */
-    _centerClampedToGround: boolean;
+    _centerClampedToGround: boolean | undefined;
 
     abstract _requestRenderFrame(a: () => void): TaskID;
     abstract _cancelRenderFrame(_: TaskID): void;
@@ -409,7 +409,7 @@ export abstract class Camera extends Evented {
      * to sea level and will not automatically update. Defaults to true. Needs to be set to false to
      * keep the camera above ground when pitch \> 90 degrees.
      */
-    getCenterClampedToGround(): boolean { return this._centerClampedToGround; }
+    getCenterClampedToGround(): boolean { return this._centerClampedToGround ?? true; }
 
     /**
      * Sets the value of `centerClampedToGround`.
@@ -763,7 +763,7 @@ export abstract class Camera extends Evented {
      * ```
      */
     cameraForBounds(bounds: LngLatBoundsLike, options?: CameraForBoundsOptions): CenterZoomBearing | undefined {
-        bounds = LngLatBounds.convert(bounds).adjustAntiMeridian();
+        bounds = assertedNotNullish(LngLatBounds.convert(bounds)).adjustAntiMeridian();
         const bearing = options && options.bearing || 0;
 
         return this._cameraForBoxAndBearing(bounds.getNorthWest(), bounds.getSouthEast(), bearing, options);
@@ -818,7 +818,7 @@ export abstract class Camera extends Evented {
         const tr = this.transform;
         const bounds = new LngLatBounds(p0, p1);
 
-        return this.cameraHelper.cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
+        return this.cameraHelper.cameraForBoxAndBearing(options, padding, bounds, bearing, tr) ?? undefined;
     }
 
     /**
@@ -933,23 +933,23 @@ export abstract class Camera extends Evented {
 
         const zoomChanged = tr.zoom !== oldZoom;
 
-        if ('elevation' in options && tr.elevation !== +options.elevation) {
-            tr.setElevation(+options.elevation);
+        if ('elevation' in options && tr.elevation !== +assertedNotNullish(options.elevation, 'Expected elevation to be defined')) {
+            tr.setElevation(+assertedNotNullish(options.elevation, 'Expected elevation to be defined'));
         }
 
-        if ('bearing' in options && tr.bearing !== +options.bearing) {
+        if ('bearing' in options && tr.bearing !== +assertedNotNullish(options.bearing, 'Expected bearing to be defined')) {
             bearingChanged = true;
-            tr.setBearing(+options.bearing);
+            tr.setBearing(+assertedNotNullish(options.bearing, 'Expected bearing to be defined'));
         }
 
-        if ('pitch' in options && tr.pitch !== +options.pitch) {
+        if ('pitch' in options && tr.pitch !== +assertedNotNullish(options.pitch, 'Expected pitch to be defined')) {
             pitchChanged = true;
-            tr.setPitch(+options.pitch);
+            tr.setPitch(+assertedNotNullish(options.pitch, 'Expected pitch to be defined'));
         }
 
-        if ('roll' in options && tr.roll !== +options.roll) {
+        if ('roll' in options && tr.roll !== +assertedNotNullish(options.roll, 'Expected roll to be defined')) {
             rollChanged = true;
-            tr.setRoll(+options.roll);
+            tr.setRoll(+assertedNotNullish(options.roll, 'Expected roll to be defined'));
         }
 
         if (options.padding != null && !tr.isPaddingEqual(options.padding)) {
@@ -1018,7 +1018,7 @@ export abstract class Camera extends Evented {
 
         const groundDistance = Math.hypot(dx, dy);
 
-        const zoom = scaleZoom(this.transform.cameraToCenterDistance / distance3D / this.transform.tileSize);
+        const zoom = scaleZoom(assertedNotNullish(this.transform.cameraToCenterDistance, 'Expected this.transform.cameraToCenterDistance to be defined') / distance3D / this.transform.tileSize);
         const bearing = (Math.atan2(dx, -dy) * 180) / Math.PI;
         let pitch = (Math.acos(groundDistance / distance3D) * 180) / Math.PI;
         pitch = dz < 0 ? 90 - pitch : 90 + pitch;
@@ -1100,11 +1100,11 @@ export abstract class Camera extends Evented {
         const startBearing = this.getBearing(),
             startPitch = tr.pitch,
             startRoll = tr.roll,
-            bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing,
-            pitch = 'pitch' in options ? +options.pitch : startPitch,
-            roll = 'roll' in options ? this._normalizeBearing(options.roll, startRoll) : startRoll,
+            bearing = 'bearing' in options ? this._normalizeBearing(assertedNotNullish(options.bearing, 'Expected options.bearing to be defined'), startBearing) : startBearing,
+            pitch = 'pitch' in options ? +assertedNotNullish(options.pitch, 'Expected pitch to be defined') : startPitch,
+            roll = 'roll' in options ? this._normalizeBearing(assertedNotNullish(options.roll, 'Expected options.roll to be defined'), startRoll) : startRoll,
             padding = ('padding' in options ? options.padding : tr.padding) as PaddingOptions;
-        const offsetAsPoint = Point.convert(options.offset);
+        const offsetAsPoint = Point.convert(assertedNotNullish(options.offset, 'Expected options.offset to be defined'));
 
         let around, aroundPoint;
 
@@ -1140,7 +1140,7 @@ export abstract class Camera extends Evented {
         this._padding = !tr.isPaddingEqual(padding);
         this._zooming = this._zooming || easeHandler.isZooming;
         this._easeId = options.easeId;
-        this._prepareEase(eventData, options.noMoveStart, currently);
+        this._prepareEase(eventData, assertedNotNullish(options.noMoveStart), currently);
 
         if (this.terrain) {
             this._prepareElevation(easeHandler.elevationCenter);
@@ -1184,7 +1184,7 @@ export abstract class Camera extends Evented {
     _prepareElevation(center: LngLat) {
         this._elevationCenter = center;
         this._elevationStart = this.transform.elevation;
-        this._elevationTarget = this.terrain.getElevationForLngLatZoom(center, this.transform.tileZoom);
+        this._elevationTarget = assertedNotNullish(this.terrain).getElevationForLngLatZoom(center, this.transform.tileZoom);
         this._elevationFreeze = true;
     }
 
@@ -1194,16 +1194,16 @@ export abstract class Camera extends Evented {
             this._prepareElevation(this.transform.center);
         }
 
-        this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this._elevationCenter, this.transform.tileZoom));
-        const elevation = this.terrain.getElevationForLngLatZoom(this._elevationCenter, this.transform.tileZoom);
+        this.transform.setMinElevationForCurrentTile(assertedNotNullish(this.terrain, 'Expected terrain to be defined').getMinTileElevationForLngLatZoom(assertedNotNullish(this._elevationCenter, 'Expected _elevationCenter to be defined'), this.transform.tileZoom));
+        const elevation = assertedNotNullish(this.terrain).getElevationForLngLatZoom(assertedNotNullish(this._elevationCenter, 'Expected _elevationCenter to be defined'), this.transform.tileZoom);
         // target terrain updated during flight, slowly move camera to new height
-        if (k < 1 && elevation !== this._elevationTarget) {
-            const pitch1 = this._elevationTarget - this._elevationStart;
-            const pitch2 = (elevation - (pitch1 * k + this._elevationStart)) / (1 - k);
-            this._elevationStart += k * (pitch1 - pitch2);
+        if (k < 1 && elevation !== assertedNotNullish(this._elevationTarget)) {
+            const pitch1 = assertedNotNullish(this._elevationTarget) - assertedNotNullish(this._elevationStart);
+            const pitch2 = (elevation - (pitch1 * k + assertedNotNullish(this._elevationStart))) / (1 - k);
+            this._elevationStart = assertedNotNullish(this._elevationStart) + k * (pitch1 - pitch2);
             this._elevationTarget = elevation;
         }
-        this.transform.setElevation(interpolates.number(this._elevationStart, this._elevationTarget, k));
+        this.transform.setElevation(interpolates.number(assertedNotNullish(this._elevationStart, 'Expected _elevationStart to be defined'), assertedNotNullish(this._elevationTarget), k));
     }
 
     _finalizeElevation() {
@@ -1271,7 +1271,8 @@ export abstract class Camera extends Evented {
         const modifiers : ((tr: ITransform) => ReturnType<CameraUpdateTransformFunction>)[] = [];
         modifiers.push(tr => this._elevateCameraIfInsideTerrain(tr));
         if (this.transformCameraUpdate) {
-            modifiers.push(tr => this.transformCameraUpdate(tr));
+            const transformCameraUpdate = this.transformCameraUpdate;
+            modifiers.push(tr => transformCameraUpdate(tr));
         }
         if (!modifiers.length) {
             return;
@@ -1414,12 +1415,12 @@ export abstract class Camera extends Evented {
             startRoll = tr.roll,
             startPadding = tr.padding;
 
-        const bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing;
-        const pitch = 'pitch' in options ? +options.pitch : startPitch;
-        const roll = 'roll' in options ? this._normalizeBearing(options.roll, startRoll) : startRoll;
+        const bearing = 'bearing' in options ? this._normalizeBearing(assertedNotNullish(options.bearing, 'Expected options.bearing to be defined'), startBearing) : startBearing;
+        const pitch = 'pitch' in options ? +assertedNotNullish(options.pitch, 'Expected pitch to be defined') : startPitch;
+        const roll = 'roll' in options ? this._normalizeBearing(assertedNotNullish(options.roll, 'Expected options.roll to be defined'), startRoll) : startRoll;
         const padding = ('padding' in options ? options.padding : tr.padding) as PaddingOptions;
 
-        const offsetAsPoint = Point.convert(options.offset);
+        const offsetAsPoint = Point.convert(assertedNotNullish(options.offset, 'Expected options.offset to be defined'));
         let pointAtOffset = tr.centerPoint.add(offsetAsPoint);
         const locationAtOffset = tr.screenPointToLocation(pointAtOffset);
 
@@ -1453,7 +1454,7 @@ export abstract class Camera extends Evented {
         }
 
         // ρ²
-        const rho2 = rho * rho;
+        const rho2 = assertedNotNullish(rho) * assertedNotNullish(rho);
 
         /**
          * rᵢ: Returns the zoom-out factor at one end of the animation.
@@ -1465,9 +1466,9 @@ export abstract class Camera extends Evented {
             return Math.log(Math.sqrt(b * b + 1) - b);
         }
 
-        function sinh(n) { return (Math.exp(n) - Math.exp(-n)) / 2; }
-        function cosh(n) { return (Math.exp(n) + Math.exp(-n)) / 2; }
-        function tanh(n) { return sinh(n) / cosh(n); }
+        function sinh(n: number) { return (Math.exp(n) - Math.exp(-n)) / 2; }
+        function cosh(n: number) { return (Math.exp(n) + Math.exp(-n)) / 2; }
+        function tanh(n: number) { return sinh(n) / cosh(n); }
 
         // r₀: Zoom-out factor during ascent.
         const r0 = zoomOutFactor(false);
@@ -1475,34 +1476,34 @@ export abstract class Camera extends Evented {
         // w(s): Returns the visible span on the ground, measured in pixels with respect to the
         // initial scale. Uses the current vertical field of view setting.
         let w: (_: number) => number = function (s) {
-            return (cosh(r0) / cosh(r0 + rho * s));
+            return (cosh(r0) / cosh(r0 + assertedNotNullish(rho) * s));
         };
 
         // u(s): Returns the distance along the flight path as projected onto the ground plane,
         // measured in pixels from the world image origin at the initial scale.
         let u: (_: number) => number = function (s) {
-            return w0 * ((cosh(r0) * tanh(r0 + rho * s) - sinh(r0)) / rho2) / u1;
+            return w0 * ((cosh(r0) * tanh(r0 + assertedNotNullish(rho) * s) - sinh(r0)) / rho2) / u1;
         };
 
         // S: Total length of the flight path, measured in ρ-screenfulls.
-        let S = (zoomOutFactor(true) - r0) / rho;
+        let S = (zoomOutFactor(true) - r0) / assertedNotNullish(rho);
 
-        // When u₀ = u₁, the optimal path doesn’t require both ascent and descent.
+        // When u₀ = u₁, the optimal path doesn't require both ascent and descent.
         if (Math.abs(u1) < 0.000002 || !isFinite(S)) {
             // Perform a more or less instantaneous transition if the path is too short.
             if (Math.abs(w0 - w1) < 0.000001) return this.easeTo(options, eventData);
 
             const k = w1 < w0 ? -1 : 1;
-            S = Math.abs(Math.log(w1 / w0)) / rho;
+            S = Math.abs(Math.log(w1 / w0)) / assertedNotNullish(rho);
 
             u = () => 0;
-            w = (s) => Math.exp(k * rho * s);
+            w = (s) => Math.exp(k * assertedNotNullish(rho) * s);
         }
 
         if ('duration' in options) {
-            options.duration = +options.duration;
+            options.duration = +assertedNotNullish(options.duration, 'Expected duration to be defined');
         } else {
-            const V = 'screenSpeed' in options ? +options.screenSpeed / rho : +options.speed;
+            const V = 'screenSpeed' in options ? +assertedNotNullish(options.screenSpeed, 'Expected screenSpeed to be defined') / assertedNotNullish(rho) : +assertedNotNullish(options.speed, 'Expected speed to be defined');
             options.duration = 1000 * S / V;
         }
 
@@ -1606,8 +1607,8 @@ export abstract class Camera extends Evented {
 
     // Callback for map._requestRenderFrame
     _renderFrameCallback = () => {
-        const t = Math.min((now() - this._easeStart) / this._easeOptions.duration, 1);
-        this._onEaseFrame(this._easeOptions.easing(t));
+        const t = Math.min((now() - assertedNotNullish(this._easeStart)) / assertedNotNullish(assertedNotNullish(this._easeOptions).duration, 'Expected duration to be defined'), 1);
+        assertedNotNullish(this._onEaseFrame)(assertedNotNullish(assertedNotNullish(this._easeOptions, 'Expected _easeOptions to be defined').easing, 'Expected easing to be defined')(t));
 
         // if _stop is called during _onEaseFrame from _fireMoveEvents we should avoid a new _requestRenderFrame, checking it by ensuring _easeFrameId was not deleted
         if (t < 1 && this._easeFrameId) {

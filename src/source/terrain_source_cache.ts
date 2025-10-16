@@ -8,7 +8,7 @@ import type {SourceCache} from '../source/source_cache';
 import {type Terrain} from '../render/terrain';
 import {now} from '../util/time_control';
 import {coveringTiles} from '../geo/projection/covering_tiles';
-import {createMat4f64} from '../util/util';
+import {createMat4f64, assertedNotNullish } from '../util/util';
 import {type CanonicalTileRange} from './image_source';
 
 /**
@@ -75,7 +75,7 @@ export class TerrainSourceCache extends Evented {
 
     destruct() {
         this.sourceCache.usedForTerrain = false;
-        this.sourceCache.tileSize = null;
+        this.sourceCache.tileSize = undefined;
     }
 
     /**
@@ -88,7 +88,7 @@ export class TerrainSourceCache extends Evented {
         this.sourceCache.update(transform, terrain);
         // create internal render-to-texture tiles for the current scene.
         this._renderableTilesKeys = [];
-        const keys = {};
+        const keys: Record<string, boolean> = {};
         for (const tileID of coveringTiles(transform, {
             tileSize: this.tileSize,
             minzoom: this.minzoom,
@@ -101,7 +101,7 @@ export class TerrainSourceCache extends Evented {
             this._renderableTilesKeys.push(tileID.key);
             if (!this._tiles[tileID.key]) {
                 tileID.terrainRttPosMatrix32f = new Float64Array(16) as any;
-                mat4.ortho(tileID.terrainRttPosMatrix32f, 0, EXTENT, EXTENT, 0, 0, 1);
+                mat4.ortho(assertedNotNullish(tileID.terrainRttPosMatrix32f), 0, EXTENT, EXTENT, 0, 0, 1);
                 this._tiles[tileID.key] = new Tile(tileID, this.tileSize);
                 this._lastTilesetChange = now();
             }
@@ -259,7 +259,7 @@ export class TerrainSourceCache extends Evented {
      * @param searchForDEM - Optional parameter to search for (parent) source tiles with loaded dem.
      * @returns the tile
      */
-    getSourceTile(tileID: OverscaledTileID, searchForDEM?: boolean): Tile {
+    getSourceTile(tileID: OverscaledTileID, searchForDEM?: boolean): Tile | null | undefined {
         const source = this.sourceCache._source;
         let z = tileID.overscaledZ - this.deltaZoom;
         if (z > source.maxzoom) z = source.maxzoom;

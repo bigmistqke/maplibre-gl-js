@@ -6,7 +6,7 @@ import {SymbolBucket} from '../data/bucket/symbol_bucket';
 import {LineBucket} from '../data/bucket/line_bucket';
 import {FillBucket} from '../data/bucket/fill_bucket';
 import {FillExtrusionBucket} from '../data/bucket/fill_extrusion_bucket';
-import {warnOnce, mapObject} from '../util/util';
+import {warnOnce, mapObject, assertedNotNullish } from '../util/util';
 import {ImageAtlas} from '../render/image_atlas';
 import {GlyphAtlas} from '../render/glyph_atlas';
 import {EvaluationParameters} from '../style/evaluation_parameters';
@@ -37,12 +37,12 @@ export class WorkerTile {
     collectResourceTiming: boolean;
     returnDependencies: boolean;
 
-    status: 'parsing' | 'done';
-    data: VectorTile;
-    collisionBoxArray: CollisionBoxArray;
+    status: 'parsing' | 'done' | undefined;
+    data: VectorTile | undefined;
+    collisionBoxArray: CollisionBoxArray | undefined;
 
-    abort: AbortController;
-    vectorTile: VectorTile;
+    abort: AbortController | undefined;
+    vectorTile: VectorTile | undefined;
     inFlightDependencies: AbortController[];
 
     constructor(params: WorkerTileParameters) {
@@ -82,7 +82,7 @@ export class WorkerTile {
             subdivisionGranularity
         };
 
-        const layerFamilies = layerIndex.familiesBySource[this.source];
+        const layerFamilies = assertedNotNullish(layerIndex.familiesBySource)[this.source];
         for (const sourceLayerId in layerFamilies) {
             const sourceLayer = data.layers[sourceLayerId];
             if (!sourceLayer) {
@@ -111,7 +111,7 @@ export class WorkerTile {
                 if (layer.isHidden(this.zoom, true)) continue;
                 recalculateLayers(family, this.zoom, availableImages);
 
-                const bucket = buckets[layer.id] = layer.createBucket({
+                const bucket = buckets[layer.id] = layer.createBucket!({
                     index: featureIndex.bucketLayerIDs.length,
                     layers: family,
                     zoom: this.zoom,
@@ -122,14 +122,14 @@ export class WorkerTile {
                     sourceID: this.source
                 });
 
-                bucket.populate(features, options, this.tileID.canonical);
+                bucket.populate(assertedNotNullish(features), options, this.tileID.canonical);
                 featureIndex.bucketLayerIDs.push(family.map((l) => l.id));
             }
         }
 
         // options.glyphDependencies looks like: {"SomeFontName":{"10":true,"32":true}}
         // this line makes an object like: {"SomeFontName":[10,32]}
-        const stacks: {[_: string]: Array<number>} = mapObject(options.glyphDependencies, (glyphs) => Object.keys(glyphs).map(Number));
+        const stacks: {[_: string]: Array<number>} = mapObject(options.glyphDependencies, (glyphs: Record<number, boolean>) => Object.keys(glyphs).map(Number));
 
         this.inFlightDependencies.forEach((request) => request?.abort());
         this.inFlightDependencies = [];

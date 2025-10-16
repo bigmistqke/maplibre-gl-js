@@ -1,5 +1,6 @@
 import Point from '@mapbox/point-geometry';
 import {indexTouches} from './handler_util';
+import { assertedNotNullish } from "../../util/util";
 
 function getCentroid(points: Array<Point>) {
     const sum = new Point(0, 0);
@@ -16,12 +17,12 @@ export const MAX_DIST = 30;
 export class SingleTapRecognizer {
 
     numTouches: number;
-    centroid: Point;
-    startTime: number;
-    aborted: boolean;
+    centroid: Point | undefined;
+    startTime: number | undefined;
+    aborted: boolean | undefined;
     touches: {
         [k in number | string]: Point;
-    };
+    } | undefined;
 
     constructor(options: {
         numTouches: number;
@@ -70,7 +71,7 @@ export class SingleTapRecognizer {
     }
 
     touchend(e: TouchEvent, points: Array<Point>, mapTouches: Array<Touch>) {
-        if (!this.centroid || e.timeStamp - this.startTime > MAX_TOUCH_TIME) {
+        if (!this.centroid || e.timeStamp - assertedNotNullish(this.startTime) > MAX_TOUCH_TIME) {
             this.aborted = true;
         }
 
@@ -87,9 +88,9 @@ export class TapRecognizer {
 
     singleTap: SingleTapRecognizer;
     numTaps: number;
-    lastTime: number;
-    lastTap: Point;
-    count: number;
+    lastTime: number | undefined;
+    lastTap: Point | undefined;
+    count: number | undefined;
 
     constructor(options: {
         numTaps: number;
@@ -118,14 +119,14 @@ export class TapRecognizer {
     touchend(e: TouchEvent, points: Array<Point>, mapTouches: Array<Touch>) {
         const tap = this.singleTap.touchend(e, points, mapTouches);
         if (tap) {
-            const soonEnough = e.timeStamp - this.lastTime < MAX_TAP_INTERVAL;
+            const soonEnough = e.timeStamp - assertedNotNullish(this.lastTime) < MAX_TAP_INTERVAL;
             const closeEnough = !this.lastTap || this.lastTap.dist(tap) < MAX_DIST;
 
             if (!soonEnough || !closeEnough) {
                 this.reset();
             }
 
-            this.count++;
+            this.count = assertedNotNullish(this.count) + 1;
             this.lastTime = e.timeStamp;
             this.lastTap = tap;
 

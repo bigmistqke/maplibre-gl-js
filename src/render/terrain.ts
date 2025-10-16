@@ -3,7 +3,7 @@ import {type Tile} from '../source/tile';
 import {mat4, vec2} from 'gl-matrix';
 import {OverscaledTileID} from '../source/tile_id';
 import {RGBAImage} from '../util/image';
-import {warnOnce} from '../util/util';
+import {warnOnce, assertedNotNullish } from '../util/util';
 import {Pos3dArray, TriangleIndexArray} from '../data/array_types.g';
 import pos3dAttributes from '../data/pos3d_attributes';
 import {SegmentVector} from '../data/segment';
@@ -29,12 +29,12 @@ export type TerrainData = {
     'u_depth': number;
     'u_terrain': number;
     'u_terrain_dim': number;
-    'u_terrain_matrix': mat4;
-    'u_terrain_unpack': number[];
+    'u_terrain_matrix': mat4 | undefined;
+    'u_terrain_unpack': number[] | undefined;
     'u_terrain_exaggeration': number;
-    texture: WebGLTexture;
+    texture: WebGLTexture | null;
     depthTexture: WebGLTexture;
-    tile: Tile;
+    tile: Tile | null | undefined;
 };
 
 /**
@@ -101,10 +101,10 @@ export class Terrain {
     /**
      * holds the framebuffer object in size of the screen to render the coords & depth into a texture.
      */
-    _fbo: Framebuffer;
-    _fboCoordsTexture: Texture;
-    _fboDepthTexture: Texture;
-    _emptyDepthTexture: Texture;
+    _fbo: Framebuffer | undefined;
+    _fboCoordsTexture: Texture | undefined;
+    _fboDepthTexture: Texture | undefined;
+    _emptyDepthTexture: Texture | undefined;
     /**
      * GL Objects for the terrain-mesh
      * The mesh is a regular mesh, which has the advantage that it can be reused for all tiles.
@@ -119,7 +119,7 @@ export class Terrain {
     /**
      * tile-coords encoded in the rgb channel, _coordsIndex is in the alpha-channel.
      */
-    _coordsTexture: Texture;
+    _coordsTexture: Texture | undefined;
     /**
      * accuracy of the coords. 2 * tileSize should be enough.
      */
@@ -127,9 +127,9 @@ export class Terrain {
     /**
      * variables for an empty dem texture, which is used while the raster-dem tile is loading.
      */
-    _emptyDemUnpack: number[];
-    _emptyDemTexture: Texture;
-    _emptyDemMatrix: mat4;
+    _emptyDemUnpack: number[] | undefined;
+    _emptyDemTexture: Texture | undefined;
+    _emptyDemMatrix: mat4 | undefined;
     /**
      * as of overzooming of raster-dem tiles in high zoomlevels, this cache contains
      * matrices to transform from vector-tile coords to raster-dem-tile coords.
@@ -163,8 +163,8 @@ export class Terrain {
         if (!dem)
             return 0;
 
-        const pos = vec2.transformMat4([] as any, [x / extent * EXTENT, y / extent * EXTENT], terrain.u_terrain_matrix);
-        const coord = [pos[0] * dem.dim, pos[1] * dem.dim];
+        const pos = vec2.transformMat4([] as any, [x / extent * EXTENT, y / extent * EXTENT], assertedNotNullish(terrain.u_terrain_matrix));
+        const coord = [pos[0] * assertedNotNullish(dem.dim), pos[1] * assertedNotNullish(dem.dim)];
 
         // bilinear interpolation
         const cx = Math.floor(coord[0]),
@@ -224,7 +224,7 @@ export class Terrain {
         const sourceTile = this.sourceCache.getSourceTile(tileID, true);
         if (sourceTile && sourceTile.dem && (!sourceTile.demTexture || sourceTile.needsTerrainPrepare)) {
             const context = this.painter.context;
-            sourceTile.demTexture = this.painter.getTileTexture(sourceTile.dem.stride);
+            sourceTile.demTexture = this.painter.getTileTexture(assertedNotNullish(sourceTile.dem.stride));
             if (sourceTile.demTexture) sourceTile.demTexture.update(sourceTile.dem.getPixels(), {premultiply: false});
             else sourceTile.demTexture = new Texture(context, sourceTile.dem.getPixels(), context.gl.RGBA, {premultiply: false});
             sourceTile.demTexture.bind(context.gl.NEAREST, context.gl.CLAMP_TO_EDGE);
@@ -253,8 +253,8 @@ export class Terrain {
             'u_terrain_matrix': matrixKey ? this._demMatrixCache[tileID.key].matrix : this._emptyDemMatrix,
             'u_terrain_unpack': sourceTile && sourceTile.dem && sourceTile.dem.getUnpackVector() || this._emptyDemUnpack,
             'u_terrain_exaggeration': this.exaggeration,
-            texture: (sourceTile && sourceTile.demTexture || this._emptyDemTexture).texture,
-            depthTexture: (this._fboDepthTexture || this._emptyDepthTexture).texture,
+            texture: assertedNotNullish(sourceTile && sourceTile.demTexture || this._emptyDemTexture).texture,
+            depthTexture: assertedNotNullish(assertedNotNullish(this._fboDepthTexture || this._emptyDepthTexture).texture),
             tile: sourceTile
         };
     }
@@ -270,8 +270,8 @@ export class Terrain {
         const height = painter.height / devicePixelRatio;
         if (this._fbo && (this._fbo.width !== width || this._fbo.height !== height)) {
             this._fbo.destroy();
-            this._fboCoordsTexture.destroy();
-            this._fboDepthTexture.destroy();
+            assertedNotNullish(this._fboCoordsTexture).destroy();
+            assertedNotNullish(this._fboDepthTexture).destroy();
             delete this._fbo;
             delete this._fboDepthTexture;
             delete this._fboCoordsTexture;
@@ -286,7 +286,7 @@ export class Terrain {
         }
         if (!this._fbo) {
             this._fbo = painter.context.createFramebuffer(width, height, true, false);
-            this._fbo.depthAttachment.set(painter.context.createRenderbuffer(painter.context.gl.DEPTH_COMPONENT16, width, height));
+            assertedNotNullish(this._fbo.depthAttachment).set(painter.context.createRenderbuffer(painter.context.gl.DEPTH_COMPONENT16, width, height));
         }
         this._fbo.colorAttachment.set(texture === 'coords' ? this._fboCoordsTexture.texture : this._fboDepthTexture.texture);
         return this._fbo;
@@ -324,14 +324,14 @@ export class Terrain {
      * @param p - Screen-Coordinate
      * @returns Mercator coordinate for a screen pixel, or null, if the pixel is not covered by terrain (is in the sky).
      */
-    pointCoordinate(p: Point): MercatorCoordinate {
+    pointCoordinate(p: Point): MercatorCoordinate | null {
         // First, ensure the coords framebuffer is up to date.
         this.painter.maybeDrawDepthAndCoords(true);
 
         const rgba = new Uint8Array(4);
         const context = this.painter.context, gl = context.gl;
-        const px = Math.round(p.x * this.painter.pixelRatio / devicePixelRatio);
-        const py = Math.round(p.y * this.painter.pixelRatio / devicePixelRatio);
+        const px = Math.round(p.x * assertedNotNullish(this.painter.pixelRatio) / devicePixelRatio);
+        const py = Math.round(p.y * assertedNotNullish(this.painter.pixelRatio) / devicePixelRatio);
         const fbHeight = Math.round(this.painter.height / devicePixelRatio);
         // grab coordinate pixel from coordinates framebuffer
         context.bindFramebuffer.set(this.getFramebuffer('coords').framebuffer);
@@ -378,7 +378,7 @@ export class Terrain {
      * @returns the created regular mesh
      */
     getTerrainMesh(tileId: OverscaledTileID): Mesh {
-        const globeEnabled = this.painter.style.projection?.transitionState > 0;
+        const globeEnabled = assertedNotNullish(assertedNotNullish(this.painter.style).projection?.transitionState) > 0;
         const northPole = globeEnabled && tileId.canonical.y === 0;
         const southPole = globeEnabled && tileId.canonical.y === (1 << tileId.canonical.z) - 1;
         const key = `m_${northPole ? 'n' : ''}_${southPole ? 's' : ''}`;
@@ -469,10 +469,10 @@ export class Terrain {
      */
     getMinMaxElevation(tileID: OverscaledTileID): {minElevation: number | null; maxElevation: number | null} {
         const tile = this.getTerrainData(tileID).tile;
-        const minMax = {minElevation: null, maxElevation: null};
+        const minMax: {minElevation: number | null; maxElevation: number | null} = {minElevation: null, maxElevation: null};
         if (tile && tile.dem) {
-            minMax.minElevation = tile.dem.min * this.exaggeration;
-            minMax.maxElevation = tile.dem.max * this.exaggeration;
+            minMax.minElevation = assertedNotNullish(tile.dem.min) * this.exaggeration;
+            minMax.maxElevation = assertedNotNullish(tile.dem.max) * this.exaggeration;
         }
         return minMax;
     }

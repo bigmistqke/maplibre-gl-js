@@ -9,6 +9,8 @@ import type {FilterSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {GeoJSONFeature, MapGeoJSONFeature} from '../util/vectortile_to_geojson';
 import type {QueryResults, QueryResultsItem} from '../data/feature_index';
 import type {OverscaledTileID} from './tile_id';
+import type {Tile} from './tile';
+import { assertedNotNullish } from "../util/util";
 
 type RenderedFeatureLayer = {
     wrappedTileID: string;
@@ -84,12 +86,14 @@ export type QueryRenderedFeaturesResultsItem = QueryResultsItem & { feature: Map
 /*
  * Returns a matrix that can be used to convert from tile coordinates to viewport pixel coordinates.
  */
-function getPixelPosMatrix(transform, tileID: OverscaledTileID) {
+function getPixelPosMatrix(transform: IReadonlyTransform, tileID: OverscaledTileID) {
     const t = mat4.create();
     mat4.translate(t, t, [1, 1, 0]);
     mat4.scale(t, t, [transform.width * 0.5, transform.height * 0.5, 1]);
-    if (transform.calculatePosMatrix) { // Globe: TODO: remove this hack once queryRendererFeatures supports globe properly
-        return mat4.multiply(t, t, transform.calculatePosMatrix(tileID.toUnwrapped()));
+    // Globe: TODO: remove this hack once queryRendererFeatures supports globe properly
+    const transformWithPosMatrix = transform as IReadonlyTransform & {calculatePosMatrix?: (id: any) => mat4};
+    if (transformWithPosMatrix.calculatePosMatrix) {
+        return mat4.multiply(t, t, transformWithPosMatrix.calculatePosMatrix(tileID.toUnwrapped()));
     } else {
         return t;
     }
@@ -124,7 +128,7 @@ export function queryRenderedFeatures(
     getElevation: undefined | ((id: OverscaledTileID, x: number, y: number) => number)
 ): QueryRenderedFeaturesResults {
 
-    const has3DLayer = queryIncludes3DLayer(params?.layers ?? null, styleLayers, sourceCache.id);
+    const has3DLayer = assertedNotNullish(queryIncludes3DLayer(params?.layers ?? undefined, styleLayers, sourceCache.id));
     const maxPitchScaleFactor = transform.maxPitchScaleFactor();
     const tilesIn = sourceCache.tilesIn(queryGeometry, maxPitchScaleFactor, has3DLayer);
 
@@ -143,7 +147,7 @@ export function queryRenderedFeatures(
                 params,
                 transform,
                 maxPitchScaleFactor,
-                getPixelPosMatrix(sourceCache.transform, tileIn.tileID),
+                getPixelPosMatrix(assertedNotNullish(sourceCache.transform), tileIn.tileID),
                 getElevation ? (x: number, y: number) => getElevation(tileIn.tileID, x, y) : undefined,
             )
         });
@@ -173,16 +177,16 @@ export function queryRenderedSymbols(styleLayers: {[_: string]: StyleLayer},
 
     for (const queryData of bucketQueryData) {
         const bucketSymbols = queryData.featureIndex.lookupSymbolFeatures(
-            renderedSymbols[queryData.bucketInstanceId],
+            (renderedSymbols as Record<number, number[]>)[queryData.bucketInstanceId],
             serializedLayers,
             queryData.bucketIndex,
             queryData.sourceLayerIndex,
             {
-                filterSpec: params.filter,
-                globalState: params.globalState
+                filterSpec: params.filter as FilterSpecification,
+                globalState: params.globalState as Record<string, any>
             },
             params.layers,
-            params.availableImages,
+            params.availableImages ?? [],
             styleLayers);
 
         for (const layerID in bucketSymbols) {
@@ -216,13 +220,13 @@ export function queryRenderedSymbols(styleLayers: {[_: string]: StyleLayer},
 }
 
 export function querySourceFeatures(sourceCache: SourceCache, params: QuerySourceFeatureOptionsStrict | undefined): GeoJSONFeature[] {
-    const tiles = sourceCache.getRenderableIds().map((id) => {
-        return sourceCache.getTileByID(id);
-    });
+    const tiles = sourceCache.getRenderableIds()
+        .map((id) => sourceCache.getTileByID(id))
+        .filter((tile): tile is Tile => tile !== undefined);
 
     const result: GeoJSONFeature[] = [];
 
-    const dataTiles = {};
+    const dataTiles: Record<string, boolean> = {};
     for (let i = 0; i < tiles.length; i++) {
         const tile = tiles[i];
         const dataID = tile.tileID.canonical.key;
@@ -245,7 +249,7 @@ function mergeRenderedFeatureLayers(tiles: RenderedFeatureLayer[]): QueryResults
     // Merge results from all tiles, but if two tiles share the same
     // wrapped ID, don't duplicate features between the two tiles
     const result: QueryResults = {};
-    const wrappedIDLayerMap = {};
+    const wrappedIDLayerMap: Record<string, Record<string, Record<number, boolean>>> = {};
     for (const tile of tiles) {
         const queryResults = tile.queryResults;
         const wrappedID = tile.wrappedTileID;
@@ -280,7 +284,7 @@ function convertFeaturesToMapFeaturesMultiple(result: QueryResults, styleLayers:
     for (const layerName in result) {
         for (const featureWrapper of result[layerName]) {
             const layer = styleLayers[layerName];
-            const sourceCache = sourceCaches[layer.source];
+            const sourceCache = sourceCaches[assertedNotNullish(layer.source)];
             convertFeatureToMapFeature(featureWrapper, sourceCache);
         };
     }
@@ -289,10 +293,12 @@ function convertFeaturesToMapFeaturesMultiple(result: QueryResults, styleLayers:
 
 function convertFeatureToMapFeature(featureWrapper: QueryResultsItem, sourceCache: SourceCache) {
     const feature = featureWrapper.feature as MapGeoJSONFeature;
-    const state = sourceCache.getFeatureState(feature.layer['source-layer'], feature.id);
+    const layerSpec = feature.layer as Record<string, unknown>;
+    const sourceLayer = layerSpec['source-layer'] as string | undefined;
+    const state = sourceCache.getFeatureState(sourceLayer ?? '', assertedNotNullish(feature.id));
     feature.source = feature.layer.source;
-    if (feature.layer['source-layer']) {
-        feature.sourceLayer = feature.layer['source-layer'];
+    if (sourceLayer) {
+        feature.sourceLayer = sourceLayer;
     }
     feature.state = state;
 }

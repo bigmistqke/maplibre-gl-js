@@ -4,6 +4,7 @@ import {type CanonicalTileID} from '../source/tile_id';
 import earcut from 'earcut';
 import {SubdivisionGranularityExpression, SubdivisionGranularitySetting} from './subdivision_granularity_settings';
 import {register} from '../util/web_worker_transfer';
+import {assertedNotNullish} from '../util/util';
 
 register('SubdivisionGranularityExpression', SubdivisionGranularityExpression);
 register('SubdivisionGranularitySetting', SubdivisionGranularitySetting);
@@ -66,7 +67,7 @@ class Subdivider {
         const yInt = Math.round(y) | 0;
         const key = this._getKey(xInt, yInt);
         if (this._vertexDictionary.has(key)) {
-            return this._vertexDictionary.get(key);
+            return assertedNotNullish(this._vertexDictionary.get(key));
         }
         const index = this._vertexBuffer.length / 2;
         this._vertexDictionary.set(key, index);
@@ -488,7 +489,7 @@ class Subdivider {
      * @param v1x - X coordinate of the second edge vertex.
      * @param poleY - The Y coordinate of the desired pole (NORTH_POLE_Y or SOUTH_POLE_Y).
      */
-    private _generatePoleQuad(indices, i0, i1, v0x, v1x, poleY): void {
+    private _generatePoleQuad(indices: number[], i0: number, i1: number, v0x: number, v1x: number, poleY: number): void {
         const flip = (v0x > v1x) !== (poleY === NORTH_POLE_Y);
 
         if (flip) {
@@ -590,7 +591,7 @@ class Subdivider {
         this._initializeVertices(flattened);
 
         // Subdivide triangles
-        let subdividedTriangles: Array<number>;
+        let subdividedTriangles: Array<number> = [];
         try {
             // At this point this._finalVertices is just flattened polygon points
             const earcutResult = earcut(flattened, holeIndices);

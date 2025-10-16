@@ -31,6 +31,7 @@ import type {VectorTileLayer} from '@mapbox/vector-tile';
 import {subdividePolygon} from '../../render/subdivision';
 import type {SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
 import {fillLargeMeshArrays} from '../../render/fill_large_mesh_arrays';
+import {assertedNotNullish} from '../../util/util';
 
 export class FillBucket implements Bucket {
     index: number;
@@ -38,24 +39,24 @@ export class FillBucket implements Bucket {
     overscaling: number;
     layers: Array<FillStyleLayer>;
     layerIds: Array<string>;
-    stateDependentLayers: Array<FillStyleLayer>;
+    stateDependentLayers?: Array<FillStyleLayer>;
     stateDependentLayerIds: Array<string>;
     patternFeatures: Array<BucketFeature>;
 
     layoutVertexArray: FillLayoutArray;
-    layoutVertexBuffer: VertexBuffer;
+    layoutVertexBuffer?: VertexBuffer;
 
     indexArray: TriangleIndexArray;
-    indexBuffer: IndexBuffer;
+    indexBuffer?: IndexBuffer;
 
     indexArray2: LineIndexArray;
-    indexBuffer2: IndexBuffer;
+    indexBuffer2?: IndexBuffer;
 
     hasDependencies: boolean;
     programConfigurations: ProgramConfigurationSet<FillStyleLayer>;
     segments: SegmentVector;
     segments2: SegmentVector;
-    uploaded: boolean;
+    uploaded?: boolean;
 
     constructor(options: BucketParameters<FillStyleLayer>) {
         this.zoom = options.zoom;
@@ -77,7 +78,7 @@ export class FillBucket implements Bucket {
 
     populate(features: Array<IndexedFeature>, options: PopulateParameters, canonical: CanonicalTileID) {
         this.hasDependencies = hasPattern('fill', this.layers, options);
-        const fillSortKey = this.layers[0].layout.get('fill-sort-key');
+        const fillSortKey = assertedNotNullish(this.layers[0].layout).get('fill-sort-key');
         const sortFeaturesByKey = !fillSortKey.isConstant();
         const bucketFeatures: BucketFeature[] = [];
 
@@ -106,7 +107,7 @@ export class FillBucket implements Bucket {
         }
 
         if (sortFeaturesByKey) {
-            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
+            bucketFeatures.sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0));
         }
 
         for (const bucketFeature of bucketFeatures) {
@@ -129,7 +130,7 @@ export class FillBucket implements Bucket {
     update(states: FeatureStates, vtLayer: VectorTileLayer, imagePositions: {
         [_: string]: ImagePosition;
     }) {
-        if (!this.stateDependentLayers.length) return;
+        if (!this.stateDependentLayers?.length) return;
         this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
             imagePositions
         });
@@ -163,8 +164,8 @@ export class FillBucket implements Bucket {
     destroy() {
         if (!this.layoutVertexBuffer) return;
         this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
-        this.indexBuffer2.destroy();
+        this.indexBuffer?.destroy();
+        this.indexBuffer2?.destroy();
         this.programConfigurations.destroy();
         this.segments.destroy();
         this.segments2.destroy();
@@ -192,7 +193,7 @@ export class FillBucket implements Bucket {
                 subdivided.indicesLineList,
             );
         }
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, {imagePositions, canonical});
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length ?? 0, feature, index, {imagePositions, canonical});
     }
 }
 

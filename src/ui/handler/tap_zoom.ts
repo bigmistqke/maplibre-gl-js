@@ -9,8 +9,8 @@ import {type Handler} from '../handler_manager';
  */
 export class TapZoomHandler implements Handler {
     _tr: TransformProvider;
-    _enabled: boolean;
-    _active: boolean;
+    _enabled: boolean | undefined;
+    _active: boolean | undefined;
     _zoomIn: TapRecognizer;
     _zoomOut: TapRecognizer;
 
@@ -89,10 +89,10 @@ export class TapZoomHandler implements Handler {
     }
 
     isEnabled() {
-        return this._enabled;
+        return !!this._enabled;
     }
 
     isActive() {
-        return this._active;
+        return !!this._active;
     }
 }

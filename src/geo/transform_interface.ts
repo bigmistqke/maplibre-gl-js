@@ -49,8 +49,8 @@ export interface ITransformGetters {
      */
     get height(): number;
 
-    get lngRange(): [number, number];
-    get latRange(): [number, number];
+    get lngRange(): [number, number] | undefined | null;
+    get latRange(): [number, number] | undefined;
 
     get minZoom(): number;
     get maxZoom(): number;
@@ -90,10 +90,10 @@ export interface ITransformGetters {
     /**
      * The distance from the camera to the center of the map in pixels space.
      */
-    get cameraToCenterDistance(): number;
+    get cameraToCenterDistance(): number | undefined;
 
-    get nearZ(): number;
-    get farZ(): number;
+    get nearZ(): number | undefined;
+    get farZ(): number | undefined;
     get autoCalculateNearFarZ(): boolean;
     /**
      * Get center lngLat and zoom to ensure that longitude and latitude bounds are respected and regions beyond the map bounds are not displayed.
@@ -246,22 +246,22 @@ export interface IReadonlyTransform extends ITransformGetters {
      * Calculated using vertical fov and viewport height.
      * Center is considered to be in the middle of the viewport.
      */
-    get cameraToCenterDistance(): number;
+    get cameraToCenterDistance(): number | undefined;
     get modelViewProjectionMatrix(): mat4;
     get projectionMatrix(): mat4;
     /**
      * Inverse of matrix from camera space to clip space.
      */
     get inverseProjectionMatrix(): mat4;
-    get pixelsToClipSpaceMatrix(): mat4;
-    get clipSpaceToPixelsMatrix(): mat4;
-    get pixelsToGLUnits(): [number, number];
+    get pixelsToClipSpaceMatrix(): mat4 | undefined;
+    get clipSpaceToPixelsMatrix(): mat4 | undefined;
+    get pixelsToGLUnits(): [number, number] | undefined;
     get centerOffset(): Point;
     /**
      * Gets the transform's width and height in pixels (viewport size). Use {@link resize} to set the transform's size.
      */
     get size(): Point;
-    get rotationMatrix(): mat2;
+    get rotationMatrix(): mat2 | undefined;
     /**
      * The center of the screen in pixels with the top-left corner being (0,0)
      * and +y axis pointing downwards. This accounts for padding.
@@ -270,7 +270,7 @@ export interface IReadonlyTransform extends ITransformGetters {
     /**
      * @internal
      */
-    get pixelsPerMeter(): number;
+    get pixelsPerMeter(): number | undefined;
     /**
      * @internal
      * Returns the camera's position transformed to be in the same space as 3D features under this transform's projection. Mostly used for globe + fill-extrusion.
@@ -296,7 +296,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @internal
      * Return the camera frustum for the current view.
      */
-    getCameraFrustum(): Frustum;
+    getCameraFrustum(): Frustum | undefined;
 
     /**
      * @internal
@@ -483,7 +483,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @internal
      * Projects a point in tile coordinates to clip space. Used in symbol rendering.
      */
-    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation: (x: number, y: number) => number): PointProjection;
+    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): PointProjection;
 
     /**
      * Returns a matrix that will place, rotate and scale a model to display at the given location and altitude

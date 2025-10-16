@@ -9,16 +9,17 @@ import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {BucketParameters} from '../../data/bucket';
 import type {FillLayoutProps, FillPaintProps} from './fill_style_layer_properties.g';
 import type {EvaluationParameters} from '../evaluation_parameters';
+import { assertedNotNullish } from "../../util/util";
 
 export const isFillStyleLayer = (layer: StyleLayer): layer is FillStyleLayer => layer.type === 'fill';
 
 export class FillStyleLayer extends StyleLayer {
-    _unevaluatedLayout: Layout<FillLayoutProps>;
-    layout: PossiblyEvaluated<FillLayoutProps, FillLayoutPropsPossiblyEvaluated>;
+    _unevaluatedLayout: Layout<FillLayoutProps> | undefined;
+    layout: PossiblyEvaluated<FillLayoutProps, FillLayoutPropsPossiblyEvaluated> | undefined;
 
-    _transitionablePaint: Transitionable<FillPaintProps>;
-    _transitioningPaint: Transitioning<FillPaintProps>;
-    paint: PossiblyEvaluated<FillPaintProps, FillPaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<FillPaintProps> | undefined;
+    _transitioningPaint: Transitioning<FillPaintProps> | undefined;
+    paint: PossiblyEvaluated<FillPaintProps, FillPaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
@@ -27,9 +28,10 @@ export class FillStyleLayer extends StyleLayer {
     recalculate(parameters: EvaluationParameters, availableImages: Array<string>) {
         super.recalculate(parameters, availableImages);
 
-        const outlineColor = this.paint._values['fill-outline-color'];
+        const paint = assertedNotNullish(this.paint);
+        const outlineColor = paint._values['fill-outline-color'];
         if (outlineColor.value.kind === 'constant' && outlineColor.value.value === undefined) {
-            this.paint._values['fill-outline-color'] = this.paint._values['fill-color'];
+            paint._values['fill-outline-color'] = paint._values['fill-color'];
         }
     }
 
@@ -38,7 +40,7 @@ export class FillStyleLayer extends StyleLayer {
     }
 
     queryRadius(): number {
-        return translateDistance(this.paint.get('fill-translate'));
+        return translateDistance(assertedNotNullish(this.paint).get('fill-translate'));
     }
 
     queryIntersectsFeature({
@@ -48,8 +50,8 @@ export class FillStyleLayer extends StyleLayer {
         pixelsToTileUnits}: QueryIntersectsFeatureParams
     ): boolean {
         const translatedPolygon = translate(queryGeometry,
-            this.paint.get('fill-translate'),
-            this.paint.get('fill-translate-anchor'),
+            assertedNotNullish(this.paint).get('fill-translate'),
+            assertedNotNullish(this.paint).get('fill-translate-anchor'),
             -transform.bearingInRadians, pixelsToTileUnits);
         return polygonIntersectsMultiPolygon(translatedPolygon, geometry);
     }

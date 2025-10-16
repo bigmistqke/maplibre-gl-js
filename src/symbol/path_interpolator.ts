@@ -1,12 +1,12 @@
-import {clamp} from '../util/util';
+import {clamp, assertedNotNullish } from '../util/util';
 import type Point from '@mapbox/point-geometry';
 
 export class PathInterpolator {
-    points: Array<Point>;
-    length: number;
-    paddedLength: number;
-    padding: number;
-    _distances: Array<number>;
+    points: Array<Point> | undefined;
+    length: number | undefined;
+    paddedLength: number | undefined;
+    padding: number | undefined;
+    _distances: Array<number> | undefined;
 
     constructor(points_?: Array<Point> | null, padding_?: number | null) {
         this.reset(points_, padding_);
@@ -29,27 +29,27 @@ export class PathInterpolator {
     }
 
     lerp(t: number): Point {
-        if (this.points.length === 1) {
-            return this.points[0];
+        if (assertedNotNullish(this.points).length === 1) {
+            return assertedNotNullish(this.points)[0];
         }
 
         t = clamp(t, 0, 1);
 
         // Find the correct segment [p0, p1] where p0 <= x < p1
         let currentIndex = 1;
-        let distOfCurrentIdx = this._distances[currentIndex];
-        const distToTarget = t * this.paddedLength + this.padding;
+        let distOfCurrentIdx = assertedNotNullish(this._distances)[currentIndex];
+        const distToTarget = t * assertedNotNullish(this.paddedLength) + assertedNotNullish(this.padding);
 
-        while (distOfCurrentIdx < distToTarget && currentIndex < this._distances.length) {
-            distOfCurrentIdx = this._distances[++currentIndex];
+        while (distOfCurrentIdx < distToTarget && currentIndex < assertedNotNullish(this._distances).length) {
+            distOfCurrentIdx = assertedNotNullish(this._distances)[++currentIndex];
         }
 
         // Interpolate between the two points of the segment
         const idxOfPrevPoint = currentIndex - 1;
-        const distOfPrevIdx = this._distances[idxOfPrevPoint];
+        const distOfPrevIdx = assertedNotNullish(this._distances)[idxOfPrevPoint];
         const segmentLength = distOfCurrentIdx - distOfPrevIdx;
         const segmentT = segmentLength > 0 ? (distToTarget - distOfPrevIdx) / segmentLength : 0;
 
-        return this.points[idxOfPrevPoint].mult(1.0 - segmentT).add(this.points[currentIndex].mult(segmentT));
+        return assertedNotNullish(this.points)[idxOfPrevPoint].mult(1.0 - segmentT).add(assertedNotNullish(this.points)[currentIndex].mult(segmentT));
     }
 }

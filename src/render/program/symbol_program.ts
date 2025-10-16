@@ -1,5 +1,5 @@
 import {Uniform1i, Uniform1f, Uniform2f, UniformMatrix4f} from '../uniform_binding';
-import {extend} from '../../util/util';
+import {extend, assertedNotNullish } from '../../util/util';
 
 import type {Context} from '../../gl/context';
 import type {Painter} from '../painter';
@@ -183,7 +183,7 @@ const symbolIconUniformValues = (
         'u_pitch': transform.pitch / 360 * 2 * Math.PI,
         'u_rotate_symbol': +rotateInShader,
         'u_aspect_ratio': transform.width / transform.height,
-        'u_fade_change': painter.options.fadeDuration ? painter.symbolFadeChange : 1,
+        'u_fade_change': assertedNotNullish(painter.options).fadeDuration ? painter.symbolFadeChange : 1,
         'u_label_plane_matrix': labelPlaneMatrix,
         'u_coord_matrix': glCoordMatrix,
         'u_is_text': +isText,
@@ -221,7 +221,7 @@ const symbolSDFUniformValues = (
     return extend(symbolIconUniformValues(functionType, size,
         rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, labelPlaneMatrix,
         glCoordMatrix, translation, isText, texSize, pitchedScale), {
-        'u_gamma_scale': (pitchWithMap ? Math.cos(transform.pitch * Math.PI / 180.0) * transform.cameraToCenterDistance : 1),
+        'u_gamma_scale': (pitchWithMap ? Math.cos(transform.pitch * Math.PI / 180.0) * assertedNotNullish(transform.cameraToCenterDistance) : 1),
         'u_device_pixel_ratio': painter.pixelRatio,
         'u_is_halo': +isHalo
     });

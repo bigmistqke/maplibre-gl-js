@@ -41,7 +41,7 @@ const properties: Properties<SkyProps> = new Properties({
 const TRANSITION_SUFFIX = '-transition';
 
 export class Sky extends Evented {
-    properties: PossiblyEvaluated<SkyProps, SkyPropsPossiblyEvaluated>;
+    properties: PossiblyEvaluated<SkyProps, SkyPropsPossiblyEvaluated> | undefined;
 
     /**
      * This is used to cache the gl mesh for the sky, it should be initialized only once.
@@ -73,11 +73,11 @@ export class Sky extends Evented {
         }
 
         for (const name in sky) {
-            const value = sky[name];
+            const value = (sky as Record<string, unknown>)[name];
             if (name.endsWith(TRANSITION_SUFFIX)) {
-                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX.length) as keyof SkyProps, value);
+                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX.length) as keyof SkyProps, value as Parameters<typeof this._transitionable.setTransition>[1]);
             } else {
-                this._transitionable.setValue(name as keyof SkyProps, value);
+                this._transitionable.setValue(name as keyof SkyProps, value as Parameters<typeof this._transitionable.setValue>[1]);
             }
         }
     }

@@ -3,6 +3,7 @@ import {isStringInSupportedScript} from '../util/script_detection';
 import {rtlWorkerPlugin} from '../source/rtl_text_plugin_worker';
 
 import type {GlobalProperties, TransitionSpecification} from '@maplibre/maplibre-gl-style-spec';
+import { assertedNotNullish } from "../util/util";
 
 export type CrossfadeParameters = {
     fromScale: number;
@@ -48,7 +49,7 @@ export class EvaluationParameters implements GlobalProperties {
         if (this.fadeDuration === 0) {
             return 1;
         } else {
-            return Math.min((this.now - this.zoomHistory.lastIntegerZoomTime) / this.fadeDuration, 1);
+            return Math.min((this.now - assertedNotNullish(this.zoomHistory.lastIntegerZoomTime)) / this.fadeDuration, 1);
         }
     }
 
@@ -57,7 +58,7 @@ export class EvaluationParameters implements GlobalProperties {
         const fraction = z - Math.floor(z);
         const t = this.crossFadingFactor();
 
-        return z > this.zoomHistory.lastIntegerZoom ?
+        return z > assertedNotNullish(this.zoomHistory.lastIntegerZoom) ?
             {fromScale: 2, toScale: 1, t: fraction + (1 - fraction) * t} :
             {fromScale: 0.5, toScale: 1, t: 1 - (1 - t) * fraction};
     }

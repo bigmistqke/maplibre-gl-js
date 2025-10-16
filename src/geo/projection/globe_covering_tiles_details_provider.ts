@@ -57,7 +57,7 @@ export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsPr
      * Handles distances on a sphere correctly: X is wrapped when crossing the antimeridian,
      * when crossing the poles Y is mirrored and X is shifted by half world size.
      */
-    distanceToTile2d(pointX: number, pointY: number, tileID: {x: number; y: number; z: number}, _bv: ConvexVolume): number {
+    distanceToTile2d(pointX: number, pointY: number, tileID: {x: number; y: number; z: number}): number {
         const scale = 1 << tileID.z;
         const tileMercatorSize = 1.0 / scale;
         const tileCornerX = tileID.x / scale; // In range 0..1
@@ -95,7 +95,7 @@ export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsPr
         }
         return 0;
     }
-    
+
     allowVariableZoom(transform: IReadonlyTransform, options: CoveringTilesOptionsInternal): boolean {
         return coveringZoomLevel(transform, options) > 4;
     }
@@ -227,7 +227,7 @@ export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsPr
             // /--                 --\
             //    -----       -----
             //         ---m---
-            
+
             if (tileID.y >= (1 << tileID.z) / 2) {
                 // South hemisphere - include the tile's north edge midpoint
                 extremesPoints.push(vec3.scale([] as any, projectTileCoordinatesToSphere(EXTENT / 2, 0, tileID.x, tileID.y, tileID.z), maxElevation));
@@ -255,7 +255,7 @@ export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsPr
 
             // North points
             if (tileID.y === 0) {
-                // If the tile borders a pole, then 
+                // If the tile borders a pole, then
                 points.push(
                     threePlaneIntersection(planeWest, planeEast, planeUp),
                     threePlaneIntersection(planeWest, planeEast, planeDown),

@@ -7,6 +7,7 @@ import {
     hillshadeUniformValues,
     hillshadeUniformPrepareValues
 } from './program/hillshade_program';
+import {assertedNotNullish} from '../util/util';
 
 import type {Painter, RenderOptions} from './painter';
 import type {SourceCache} from '../source/source_cache';
@@ -18,8 +19,8 @@ export function drawHillshade(painter: Painter, sourceCache: SourceCache, layer:
 
     const {isRenderingToTexture} = renderOptions;
     const context = painter.context;
-    const projection = painter.style.projection;
-    const useSubdivision = projection.useSubdivision;
+    const projection = assertedNotNullish(painter.style).projection;
+    const useSubdivision = assertedNotNullish(projection).useSubdivision;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
     const colorMode = painter.colorModeForRenderPass();
@@ -55,14 +56,14 @@ function renderHillshade(
     useBorder: boolean,
     isRenderingToTexture: boolean
 ) {
-    const projection = painter.style.projection;
+    const projection = assertedNotNullish(painter.style).projection;
     const context = painter.context;
     const transform = painter.transform;
     const gl = context.gl;
 
-    const defines = [`#define NUM_ILLUMINATION_SOURCES ${layer.paint.get('hillshade-highlight-color').values.length}`];
+    const defines = [`#define NUM_ILLUMINATION_SOURCES ${assertedNotNullish(layer.paint).get('hillshade-highlight-color').values.length}`];
     const program = painter.useProgram('hillshade', null, false, defines);
-    const align = !painter.options.moving;
+    const align = !assertedNotNullish(painter.options).moving;
 
     for (const coord of coords) {
         const tile = sourceCache.getTile(coord);
@@ -70,9 +71,9 @@ function renderHillshade(
         if (!fbo) {
             continue;
         }
-        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
+        const mesh = assertedNotNullish(projection).getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
 
-        const terrainData = painter.style.map.terrain?.getTerrainData(coord);
+        const terrainData = assertedNotNullish(painter.style).map.terrain?.getTerrainData(coord);
 
         context.activeTexture.set(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
@@ -122,7 +123,7 @@ function prepareHillshade(
         context.activeTexture.set(gl.TEXTURE1);
 
         context.pixelStoreUnpackPremultiplyAlpha.set(false);
-        tile.demTexture = tile.demTexture || painter.getTileTexture(textureStride);
+        tile.demTexture = tile.demTexture || painter.getTileTexture(assertedNotNullish(textureStride));
         if (tile.demTexture) {
             const demTexture = tile.demTexture;
             demTexture.update(pixelData, {premultiply: false});
@@ -137,21 +138,21 @@ function prepareHillshade(
         let fbo = tile.fbo;
 
         if (!fbo) {
-            const renderTexture = new Texture(context, {width: tileSize, height: tileSize, data: null}, gl.RGBA);
+            const renderTexture = new Texture(context, {width: assertedNotNullish(tileSize), height: assertedNotNullish(tileSize), data: null}, gl.RGBA);
             renderTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
 
-            fbo = tile.fbo = context.createFramebuffer(tileSize, tileSize, true, false);
+            fbo = tile.fbo = context.createFramebuffer(assertedNotNullish(tileSize), assertedNotNullish(tileSize), true, false);
             fbo.colorAttachment.set(renderTexture.texture);
         }
 
         context.bindFramebuffer.set(fbo.framebuffer);
-        context.viewport.set([0, 0, tileSize, tileSize]);
+        context.viewport.set([0, 0, assertedNotNullish(tileSize), assertedNotNullish(tileSize)]);
 
         painter.useProgram('hillshadePrepare').draw(context, gl.TRIANGLES,
             depthMode, stencilMode, colorMode, CullFaceMode.disabled,
             hillshadeUniformPrepareValues(tile.tileID, dem),
-            null, null, layer.id, painter.rasterBoundsBuffer,
-            painter.quadTriangleIndexBuffer, painter.rasterBoundsSegments);
+            null, null, layer.id, assertedNotNullish(painter.rasterBoundsBuffer),
+            assertedNotNullish(painter.quadTriangleIndexBuffer), painter.rasterBoundsSegments);
 
         tile.needsHillshadePrepare = false;
     }

@@ -2,6 +2,7 @@ import type Point from '@mapbox/point-geometry';
 import {DOM} from '../../util/dom';
 import type {Map} from '../map';
 import {type Handler, type HandlerResult} from '../handler_manager';
+import { assertedNotNullish } from "../../util/util";
 
 /**
  * An options object sent to the enable function of some of the handlers
@@ -285,7 +286,7 @@ export class TwoFingersTouchPitchHandler extends TwoFingersTouchHandler {
 
     _move(points: [Point, Point], center: Point | null, e: TouchEvent): HandlerResult | void {
         // If cooperative gestures is enabled, we need a 3-finger minimum for this gesture to register
-        if (this._map.cooperativeGestures.isEnabled() && this._currentTouchCount < 3) {
+        if (assertedNotNullish(this._map.cooperativeGestures).isEnabled() && this._currentTouchCount < 3) {
             return;
         }
 

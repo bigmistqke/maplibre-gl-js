@@ -11,6 +11,7 @@ import {type Popup, type Offset} from './popup';
 import type {LngLatLike} from '../geo/lng_lat';
 import type {MapMouseEvent, MapTouchEvent} from './events';
 import type {PointLike} from './camera';
+import { assertedNotNullish, isNullish } from '../util/util';
 
 /**
  * Alignment options of rotation and pitch
@@ -125,30 +126,30 @@ export type MarkerOptions = {
  * **Event** `dragend` of type {@link Event} will be fired when the marker is finished being dragged.
  */
 export class Marker extends Evented {
-    _map: Map;
+    _map?: Map;
     _anchor: PositionAnchor;
     _offset: Point;
     _element: HTMLElement;
-    _popup: Popup;
-    _lngLat: LngLat;
-    _pos: Point;
-    _flatPos: Point;
+    _popup: Popup | null;
+    _lngLat?: LngLat;
+    _pos: Point|null = null;
+    _flatPos?: Point;
     _color: string;
     _scale: number;
-    _defaultMarker: boolean;
+    _defaultMarker?: boolean;
     _draggable: boolean;
     _clickTolerance: number;
     _isDragging: boolean;
     _state: 'inactive' | 'pending' | 'active'; // used for handling drag events
-    _positionDelta: Point;
-    _pointerdownPos: Point;
+    _positionDelta: Point|null = null;
+    _pointerdownPos: Point|null|undefined = null;
     _rotation: number;
     _pitchAlignment: Alignment;
     _rotationAlignment: Alignment;
-    _originalTabIndex: string; // original tabindex of _element
-    _opacity: string;
-    _opacityWhenCovered: string;
-    _opacityTimeout: ReturnType<typeof setTimeout>;
+    _originalTabIndex: string|null = null; // original tabindex of _element
+    _opacity?: string;
+    _opacityWhenCovered?: string;
+    _opacityTimeout: ReturnType<typeof setTimeout>|null = null;
     _subpixelPositioning: boolean;
 
     /**
@@ -354,7 +355,7 @@ export class Marker extends Evented {
     remove(): this {
         if (this._opacityTimeout) {
             clearTimeout(this._opacityTimeout);
-            delete this._opacityTimeout;
+            this._opacityTimeout = null;
         }
         if (this._map) {
             this._map.off('click', this._onMapClick);
@@ -393,7 +394,7 @@ export class Marker extends Evented {
      * @see [Create a draggable Marker](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-marker/)
      */
     getLngLat(): LngLat {
-        return this._lngLat;
+        return assertedNotNullish(this._lngLat);
     }
 
     /**
@@ -506,7 +507,7 @@ export class Marker extends Evented {
     };
 
     _onMapClick = (e: MapMouseEvent) => {
-        const targetElement = e.originalEvent.target;
+        const targetElement = assertedNotNullish(e.originalEvent).target;
         const element = this._element;
 
         if (this._popup && (targetElement === element || element.contains(targetElement as any))) {
@@ -527,7 +528,7 @@ export class Marker extends Evented {
      * console.log(marker.getPopup()); // return the popup instance
      * ```
      */
-    getPopup(): Popup {
+    getPopup(): Popup|null {
         return this._popup;
     }
 
@@ -551,18 +552,28 @@ export class Marker extends Evented {
         if (!popup) return this;
         else if (popup.isOpen()) popup.remove();
         else {
-            popup.setLngLat(this._lngLat);
-            popup.addTo(this._map);
+            popup.setLngLat(assertedNotNullish(this._lngLat, 'Expected this._lngLat to be defined.'));
+            popup.addTo(assertedNotNullish(this._map, 'Expected this.map to be defined.'));
         }
         return this;
     }
 
     _updateOpacity(force: boolean = false) {
-        const terrain = this._map?.terrain;
+        if(isNullish(this._map)){
+            throw new Error('Expected this._map to be defined.');
+        }
+        if(isNullish(this._lngLat)){
+            throw new Error('Expected this._lngLat to be defined.');
+        }
+        if(isNullish(this._pos)){
+            throw new Error('Expected this._pos to be defined.');
+        }
+
+        const terrain = this._map.terrain;
         const occluded = this._map.transform.isLocationOccluded(this._lngLat);
         if (!terrain || occluded) {
             const targetOpacity = occluded ? this._opacityWhenCovered : this._opacity;
-            if (this._element.style.opacity !== targetOpacity) { this._element.style.opacity = targetOpacity; }
+            if (this._element.style.opacity !== targetOpacity) { this._element.style.opacity = targetOpacity ?? ''; }
             return;
         }
         if (force) {
@@ -577,25 +588,25 @@ export class Marker extends Evented {
         const map = this._map;
 
         // Read depth framebuffer, getting position of terrain in line of sight to marker
-        const terrainDistance = map.terrain.depthAtPoint(this._pos);
+        const terrainDistance = assertedNotNullish(map.terrain).depthAtPoint(this._pos);
         // Transform marker position to clip space
-        const elevation = map.terrain.getElevationForLngLatZoom(this._lngLat, map.transform.tileZoom);
+        const elevation = assertedNotNullish(map.terrain).getElevationForLngLatZoom(this._lngLat, map.transform.tileZoom);
         const markerDistance = map.transform.lngLatToCameraDepth(this._lngLat, elevation);
         const forgiveness = .006;
         if (markerDistance - terrainDistance < forgiveness) {
-            this._element.style.opacity = this._opacity;
+            this._element.style.opacity = this._opacity ?? '';
             return;
         }
         // If the base is obscured, use the offset to check if the marker's center is obscured.
-        const metersToCenter = -this._offset.y / map.transform.pixelsPerMeter;
+        const metersToCenter = -this._offset.y / assertedNotNullish(map.transform.pixelsPerMeter);
         const elevationToCenter = Math.sin(map.getPitch() * Math.PI / 180) * metersToCenter;
-        const terrainDistanceCenter = map.terrain.depthAtPoint(new Point(this._pos.x, this._pos.y - this._offset.y));
+        const terrainDistanceCenter = assertedNotNullish(map.terrain).depthAtPoint(new Point(this._pos.x, this._pos.y - this._offset.y));
         const markerDistanceCenter = map.transform.lngLatToCameraDepth(this._lngLat, elevation + elevationToCenter);
         // Display at full opacity if center is visible.
         const centerIsInvisible = markerDistanceCenter - terrainDistanceCenter > forgiveness;
 
         if (this._popup?.isOpen() && centerIsInvisible) this._popup.remove();
-        this._element.style.opacity = centerIsInvisible ? this._opacityWhenCovered : this._opacity;
+        this._element.style.opacity = (centerIsInvisible ? this._opacityWhenCovered : this._opacity) ?? '';
     }
 
     _update = (e?: { type: 'move' | 'moveend' | 'terrain' | 'render' }) => {
@@ -606,7 +617,7 @@ export class Marker extends Evented {
             this._map.once('render', this._update);
         }
 
-        this._lngLat = smartWrap(this._lngLat, this._flatPos, this._map.transform);
+        this._lngLat = smartWrap(assertedNotNullish(this._lngLat), assertedNotNullish(this._flatPos), this._map.transform);
 
         this._flatPos = this._pos = this._map.project(this._lngLat)._add(this._offset);
         if (this._map.terrain) {
@@ -708,13 +719,17 @@ export class Marker extends Evented {
     }
 
     _onMove = (e: MapMouseEvent | MapTouchEvent) => {
+        if(isNullish(this._map)){
+            throw new Error('Expected this._map to be defined.');
+        }
+
         if (!this._isDragging) {
-            const clickTolerance = this._clickTolerance || this._map._clickTolerance;
-            this._isDragging = e.point.dist(this._pointerdownPos) >= clickTolerance;
+            const clickTolerance = this._clickTolerance ?? this._map._clickTolerance;
+            this._isDragging = assertedNotNullish(e.point).dist(assertedNotNullish(this._pointerdownPos, 'Expected this._pointerdownPos to be defined.')) >= assertedNotNullish(clickTolerance);
         }
         if (!this._isDragging) return;
 
-        this._pos = e.point.sub(this._positionDelta);
+        this._pos = assertedNotNullish(e.point).sub(assertedNotNullish(this._positionDelta, 'Expected this._positionDelta to be defined.'));
         this._lngLat = this._map.unproject(this._pos);
         this.setLngLat(this._lngLat);
         // suppress click event so that popups don't toggle on drag
@@ -731,6 +746,10 @@ export class Marker extends Evented {
     };
 
     _onUp = () => {
+        if(isNullish(this._map)){
+            throw new Error('Expected this._map to be defined.');
+        }
+
         // revert to normal pointer event handling
         this._element.style.pointerEvents = 'auto';
         this._positionDelta = null;
@@ -748,7 +767,14 @@ export class Marker extends Evented {
     };
 
     _addDragHandler = (e: MapMouseEvent | MapTouchEvent) => {
-        if (this._element.contains(e.originalEvent.target as any)) {
+        if (this._element.contains(assertedNotNullish(e.originalEvent).target as any)) {
+            if(isNullish(this._map)){
+                throw new Error('Expected this._map to be defined.');
+            }
+            if(isNullish(this._pos)){
+                throw new Error('Expected this._pos to be defined.');
+            }
+
             e.preventDefault();
 
             // We need to calculate the pixel distance between the click point
@@ -757,7 +783,7 @@ export class Marker extends Evented {
             // to calculate the new marker position.
             // If we don't do this, the marker 'jumps' to the click position
             // creating a jarring UX effect.
-            this._positionDelta = e.point.sub(this._pos).add(this._offset);
+            this._positionDelta = assertedNotNullish(e.point).sub(this._pos).add(this._offset);
 
             this._pointerdownPos = e.point;
 

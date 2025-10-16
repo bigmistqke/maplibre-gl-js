@@ -3,21 +3,22 @@ import type {Program} from './program';
 import type {VertexBuffer} from '../gl/vertex_buffer';
 import type {IndexBuffer} from '../gl/index_buffer';
 import type {Context} from '../gl/context';
+import {assertedNotNullish, assertNotNullish} from '../util/util';
 
 /**
  * @internal
  * A vertex array object used to pass data to the webgl code
  */
 export class VertexArrayObject {
-    context: Context;
-    boundProgram: Program<any>;
-    boundLayoutVertexBuffer: VertexBuffer;
+    context?: Context;
+    boundProgram: Program<any> | null;
+    boundLayoutVertexBuffer: VertexBuffer | null;
     boundPaintVertexBuffers: Array<VertexBuffer>;
-    boundIndexBuffer: IndexBuffer;
-    boundVertexOffset: number;
-    boundDynamicVertexBuffer: VertexBuffer;
-    boundDynamicVertexBuffer2: VertexBuffer;
-    boundDynamicVertexBuffer3: VertexBuffer;
+    boundIndexBuffer: IndexBuffer | null;
+    boundVertexOffset: number | null;
+    boundDynamicVertexBuffer: VertexBuffer | null;
+    boundDynamicVertexBuffer2?: VertexBuffer | null;
+    boundDynamicVertexBuffer3?: VertexBuffer | null;
     vao: any;
 
     constructor() {
@@ -32,7 +33,7 @@ export class VertexArrayObject {
 
     bind(context: Context,
         program: Program<any>,
-        layoutVertexBuffer: VertexBuffer,
+        layoutVertexBuffer: VertexBuffer | null,
         paintVertexBuffers: Array<VertexBuffer>,
         indexBuffer?: IndexBuffer | null,
         vertexOffset?: number | null,
@@ -62,7 +63,7 @@ export class VertexArrayObject {
         );
 
         if (isFreshBindRequired) {
-            this.freshBind(program, layoutVertexBuffer, paintVertexBuffers, indexBuffer, vertexOffset, dynamicVertexBuffer, dynamicVertexBuffer2, dynamicVertexBuffer3);
+            this.freshBind(program, assertedNotNullish(layoutVertexBuffer), paintVertexBuffers, indexBuffer, vertexOffset, dynamicVertexBuffer, dynamicVertexBuffer2, dynamicVertexBuffer3);
         } else {
             context.bindVertexArray.set(this.vao);
 
@@ -97,66 +98,67 @@ export class VertexArrayObject {
         const numNextAttributes = program.numAttributes;
 
         const context = this.context;
-        const gl = context.gl;
+        const gl = context?.gl;
 
         if (this.vao) this.destroy();
-        this.vao = context.createVertexArray();
-        context.bindVertexArray.set(this.vao);
+        this.vao = context?.createVertexArray();
+        context?.bindVertexArray?.set(this.vao);
 
         // store the arguments so that we can verify them when the vao is bound again
         this.boundProgram = program;
         this.boundLayoutVertexBuffer = layoutVertexBuffer;
         this.boundPaintVertexBuffers = paintVertexBuffers;
-        this.boundIndexBuffer = indexBuffer;
-        this.boundVertexOffset = vertexOffset;
-        this.boundDynamicVertexBuffer = dynamicVertexBuffer;
+        this.boundIndexBuffer = indexBuffer ?? null;
+        this.boundVertexOffset = vertexOffset ?? null;
+        this.boundDynamicVertexBuffer = dynamicVertexBuffer ?? null;
         this.boundDynamicVertexBuffer2 = dynamicVertexBuffer2;
         this.boundDynamicVertexBuffer3 = dynamicVertexBuffer3;
 
-        layoutVertexBuffer.enableAttributes(gl, program);
+        layoutVertexBuffer.enableAttributes(assertedNotNullish(gl), program);
         for (const vertexBuffer of paintVertexBuffers) {
-            vertexBuffer.enableAttributes(gl, program);
+            vertexBuffer.enableAttributes(assertedNotNullish(gl), program);
         }
 
         if (dynamicVertexBuffer) {
-            dynamicVertexBuffer.enableAttributes(gl, program);
+            dynamicVertexBuffer.enableAttributes(assertedNotNullish(gl), program);
         }
         if (dynamicVertexBuffer2) {
-            dynamicVertexBuffer2.enableAttributes(gl, program);
+            dynamicVertexBuffer2.enableAttributes(assertedNotNullish(gl), program);
         }
         if (dynamicVertexBuffer3) {
-            dynamicVertexBuffer3.enableAttributes(gl, program);
+            dynamicVertexBuffer3.enableAttributes(assertedNotNullish(gl), program);
         }
 
         layoutVertexBuffer.bind();
-        layoutVertexBuffer.setVertexAttribPointers(gl, program, vertexOffset);
+        layoutVertexBuffer.setVertexAttribPointers(assertedNotNullish(gl), program, vertexOffset);
         for (const vertexBuffer of paintVertexBuffers) {
             vertexBuffer.bind();
-            vertexBuffer.setVertexAttribPointers(gl, program, vertexOffset);
+            vertexBuffer.setVertexAttribPointers(assertedNotNullish(gl), program, vertexOffset);
         }
 
         if (dynamicVertexBuffer) {
             dynamicVertexBuffer.bind();
-            dynamicVertexBuffer.setVertexAttribPointers(gl, program, vertexOffset);
+            dynamicVertexBuffer.setVertexAttribPointers(assertedNotNullish(gl), program, vertexOffset);
         }
         if (indexBuffer) {
             indexBuffer.bind();
         }
         if (dynamicVertexBuffer2) {
             dynamicVertexBuffer2.bind();
-            dynamicVertexBuffer2.setVertexAttribPointers(gl, program, vertexOffset);
+            dynamicVertexBuffer2.setVertexAttribPointers(assertedNotNullish(gl), program, vertexOffset);
         }
         if (dynamicVertexBuffer3) {
             dynamicVertexBuffer3.bind();
-            dynamicVertexBuffer3.setVertexAttribPointers(gl, program, vertexOffset);
+            dynamicVertexBuffer3.setVertexAttribPointers(assertedNotNullish(gl), program, vertexOffset);
         }
 
+        assertNotNullish(context);
         context.currentNumAttributes = numNextAttributes;
     }
 
     destroy() {
         if (this.vao) {
-            this.context.deleteVertexArray(this.vao);
+            this.context?.deleteVertexArray(this.vao);
             this.vao = null;
         }
     }

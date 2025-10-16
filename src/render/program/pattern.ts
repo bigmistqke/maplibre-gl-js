@@ -13,6 +13,7 @@ import type {CrossfadeParameters} from '../../style/evaluation_parameters';
 import type {UniformValues} from '../uniform_binding';
 import type {Tile} from '../../source/tile';
 import type {ResolvedImage} from '@maplibre/maplibre-gl-style-spec';
+import { assertedNotNullish } from "../../util/util";
 
 type BackgroundPatternUniformsType = {
     'u_image': Uniform1i;
@@ -53,7 +54,7 @@ function patternUniformValues(crossfade: CrossfadeParameters, painter: Painter, 
 
     return {
         'u_image': 0,
-        'u_texsize': tile.imageAtlasTexture.size,
+        'u_texsize': assertedNotNullish(tile.imageAtlasTexture).size,
         'u_scale': [tileRatio, crossfade.fromScale, crossfade.toScale],
         'u_fade': crossfade.t,
         // split the pixel coord into two pairs of 16 bit numbers. The glsl spec only guarantees 16 bits of precision.
@@ -71,9 +72,9 @@ function bgPatternUniformValues(
         tileSize: number;
     }
 ): UniformValues<BackgroundPatternUniformsType> {
-    const imagePosA = painter.imageManager.getPattern(image.from.toString());
-    const imagePosB = painter.imageManager.getPattern(image.to.toString());
-    const {width, height} = painter.imageManager.getPixelSize();
+    const imagePosA = assertedNotNullish(painter.imageManager).getPattern(image.from.toString());
+    const imagePosB = assertedNotNullish(painter.imageManager).getPattern(image.to.toString());
+    const {width, height} = assertedNotNullish(painter.imageManager).getPixelSize();
 
     const numTiles = Math.pow(2, tile.tileID.overscaledZ);
     const tileSizeAtNearestZoom = tile.tileSize * Math.pow(2, painter.transform.tileZoom) / numTiles;

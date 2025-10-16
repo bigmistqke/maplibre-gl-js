@@ -41,3 +41,12 @@ npm-debug.log
 /.vs/
 .*.swp
 junit.xml
+
+# Deciduous database (local)
+.deciduous/
+.claude/
+docs/git-history.json
+docs/graph-data.json
+docs/index.html
+docs/.nojekyll
+CLAUDE.md

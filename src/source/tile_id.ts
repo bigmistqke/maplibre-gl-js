@@ -1,3 +1,4 @@
+/// <reference path="../types/whoots-js.d.ts" />
 import {getTileBBox} from '@mapbox/whoots-js';
 import {EXTENT} from '../data/extent';
 import Point from '@mapbox/point-geometry';
@@ -233,7 +234,7 @@ export function calculateTileKey(wrap: number, overscaledZ: number, z: number, x
     return (dim * dim * wrap + dim * y + x).toString(36) + z.toString(36) + overscaledZ.toString(36);
 }
 
-function getQuadkey(z, x, y) {
+function getQuadkey(z: number, x: number, y: number): string {
     let quadkey = '', mask;
     for (let i = z; i > 0; i--) {
         mask = 1 << (i - 1);

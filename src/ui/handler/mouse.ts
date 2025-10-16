@@ -25,7 +25,7 @@ export interface MouseRollHandler extends DragMoveHandler<DragRollResult, MouseE
 const LEFT_BUTTON = 0;
 const RIGHT_BUTTON = 2;
 
-const assignEvents = (handler: DragHandler<DragPanResult, MouseEvent>) => {
+const assignEvents = <T extends DragPanResult | DragRotateResult | DragPitchResult | DragRollResult>(handler: DragHandler<T, MouseEvent>) => {
     handler.mousedown = handler.dragStart;
     handler.mousemoveWindow = handler.dragMove;
     handler.mouseup = handler.dragEnd;
@@ -98,7 +98,7 @@ export function generateMousePitchHandler({enable, clickTolerance, pitchDegreesP
     });
     return new DragHandler<DragPitchResult, MouseEvent>({
         clickTolerance,
-        move: (lastPoint: Point, point: Point) => 
+        move: (lastPoint: Point, point: Point) =>
             ({pitchDelta: (point.y - lastPoint.y) * pitchDegreesPerPixelMoved}),
         // prevent browser context menu when necessary; we don't allow it with rotation
         // because we can't discern rotation gesture start from contextmenu on Mac

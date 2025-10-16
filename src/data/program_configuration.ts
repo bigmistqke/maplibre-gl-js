@@ -3,7 +3,7 @@ import {type Color, supportsPropertyExpression} from '@maplibre/maplibre-gl-styl
 import {register} from '../util/web_worker_transfer';
 import {PossiblyEvaluatedPropertyValue} from '../style/properties';
 import {StructArrayLayout1f4, StructArrayLayout2f8, StructArrayLayout4f16, PatternLayoutArray, DashLayoutArray} from './array_types.g';
-import {clamp} from '../util/util';
+import {assertedNotNullish, clamp} from '../util/util';
 import {patternAttributes} from './bucket/pattern_attributes';
 import {dashAttributes} from './bucket/dash_attributes';
 import {EvaluationParameters} from '../style/evaluation_parameters';
@@ -128,7 +128,7 @@ class ConstantBinder implements UniformBinder {
         uniform.set(currentValue.constantOr(this.value));
     }
 
-    getBinding(context: Context, location: WebGLUniformLocation, _: string): Partial<Uniform<any>> {
+    getBinding(context: Context, location: WebGLUniformLocation, _: string): UniformColor | Uniform1f {
         return (this.type === 'color') ?
             new UniformColor(context, location) :
             new Uniform1f(context, location);
@@ -137,10 +137,10 @@ class ConstantBinder implements UniformBinder {
 
 class CrossFadedConstantBinder implements UniformBinder {
     uniformNames: Array<string>;
-    patternFrom: Array<number>;
-    patternTo: Array<number>;
-    dashFrom: Array<number>;
-    dashTo: Array<number>;
+    patternFrom: Array<number> | null;
+    patternTo: Array<number> | null;
+    dashFrom?: Array<number>;
+    dashTo?: Array<number>;
     pixelRatioFrom: number;
     pixelRatioTo: number;
 
@@ -186,23 +186,23 @@ class CrossFadedConstantBinder implements UniformBinder {
         }
     }
 
-    getBinding(context: Context, location: WebGLUniformLocation, name: string): Partial<Uniform<any>> {
+    getBinding(context: Context, location: WebGLUniformLocation, name: string): Uniform4f | Uniform1f {
         return (name.substr(0, 9) === 'u_pattern' || name.substr(0, 12) === 'u_dasharray_') ?
             new Uniform4f(context, location) :
             new Uniform1f(context, location);
     }
 }
 
-class SourceExpressionBinder implements AttributeBinder {
+class SourceExpressionBinder<TType extends string> implements AttributeBinder {
     expression: SourceExpression;
-    type: string;
+    type: TType;
     maxValue: number;
 
     paintVertexArray: StructArray;
     paintVertexAttributes: Array<StructArrayMember>;
-    paintVertexBuffer: VertexBuffer;
+    paintVertexBuffer?: VertexBuffer;
 
-    constructor(expression: SourceExpression, names: Array<string>, type: string, PaintVertexArray: {
+    constructor(expression: SourceExpression, names: Array<string>, type: TType, PaintVertexArray: {
         new (...args: any): StructArray;
     }) {
         this.expression = expression;
@@ -229,13 +229,19 @@ class SourceExpressionBinder implements AttributeBinder {
         this._setPaintValue(start, end, value);
     }
 
-    _setPaintValue(start, end, value) {
+    _setPaintValue(start: number, end: number, value: TType extends 'color' ?  Color : number) {
         if (this.type === 'color') {
+            if (typeof value !== 'object') {
+                throw new Error(`Expected value to be an object for color type, got ${typeof value}`);
+            }
             const color = packColor(value);
             for (let i = start; i < end; i++) {
                 this.paintVertexArray.emplace(i, color[0], color[1]);
             }
         } else {
+            if (typeof value !== 'number') {
+                throw new Error(`Expected value to be a number for type ${this.type}, got ${typeof value}`);
+            }
             for (let i = start; i < end; i++) {
                 this.paintVertexArray.emplace(i, value);
             }
@@ -260,19 +266,19 @@ class SourceExpressionBinder implements AttributeBinder {
     }
 }
 
-class CompositeExpressionBinder implements AttributeBinder, UniformBinder {
+class CompositeExpressionBinder<TType extends string> implements AttributeBinder, UniformBinder {
     expression: CompositeExpression;
     uniformNames: Array<string>;
-    type: string;
+    type: TType;
     useIntegerZoom: boolean;
     zoom: number;
     maxValue: number;
 
     paintVertexArray: StructArray;
     paintVertexAttributes: Array<StructArrayMember>;
-    paintVertexBuffer: VertexBuffer;
+    paintVertexBuffer?: VertexBuffer;
 
-    constructor(expression: CompositeExpression, names: Array<string>, type: string, useIntegerZoom: boolean, zoom: number, PaintVertexArray: {
+    constructor(expression: CompositeExpression, names: Array<string>, type: TType, useIntegerZoom: boolean, zoom: number, PaintVertexArray: {
         new (...args: any): StructArray;
     }) {
         this.expression = expression;
@@ -304,14 +310,20 @@ class CompositeExpressionBinder implements AttributeBinder, UniformBinder {
         this._setPaintValue(start, end, min, max);
     }
 
-    _setPaintValue(start, end, min, max) {
+    _setPaintValue(start: number, end: number, min: TType extends 'color' ?  Color : number, max: TType extends 'color' ?  Color : number) {
         if (this.type === 'color') {
+            if (typeof min !== 'object' || typeof max !== 'object') {
+                throw new Error(`Expected min and max to be objects for color type, got min: ${typeof min}, max: ${typeof max}`);
+            }
             const minColor = packColor(min);
             const maxColor = packColor(max);
             for (let i = start; i < end; i++) {
                 this.paintVertexArray.emplace(i, minColor[0], minColor[1], maxColor[0], maxColor[1]);
             }
         } else {
+            if (typeof min !== 'number' || typeof max !== 'number') {
+                throw new Error(`Expected min and max to be numbers for type ${this.type}, got min: ${typeof min}, max: ${typeof max}`);
+            }
             for (let i = start; i < end; i++) {
                 this.paintVertexArray.emplace(i, min, max);
             }
@@ -355,9 +367,9 @@ abstract class CrossFadedBinder<T> implements AttributeBinder {
 
     zoomInPaintVertexArray: StructArray;
     zoomOutPaintVertexArray: StructArray;
-    zoomInPaintVertexBuffer: VertexBuffer;
-    zoomOutPaintVertexBuffer: VertexBuffer;
-    paintVertexAttributes: Array<StructArrayMember>;
+    zoomInPaintVertexBuffer?: VertexBuffer;
+    zoomOutPaintVertexBuffer?: VertexBuffer;
+    paintVertexAttributes?: Array<StructArrayMember>;
 
     constructor(expression: CompositeExpression, type: string, useIntegerZoom: boolean, zoom: number, PaintVertexArray: {
         new (...args: any): StructArray;
@@ -385,11 +397,11 @@ abstract class CrossFadedBinder<T> implements AttributeBinder {
 
     abstract getVertexAttributes(): Array<StructArrayMember>;
 
-    protected abstract getPositionIds(feature: Feature): {min: string; mid: string; max: string};
-    protected abstract getPositions(options: PaintOptions): {[_: string]: T};
+    protected abstract getPositionIds(feature: Feature): {min: string; mid: string; max: string} | undefined;
+    protected abstract getPositions(options: PaintOptions): {[_: string]: T} | undefined;
     protected abstract emplace(array: StructArray, index: number, midPos: T, minMaxPos: T): void;
 
-    protected _setPaintValues(start: number, end: number, positionIds: {min: string; mid: string; max: string}, options: PaintOptions) {
+    protected _setPaintValues(start: number, end: number, positionIds: {min: string; mid: string; max: string} | undefined, options: PaintOptions) {
         const positions = this.getPositions(options);
         if (!positions || !positionIds) return;
         const min = positions[positionIds.min];
@@ -444,7 +456,7 @@ class CrossFadedPatternBinder extends CrossFadedBinder<ImagePosition> {
 }
 
 class CrossFadedDasharrayBinder extends CrossFadedBinder<DashEntry> {
-    protected getPositions(options: PaintOptions): {[_: string]: DashEntry} {
+    protected getPositions(options: PaintOptions): {[_: string]: DashEntry} | undefined{
         return options.dashPositions;
     }
 
@@ -495,7 +507,7 @@ export class ProgramConfiguration {
 
         const keys = [];
 
-        for (const property in layer.paint._values) {
+        for (const property in assertedNotNullish(layer.paint)._values) {
             if (!filterProperties(property)) continue;
             const value = (layer.paint as any).get(property);
             if (!(value instanceof PossiblyEvaluatedPropertyValue) || !supportsPropertyExpression(value.property.specification)) {
@@ -753,8 +765,27 @@ export class ProgramConfigurationSet<Layer extends TypedStyleLayer> {
     }
 }
 
-function paintAttributeNames(property: string, type: string) {
-    const attributeNameExceptions = {
+function paintAttributeNames(
+    property:
+        | 'text-opacity'
+        | 'icon-opacity'
+        | 'text-color'
+        | 'icon-color'
+        | 'text-halo-color'
+        | 'icon-halo-color'
+        | 'text-halo-blur'
+        | 'icon-halo-blur'
+        | 'text-halo-width'
+        | 'icon-halo-width'
+        | 'line-gap-width'
+        | 'line-dasharray'
+        | 'line-pattern'
+        | 'fill-pattern'
+        | 'fill-extrusion-pattern'
+        | (string & {}),
+    type: string
+) {
+    const attributeNameExceptions: Record<string, string[]> = {
         'text-opacity': ['opacity'],
         'icon-opacity': ['opacity'],
         'text-color': ['fill_color'],
@@ -775,8 +806,8 @@ function paintAttributeNames(property: string, type: string) {
     return attributeNameExceptions[property] || [property.replace(`${type}-`, '').replace(/-/g, '_')];
 }
 
-function getLayoutException(property: string) {
-    const propertyExceptions = {
+function getLayoutException(property: 'line-pattern' | 'fill-pattern' | 'fill-extrusion-pattern' | 'line-dasharray' | (string & {})) {
+    const propertyExceptions: Record<string, {source: typeof PatternLayoutArray; composite: typeof PatternLayoutArray}> = {
         'line-pattern': {
             'source': PatternLayoutArray,
             'composite': PatternLayoutArray
@@ -798,8 +829,8 @@ function getLayoutException(property: string) {
     return propertyExceptions[property];
 }
 
-function layoutType(property: string, type: string, binderType: string) {
-    const defaultLayouts = {
+function layoutType(property: 'line-dasharray' | 'line-pattern' | 'fill-pattern' | 'fill-extrusion-pattern' | (string & {}), type: 'color' | 'number' | (string & {}), binderType: 'source' | 'composite') {
+    const defaultLayouts: Record<string, {source: typeof StructArrayLayout2f8; composite: typeof StructArrayLayout4f16}> = {
         'color': {
             'source': StructArrayLayout2f8,
             'composite': StructArrayLayout4f16

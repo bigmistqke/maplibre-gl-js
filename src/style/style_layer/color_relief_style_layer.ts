@@ -5,7 +5,7 @@ import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '.
 
 import type {ColorReliefPaintProps} from './color_relief_style_layer_properties.g';
 import {Color, Interpolate, ZoomConstantExpression, type LayerSpecification, type EvaluationContext, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
-import {warnOnce} from '../../util/util';
+import {warnOnce, assertedNotNullish } from '../../util/util';
 import {Texture} from '../../render/texture';
 import {RGBAImage} from '../../util/image';
 import {type Context} from '../../gl/context';
@@ -17,11 +17,11 @@ export type ColorRamp = {elevationStops: Array<number>; colorStops: Array<Color>
 export type ColorRampTextures = {elevationTexture: Texture; colorTexture: Texture};
 
 export class ColorReliefStyleLayer extends StyleLayer {
-    colorRampExpression: StylePropertyExpression;
-    colorRampTextures: ColorRampTextures;
-    _transitionablePaint: Transitionable<ColorReliefPaintProps>;
-    _transitioningPaint: Transitioning<ColorReliefPaintProps>;
-    paint: PossiblyEvaluated<ColorReliefPaintProps, ColorReliefPaintPropsPossiblyEvaluated>;
+    colorRampExpression: StylePropertyExpression | undefined;
+    colorRampTextures: ColorRampTextures | undefined;
+    _transitionablePaint: Transitionable<ColorReliefPaintProps> | undefined;
+    _transitioningPaint: Transitioning<ColorReliefPaintProps> | undefined;
+    paint: PossiblyEvaluated<ColorReliefPaintProps, ColorReliefPaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
@@ -39,7 +39,7 @@ export class ColorReliefStyleLayer extends StyleLayer {
 
     _createColorRamp(maxLength: number) : ColorRamp {
         const colorRamp: ColorRamp = {elevationStops: [], colorStops: []};
-        const expression = this._transitionablePaint._values['color-relief-color'].value.expression;
+        const expression = assertedNotNullish(this._transitionablePaint)._values['color-relief-color'].value.expression;
         if (expression instanceof ZoomConstantExpression && expression._styleExpression.expression instanceof Interpolate) {
             this.colorRampExpression = expression;
             const interpolater = expression._styleExpression.expression;
@@ -75,7 +75,7 @@ export class ColorReliefStyleLayer extends StyleLayer {
     }
 
     _colorRampChanged() : boolean {
-        return this.colorRampExpression != this._transitionablePaint._values['color-relief-color'].value.expression;
+        return this.colorRampExpression != assertedNotNullish(this._transitionablePaint)._values['color-relief-color'].value.expression;
     }
 
     getColorRampTextures(context: Context, maxLength: number, unpackVector: number[]): ColorRampTextures {

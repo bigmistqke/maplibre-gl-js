@@ -17,7 +17,7 @@ import type {
 import type {OverlapMode} from '../style/style_layer/overlap_mode';
 import {type OverscaledTileID, type UnwrappedTileID} from '../source/tile_id';
 import {type PointProjection, type SymbolProjectionContext, getTileSkewVectors, pathSlicedToLongestUnoccluded, placeFirstAndLastGlyph, projectPathSpecialProjection, xyTransformMat4} from '../symbol/projection';
-import {clamp, getAABB} from '../util/util';
+import {clamp, getAABB, assertedNotNullish } from '../util/util';
 import {Bounds} from '../geo/bounds';
 
 // When a symbol crosses the edge that causes it to be included in
@@ -35,9 +35,9 @@ export type PlacedCircles = {
 };
 
 export type PlacedBox = {
-    box: Array<number>;
+    box: Array<number> | null;
     placeable: boolean;
-    offscreen: boolean;
+    offscreen: boolean | null;
     occluded: boolean;
 };
 
@@ -90,7 +90,7 @@ export class CollisionIndex {
 
         this.grid = grid;
         this.ignoredGrid = ignoredGrid;
-        this.pitchFactor = Math.cos(transform.pitch * Math.PI / 180.0) * transform.cameraToCenterDistance;
+        this.pitchFactor = Math.cos(transform.pitch * Math.PI / 180.0) * assertedNotNullish(transform.cameraToCenterDistance);
 
         this.screenRightBoundary = transform.width + viewportPadding;
         this.screenBottomBoundary = transform.height + viewportPadding;
@@ -193,16 +193,16 @@ export class CollisionIndex {
         pitchedLabelPlaneMatrix: mat4,
         showCollisionCircles: boolean,
         pitchWithMap: boolean,
-        collisionGroupPredicate: (key: FeatureKey) => boolean,
+        collisionGroupPredicate: ((key: FeatureKey) => boolean) | undefined,
         circlePixelDiameter: number,
         textPixelPadding: number,
         translation: [number, number],
-        getElevation: (x: number, y: number) => number
+        getElevation: ((x: number, y: number) => number) | null
     ): PlacedCircles {
         const placedCollisionCircles = [];
 
         const tileUnitAnchorPoint = new Point(symbol.anchorX, symbol.anchorY);
-        const perspectiveRatio = this.getPerspectiveRatio(tileUnitAnchorPoint.x, tileUnitAnchorPoint.y, unwrappedTileID, getElevation);
+        const perspectiveRatio = this.getPerspectiveRatio(tileUnitAnchorPoint.x, tileUnitAnchorPoint.y, unwrappedTileID, getElevation ?? undefined);
 
         const labelPlaneFontSize = pitchWithMap ? (fontSize * this.transform.getPitchedTextCorrection(symbol.anchorX, symbol.anchorY, unwrappedTileID) / perspectiveRatio) : fontSize * perspectiveRatio;
         const labelPlaneFontScale = labelPlaneFontSize / ONE_EM;
@@ -212,7 +212,7 @@ export class CollisionIndex {
         const lineOffsetY = symbol.lineOffsetY * labelPlaneFontScale;
 
         const projectionContext: SymbolProjectionContext = {
-            getElevation,
+            getElevation: getElevation ?? undefined,
             pitchedLabelPlaneMatrix,
             lineVertexArray,
             pitchWithMap,
@@ -272,7 +272,7 @@ export class CollisionIndex {
                 }
             }
 
-            let segments = [];
+            let segments: Point[][] = [];
 
             if (projectedPath.length > 0) {
                 // Quickly check if the path is fully inside or outside of the padded collision region.
@@ -306,10 +306,10 @@ export class CollisionIndex {
 
                 let numCircles = 0;
 
-                if (interpolator.length <= 0.5 * radius) {
+                if (assertedNotNullish(interpolator.length)<= 0.5 * radius) {
                     numCircles = 1;
                 } else {
-                    numCircles = Math.ceil(interpolator.paddedLength / circleDist) + 1;
+                    numCircles = Math.ceil(assertedNotNullish(interpolator.paddedLength)/ circleDist) + 1;
                 }
 
                 for (let i = 0; i < numCircles; i++) {
@@ -383,11 +383,13 @@ export class CollisionIndex {
         const features = this.grid.query(minX, minY, maxX, maxY)
             .concat(this.ignoredGrid.query(minX, minY, maxX, maxY));
 
-        const seenFeatures = {};
-        const result = {};
+        const seenFeatures: Record<number, Record<number, boolean>> = {};
+        const result: Record<number, number[]> = {};
 
         for (const feature of features) {
             const featureKey = feature.key;
+            if (!featureKey) continue;
+
             // Skip already seen features.
             if (seenFeatures[featureKey.bucketInstanceId] === undefined) {
                 seenFeatures[featureKey.bucketInstanceId] = {};
@@ -454,19 +456,19 @@ export class CollisionIndex {
             return {
                 x: (((pos[0] / w + 1) / 2) * this.transform.width) + viewportPadding,
                 y: (((-pos[1] / w + 1) / 2) * this.transform.height) + viewportPadding,
-                perspectiveRatio: 0.5 + 0.5 * (this.transform.cameraToCenterDistance / w),
+                perspectiveRatio: 0.5 + 0.5 * (assertedNotNullish(this.transform.cameraToCenterDistance)/ w),
                 isOccluded: false,
                 signedDistanceFromCamera: w
             };
         } else {
-            const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, getElevation);
+            const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, assertedNotNullish(getElevation));
             return {
                 x: (((projected.point.x + 1) / 2) * this.transform.width) + viewportPadding,
                 y: (((-projected.point.y + 1) / 2) * this.transform.height) + viewportPadding,
                 // See perspective ratio comment in symbol_sdf.vertex
                 // We're doing collision detection in viewport space so we need
                 // to scale down boxes in the distance
-                perspectiveRatio: 0.5 + 0.5 * (this.transform.cameraToCenterDistance / projected.signedDistanceFromCamera),
+                perspectiveRatio: 0.5 + 0.5 * (assertedNotNullish(this.transform.cameraToCenterDistance)/ projected.signedDistanceFromCamera),
                 isOccluded: projected.isOccluded,
                 signedDistanceFromCamera: projected.signedDistanceFromCamera
             };
@@ -475,8 +477,8 @@ export class CollisionIndex {
 
     getPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): number {
         // We don't care about the actual projected point, just its W component.
-        const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, getElevation);
-        return 0.5 + 0.5 * (this.transform.cameraToCenterDistance / projected.signedDistanceFromCamera);
+        const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, assertedNotNullish(getElevation));
+        return 0.5 + 0.5 * (assertedNotNullish(this.transform.cameraToCenterDistance)/ projected.signedDistanceFromCamera);
     }
 
     isOffscreen(x1: number, y1: number, x2: number, y2: number) {
@@ -571,7 +573,7 @@ export class CollisionIndex {
                 // which is equivalent to the non-pitchWithMap branch of the GLSL code.
                 // Here, we compute and apply the pitchWithMap branch.
                 // See the computation of `perspective_ratio` in the symbol vertex shaders for the GLSL code.
-                const distanceRatio = projectedPoint.signedDistanceFromCamera / this.transform.cameraToCenterDistance;
+                const distanceRatio = projectedPoint.signedDistanceFromCamera / assertedNotNullish(this.transform.cameraToCenterDistance);
                 const perspectiveRatio = clamp(0.5 + 0.5 * distanceRatio, 0.0, 4.0); // Same clamp as what is used in the shader.
                 distanceMultiplier *= perspectiveRatio;
             }

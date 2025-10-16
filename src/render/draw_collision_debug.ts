@@ -12,6 +12,7 @@ import {collisionCircleLayout} from '../data/bucket/symbol_attributes';
 import {SegmentVector} from '../data/segment';
 import {type VertexBuffer} from '../gl/vertex_buffer';
 import {type IndexBuffer} from '../gl/index_buffer';
+import {assertedNotNullish} from '../util/util';
 
 type TileBatch = {
     circleArray: Array<number>;
@@ -56,14 +57,16 @@ export function drawCollisionDebug(painter: Painter, sourceCache: SourceCache, l
             continue;
         }
 
+        const painterStyle = assertedNotNullish(painter.style);
+
         program.draw(context, gl.LINES,
             DepthMode.disabled, StencilMode.disabled,
             painter.colorModeForRenderPass(),
             CullFaceMode.disabled,
             collisionUniformValues(painter.transform),
-            painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord),
+            painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(coord),
             transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: true}),
-            layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer,
+            layer.id, assertedNotNullish(buffers.layoutVertexBuffer), assertedNotNullish(buffers.indexBuffer),
             buffers.segments, null, painter.transform.zoom, null, null,
             buffers.collisionVertexBuffer);
     }
@@ -104,6 +107,8 @@ export function drawCollisionDebug(painter: Painter, sourceCache: SourceCache, l
     const indexBuffer: IndexBuffer = context.createIndexBuffer(quadTriangles, true);
     const vertexBuffer: VertexBuffer = context.createVertexBuffer(vertexData, collisionCircleLayout.members, true);
 
+    const painterStyle = assertedNotNullish(painter.style);
+
     // Render batches
     for (const batch of tileBatches) {
         const uniforms = collisionCircleUniformValues(painter.transform);
@@ -116,7 +121,7 @@ export function drawCollisionDebug(painter: Painter, sourceCache: SourceCache, l
             painter.colorModeForRenderPass(),
             CullFaceMode.disabled,
             uniforms,
-            painter.style.map.terrain && painter.style.map.terrain.getTerrainData(batch.coord),
+            painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(batch.coord),
             null,
             layer.id,
             vertexBuffer,

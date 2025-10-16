@@ -1,18 +1,19 @@
 import {type Handler} from '../handler_manager';
 import {TapRecognizer, MAX_TAP_INTERVAL, MAX_DIST} from './tap_recognizer';
 import type Point from '@mapbox/point-geometry';
+import { assertedNotNullish } from "../../util/util";
 
 /**
  * A `TapDragZoomHandler` allows the user to zoom the map at a point by double tapping. It also allows the user pan the map by dragging.
  */
 export class TapDragZoomHandler implements Handler {
 
-    _enabled: boolean;
-    _active: boolean;
-    _swipePoint: Point;
-    _swipeTouch: number;
-    _tapTime: number;
-    _tapPoint: Point;
+    _enabled: boolean | undefined;
+    _active: boolean | undefined;
+    _swipePoint: Point | undefined;
+    _swipeTouch: number | undefined;
+    _tapTime: number | undefined;
+    _tapPoint: Point | undefined;
     _tap: TapRecognizer;
 
     constructor() {
@@ -43,7 +44,7 @@ export class TapDragZoomHandler implements Handler {
             const swipePoint = points[0];
 
             const soonEnough = e.timeStamp - this._tapTime < MAX_TAP_INTERVAL;
-            const closeEnough =  this._tapPoint.dist(swipePoint) < MAX_DIST;
+            const closeEnough =  assertedNotNullish(this._tapPoint).dist(swipePoint) < MAX_DIST;
 
             if (!soonEnough || !closeEnough) {
                 this.reset();
@@ -103,10 +104,10 @@ export class TapDragZoomHandler implements Handler {
     }
 
     isEnabled() {
-        return this._enabled;
+        return !!this._enabled;
     }
 
     isActive() {
-        return this._active;
+        return !!this._active;
     }
 }

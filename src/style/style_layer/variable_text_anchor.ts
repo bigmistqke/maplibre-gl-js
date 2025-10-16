@@ -3,6 +3,7 @@ import {type SymbolFeature} from '../../data/bucket/symbol_bucket';
 import {type CanonicalTileID} from '../../source/tile_id';
 import ONE_EM from '../../symbol/one_em';
 import {type SymbolStyleLayer} from './symbol_style_layer';
+import {assertNotNullish} from '../../util/util';
 
 export enum TextAnchorEnum {
     'center' = 1,
@@ -111,6 +112,7 @@ export function evaluateVariableOffset(anchor: TextAnchor, offset: [number, numb
 // Helper to support both text-variable-anchor and text-variable-anchor-offset. Offset values converted from EMs to PXs
 export function getTextVariableAnchorOffset(layer: SymbolStyleLayer, feature: SymbolFeature, canonical: CanonicalTileID): VariableAnchorOffsetCollection | null {
     const layout = layer.layout;
+    assertNotNullish(layout);
     // If style specifies text-variable-anchor-offset, just return it
     const variableAnchorOffset = layout.get('text-variable-anchor-offset')?.evaluate(feature, {}, canonical);
 
@@ -141,6 +143,7 @@ export function getTextVariableAnchorOffset(layer: SymbolStyleLayer, feature: Sy
     if (variableAnchor) {
         let textOffset: [number, number];
         const unevaluatedLayout = layer._unevaluatedLayout;
+        assertNotNullish(unevaluatedLayout);
 
         // The style spec says don't use `text-offset` and `text-radial-offset` together
         // but doesn't actually specify what happens if you use both. We go with the radial offset.

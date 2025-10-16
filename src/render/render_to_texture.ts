@@ -9,6 +9,7 @@ import {RenderPool} from '../gl/render_pool';
 import {type Texture} from './texture';
 import type {StyleLayer} from '../style/style_layer';
 import {ImageSource} from '../source/image_source';
+import { assertedNotNullish } from "../util/util";
 
 /**
  * lookup table which layers should rendered to texture
@@ -34,35 +35,35 @@ export class RenderToTexture {
      * coordsAscending contains a list of all tiles which should be rendered for one render-to-texture tile
      * e.g. render 4 raster-tiles with size 256px to the 512px render-to-texture tile
      */
-    _coordsAscending: {[_: string]: {[_:string]: Array<OverscaledTileID>}};
+    _coordsAscending: {[_: string]: {[_:string]: Array<OverscaledTileID>}} | undefined;
     /**
      * create a string representation of all to tiles rendered to render-to-texture tiles
      * this string representation is used to check if tile should be re-rendered.
      */
-    _coordsAscendingStr: {[_: string]: {[_:string]: string}};
+    _coordsAscendingStr: {[_: string]: {[_:string]: string}} | undefined;
     /**
      * store for render-stacks
      * a render stack is a set of layers which should be rendered into one texture
      * every stylesheet can have multiple stacks. A new stack is created if layers which should
      * not rendered to texture sit between layers which should rendered to texture. e.g. hillshading or symbols
      */
-    _stacks: Array<Array<string>>;
+    _stacks: Array<Array<string>> | undefined;
     /**
      * remember the previous processed layer to check if a new stack is needed
      */
-    _prevType: string;
+    _prevType: string | undefined | null;
     /**
      * a list of tiles that can potentially rendered
      */
-    _renderableTiles: Array<Tile>;
+    _renderableTiles: Array<Tile> | undefined;
     /**
      * a list of tiles that should be rendered to screen in the next render-call
      */
-    _rttTiles: Array<Tile>;
+    _rttTiles: Array<Tile> | undefined;
     /**
      * a list of all layer-ids which should be rendered
      */
-    _renderableLayerIds: Array<string>;
+    _renderableLayerIds: Array<string> | undefined;
 
     constructor(painter: Painter, terrain: Terrain) {
         this.painter = painter;
@@ -75,7 +76,7 @@ export class RenderToTexture {
     }
 
     getTexture(tile: Tile): Texture {
-        return this.pool.getObjectForId(tile.rtt[this._stacks.length - 1].id).texture;
+        return this.pool.getObjectForId(tile.rtt[assertedNotNullish(this._stacks).length - 1].id).texture;
     }
 
     prepareForRender(style: Style, zoom: number) {
@@ -92,7 +93,7 @@ export class RenderToTexture {
             const source = style.sourceCaches[id].getSource();
             const terrainTileRanges = source instanceof ImageSource ? source.terrainTileRanges : null;
             for (const tileID of tileIDs) {
-                const keys = this.terrain.sourceCache.getTerrainCoords(tileID, terrainTileRanges);
+                const keys = this.terrain.sourceCache.getTerrainCoords(tileID, assertedNotNullish(terrainTileRanges));
                 for (const key in keys) {
                     if (!this._coordsAscending[id][key]) this._coordsAscending[id][key] = [];
                     this._coordsAscending[id][key].push(keys[key]);
@@ -102,7 +103,7 @@ export class RenderToTexture {
 
         this._coordsAscendingStr = {};
         for (const id of style._order) {
-            const layer = style._layers[id], source = layer.source;
+            const layer = style._layers[id], source = assertedNotNullish(layer.source);
             if (LAYERS[layer.type]) {
                 if (!this._coordsAscendingStr[source]) {
                     this._coordsAscendingStr[source] = {};
@@ -139,31 +140,31 @@ export class RenderToTexture {
         const options: RenderOptions = {...renderOptions, isRenderingToTexture: true};
         const type = layer.type;
         const painter = this.painter;
-        const isLastLayer = this._renderableLayerIds[this._renderableLayerIds.length - 1] === layer.id;
+        const isLastLayer = assertedNotNullish(this._renderableLayerIds)[assertedNotNullish(this._renderableLayerIds).length - 1] === layer.id;
 
         // remember background, fill, line & raster layer to render into a stack
         if (LAYERS[type]) {
             // create a new stack if previous layer was not rendered to texture (f.e. symbols)
-            if (!this._prevType || !LAYERS[this._prevType]) this._stacks.push([]);
+            if (!this._prevType || !LAYERS[this._prevType as keyof typeof LAYERS]) assertedNotNullish(this._stacks).push([]);
             // push current render-to-texture layer to render-stack
             this._prevType = type;
-            this._stacks[this._stacks.length - 1].push(layer.id);
+            assertedNotNullish(this._stacks)[assertedNotNullish(this._stacks).length - 1].push(layer.id);
             // rendering is done later, all in once
             if (!isLastLayer) return true;
         }
 
         // in case a stack is finished render all collected stack-layers into a texture
-        if (LAYERS[this._prevType] || (LAYERS[type] && isLastLayer)) {
+        if ((this._prevType && LAYERS[this._prevType as keyof typeof LAYERS]) || (LAYERS[type] && isLastLayer)) {
             this._prevType = type;
-            const stack = this._stacks.length - 1, layers = this._stacks[stack] || [];
-            for (const tile of this._renderableTiles) {
+            const stack = assertedNotNullish(this._stacks).length - 1, layers = assertedNotNullish(this._stacks)[stack] || [];
+            for (const tile of assertedNotNullish(this._renderableTiles)) {
                 // if render pool is full draw current tiles to screen and free pool
                 if (this.pool.isFull()) {
-                    drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+                    drawTerrain(this.painter, this.terrain, assertedNotNullish(this._rttTiles), options);
                     this._rttTiles = [];
                     this.pool.freeAllObjects();
                 }
-                this._rttTiles.push(tile);
+                assertedNotNullish(this._rttTiles).push(tile);
                 // check for cached PoolObject
                 if (tile.rtt[stack]) {
                     const obj = this.pool.getObjectForId(tile.rtt[stack].id);
@@ -182,19 +183,19 @@ export class RenderToTexture {
                 painter.context.clear({color: Color.transparent, stencil: 0});
                 painter.currentStencilSource = undefined;
                 for (let l = 0; l < layers.length; l++) {
-                    const layer = painter.style._layers[layers[l]];
-                    const coords = layer.source ? this._coordsAscending[layer.source][tile.tileID.key] : [tile.tileID];
+                    const layer = assertedNotNullish(painter.style)._layers[layers[l]];
+                    const coords = layer.source ? assertedNotNullish(this._coordsAscending)[layer.source][tile.tileID.key] : [tile.tileID];
                     painter.context.viewport.set([0, 0, obj.fbo.width, obj.fbo.height]);
                     painter._renderTileClippingMasks(layer, coords, true);
-                    painter.renderLayer(painter, painter.style.sourceCaches[layer.source], layer, coords, options);
-                    if (layer.source) tile.rttCoords[layer.source] = this._coordsAscendingStr[layer.source][tile.tileID.key];
+                    painter.renderLayer(painter, assertedNotNullish(painter.style).sourceCaches[assertedNotNullish(layer.source)], layer, coords, options);
+                    if (layer.source) tile.rttCoords[layer.source] = assertedNotNullish(this._coordsAscendingStr)[layer.source][tile.tileID.key];
                 }
             }
-            drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+            drawTerrain(this.painter, this.terrain, assertedNotNullish(this._rttTiles), options);
             this._rttTiles = [];
             this.pool.freeAllObjects();
 
-            return LAYERS[type];
+            return LAYERS[type] ?? false;
         }
 
         return false;

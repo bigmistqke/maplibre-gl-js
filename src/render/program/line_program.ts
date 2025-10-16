@@ -1,6 +1,6 @@
 import {Uniform1i, Uniform1f, Uniform2f, Uniform3f} from '../uniform_binding';
 import {pixelsToTileUnits} from '../../source/pixels_to_tile_units';
-import {extend, translatePosition} from '../../util/util';
+import {extend, translatePosition, assertedNotNullish } from '../../util/util';
 
 import type {Context} from '../../gl/context';
 import type {UniformValues, UniformLocations} from '../uniform_binding';
@@ -137,8 +137,8 @@ const lineUniformValues = (
         'u_ratio': ratioScale / pixelsToTileUnits(tile, 1, transform.zoom),
         'u_device_pixel_ratio': painter.pixelRatio,
         'u_units_to_pixels': [
-            1 / transform.pixelsToGLUnits[0],
-            1 / transform.pixelsToGLUnits[1]
+            1 / assertedNotNullish(transform.pixelsToGLUnits)[0],
+            1 / assertedNotNullish(transform.pixelsToGLUnits)[1]
         ]
     };
 };
@@ -167,7 +167,7 @@ const linePatternUniformValues = (
     const tileZoomRatio = calculateTileRatio(tile, transform);
     return {
         'u_translation': calculateTranslation(painter, tile, layer),
-        'u_texsize': tile.imageAtlasTexture.size,
+        'u_texsize': assertedNotNullish(tile.imageAtlasTexture).size,
         // camera zoom ratio
         'u_ratio': ratioScale / pixelsToTileUnits(tile, 1, transform.zoom),
         'u_device_pixel_ratio': painter.pixelRatio,
@@ -175,8 +175,8 @@ const linePatternUniformValues = (
         'u_scale': [tileZoomRatio, crossfade.fromScale, crossfade.toScale],
         'u_fade': crossfade.t,
         'u_units_to_pixels': [
-            1 / transform.pixelsToGLUnits[0],
-            1 / transform.pixelsToGLUnits[1]
+            1 / assertedNotNullish(transform.pixelsToGLUnits)[0],
+            1 / assertedNotNullish(transform.pixelsToGLUnits)[1]
         ]
     };
 };
@@ -197,8 +197,8 @@ const lineSDFUniformValues = (
         'u_crossfade_to': crossfade.toScale,
         'u_image': 0,
         'u_mix': crossfade.t,
-        'u_lineatlas_width': painter.lineAtlas.width,
-        'u_lineatlas_height': painter.lineAtlas.height,
+        'u_lineatlas_width': assertedNotNullish(painter.lineAtlas).width,
+        'u_lineatlas_height': assertedNotNullish(painter.lineAtlas).height,
     });
 };
 
@@ -221,8 +221,8 @@ const lineGradientSDFUniformValues = (
         'u_crossfade_to': crossfade.toScale,
         'u_image_dash': 1,
         'u_mix': crossfade.t,
-        'u_lineatlas_width': painter.lineAtlas.width,
-        'u_lineatlas_height': painter.lineAtlas.height,
+        'u_lineatlas_width': assertedNotNullish(painter.lineAtlas).width,
+        'u_lineatlas_height': assertedNotNullish(painter.lineAtlas).height,
     });
 };
 
@@ -235,8 +235,8 @@ function calculateTranslation(painter: Painter, tile: Tile, layer: LineStyleLaye
     return translatePosition(
         painter.transform,
         tile,
-        layer.paint.get('line-translate'),
-        layer.paint.get('line-translate-anchor')
+        assertedNotNullish(layer.paint).get('line-translate'),
+        assertedNotNullish(layer.paint).get('line-translate-anchor')
     );
 }
 

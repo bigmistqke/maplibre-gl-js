@@ -245,7 +245,7 @@ class ${structArrayLayoutClass} extends StructArray {`);
 
     for (const type of usedTypes) {
         output.push(
-            `    ${type.toLowerCase()}: ${type}Array;`);
+            `    ${type.toLowerCase()}!: ${type}Array;`);
     }
 
     output.push(`
@@ -253,7 +253,7 @@ class ${structArrayLayoutClass} extends StructArray {`);
 
     for (const type of usedTypes) {
         output.push(
-            `        this.${type.toLowerCase()} = new ${type}Array(this.arrayBuffer);`);
+            `        this.${type.toLowerCase()} = new ${type}Array(assertedNotNullish(this.arrayBuffer));`);
     }
 
     output.push(
@@ -354,7 +354,7 @@ function emitStructArray(locals) {
         output.push(
             `/** @internal */
 class ${structTypeClass} extends Struct {
-    _structArray: ${structArrayClass};`);
+    _structArray!: ${structArrayClass};`);
 
         for (const {name, member, component} of components) {
             const elementOffset = `this._pos${member.size.toFixed(0)}`;
@@ -430,6 +430,7 @@ fs.writeFileSync('src/data/array_types.g.ts',
 import {Struct, StructArray} from '../util/struct_array';
 import {register} from '../util/web_worker_transfer';
 import Point from '@mapbox/point-geometry';
+import {assertedNotNullish} from '../util/util';
 
 ${layouts.map(emitStructArrayLayout).join('\n')}
 ${arraysWithStructAccessors.map(emitStructArray).join('\n')}

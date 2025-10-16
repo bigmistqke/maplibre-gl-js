@@ -3,7 +3,7 @@ import {type MercatorCoordinate} from '../mercator_coordinate';
 import {type IReadonlyTransform} from '../transform_interface';
 import {type CoveringTilesOptionsInternal} from './covering_tiles';
 
-export interface CoveringTilesDetailsProvider {
+export interface CoveringTilesDetailsProvider<TBoundingVolume extends IBoundingVolume = IBoundingVolume> {
     /**
      * Returns the distance from the point to the tile
      * @param pointX - point x.
@@ -11,7 +11,7 @@ export interface CoveringTilesDetailsProvider {
      * @param tileID - Tile x, y and z for zoom.
      * @param boundingVolume - tile bounding volume
      */
-    distanceToTile2d: (pointX: number, pointY: number, tileID: {x: number; y: number; z: number}, boundingVolume: IBoundingVolume) => number;
+    distanceToTile2d: (pointX: number, pointY: number, tileID: {x: number; y: number; z: number}, boundingVolume: TBoundingVolume) => number;
 
     /**
      * Returns the wrap value for a given tile.
@@ -25,7 +25,7 @@ export interface CoveringTilesDetailsProvider {
      * @param elevation - camera center point elevation.
      * @param options - CoveringTilesOptions.
      */
-    getTileBoundingVolume: (tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal) => IBoundingVolume;
+    getTileBoundingVolume: (tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal) => TBoundingVolume;
 
     /**
      * Whether to allow variable zoom, which is used at high pitch angle to avoid loading an excessive amount of tiles.

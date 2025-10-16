@@ -6,7 +6,7 @@ import {
 import {verticalizePunctuation} from '../util/verticalize_punctuation';
 import {rtlWorkerPlugin} from '../source/rtl_text_plugin_worker';
 import ONE_EM from './one_em';
-import {warnOnce} from '../util/util';
+import {warnOnce, assertedNotNullish, assertNotNullish} from '../util/util';
 
 import type {StyleGlyph, GlyphMetrics} from '../style/style_glyph';
 import {GLYPH_PBF_BORDER} from '../style/parse_glyph_pbf';
@@ -275,7 +275,7 @@ function shapeText(
     text: Formatted,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     glyphPositions: {
@@ -339,7 +339,7 @@ function shapeText(
         lines = breakLines(logicalInput, determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, layoutTextSize));
     }
 
-    const positionedLines = [];
+    const positionedLines: PositionedLine[] = [];
     const shaping = {
         positionedLines,
         text: logicalInput.toString(),
@@ -405,7 +405,7 @@ function getGlyphAdvance(
     section: SectionOptions,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     imagePositions: {[_: string]: ImagePosition},
@@ -429,7 +429,7 @@ function determineAverageLineWidth(logicalInput: TaggedString,
     maxWidth: number,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     imagePositions: {[_: string]: ImagePosition},
@@ -489,7 +489,7 @@ function calculatePenalty(codePoint: number, nextCodePoint: number, penalizableI
 type Break = {
     index: number;
     x: number;
-    priorBreak: Break;
+    priorBreak: Break | null;
     badness: number;
 };
 
@@ -506,7 +506,7 @@ function evaluateBreak(
     //  ...and when targetWidth and maxWidth are close, strictly enforcing maxWidth can give
     //     more lopsided results.
 
-    let bestPriorBreak: Break = null;
+    let bestPriorBreak: Break | null = null;
     let bestBreakBadness = calculateBadness(breakX, targetWidth, penalty, isLastBreak);
 
     for (const potentialBreak of potentialBreaks) {
@@ -540,7 +540,7 @@ function determineLineBreaks(
     maxWidth: number,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     imagePositions: {[_: string]: ImagePosition},
@@ -549,7 +549,7 @@ function determineLineBreaks(
     if (!logicalInput)
         return [];
 
-    const potentialLineBreaks = [];
+    const potentialLineBreaks: Break[] = [];
     const targetWidth = determineAverageLineWidth(logicalInput, spacing, maxWidth, glyphMap, imagePositions, layoutTextSize);
 
     const hasServerSuggestedBreakpoints = logicalInput.text.indexOf('\u200b') >= 0;
@@ -652,7 +652,7 @@ function getRectAndMetrics(
     glyphPosition: GlyphPosition,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     section: SectionOptions,
@@ -686,7 +686,7 @@ function isLineVertical(
 function shapeLines(shaping: Shaping,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     glyphPositions: {
@@ -720,7 +720,7 @@ function shapeLines(shaping: Shaping,
         line.trim();
 
         const lineMaxScale = line.getMaxScale();
-        const positionedLine = {positionedGlyphs: [], lineOffset: 0};
+        const positionedLine: PositionedLine = {positionedGlyphs: [], lineOffset: 0};
         shaping.positionedLines[lineIndex] = positionedLine;
         const positionedGlyphs = positionedLine.positionedGlyphs;
         let imageOffset = 0.0;
@@ -739,7 +739,7 @@ function shapeLines(shaping: Shaping,
             const codePoint = line.getCharCode(i);
             const vertical = isLineVertical(writingMode, allowVerticalPlacement, codePoint);
 
-            let sectionAttributes: ShapingSectionAttributes;
+            let sectionAttributes: ShapingSectionAttributes | null;
 
             if (!section.imageName) {
                 sectionAttributes = shapeTextSection(section, codePoint, vertical, lineShapingSize, glyphMap, glyphPositions);
@@ -753,10 +753,10 @@ function shapeLines(shaping: Shaping,
 
                 sectionAttributes = shapeImageSection(section, vertical, lineMaxScale, lineShapingSize, imagePositions);
                 if (!sectionAttributes) continue;
-                imageOffset = Math.max(imageOffset, sectionAttributes.imageOffset);
+                imageOffset = Math.max(imageOffset, assertedNotNullish(sectionAttributes.imageOffset));
             }
 
-            const {rect, metrics, baselineOffset} = sectionAttributes;
+            const {rect, metrics, baselineOffset} = assertedNotNullish(sectionAttributes);
             positionedGlyphs.push({
                 glyph: codePoint,
                 imageName: section.imageName,
@@ -814,7 +814,7 @@ function shapeTextSection(
     lineShapingSize: LineShapingSize,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     glyphPositions: {
@@ -852,6 +852,7 @@ function shapeImageSection(
     lineShapingSize: LineShapingSize,
     imagePositions: {[_: string]: ImagePosition},
 ): ShapingSectionAttributes | null {
+    if (!section.imageName) return null;
     const imagePosition = imagePositions[section.imageName];
     if (!imagePosition) return null;
     const rect = imagePosition.paddedRect;
@@ -874,7 +875,7 @@ function shapeImageSection(
     // Difference between height of an image and one EM at max line scale.
     // Pushes current line down if an image size is over 1 EM at max line scale.
     const imageOffset = (vertical ? size[0] : size[1]) * section.scale - ONE_EM * lineMaxScale;
-    
+
     return {rect, metrics, baselineOffset, imageOffset};
 }
 
@@ -969,8 +970,10 @@ function applyTextFit(shapedIcon: PositionedIcon): Box {
     let iconWidth = shapedIcon.right - iconLeft;
     let iconHeight = shapedIcon.bottom - iconTop;
     // Size of the original content area
-    const contentWidth = shapedIcon.image.content[2] - shapedIcon.image.content[0];
-    const contentHeight = shapedIcon.image.content[3] - shapedIcon.image.content[1];
+    const content = shapedIcon.image.content;
+    assertNotNullish(content, 'Expected shapedIcon.image.content to be defined for text fit');
+    const contentWidth = content[2] - content[0];
+    const contentHeight = content[3] - content[1];
     const textFitWidth = shapedIcon.image.textFitWidth ?? TextFit.stretchOrShrink;
     const textFitHeight = shapedIcon.image.textFitHeight ?? TextFit.stretchOrShrink;
     const contentAspectRatio = contentWidth / contentHeight;
@@ -1009,7 +1012,7 @@ function fitIconToText(
 
     const image = shapedIcon.image;
 
-    let collisionPadding;
+    let collisionPadding: [number, number, number, number] | undefined;
     if (image.content) {
         const content = image.content;
         const pixelRatio = image.pixelRatio || 1;

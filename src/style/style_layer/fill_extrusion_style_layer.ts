@@ -10,17 +10,18 @@ import Point from '@mapbox/point-geometry';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {BucketParameters} from '../../data/bucket';
 import type {FillExtrusionPaintProps} from './fill_extrusion_style_layer_properties.g';
+import { assertedNotNullish } from "../../util/util";
 
 export class Point3D extends Point {
-    z: number;
+    z: number | undefined;
 }
 
 export const isFillExtrusionStyleLayer = (layer: StyleLayer): layer is FillExtrusionStyleLayer => layer.type === 'fill-extrusion';
 
 export class FillExtrusionStyleLayer extends StyleLayer {
-    _transitionablePaint: Transitionable<FillExtrusionPaintProps>;
-    _transitioningPaint: Transitioning<FillExtrusionPaintProps>;
-    paint: PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<FillExtrusionPaintProps> | undefined;
+    _transitioningPaint: Transitioning<FillExtrusionPaintProps> | undefined;
+    paint: PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
@@ -31,7 +32,7 @@ export class FillExtrusionStyleLayer extends StyleLayer {
     }
 
     queryRadius(): number {
-        return translateDistance(this.paint.get('fill-extrusion-translate'));
+        return translateDistance(assertedNotNullish(this.paint).get('fill-extrusion-translate'));
     }
 
     is3D(): boolean {
@@ -49,27 +50,27 @@ export class FillExtrusionStyleLayer extends StyleLayer {
     ): boolean | number {
 
         const translatedPolygon = translate(queryGeometry,
-            this.paint.get('fill-extrusion-translate'),
-            this.paint.get('fill-extrusion-translate-anchor'),
+            assertedNotNullish(this.paint).get('fill-extrusion-translate'),
+            assertedNotNullish(this.paint).get('fill-extrusion-translate-anchor'),
             -transform.bearingInRadians, pixelsToTileUnits);
 
-        const height = this.paint.get('fill-extrusion-height').evaluate(feature, featureState);
-        const base = this.paint.get('fill-extrusion-base').evaluate(feature, featureState);
+        const height = assertedNotNullish(this.paint).get('fill-extrusion-height').evaluate(feature, featureState);
+        const base = assertedNotNullish(this.paint).get('fill-extrusion-base').evaluate(feature, featureState);
 
         const projectedQueryGeometry = projectQueryGeometry(translatedPolygon, pixelPosMatrix, 0);
 
         const projected = projectExtrusion(geometry, base, height, pixelPosMatrix);
         const projectedBase = projected[0];
         const projectedTop = projected[1];
-        return checkIntersection(projectedBase, projectedTop, projectedQueryGeometry);
+        return checkIntersection(projectedBase, projectedTop, assertedNotNullish(projectedQueryGeometry));
     }
 }
 
-function dot(a, b) {
+function dot(a: Point, b: Point) {
     return a.x * b.x + a.y * b.y;
 }
 
-export function getIntersectionDistance(projectedQueryGeometry: Array<Point3D>, projectedFace: Array<Point3D>) {
+export function getIntersectionDistance(projectedQueryGeometry: Array<Point>, projectedFace: Array<Point3D>) {
 
     if (projectedQueryGeometry.length === 1) {
         // For point queries calculate the z at which the point intersects the face
@@ -111,7 +112,7 @@ export function getIntersectionDistance(projectedQueryGeometry: Array<Point3D>, 
             const u = 1 - v - w;
 
             // Use the barycentric weighting along with the original triangle z coordinates to get the point of intersection.
-            const distance = a.z * u + b.z * v + c.z * w;
+            const distance = assertedNotNullish(a.z) * u + assertedNotNullish(b.z) * v + assertedNotNullish(c.z) * w;
 
             if (isFinite(distance)) return distance;
         }
@@ -126,13 +127,13 @@ export function getIntersectionDistance(projectedQueryGeometry: Array<Point3D>, 
         // more complicated and expensive to calculate with little benefit.
         let closestDistance = Infinity;
         for (const p of projectedFace) {
-            closestDistance = Math.min(closestDistance, p.z);
+            closestDistance = Math.min(closestDistance, assertedNotNullish(p.z));
         }
         return closestDistance;
     }
 }
 
-function checkIntersection(projectedBase: Array<Array<Point3D>>, projectedTop: Array<Array<Point3D>>, projectedQueryGeometry: Array<Point3D>) {
+function checkIntersection(projectedBase: Array<Array<Point3D>>, projectedTop: Array<Array<Point3D>>, projectedQueryGeometry: Array<Point>) {
     let closestDistance = Infinity;
 
     if (polygonIntersectsMultiPolygon(projectedQueryGeometry, projectedTop)) {

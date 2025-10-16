@@ -115,7 +115,7 @@ export interface ICameraHelper {
 
     handleMapControlsPan(deltas: MapControlsDeltas, tr: ITransform, preZoomAroundLoc: LngLat): void;
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult;
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null | undefined;
 
     handleJumpToCenterZoom(tr: ITransform, options: { zoom?: number; center?: LngLatLike }): void;
 
@@ -153,7 +153,7 @@ export function updateRotation(args: UpdateRotationArgs) {
     }
 }
 
-export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult {
+export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
     const edgePadding = tr.padding;
 
     // Consider all corners of the rotated bounding box derived from the given points
@@ -184,22 +184,22 @@ export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding:
     // Calculate zoom: consider the original bbox and padding.
     const size = upperRight.sub(lowerLeft);
 
-    const availableWidth = (tr.width - (edgePadding.left + edgePadding.right + padding.left + padding.right));
-    const availableHeight = (tr.height - (edgePadding.top + edgePadding.bottom + padding.top + padding.bottom));
+    const availableWidth = (tr.width - ((edgePadding.left ?? 0) + (edgePadding.right ?? 0) + (padding.left ?? 0) + (padding.right ?? 0)));
+    const availableHeight = (tr.height - ((edgePadding.top ?? 0) + (edgePadding.bottom ?? 0) + (padding.top ?? 0) + (padding.bottom ?? 0)));
     const scaleX = availableWidth / size.x;
     const scaleY = availableHeight / size.y;
 
     if (scaleY < 0 || scaleX < 0) {
         cameraBoundsWarning();
-        return undefined;
+        return null;
     }
 
-    const zoom = Math.min(scaleZoom(tr.scale * Math.min(scaleX, scaleY)), options.maxZoom);
+    const zoom = Math.min(scaleZoom(tr.scale * Math.min(scaleX, scaleY)), options.maxZoom ?? 0);
 
     // Calculate center: apply the zoom, the configured offset, as well as offset that exists as a result of padding.
-    const offset = Point.convert(options.offset);
-    const paddingOffsetX = (padding.left - padding.right) / 2;
-    const paddingOffsetY = (padding.top - padding.bottom) / 2;
+    const offset = Point.convert(options.offset ?? [0,0]);
+    const paddingOffsetX = ((padding.left ?? 0) - (padding.right ?? 0)) / 2;
+    const paddingOffsetY = ((padding.top ?? 0) - (padding.bottom ?? 0)) / 2;
     const paddingOffset = new Point(paddingOffsetX, paddingOffsetY);
     const rotatedPaddingOffset = paddingOffset.rotate(degreesToRadians(bearing));
     const offsetAtInitialZoom = offset.add(rotatedPaddingOffset);

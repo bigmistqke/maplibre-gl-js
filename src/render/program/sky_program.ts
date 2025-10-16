@@ -4,6 +4,7 @@ import type {UniformValues, UniformLocations} from '../uniform_binding';
 import {type IReadonlyTransform} from '../../geo/transform_interface';
 import {type Sky} from '../../style/sky';
 import {getMercatorHorizon} from '../../geo/projection/mercator_utils';
+import { assertedNotNullish } from "../../util/util";
 
 export type SkyUniformsType = {
     'u_sky_color': UniformColor;
@@ -30,12 +31,12 @@ const skyUniformValues = (sky: Sky, transform: IReadonlyTransform, pixelRatio: n
     const projectionData = transform.getProjectionData({overscaledTileID: null, applyGlobeMatrix: true, applyTerrainMatrix: true});
     const skyBlend = projectionData.projectionTransition;
     return {
-        'u_sky_color': sky.properties.get('sky-color'),
-        'u_horizon_color': sky.properties.get('horizon-color'),
+        'u_sky_color': assertedNotNullish(sky.properties).get('sky-color'),
+        'u_horizon_color': assertedNotNullish(sky.properties).get('horizon-color'),
         'u_horizon': [(transform.width / 2 - mercatorHorizon * sinRoll)  * pixelRatio,
             (transform.height / 2 + mercatorHorizon * cosRoll) * pixelRatio],
         'u_horizon_normal': [-sinRoll, cosRoll],
-        'u_sky_horizon_blend': (sky.properties.get('sky-horizon-blend') * transform.height / 2) * pixelRatio,
+        'u_sky_horizon_blend': (assertedNotNullish(sky.properties).get('sky-horizon-blend') * transform.height / 2) * pixelRatio,
         'u_sky_blend': skyBlend,
     };
 };

@@ -9,9 +9,9 @@ import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 export const isRasterStyleLayer = (layer: StyleLayer): layer is RasterStyleLayer => layer.type === 'raster';
 
 export class RasterStyleLayer extends StyleLayer {
-    _transitionablePaint: Transitionable<RasterPaintProps>;
-    _transitioningPaint: Transitioning<RasterPaintProps>;
-    paint: PossiblyEvaluated<RasterPaintProps, RasterPaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<RasterPaintProps> | undefined;
+    _transitioningPaint: Transitioning<RasterPaintProps> | undefined;
+    paint: PossiblyEvaluated<RasterPaintProps, RasterPaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);

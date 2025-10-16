@@ -12,6 +12,8 @@ import {hasPattern, addPatternDependencies} from './pattern_bucket_features';
 import {loadGeometry} from '../load_geometry';
 import {toEvaluationFeature} from '../evaluation_feature';
 import {EvaluationParameters} from '../../style/evaluation_parameters';
+import {assertedNotNullish, isNotNullish} from '../../util/util';
+import {subdivideVertexLine} from '../../render/subdivision';
 
 import type {CanonicalTileID} from '../../source/tile_id';
 import type {
@@ -24,7 +26,7 @@ import type {
 import type {LineStyleLayer} from '../../style/style_layer/line_style_layer';
 import type Point from '@mapbox/point-geometry';
 import type {Segment} from '../segment';
-import {type RGBAImage} from '../../util/image';
+import type {RGBAImage} from '../../util/image';
 import type {Context} from '../../gl/context';
 import type {Texture} from '../../render/texture';
 import type {IndexBuffer} from '../../gl/index_buffer';
@@ -32,9 +34,8 @@ import type {VertexBuffer} from '../../gl/vertex_buffer';
 import type {FeatureStates} from '../../source/source_state';
 import type {ImagePosition} from '../../render/image_atlas';
 import type {VectorTileLayer} from '@mapbox/vector-tile';
-import {subdivideVertexLine} from '../../render/subdivision';
 import type {SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
-import {type DashEntry} from '../../render/line_atlas';
+import type {DashEntry} from '../../render/line_atlas';
 
 // NOTE ON EXTRUDE SCALE:
 // scale the extrusion vector so that the normal length is this value.
@@ -94,8 +95,8 @@ export class LineBucket implements Bucket {
     scaledDistance: number;
     lineClips?: LineClips;
 
-    e1: number;
-    e2: number;
+    e1?: number;
+    e2?: number;
 
     index: number;
     zoom: number;
@@ -103,25 +104,28 @@ export class LineBucket implements Bucket {
     layers: Array<LineStyleLayer>;
     layerIds: Array<string>;
     gradients: {[x: string]: GradientTexture};
-    stateDependentLayers: Array<any>;
+    stateDependentLayers?: Array<any>;
     stateDependentLayerIds: Array<string>;
     patternFeatures: Array<BucketFeature>;
     lineClipsArray: Array<LineClips>;
 
     layoutVertexArray: LineLayoutArray;
-    layoutVertexBuffer: VertexBuffer;
+    layoutVertexBuffer?: VertexBuffer;
     layoutVertexArray2: LineExtLayoutArray;
-    layoutVertexBuffer2: VertexBuffer;
+    layoutVertexBuffer2?: VertexBuffer;
 
     indexArray: TriangleIndexArray;
-    indexBuffer: IndexBuffer;
+    indexBuffer?: IndexBuffer;
 
     hasDependencies: boolean;
     programConfigurations: ProgramConfigurationSet<LineStyleLayer>;
     segments: SegmentVector;
-    uploaded: boolean;
+    uploaded?: boolean;
 
     constructor(options: BucketParameters<LineStyleLayer>) {
+        this.distance = 0;
+        this.totalDistance = 0;
+        this.scaledDistance = 0;
         this.zoom = options.zoom;
         this.overscaling = options.overscaling;
         this.layers = options.layers;
@@ -147,7 +151,7 @@ export class LineBucket implements Bucket {
 
     populate(features: Array<IndexedFeature>, options: PopulateParameters, canonical: CanonicalTileID) {
         this.hasDependencies = hasPattern('line', this.layers, options) || this.hasLineDasharray(this.layers);
-        const lineSortKey = this.layers[0].layout.get('line-sort-key');
+        const lineSortKey = assertedNotNullish(this.layers[0].layout).get('line-sort-key');
         const sortFeaturesByKey = !lineSortKey.isConstant();
         const bucketFeatures: BucketFeature[] = [];
 
@@ -178,7 +182,7 @@ export class LineBucket implements Bucket {
 
         if (sortFeaturesByKey) {
             bucketFeatures.sort((a, b) => {
-                return (a.sortKey) - (b.sortKey);
+                return (a.sortKey ?? 0) - (b.sortKey ?? 0);
             });
         }
 
@@ -205,7 +209,7 @@ export class LineBucket implements Bucket {
     }
 
     update(states: FeatureStates, vtLayer: VectorTileLayer, imagePositions: {[_: string]: ImagePosition}, dashPositions: {[_: string]: DashEntry}) {
-        if (!this.stateDependentLayers.length) return;
+        if (!this.stateDependentLayers?.length) return;
         this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
             imagePositions,
             dashPositions
@@ -241,7 +245,7 @@ export class LineBucket implements Bucket {
     destroy() {
         if (!this.layoutVertexBuffer) return;
         this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
+        this.indexBuffer?.destroy();
         this.programConfigurations.destroy();
         this.segments.destroy();
     }
@@ -254,8 +258,8 @@ export class LineBucket implements Bucket {
         }
     }
 
-    addFeature(feature: BucketFeature, geometry: Array<Array<Point>>, index: number, canonical: CanonicalTileID, imagePositions: {[_: string]: ImagePosition}, dashPositions: Record<string, DashEntry>, subdivisionGranularity: SubdivisionGranularitySetting) {
-        const layout = this.layers[0].layout;
+    addFeature(feature: BucketFeature, geometry: Array<Array<Point>>, index: number, canonical: CanonicalTileID, imagePositions: {[_: string]: ImagePosition}, dashPositions: Record<string, DashEntry> | undefined, subdivisionGranularity: SubdivisionGranularitySetting) {
+        const layout = assertedNotNullish(this.layers[0].layout);
         const join = layout.get('line-join').evaluate(feature, {});
         const cap = layout.get('line-cap');
         const miterLimit = layout.get('line-miter-limit');
@@ -266,7 +270,7 @@ export class LineBucket implements Bucket {
             this.addLine(line, feature, join, cap, miterLimit, roundLimit, canonical, subdivisionGranularity);
         }
 
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, {imagePositions, dashPositions, canonical});
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length ?? 0, feature, index, {imagePositions, dashPositions, canonical});
     }
 
     addLine(vertices: Array<Point>, feature: BucketFeature, join: string, cap: string, miterLimit: number, roundLimit: number, canonical: CanonicalTileID | undefined, subdivisionGranularity: SubdivisionGranularitySetting) {
@@ -312,11 +316,11 @@ export class LineBucket implements Bucket {
         // we could be more precise, but it would only save a negligible amount of space
         const segment = this.segments.prepareSegment(len * 10, this.layoutVertexArray, this.indexArray);
 
-        let currentVertex: Point;
-        let prevVertex: Point;
-        let nextVertex: Point;
-        let prevNormal: Point;
-        let nextNormal: Point;
+        let currentVertex: Point | undefined;
+        let prevVertex: Point | undefined;
+        let nextVertex: Point | undefined;
+        let prevNormal: Point | undefined;
+        let nextNormal: Point | undefined;
 
         // the last two vertices added
         this.e1 = this.e2 = -1;
@@ -349,6 +353,10 @@ export class LineBucket implements Bucket {
             // non-closed line, so we're doing a straight "join".
             prevNormal = prevNormal || nextNormal;
 
+            if(!prevNormal || !nextNormal){
+                continue;
+            }
+
             // Determine the normal of the join extrusion. It is the angle bisector
             // of the segments between the previous line and the next line.
             // In the case of 180° angles, the prev and next normals cancel each other out:
@@ -380,10 +388,10 @@ export class LineBucket implements Bucket {
             // approximate angle from cosine
             const approxAngle = 2 * Math.sqrt(2 - 2 * cosHalfAngle);
 
-            const isSharpCorner = cosHalfAngle < COS_HALF_SHARP_CORNER && prevVertex && nextVertex;
+            const isSharpCorner = cosHalfAngle < COS_HALF_SHARP_CORNER ;
             const lineTurnsLeft = prevNormal.x * nextNormal.y - prevNormal.y * nextNormal.x > 0;
 
-            if (isSharpCorner && i > first) {
+            if (isSharpCorner && prevVertex && nextVertex && i > first) {
                 const prevSegmentLength = currentVertex.dist(prevVertex);
                 if (prevSegmentLength > 2 * sharpCornerOffset) {
                     const newPrevVertex = currentVertex.sub(currentVertex.sub(prevVertex)._mult(sharpCornerOffset / prevSegmentLength)._round());
@@ -504,7 +512,7 @@ export class LineBucket implements Bucket {
                 }
             }
 
-            if (isSharpCorner && i < len - 1) {
+            if (isSharpCorner && prevVertex && nextVertex && i < len - 1) {
                 const nextSegmentLength = currentVertex.dist(nextVertex);
                 if (nextSegmentLength > 2 * sharpCornerOffset) {
                     const newCurrentVertex = currentVertex.add(nextVertex.sub(currentVertex)._mult(sharpCornerOffset / nextSegmentLength)._round());
@@ -548,7 +556,7 @@ export class LineBucket implements Bucket {
     }
 
     addHalfVertex({x, y}: Point, extrudeX: number, extrudeY: number, round: boolean, up: boolean, dir: number, segment: Segment) {
-        const totalDistance = this.lineClips ? this.scaledDistance * (MAX_LINE_DISTANCE - 1) : this.scaledDistance;
+        const totalDistance = !isNotNullish(this.scaledDistance) ? 0 : this.lineClips ? this.scaledDistance * (MAX_LINE_DISTANCE - 1) : this.scaledDistance;
         // scale down so that we can store longer distances while sacrificing precision.
         const linesofarScaled = totalDistance * LINE_DISTANCE_SCALE;
 
@@ -570,15 +578,15 @@ export class LineBucket implements Bucket {
 
         // Constructs a second vertex buffer with higher precision line progress
         if (this.lineClips) {
-            const progressRealigned = this.scaledDistance - this.lineClips.start;
+            const progressRealigned = isNotNullish(this.scaledDistance) ? this.scaledDistance - this.lineClips.start : 0;
             const endClipRealigned = this.lineClips.end - this.lineClips.start;
             const uvX = progressRealigned / endClipRealigned;
             this.layoutVertexArray2.emplaceBack(uvX, this.lineClipsArray.length);
         }
 
         const e = segment.vertexLength++;
-        if (this.e1 >= 0 && this.e2 >= 0) {
-            this.indexArray.emplaceBack(this.e1, e, this.e2);
+        if ((this.e1 ?? 0) >= 0 && (this.e2 ?? 0) >= 0) {
+            this.indexArray.emplaceBack(this.e1 ?? 0, e, this.e2 ?? 0);
             segment.primitiveLength++;
         }
         if (up) {
@@ -605,7 +613,7 @@ export class LineBucket implements Bucket {
 
     private hasLineDasharray(layers: Array<LineStyleLayer>): boolean {
         for (const layer of layers) {
-            const dasharrayProperty = layer.paint.get('line-dasharray');
+            const dasharrayProperty = assertedNotNullish(layer.paint).get('line-dasharray');
             if (dasharrayProperty && !dasharrayProperty.isConstant()) {
                 return true;
             }
@@ -615,13 +623,13 @@ export class LineBucket implements Bucket {
 
     private addLineDashDependencies(layers: Array<LineStyleLayer>, bucketFeature: BucketFeature, zoom: number, options: PopulateParameters) {
         for (const layer of layers) {
-            const dasharrayProperty = layer.paint.get('line-dasharray');
+            const dasharrayProperty = assertedNotNullish(layer.paint).get('line-dasharray');
 
             if (!dasharrayProperty || dasharrayProperty.value.kind === 'constant') {
                 continue;
             }
 
-            const round = layer.layout.get('line-cap') === 'round';
+            const round = assertedNotNullish(layer.layout).get('line-cap') === 'round';
 
             const min = {
                 dasharray: dasharrayProperty.value.evaluate({zoom: zoom - 1}, bucketFeature, {}),
@@ -644,6 +652,9 @@ export class LineBucket implements Bucket {
             options.dashDependencies[midKey] = mid;
             options.dashDependencies[maxKey] = max;
 
+            if(bucketFeature.dashes === undefined){
+                throw new Error('Expected bucketFeature.dashes to be defined');
+            }
             bucketFeature.dashes[layer.id] = {min: minKey, mid: midKey, max: maxKey};
         }
     }

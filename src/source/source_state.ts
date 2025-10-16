@@ -5,6 +5,11 @@ import type {FeatureState} from '@maplibre/maplibre-gl-style-spec';
 export type FeatureStates = {[featureId: string]: FeatureState};
 export type LayerFeatureStates = {[layer: string]: FeatureStates};
 
+// Types for tracking deletions - values can be null to indicate complete deletion
+type FeatureDeletionState = {[key: string]: null} | null;
+type LayerDeletionState = {[featureId: string]: FeatureDeletionState} | null;
+type DeletedStates = {[sourceLayer: string]: LayerDeletionState};
+
 /**
  * @internal
  * SourceFeatureState manages the state and pending changes
@@ -17,7 +22,7 @@ export type LayerFeatureStates = {[layer: string]: FeatureStates};
 export class SourceFeatureState {
     state: LayerFeatureStates;
     stateChanges: LayerFeatureStates;
-    deletedStates: {};
+    deletedStates: DeletedStates;
 
     constructor() {
         this.state = {};
@@ -45,8 +50,9 @@ export class SourceFeatureState {
                 }
             } else {
                 for (const key in newState) {
-                    const deletionInQueue = this.deletedStates[sourceLayer] && this.deletedStates[sourceLayer][feature] && this.deletedStates[sourceLayer][feature][key] === null;
-                    if (deletionInQueue) delete this.deletedStates[sourceLayer][feature][key];
+                    const deletedFeature = this.deletedStates[sourceLayer]?.[feature];
+                    const deletionInQueue = deletedFeature && deletedFeature[key] === null;
+                    if (deletionInQueue && deletedFeature) delete deletedFeature[key];
                 }
             }
         }
@@ -109,7 +115,7 @@ export class SourceFeatureState {
 
         for (const sourceLayer in this.stateChanges) {
             this.state[sourceLayer]  = this.state[sourceLayer] || {};
-            const layerStates = {};
+            const layerStates: FeatureStates = {};
             for (const feature in this.stateChanges[sourceLayer]) {
                 if (!this.state[sourceLayer][feature]) this.state[sourceLayer][feature] = {};
                 extend(this.state[sourceLayer][feature], this.stateChanges[sourceLayer][feature]);
@@ -120,7 +126,7 @@ export class SourceFeatureState {
 
         for (const sourceLayer in this.deletedStates) {
             this.state[sourceLayer]  = this.state[sourceLayer] || {};
-            const layerStates = {};
+            const layerStates: FeatureStates = {};
 
             if (this.deletedStates[sourceLayer] === null) {
                 for (const ft in this.state[sourceLayer]) {
@@ -128,12 +134,16 @@ export class SourceFeatureState {
                     this.state[sourceLayer][ft] = {};
                 }
             } else {
-                for (const feature in this.deletedStates[sourceLayer]) {
-                    const deleteWholeFeatureState = this.deletedStates[sourceLayer][feature] === null;
+                const deletedLayer = this.deletedStates[sourceLayer];
+                for (const feature in deletedLayer) {
+                    const deleteWholeFeatureState = deletedLayer[feature] === null;
                     if (deleteWholeFeatureState) this.state[sourceLayer][feature] = {};
                     else {
-                        for (const key of Object.keys(this.deletedStates[sourceLayer][feature])) {
-                            delete this.state[sourceLayer][feature][key];
+                        const deletedFeature = deletedLayer[feature];
+                        if (deletedFeature) {
+                            for (const key of Object.keys(deletedFeature)) {
+                                delete this.state[sourceLayer][feature][key];
+                            }
                         }
                     }
                     layerStates[feature] = this.state[sourceLayer][feature];

@@ -1,5 +1,6 @@
 import {LngLatBounds, type LngLatBoundsLike} from '../geo/lng_lat_bounds';
 import {mercatorXfromLng, mercatorYfromLat} from '../geo/mercator_coordinate';
+import {assertedNotNullish} from '../util/util';
 
 import type {CanonicalTileID} from './tile_id';
 
@@ -9,7 +10,7 @@ export class TileBounds {
     maxzoom: number;
 
     constructor(bounds: [number, number, number, number], minzoom?: number | null, maxzoom?: number | null) {
-        this.bounds = LngLatBounds.convert(this.validateBounds(bounds));
+        this.bounds = assertedNotNullish(LngLatBounds.convert(this.validateBounds(bounds)));
         this.minzoom = minzoom || 0;
         this.maxzoom = maxzoom || 24;
     }

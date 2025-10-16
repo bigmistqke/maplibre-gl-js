@@ -30,16 +30,17 @@ import type {EvaluationParameters} from '../evaluation_parameters';
 import type {Expression, Feature, SourceExpression, LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {CanonicalTileID} from '../../source/tile_id';
 import {FormatSectionOverride} from '../format_section_override';
+import { assertedNotNullish } from "../../util/util";
 
 export const isSymbolStyleLayer = (layer: StyleLayer): layer is SymbolStyleLayer => layer.type === 'symbol';
 
 export class SymbolStyleLayer extends StyleLayer {
-    _unevaluatedLayout: Layout<SymbolLayoutProps>;
-    layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>;
+    _unevaluatedLayout: Layout<SymbolLayoutProps> | undefined;
+    layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated> | undefined;
 
-    _transitionablePaint: Transitionable<SymbolPaintProps>;
-    _transitioningPaint: Transitioning<SymbolPaintProps>;
-    paint: PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<SymbolPaintProps> | undefined;
+    _transitioningPaint: Transitioning<SymbolPaintProps> | undefined;
+    paint: PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
@@ -48,50 +49,57 @@ export class SymbolStyleLayer extends StyleLayer {
     recalculate(parameters: EvaluationParameters, availableImages: Array<string>) {
         super.recalculate(parameters, availableImages);
 
-        if (this.layout.get('icon-rotation-alignment') === 'auto') {
-            if (this.layout.get('symbol-placement') !== 'point') {
-                this.layout._values['icon-rotation-alignment'] = 'map';
+        const layout = assertedNotNullish(this.layout);
+        const layoutValues = layout._values as Record<string, any>;
+
+        if (layout.get('icon-rotation-alignment') === 'auto') {
+            if (layout.get('symbol-placement') !== 'point') {
+                layoutValues['icon-rotation-alignment'] = 'map';
             } else {
-                this.layout._values['icon-rotation-alignment'] = 'viewport';
+                layoutValues['icon-rotation-alignment'] = 'viewport';
             }
         }
 
-        if (this.layout.get('text-rotation-alignment') === 'auto') {
-            if (this.layout.get('symbol-placement') !== 'point') {
-                this.layout._values['text-rotation-alignment'] = 'map';
+        if (layout.get('text-rotation-alignment') === 'auto') {
+            if (layout.get('symbol-placement') !== 'point') {
+                layoutValues['text-rotation-alignment'] = 'map';
             } else {
-                this.layout._values['text-rotation-alignment'] = 'viewport';
+                layoutValues['text-rotation-alignment'] = 'viewport';
             }
         }
 
         // If unspecified, `*-pitch-alignment` inherits `*-rotation-alignment`
-        if (this.layout.get('text-pitch-alignment') === 'auto') {
-            this.layout._values['text-pitch-alignment'] = this.layout.get('text-rotation-alignment') === 'map' ? 'map' : 'viewport';
+        if (layout.get('text-pitch-alignment') === 'auto') {
+            layoutValues['text-pitch-alignment'] = layout.get('text-rotation-alignment') === 'map' ? 'map' : 'viewport';
         }
-        if (this.layout.get('icon-pitch-alignment') === 'auto') {
-            this.layout._values['icon-pitch-alignment'] = this.layout.get('icon-rotation-alignment');
+        if (layout.get('icon-pitch-alignment') === 'auto') {
+            layoutValues['icon-pitch-alignment'] = layout.get('icon-rotation-alignment');
         }
 
-        if (this.layout.get('symbol-placement') === 'point') {
-            const writingModes = this.layout.get('text-writing-mode');
+        if (layout.get('symbol-placement') === 'point') {
+            const writingModes = layout.get('text-writing-mode');
             if (writingModes) {
                 // remove duplicates, preserving order
-                const deduped = [];
+                const deduped: Array<'horizontal' | 'vertical'> = [];
                 for (const m of writingModes) {
                     if (deduped.indexOf(m) < 0) deduped.push(m);
                 }
-                this.layout._values['text-writing-mode'] = deduped;
+                layoutValues['text-writing-mode'] = deduped;
             } else {
-                this.layout._values['text-writing-mode'] = ['horizontal'];
+                layoutValues['text-writing-mode'] = ['horizontal'];
             }
         }
 
         this._setPaintOverrides();
     }
 
-    getValueAndResolveTokens(name: any, feature: Feature, canonical: CanonicalTileID, availableImages: Array<string>) {
-        const value = this.layout.get(name).evaluate(feature, {}, canonical, availableImages);
-        const unevaluated = this._unevaluatedLayout._values[name];
+    getValueAndResolveTokens(name: keyof SymbolLayoutPropsPossiblyEvaluated, feature: Feature, canonical: CanonicalTileID, availableImages: Array<string>) {
+        const layoutValue = assertedNotNullish(this.layout).get(name);
+        const value = typeof layoutValue === 'object' && layoutValue !== null && 'evaluate' in layoutValue
+            ? (layoutValue as PossiblyEvaluatedPropertyValue<any>).evaluate(feature, {}, canonical, availableImages)
+            : layoutValue;
+        const unevaluatedValues = assertedNotNullish(this._unevaluatedLayout)._values as Record<string, PropertyValue<any, any>>;
+        const unevaluated = unevaluatedValues[name];
         if (!unevaluated.isDataDriven() && !isExpression(unevaluated.value) && value) {
             return resolveTokens(feature.properties, value);
         }
@@ -112,11 +120,13 @@ export class SymbolStyleLayer extends StyleLayer {
     }
 
     _setPaintOverrides() {
+        const paint = assertedNotNullish(this.paint);
+        const paintValues = paint._values as unknown as Record<string, PossiblyEvaluatedPropertyValue<any>>;
         for (const overridable of properties.paint.overridableProperties) {
-            if (!SymbolStyleLayer.hasPaintOverride(this.layout, overridable)) {
+            if (!SymbolStyleLayer.hasPaintOverride(assertedNotNullish(this.layout), overridable)) {
                 continue;
             }
-            const overridden = this.paint.get(overridable as keyof SymbolPaintPropsPossiblyEvaluated) as PossiblyEvaluatedPropertyValue<number>;
+            const overridden = paint.get(overridable as keyof SymbolPaintPropsPossiblyEvaluated) as PossiblyEvaluatedPropertyValue<number>;
             const override = new FormatSectionOverride(overridden);
             const styleExpression = new StyleExpression(override, overridden.property.specification);
             let expression = null;
@@ -127,7 +137,7 @@ export class SymbolStyleLayer extends StyleLayer {
                     styleExpression,
                     overridden.value.zoomStops);
             }
-            this.paint._values[overridable] = new PossiblyEvaluatedPropertyValue(overridden.property,
+            paintValues[overridable] = new PossiblyEvaluatedPropertyValue(overridden.property,
                 expression,
                 overridden.parameters);
         }
@@ -142,10 +152,10 @@ export class SymbolStyleLayer extends StyleLayer {
 
     static hasPaintOverride(layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>, propertyName: string): boolean {
         const textField = layout.get('text-field');
-        const property = properties.paint.properties[propertyName];
+        const property = (properties.paint.properties as Record<string, any>)[propertyName];
         let hasOverrides = false;
 
-        const checkSections = (sections) => {
+        const checkSections = (sections: Formatted['sections']) => {
             for (const section of sections) {
                 if (property.overrides && property.overrides.hasOverride(section)) {
                     hasOverrides = true;
@@ -165,7 +175,7 @@ export class SymbolStyleLayer extends StyleLayer {
                     const formatted: Formatted = (expression.value as any);
                     checkSections(formatted.sections);
                 } else if (expression instanceof FormatExpression) {
-                    checkSections(expression.sections);
+                    checkSections(expression.sections as unknown as Formatted['sections']);
                 } else {
                     expression.eachChild(checkExpression);
                 }
