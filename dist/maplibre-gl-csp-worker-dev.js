@@ -334,16 +334,22 @@ var terrainVertCoords = 'in vec3 a_pos3d;uniform float u_ele_delta;out vec2 v_te
 ;
 ;
 ;
+;
+;
+;
 /**
  * Global registries for tree-shaking
- * Set these to register sources, layers, draws, and shaders
+ * Set these to register sources, layers, draws, shaders, and buckets
  */
 const registry$1 = {
     source: {},
     layer: {},
     draw: {},
     shader: {},
-    symbol: {}
+    bucket: {},
+    symbol: {},
+    terrain: {},
+    projection: {}
 };
 
 const ALWAYS$1 = 0x0207;
@@ -25904,6 +25910,1324 @@ class StyleLayer extends Evented {
     }
 }
 
+// This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
+/* eslint-disable */
+let paint$9;
+const getPaint$9 = () => paint$9 = paint$9 || new Properties({
+    "heatmap-radius": new DataDrivenProperty(v8Spec["paint_heatmap"]["heatmap-radius"]),
+    "heatmap-weight": new DataDrivenProperty(v8Spec["paint_heatmap"]["heatmap-weight"]),
+    "heatmap-intensity": new DataConstantProperty(v8Spec["paint_heatmap"]["heatmap-intensity"]),
+    "heatmap-color": new ColorRampProperty(v8Spec["paint_heatmap"]["heatmap-color"]),
+    "heatmap-opacity": new DataConstantProperty(v8Spec["paint_heatmap"]["heatmap-opacity"]),
+});
+var properties$a = ({ get paint() { return getPaint$9(); } });
+
+function createImage(image, { width, height }, channels, data) {
+    if (!data) {
+        data = new Uint8Array(width * height * channels);
+    }
+    else if (data instanceof Uint8ClampedArray) {
+        data = new Uint8Array(data.buffer);
+    }
+    else if (data.length !== width * height * channels) {
+        throw new RangeError(`mismatched image size. expected: ${data.length} but got: ${width * height * channels}`);
+    }
+    image.width = width;
+    image.height = height;
+    image.data = data;
+    return image;
+}
+function resizeImage(image, { width, height }, channels) {
+    if (width === image.width && height === image.height) {
+        return;
+    }
+    const newImage = createImage({}, { width, height }, channels);
+    copyImage(image, newImage, { x: 0, y: 0 }, { x: 0, y: 0 }, {
+        width: Math.min(image.width, width),
+        height: Math.min(image.height, height)
+    }, channels);
+    image.width = width;
+    image.height = height;
+    image.data = newImage.data;
+}
+function copyImage(srcImg, dstImg, srcPt, dstPt, size, channels) {
+    if (size.width === 0 || size.height === 0) {
+        return dstImg;
+    }
+    if (size.width > srcImg.width ||
+        size.height > srcImg.height ||
+        srcPt.x > srcImg.width - size.width ||
+        srcPt.y > srcImg.height - size.height) {
+        throw new RangeError('out of range source coordinates for image copy');
+    }
+    if (size.width > dstImg.width ||
+        size.height > dstImg.height ||
+        dstPt.x > dstImg.width - size.width ||
+        dstPt.y > dstImg.height - size.height) {
+        throw new RangeError('out of range destination coordinates for image copy');
+    }
+    const srcData = srcImg.data;
+    const dstData = dstImg.data;
+    if (srcData === dstData)
+        throw new Error('srcData equals dstData, so image is already copied');
+    for (let y = 0; y < size.height; y++) {
+        const srcOffset = ((srcPt.y + y) * srcImg.width + srcPt.x) * channels;
+        const dstOffset = ((dstPt.y + y) * dstImg.width + dstPt.x) * channels;
+        for (let i = 0; i < size.width * channels; i++) {
+            dstData[dstOffset + i] = srcData[srcOffset + i];
+        }
+    }
+    return dstImg;
+}
+/**
+ * An image with alpha color value
+ */
+class AlphaImage {
+    constructor(size, data) {
+        createImage(this, size, 1, data);
+    }
+    resize(size) {
+        resizeImage(this, size, 1);
+    }
+    clone() {
+        return new AlphaImage({ width: this.width, height: this.height }, new Uint8Array(this.data));
+    }
+    static copy(srcImg, dstImg, srcPt, dstPt, size) {
+        copyImage(srcImg, dstImg, srcPt, dstPt, size, 1);
+    }
+}
+/**
+ * An object to store image data not premultiplied, because ImageData is not premultiplied.
+ * UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
+ */
+class RGBAImage {
+    constructor(size, data) {
+        createImage(this, size, 4, data);
+    }
+    resize(size) {
+        resizeImage(this, size, 4);
+    }
+    replace(data, copy) {
+        if (copy) {
+            this.data.set(data);
+        }
+        else if (data instanceof Uint8ClampedArray) {
+            this.data = new Uint8Array(data.buffer);
+        }
+        else {
+            this.data = data;
+        }
+    }
+    clone() {
+        return new RGBAImage({ width: this.width, height: this.height }, new Uint8Array(this.data));
+    }
+    static copy(srcImg, dstImg, srcPt, dstPt, size) {
+        copyImage(srcImg, dstImg, srcPt, dstPt, size, 4);
+    }
+    setPixel(row, col, value) {
+        const rLocation = (row * this.width + col) * 4;
+        this.data[rLocation + 0] = Math.round(value.r * 255 / value.a);
+        this.data[rLocation + 1] = Math.round(value.g * 255 / value.a);
+        this.data[rLocation + 2] = Math.round(value.b * 255 / value.a);
+        this.data[rLocation + 3] = Math.round(value.a * 255);
+    }
+}
+register('AlphaImage', AlphaImage);
+register('RGBAImage', RGBAImage);
+
+/**
+ * Given an expression that should evaluate to a color ramp,
+ * return a RGBA image representing that ramp expression.
+ */
+function renderColorRamp(params) {
+    const evaluationGlobals = {};
+    const width = params.resolution || 256;
+    const height = params.clips ? params.clips.length : 1;
+    const image = params.image || new RGBAImage({ width, height });
+    if (!isPowerOfTwo(width))
+        throw new Error(`width is not a power of 2 - ${width}`);
+    const renderPixel = (stride, index, progress) => {
+        evaluationGlobals[params.evaluationKey] = progress;
+        const pxColor = params.expression.evaluate(evaluationGlobals);
+        image.setPixel(stride / 4 / width, index / 4, pxColor);
+    };
+    if (!params.clips) {
+        for (let i = 0, j = 0; i < width; i++, j += 4) {
+            const progress = i / (width - 1);
+            renderPixel(0, j, progress);
+        }
+    }
+    else {
+        for (let clip = 0, stride = 0; clip < height; ++clip, stride += width * 4) {
+            for (let i = 0, j = 0; i < width; i++, j += 4) {
+                // Remap progress between clips
+                const progress = i / (width - 1);
+                const { start, end } = params.clips[clip];
+                const evaluationProgress = start * (1 - progress) + end * progress;
+                renderPixel(stride, j, evaluationProgress);
+            }
+        }
+    }
+    return image;
+}
+
+function polygonIntersectsPolygon(polygonA, polygonB) {
+    for (let i = 0; i < polygonA.length; i++) {
+        if (polygonContainsPoint(polygonB, polygonA[i]))
+            return true;
+    }
+    for (let i = 0; i < polygonB.length; i++) {
+        if (polygonContainsPoint(polygonA, polygonB[i]))
+            return true;
+    }
+    if (lineIntersectsLine(polygonA, polygonB))
+        return true;
+    return false;
+}
+function polygonIntersectsBufferedPoint(polygon, point, radius) {
+    if (polygonContainsPoint(polygon, point))
+        return true;
+    if (pointIntersectsBufferedLine(point, polygon, radius))
+        return true;
+    return false;
+}
+function polygonIntersectsMultiPolygon(polygon, multiPolygon) {
+    if (polygon.length === 1) {
+        return multiPolygonContainsPoint(multiPolygon, polygon[0]);
+    }
+    for (let m = 0; m < multiPolygon.length; m++) {
+        const ring = multiPolygon[m];
+        for (let n = 0; n < ring.length; n++) {
+            if (polygonContainsPoint(polygon, ring[n]))
+                return true;
+        }
+    }
+    for (let i = 0; i < polygon.length; i++) {
+        if (multiPolygonContainsPoint(multiPolygon, polygon[i]))
+            return true;
+    }
+    for (let k = 0; k < multiPolygon.length; k++) {
+        if (lineIntersectsLine(polygon, multiPolygon[k]))
+            return true;
+    }
+    return false;
+}
+function polygonIntersectsBufferedMultiLine(polygon, multiLine, radius) {
+    for (let i = 0; i < multiLine.length; i++) {
+        const line = multiLine[i];
+        if (polygon.length >= 3) {
+            for (let k = 0; k < line.length; k++) {
+                if (polygonContainsPoint(polygon, line[k]))
+                    return true;
+            }
+        }
+        if (lineIntersectsBufferedLine(polygon, line, radius))
+            return true;
+    }
+    return false;
+}
+function lineIntersectsBufferedLine(lineA, lineB, radius) {
+    if (lineA.length > 1) {
+        if (lineIntersectsLine(lineA, lineB))
+            return true;
+        // Check whether any point in either line is within radius of the other line
+        for (let j = 0; j < lineB.length; j++) {
+            if (pointIntersectsBufferedLine(lineB[j], lineA, radius))
+                return true;
+        }
+    }
+    for (let k = 0; k < lineA.length; k++) {
+        if (pointIntersectsBufferedLine(lineA[k], lineB, radius))
+            return true;
+    }
+    return false;
+}
+function lineIntersectsLine(lineA, lineB) {
+    if (lineA.length === 0 || lineB.length === 0)
+        return false;
+    for (let i = 0; i < lineA.length - 1; i++) {
+        const a0 = lineA[i];
+        const a1 = lineA[i + 1];
+        for (let j = 0; j < lineB.length - 1; j++) {
+            const b0 = lineB[j];
+            const b1 = lineB[j + 1];
+            if (lineSegmentIntersectsLineSegment(a0, a1, b0, b1))
+                return true;
+        }
+    }
+    return false;
+}
+function lineSegmentIntersectsLineSegment(a0, a1, b0, b1) {
+    return isCounterClockwise(a0, b0, b1) !== isCounterClockwise(a1, b0, b1) &&
+        isCounterClockwise(a0, a1, b0) !== isCounterClockwise(a0, a1, b1);
+}
+function pointIntersectsBufferedLine(p, line, radius) {
+    const radiusSquared = radius * radius;
+    if (line.length === 1)
+        return p.distSqr(line[0]) < radiusSquared;
+    for (let i = 1; i < line.length; i++) {
+        // Find line segments that have a distance <= radius^2 to p
+        // In that case, we treat the line as "containing point p".
+        const v = line[i - 1], w = line[i];
+        if (distToSegmentSquared(p, v, w) < radiusSquared)
+            return true;
+    }
+    return false;
+}
+// Code from https://stackoverflow.com/a/1501725/331379.
+function distToSegmentSquared(p, v, w) {
+    const l2 = v.distSqr(w);
+    if (l2 === 0)
+        return p.distSqr(v);
+    const t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    if (t < 0)
+        return p.distSqr(v);
+    if (t > 1)
+        return p.distSqr(w);
+    return p.distSqr(w.sub(v)._mult(t)._add(v));
+}
+// point in polygon ray casting algorithm
+function multiPolygonContainsPoint(rings, p) {
+    let c = false, ring, p1, p2;
+    for (let k = 0; k < rings.length; k++) {
+        ring = rings[k];
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            p1 = ring[i];
+            p2 = ring[j];
+            if (((p1.y > p.y) !== (p2.y > p.y)) && (p.x < (p2.x - p1.x) * (p.y - p1.y) / (p2.y - p1.y) + p1.x)) {
+                c = !c;
+            }
+        }
+    }
+    return c;
+}
+function polygonContainsPoint(ring, p) {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const p1 = ring[i];
+        const p2 = ring[j];
+        if (((p1.y > p.y) !== (p2.y > p.y)) && (p.x < (p2.x - p1.x) * (p.y - p1.y) / (p2.y - p1.y) + p1.x)) {
+            c = !c;
+        }
+    }
+    return c;
+}
+function polygonIntersectsBox(ring, boxX1, boxY1, boxX2, boxY2) {
+    for (const p of ring) {
+        if (boxX1 <= p.x &&
+            boxY1 <= p.y &&
+            boxX2 >= p.x &&
+            boxY2 >= p.y)
+            return true;
+    }
+    const corners = [
+        new Point(boxX1, boxY1),
+        new Point(boxX1, boxY2),
+        new Point(boxX2, boxY2),
+        new Point(boxX2, boxY1)
+    ];
+    if (ring.length > 2) {
+        for (const corner of corners) {
+            if (polygonContainsPoint(ring, corner))
+                return true;
+        }
+    }
+    for (let i = 0; i < ring.length - 1; i++) {
+        const p1 = ring[i];
+        const p2 = ring[i + 1];
+        if (edgeIntersectsBox(p1, p2, corners))
+            return true;
+    }
+    return false;
+}
+function edgeIntersectsBox(e1, e2, corners) {
+    const tl = corners[0];
+    const br = corners[2];
+    // the edge and box do not intersect in either the x or y dimensions
+    if (((e1.x < tl.x) && (e2.x < tl.x)) ||
+        ((e1.x > br.x) && (e2.x > br.x)) ||
+        ((e1.y < tl.y) && (e2.y < tl.y)) ||
+        ((e1.y > br.y) && (e2.y > br.y)))
+        return false;
+    // check if all corners of the box are on the same side of the edge
+    const dir = isCounterClockwise(e1, e2, corners[0]);
+    return dir !== isCounterClockwise(e1, e2, corners[1]) ||
+        dir !== isCounterClockwise(e1, e2, corners[2]) ||
+        dir !== isCounterClockwise(e1, e2, corners[3]);
+}
+
+function getMaximumPaintValue(property, layer, bucket) {
+    const value = layer.paint.get(property).value;
+    if (value.kind === 'constant') {
+        return value.value;
+    }
+    else {
+        return bucket.programConfigurations.get(layer.id).getMaxValue(property);
+    }
+}
+function translateDistance(translate) {
+    return Math.sqrt(translate[0] * translate[0] + translate[1] * translate[1]);
+}
+/**
+ * @internal
+ * Translates a geometry by a certain pixels in tile coordinates
+ * @param queryGeometry - The geometry to translate in tile coordinates
+ * @param translate - The translation in pixels
+ * @param translateAnchor - The anchor of the translation
+ * @param bearing - The bearing of the map
+ * @param pixelsToTileUnits - The scale factor from pixels to tile units
+ * @returns the translated geometry in tile coordinates
+ */
+function translate(queryGeometry, translate, translateAnchor, bearing, pixelsToTileUnits) {
+    if (!translate[0] && !translate[1]) {
+        return queryGeometry;
+    }
+    const pt = Point.convert(translate)._mult(pixelsToTileUnits);
+    if (translateAnchor === 'viewport') {
+        pt._rotate(-bearing);
+    }
+    const translated = [];
+    for (let i = 0; i < queryGeometry.length; i++) {
+        const point = queryGeometry[i];
+        translated.push(point.sub(pt));
+    }
+    return translated;
+}
+function offsetLine(rings, offset) {
+    const newRings = [];
+    for (let ringIndex = 0; ringIndex < rings.length; ringIndex++) {
+        const ring = rings[ringIndex];
+        const newRing = [];
+        for (let index = 0; index < ring.length; index++) {
+            const a = ring[index - 1];
+            const b = ring[index];
+            const c = ring[index + 1];
+            const aToB = index === 0 ? new Point(0, 0) : b.sub(a)._unit()._perp();
+            const bToC = index === ring.length - 1 ? new Point(0, 0) : c.sub(b)._unit()._perp();
+            const extrude = aToB._add(bToC)._unit();
+            const cosHalfAngle = extrude.x * bToC.x + extrude.y * bToC.y;
+            if (cosHalfAngle !== 0) {
+                extrude._mult(1 / cosHalfAngle);
+            }
+            newRing.push(extrude._mult(offset)._add(b));
+        }
+        newRings.push(newRing);
+    }
+    return newRings;
+}
+function intersectionTestMapMap({ queryGeometry, size }, point) {
+    return polygonIntersectsBufferedPoint(queryGeometry, point, size);
+}
+function intersectionTestMapViewport({ queryGeometry, size, transform, unwrappedTileID, getElevation }, point) {
+    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
+    const adjustedSize = size * (w / transform.cameraToCenterDistance);
+    return polygonIntersectsBufferedPoint(queryGeometry, point, adjustedSize);
+}
+function intersectionTestViewportMap({ queryGeometry, size, transform, unwrappedTileID, getElevation }, point) {
+    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
+    const adjustedSize = size * (transform.cameraToCenterDistance / w);
+    return polygonIntersectsBufferedPoint(queryGeometry, projectPoint(point, transform, unwrappedTileID, getElevation), adjustedSize);
+}
+function intersectionTestViewportViewport({ queryGeometry, size, transform, unwrappedTileID, getElevation }, point) {
+    return polygonIntersectsBufferedPoint(queryGeometry, projectPoint(point, transform, unwrappedTileID, getElevation), size);
+}
+function circleIntersection({ queryGeometry, size, transform, unwrappedTileID, getElevation, pitchAlignment = 'map', pitchScale = 'map' }, geometry) {
+    const intersectionTest = pitchAlignment === 'map'
+        ? (pitchScale === 'map' ? intersectionTestMapMap : intersectionTestMapViewport)
+        : (pitchScale === 'map' ? intersectionTestViewportMap : intersectionTestViewportViewport);
+    const param = { queryGeometry, size, transform, unwrappedTileID, getElevation };
+    for (const ring of geometry) {
+        for (const point of ring) {
+            if (intersectionTest(param, point)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function projectPoint(tilePoint, transform, unwrappedTileID, getElevation) {
+    // Convert `tilePoint` from tile coordinates to clip coordinates.
+    const clipPoint = transform.projectTileCoordinates(tilePoint.x, tilePoint.y, unwrappedTileID, getElevation).point;
+    // Convert `clipPoint` from clip coordinates into pixel/screen coordinates.
+    const pixelPoint = new Point((clipPoint.x * 0.5 + 0.5) * transform.width, (-clipPoint.y * 0.5 + 0.5) * transform.height);
+    return pixelPoint;
+}
+function projectQueryGeometry$1(queryGeometry, transform, unwrappedTileID, getElevation) {
+    return queryGeometry.map((p) => {
+        return projectPoint(p, transform, unwrappedTileID, getElevation);
+    });
+}
+
+const HEATMAP_FULL_RENDER_FBO_KEY = 'big-fb';
+const isHeatmapStyleLayer = (layer) => layer.type === 'heatmap';
+/**
+ * A style layer that defines a heatmap
+ */
+class HeatmapStyleLayer extends StyleLayer {
+    createBucket(options) {
+        return new registry$1.bucket.heatmap(options);
+    }
+    constructor(layer, globalState) {
+        super(layer, properties$a, globalState);
+        this.heatmapFbos = new Map();
+        // make sure color ramp texture is generated for default heatmap color too
+        this._updateColorRamp();
+    }
+    _handleSpecialPaintPropertyUpdate(name) {
+        if (name === 'heatmap-color') {
+            this._updateColorRamp();
+        }
+    }
+    _updateColorRamp() {
+        const expression = this._transitionablePaint._values['heatmap-color'].value.expression;
+        this.colorRamp = renderColorRamp({
+            expression,
+            evaluationKey: 'heatmapDensity',
+            image: this.colorRamp
+        });
+        this.colorRampTexture = null;
+    }
+    resize() {
+        if (this.heatmapFbos.has(HEATMAP_FULL_RENDER_FBO_KEY)) {
+            this.heatmapFbos.delete(HEATMAP_FULL_RENDER_FBO_KEY);
+        }
+    }
+    queryRadius(bucket) {
+        return getMaximumPaintValue('heatmap-radius', this, bucket);
+    }
+    queryIntersectsFeature({ queryGeometry, feature, featureState, geometry, transform, pixelsToTileUnits, unwrappedTileID, getElevation }) {
+        return circleIntersection({
+            queryGeometry,
+            size: this.paint.get('heatmap-radius').evaluate(feature, featureState) * pixelsToTileUnits,
+            transform,
+            unwrappedTileID,
+            getElevation
+        }, geometry);
+    }
+    hasOffscreenPass() {
+        return this.paint.get('heatmap-opacity') !== 0 && this.visibility !== 'none';
+    }
+}
+
+function drawHeatmap(painter, sourceCache, layer, tileIDs, renderOptions) {
+    if (layer.paint.get('heatmap-opacity') === 0) {
+        return;
+    }
+    const context = painter.context;
+    const { isRenderingToTexture, isRenderingGlobe } = renderOptions;
+    if (painter.style.map.terrain) {
+        for (const coord of tileIDs) {
+            const tile = sourceCache.getTile(coord);
+            // Skip tiles that have uncovered parents to avoid flickering; we don't need
+            // to use complex tile masking here because the change between zoom levels is subtle,
+            // so it's fine to simply render the parent until all its 4 children are loaded
+            if (sourceCache.hasRenderableParent(coord))
+                continue;
+            if (painter.renderPass === 'offscreen') {
+                prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe);
+            }
+            else if (painter.renderPass === 'translucent') {
+                renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe);
+            }
+        }
+        context.viewport.set([0, 0, painter.width, painter.height]);
+    }
+    else {
+        if (painter.renderPass === 'offscreen') {
+            prepareHeatmapFlat(painter, sourceCache, layer, tileIDs);
+        }
+        else if (painter.renderPass === 'translucent') {
+            renderHeatmapFlat(painter, layer);
+        }
+    }
+}
+function prepareHeatmapFlat(painter, sourceCache, layer, coords) {
+    const context = painter.context;
+    const gl = context.gl;
+    const transform = painter.transform;
+    // Allow kernels to be drawn across boundaries, so that
+    // large kernels are not clipped to tiles
+    const stencilMode = StencilMode.disabled;
+    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
+    const colorMode = new ColorMode([gl.ONE, gl.ONE], Color.transparent, [true, true, true, true]);
+    bindFramebuffer(context, painter, layer);
+    context.clear({ color: Color.transparent });
+    for (let i = 0; i < coords.length; i++) {
+        const coord = coords[i];
+        // Skip tiles that have uncovered parents to avoid flickering; we don't need
+        // to use complex tile masking here because the change between zoom levels is subtle,
+        // so it's fine to simply render the parent until all its 4 children are loaded
+        if (sourceCache.hasRenderableParent(coord))
+            continue;
+        const tile = sourceCache.getTile(coord);
+        const bucket = tile.getBucket(layer);
+        if (!bucket)
+            continue;
+        const programConfiguration = bucket.programConfigurations.get(layer.id);
+        const program = painter.useProgram('heatmap', programConfiguration);
+        const projectionData = transform.getProjectionData({ overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: false });
+        const radiusCorrectionFactor = transform.getCircleRadiusCorrection();
+        program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.backCCW, heatmapUniformValues(tile, transform.zoom, layer.paint.get('heatmap-intensity'), radiusCorrectionFactor), null, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, transform.zoom, programConfiguration);
+    }
+    context.viewport.set([0, 0, painter.width, painter.height]);
+}
+function renderHeatmapFlat(painter, layer) {
+    const context = painter.context;
+    const gl = context.gl;
+    context.setColorMode(painter.colorModeForRenderPass());
+    // Here we bind two different textures from which we'll sample in drawing
+    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
+    // color ramp texture.
+    const fbo = layer.heatmapFbos.get(HEATMAP_FULL_RENDER_FBO_KEY);
+    if (!fbo)
+        return;
+    context.activeTexture.set(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
+    context.activeTexture.set(gl.TEXTURE1);
+    const colorRampTexture = getColorRampTexture(context, layer);
+    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, null, layer.id, painter.viewportBuffer, painter.quadTriangleIndexBuffer, painter.viewportSegments, layer.paint, painter.transform.zoom);
+}
+function prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe) {
+    const context = painter.context;
+    const gl = context.gl;
+    const stencilMode = StencilMode.disabled;
+    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
+    const colorMode = new ColorMode([gl.ONE, gl.ONE], Color.transparent, [true, true, true, true]);
+    const bucket = tile.getBucket(layer);
+    if (!bucket)
+        return;
+    const tileKey = coord.key;
+    let fbo = layer.heatmapFbos.get(tileKey);
+    if (!fbo) {
+        fbo = createHeatmapFbo(context, tile.tileSize, tile.tileSize);
+        layer.heatmapFbos.set(tileKey, fbo);
+    }
+    context.bindFramebuffer.set(fbo.framebuffer);
+    context.viewport.set([0, 0, tile.tileSize, tile.tileSize]);
+    context.clear({ color: Color.transparent });
+    const programConfiguration = bucket.programConfigurations.get(layer.id);
+    const program = painter.useProgram('heatmap', programConfiguration, !isRenderingGlobe);
+    const projectionData = painter.transform.getProjectionData({ overscaledTileID: tile.tileID, applyGlobeMatrix: true, applyTerrainMatrix: true });
+    const terrainData = painter.style.map.terrain.getTerrainData(coord);
+    program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled, heatmapUniformValues(tile, painter.transform.zoom, layer.paint.get('heatmap-intensity'), 1.0), terrainData, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration);
+}
+function renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe) {
+    const context = painter.context;
+    const gl = context.gl;
+    const transform = painter.transform;
+    context.setColorMode(painter.colorModeForRenderPass());
+    const colorRampTexture = getColorRampTexture(context, layer);
+    // Here we bind two different textures from which we'll sample in drawing
+    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
+    // color ramp texture.
+    const tileKey = coord.key;
+    const fbo = layer.heatmapFbos.get(tileKey);
+    if (!fbo)
+        return;
+    context.activeTexture.set(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
+    context.activeTexture.set(gl.TEXTURE1);
+    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+    const projectionData = transform.getProjectionData({ overscaledTileID: coord, applyTerrainMatrix: isRenderingGlobe, applyGlobeMatrix: !isRenderingToTexture });
+    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, projectionData, layer.id, painter.rasterBoundsBuffer, painter.quadTriangleIndexBuffer, painter.rasterBoundsSegments, layer.paint, transform.zoom);
+    // destroy the FBO after rendering
+    fbo.destroy();
+    layer.heatmapFbos.delete(tileKey);
+}
+function bindFramebuffer(context, painter, layer) {
+    const gl = context.gl;
+    context.activeTexture.set(gl.TEXTURE1);
+    // Use a 4x downscaled screen texture for better performance
+    context.viewport.set([0, 0, painter.width / 4, painter.height / 4]);
+    let fbo = layer.heatmapFbos.get(HEATMAP_FULL_RENDER_FBO_KEY);
+    if (!fbo) {
+        fbo = createHeatmapFbo(context, painter.width / 4, painter.height / 4);
+        layer.heatmapFbos.set(HEATMAP_FULL_RENDER_FBO_KEY, fbo);
+    }
+    else {
+        gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
+        context.bindFramebuffer.set(fbo.framebuffer);
+    }
+}
+function createHeatmapFbo(context, width, height) {
+    var _a, _b;
+    const gl = context.gl;
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    // Use the higher precision half-float texture where available (producing much smoother looking heatmaps);
+    // Otherwise, fall back to a low precision texture
+    const numType = (_a = context.HALF_FLOAT) !== null && _a !== void 0 ? _a : gl.UNSIGNED_BYTE;
+    const internalFormat = (_b = context.RGBA16F) !== null && _b !== void 0 ? _b : gl.RGBA;
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, gl.RGBA, numType, null);
+    const fbo = context.createFramebuffer(width, height, false, false);
+    fbo.colorAttachment.set(texture);
+    return fbo;
+}
+function getColorRampTexture(context, layer) {
+    if (!layer.colorRampTexture) {
+        layer.colorRampTexture = new Texture(context, layer.colorRamp, context.gl.RGBA);
+    }
+    return layer.colorRampTexture;
+}
+
+const hillshadeUniforms = (context, locations) => ({
+    'u_image': new Uniform1i(context, locations.u_image),
+    'u_latrange': new Uniform2f(context, locations.u_latrange),
+    'u_exaggeration': new Uniform1f(context, locations.u_exaggeration),
+    'u_altitudes': new UniformFloatArray(context, locations.u_altitudes),
+    'u_azimuths': new UniformFloatArray(context, locations.u_azimuths),
+    'u_accent': new UniformColor(context, locations.u_accent),
+    'u_method': new Uniform1i(context, locations.u_method),
+    'u_shadows': new UniformColorArray(context, locations.u_shadows),
+    'u_highlights': new UniformColorArray(context, locations.u_highlights)
+});
+const hillshadePrepareUniforms = (context, locations) => ({
+    'u_matrix': new UniformMatrix4f(context, locations.u_matrix),
+    'u_image': new Uniform1i(context, locations.u_image),
+    'u_dimension': new Uniform2f(context, locations.u_dimension),
+    'u_zoom': new Uniform1f(context, locations.u_zoom),
+    'u_unpack': new Uniform4f(context, locations.u_unpack)
+});
+const hillshadeUniformValues = (painter, tile, layer) => {
+    const accent = layer.paint.get('hillshade-accent-color');
+    let method;
+    switch (layer.paint.get('hillshade-method')) {
+        case 'basic':
+            method = 4;
+            break;
+        case 'combined':
+            method = 1;
+            break;
+        case 'igor':
+            method = 2;
+            break;
+        case 'multidirectional':
+            method = 3;
+            break;
+        case 'standard':
+        default:
+            method = 0;
+            break;
+    }
+    const illumination = layer.getIlluminationProperties();
+    for (let i = 0; i < illumination.directionRadians.length; i++) {
+        // modify azimuthal angle by map rotation if light is anchored at the viewport
+        if (layer.paint.get('hillshade-illumination-anchor') === 'viewport') {
+            illumination.directionRadians[i] += painter.transform.bearingInRadians;
+        }
+    }
+    return {
+        'u_image': 0,
+        'u_latrange': getTileLatRange(painter, tile.tileID),
+        'u_exaggeration': layer.paint.get('hillshade-exaggeration'),
+        'u_altitudes': illumination.altitudeRadians,
+        'u_azimuths': illumination.directionRadians,
+        'u_accent': accent,
+        'u_method': method,
+        'u_highlights': illumination.highlightColor,
+        'u_shadows': illumination.shadowColor
+    };
+};
+const hillshadeUniformPrepareValues = (tileID, dem) => {
+    const stride = dem.stride;
+    const matrix = create$5();
+    // Flip rendering at y axis.
+    ortho(matrix, 0, EXTENT$1, -EXTENT$1, 0, 0, 1);
+    translate$2(matrix, matrix, [0, -EXTENT$1, 0]);
+    return {
+        'u_matrix': matrix,
+        'u_image': 1,
+        'u_dimension': [stride, stride],
+        'u_zoom': tileID.overscaledZ,
+        'u_unpack': dem.getUnpackVector()
+    };
+};
+function getTileLatRange(painter, tileID) {
+    // for scaling the magnitude of a points slope by its latitude
+    const tilesAtZoom = Math.pow(2, tileID.canonical.z);
+    const y = tileID.canonical.y;
+    return [
+        new MercatorCoordinate(0, y / tilesAtZoom).toLngLat().lat,
+        new MercatorCoordinate(0, (y + 1) / tilesAtZoom).toLngLat().lat
+    ];
+}
+
+function drawHillshade(painter, sourceCache, layer, tileIDs, renderOptions) {
+    if (painter.renderPass !== 'offscreen' && painter.renderPass !== 'translucent')
+        return;
+    const { isRenderingToTexture } = renderOptions;
+    const context = painter.context;
+    const projection = painter.style.projection;
+    const useSubdivision = projection.useSubdivision;
+    const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
+    const colorMode = painter.colorModeForRenderPass();
+    if (painter.renderPass === 'offscreen') {
+        // Prepare tiles
+        prepareHillshade(painter, sourceCache, tileIDs, layer, depthMode, StencilMode.disabled, colorMode);
+        context.viewport.set([0, 0, painter.width, painter.height]);
+    }
+    else if (painter.renderPass === 'translucent') {
+        // Globe (or any projection with subdivision) needs two-pass rendering to avoid artifacts when rendering texture tiles.
+        // See comments in draw_raster.ts for more details.
+        if (useSubdivision) {
+            // Two-pass rendering
+            const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
+            renderHillshade(painter, sourceCache, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture); // draw without borders
+            renderHillshade(painter, sourceCache, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture); // draw with borders
+        }
+        else {
+            // Simple rendering
+            const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
+            renderHillshade(painter, sourceCache, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
+        }
+    }
+}
+function renderHillshade(painter, sourceCache, layer, coords, stencilModes, depthMode, colorMode, useBorder, isRenderingToTexture) {
+    var _a;
+    const projection = painter.style.projection;
+    const context = painter.context;
+    const transform = painter.transform;
+    const gl = context.gl;
+    const defines = [`#define NUM_ILLUMINATION_SOURCES ${layer.paint.get('hillshade-highlight-color').values.length}`];
+    const program = painter.useProgram('hillshade', null, false, defines);
+    const align = !painter.options.moving;
+    for (const coord of coords) {
+        const tile = sourceCache.getTile(coord);
+        const fbo = tile.fbo;
+        if (!fbo) {
+            continue;
+        }
+        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
+        const terrainData = (_a = painter.style.map.terrain) === null || _a === void 0 ? void 0 : _a.getTerrainData(coord);
+        context.activeTexture.set(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
+        const projectionData = transform.getProjectionData({
+            overscaledTileID: coord,
+            aligned: align,
+            applyGlobeMatrix: !isRenderingToTexture,
+            applyTerrainMatrix: true
+        });
+        program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW, hillshadeUniformValues(painter, tile, layer), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+    }
+}
+// hillshade rendering is done in two steps. the prepare step first calculates the slope of the terrain in the x and y
+// directions for each pixel, and saves those values to a framebuffer texture in the r and g channels.
+function prepareHillshade(painter, sourceCache, tileIDs, layer, depthMode, stencilMode, colorMode) {
+    const context = painter.context;
+    const gl = context.gl;
+    for (const coord of tileIDs) {
+        const tile = sourceCache.getTile(coord);
+        const dem = tile.dem;
+        if (!dem || !dem.data) {
+            continue;
+        }
+        if (!tile.needsHillshadePrepare) {
+            continue;
+        }
+        const tileSize = dem.dim;
+        const textureStride = dem.stride;
+        const pixelData = dem.getPixels();
+        context.activeTexture.set(gl.TEXTURE1);
+        context.pixelStoreUnpackPremultiplyAlpha.set(false);
+        tile.demTexture = tile.demTexture || painter.getTileTexture(textureStride);
+        if (tile.demTexture) {
+            const demTexture = tile.demTexture;
+            demTexture.update(pixelData, { premultiply: false });
+            demTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
+        }
+        else {
+            tile.demTexture = new Texture(context, pixelData, gl.RGBA, { premultiply: false });
+            tile.demTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
+        }
+        context.activeTexture.set(gl.TEXTURE0);
+        let fbo = tile.fbo;
+        if (!fbo) {
+            const renderTexture = new Texture(context, { width: tileSize, height: tileSize, data: null }, gl.RGBA);
+            renderTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+            fbo = tile.fbo = context.createFramebuffer(tileSize, tileSize, true, false);
+            fbo.colorAttachment.set(renderTexture.texture);
+        }
+        context.bindFramebuffer.set(fbo.framebuffer);
+        context.viewport.set([0, 0, tileSize, tileSize]);
+        painter.useProgram('hillshadePrepare').draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.disabled, hillshadeUniformPrepareValues(tile.tileID, dem), null, null, layer.id, painter.rasterBoundsBuffer, painter.quadTriangleIndexBuffer, painter.rasterBoundsSegments);
+        tile.needsHillshadePrepare = false;
+    }
+}
+
+const lineUniforms = (context, locations) => ({
+    'u_translation': new Uniform2f(context, locations.u_translation),
+    'u_ratio': new Uniform1f(context, locations.u_ratio),
+    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
+    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels)
+});
+const lineGradientUniforms = (context, locations) => ({
+    'u_translation': new Uniform2f(context, locations.u_translation),
+    'u_ratio': new Uniform1f(context, locations.u_ratio),
+    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
+    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels),
+    'u_image': new Uniform1i(context, locations.u_image),
+    'u_image_height': new Uniform1f(context, locations.u_image_height)
+});
+const linePatternUniforms = (context, locations) => ({
+    'u_translation': new Uniform2f(context, locations.u_translation),
+    'u_texsize': new Uniform2f(context, locations.u_texsize),
+    'u_ratio': new Uniform1f(context, locations.u_ratio),
+    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
+    'u_image': new Uniform1i(context, locations.u_image),
+    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels),
+    'u_scale': new Uniform3f(context, locations.u_scale),
+    'u_fade': new Uniform1f(context, locations.u_fade)
+});
+const lineSDFUniforms = (context, locations) => ({
+    'u_translation': new Uniform2f(context, locations.u_translation),
+    'u_ratio': new Uniform1f(context, locations.u_ratio),
+    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
+    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels),
+    'u_patternscale_a': new Uniform2f(context, locations.u_patternscale_a),
+    'u_patternscale_b': new Uniform2f(context, locations.u_patternscale_b),
+    'u_sdfgamma': new Uniform1f(context, locations.u_sdfgamma),
+    'u_image': new Uniform1i(context, locations.u_image),
+    'u_tex_y_a': new Uniform1f(context, locations.u_tex_y_a),
+    'u_tex_y_b': new Uniform1f(context, locations.u_tex_y_b),
+    'u_mix': new Uniform1f(context, locations.u_mix)
+});
+const lineUniformValues = (painter, tile, layer, ratioScale) => {
+    const transform = painter.transform;
+    return {
+        'u_translation': calculateTranslation(painter, tile, layer),
+        'u_ratio': ratioScale / pixelsToTileUnits(tile, 1, transform.zoom),
+        'u_device_pixel_ratio': painter.pixelRatio,
+        'u_units_to_pixels': [
+            1 / transform.pixelsToGLUnits[0],
+            1 / transform.pixelsToGLUnits[1]
+        ]
+    };
+};
+const lineGradientUniformValues = (painter, tile, layer, ratioScale, imageHeight) => {
+    return extend$1(lineUniformValues(painter, tile, layer, ratioScale), {
+        'u_image': 0,
+        'u_image_height': imageHeight,
+    });
+};
+const linePatternUniformValues = (painter, tile, layer, ratioScale, crossfade) => {
+    const transform = painter.transform;
+    const tileZoomRatio = calculateTileRatio(tile, transform);
+    return {
+        'u_translation': calculateTranslation(painter, tile, layer),
+        'u_texsize': tile.imageAtlasTexture.size,
+        // camera zoom ratio
+        'u_ratio': ratioScale / pixelsToTileUnits(tile, 1, transform.zoom),
+        'u_device_pixel_ratio': painter.pixelRatio,
+        'u_image': 0,
+        'u_scale': [tileZoomRatio, crossfade.fromScale, crossfade.toScale],
+        'u_fade': crossfade.t,
+        'u_units_to_pixels': [
+            1 / transform.pixelsToGLUnits[0],
+            1 / transform.pixelsToGLUnits[1]
+        ]
+    };
+};
+const lineSDFUniformValues = (painter, tile, layer, ratioScale, dasharray, crossfade) => {
+    const transform = painter.transform;
+    const lineAtlas = painter.lineAtlas;
+    const tileRatio = calculateTileRatio(tile, transform);
+    const round = layer.layout.get('line-cap') === 'round';
+    const posA = lineAtlas.getDash(dasharray.from, round);
+    const posB = lineAtlas.getDash(dasharray.to, round);
+    const widthA = posA.width * crossfade.fromScale;
+    const widthB = posB.width * crossfade.toScale;
+    return extend$1(lineUniformValues(painter, tile, layer, ratioScale), {
+        'u_patternscale_a': [tileRatio / widthA, -posA.height / 2],
+        'u_patternscale_b': [tileRatio / widthB, -posB.height / 2],
+        'u_sdfgamma': lineAtlas.width / (Math.min(widthA, widthB) * 256 * painter.pixelRatio) / 2,
+        'u_image': 0,
+        'u_tex_y_a': posA.y,
+        'u_tex_y_b': posB.y,
+        'u_mix': crossfade.t
+    });
+};
+function calculateTileRatio(tile, transform) {
+    return 1 / pixelsToTileUnits(tile, 1, transform.tileZoom);
+}
+function calculateTranslation(painter, tile, layer) {
+    // Translate line points prior to any transformation
+    return translatePosition(painter.transform, tile, layer.paint.get('line-translate'), layer.paint.get('line-translate-anchor'));
+}
+
+function drawLine(painter, sourceCache, layer, coords, renderOptions) {
+    if (painter.renderPass !== 'translucent')
+        return;
+    const { isRenderingToTexture } = renderOptions;
+    const opacity = layer.paint.get('line-opacity');
+    const width = layer.paint.get('line-width');
+    if (opacity.constantOr(1) === 0 || width.constantOr(1) === 0)
+        return;
+    const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
+    const colorMode = painter.colorModeForRenderPass();
+    const dasharray = layer.paint.get('line-dasharray');
+    const patternProperty = layer.paint.get('line-pattern');
+    const image = patternProperty.constantOr(1);
+    const gradient = layer.paint.get('line-gradient');
+    const crossfade = layer.getCrossfadeParameters();
+    const programId = image ? 'linePattern' :
+        dasharray ? 'lineSDF' :
+            gradient ? 'lineGradient' : 'line';
+    const context = painter.context;
+    const gl = context.gl;
+    const transform = painter.transform;
+    let firstTile = true;
+    for (const coord of coords) {
+        const tile = sourceCache.getTile(coord);
+        if (image && !tile.patternsLoaded())
+            continue;
+        const bucket = tile.getBucket(layer);
+        if (!bucket)
+            continue;
+        const programConfiguration = bucket.programConfigurations.get(layer.id);
+        const prevProgram = painter.context.program.get();
+        const program = painter.useProgram(programId, programConfiguration);
+        const programChanged = firstTile || program.program !== prevProgram;
+        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const constantPattern = patternProperty.constantOr(null);
+        if (constantPattern && tile.imageAtlas) {
+            const atlas = tile.imageAtlas;
+            const posTo = atlas.patternPositions[constantPattern.to.toString()];
+            const posFrom = atlas.patternPositions[constantPattern.from.toString()];
+            if (posTo && posFrom)
+                programConfiguration.setConstantPatternPositions(posTo, posFrom);
+        }
+        const projectionData = transform.getProjectionData({
+            overscaledTileID: coord,
+            applyGlobeMatrix: !isRenderingToTexture,
+            applyTerrainMatrix: true
+        });
+        const pixelRatio = transform.getPixelScale();
+        const uniformValues = image ? linePatternUniformValues(painter, tile, layer, pixelRatio, crossfade) :
+            dasharray ? lineSDFUniformValues(painter, tile, layer, pixelRatio, dasharray, crossfade) :
+                gradient ? lineGradientUniformValues(painter, tile, layer, pixelRatio, bucket.lineClipsArray.length) :
+                    lineUniformValues(painter, tile, layer, pixelRatio);
+        if (image) {
+            context.activeTexture.set(gl.TEXTURE0);
+            tile.imageAtlasTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+            programConfiguration.updatePaintBuffers(crossfade);
+        }
+        else if (dasharray && (programChanged || painter.lineAtlas.dirty)) {
+            context.activeTexture.set(gl.TEXTURE0);
+            painter.lineAtlas.bind(context);
+        }
+        else if (gradient) {
+            const layerGradient = bucket.gradients[layer.id];
+            let gradientTexture = layerGradient.texture;
+            if (layer.gradientVersion !== layerGradient.version) {
+                let textureResolution = 256;
+                if (layer.stepInterpolant) {
+                    const sourceMaxZoom = sourceCache.getSource().maxzoom;
+                    const potentialOverzoom = coord.canonical.z === sourceMaxZoom ?
+                        Math.ceil(1 << (painter.transform.maxZoom - coord.canonical.z)) : 1;
+                    const lineLength = bucket.maxLineLength / EXTENT$1;
+                    // Logical pixel tile size is 512px, and 1024px right before current zoom + 1
+                    const maxTilePixelSize = 1024;
+                    // Maximum possible texture coverage heuristic, bound by hardware max texture size
+                    const maxTextureCoverage = lineLength * maxTilePixelSize * potentialOverzoom;
+                    textureResolution = clamp(nextPowerOfTwo(maxTextureCoverage), 256, context.maxTextureSize);
+                }
+                layerGradient.gradient = renderColorRamp({
+                    expression: layer.gradientExpression(),
+                    evaluationKey: 'lineProgress',
+                    resolution: textureResolution,
+                    image: layerGradient.gradient || undefined,
+                    clips: bucket.lineClipsArray
+                });
+                if (layerGradient.texture) {
+                    layerGradient.texture.update(layerGradient.gradient);
+                }
+                else {
+                    layerGradient.texture = new Texture(context, layerGradient.gradient, gl.RGBA);
+                }
+                layerGradient.version = layer.gradientVersion;
+                gradientTexture = layerGradient.texture;
+            }
+            context.activeTexture.set(gl.TEXTURE0);
+            gradientTexture.bind(layer.stepInterpolant ? gl.NEAREST : gl.LINEAR, gl.CLAMP_TO_EDGE);
+        }
+        const stencil = painter.stencilModeForClipping(coord);
+        program.draw(context, gl.TRIANGLES, depthMode, stencil, colorMode, CullFaceMode.disabled, uniformValues, terrainData, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration, bucket.layoutVertexBuffer2);
+        firstTile = false;
+        // once refactored so that bound texture state is managed, we'll also be able to remove this firstTile/programChanged logic
+    }
+}
+
+const now = typeof performance !== 'undefined' && performance && performance.now ?
+    performance.now.bind(performance) :
+    Date.now.bind(Date);
+let linkEl;
+let reducedMotionQuery;
+/** */
+const browser = {
+    /**
+     * Provides a function that outputs milliseconds: either performance.now()
+     * or a fallback to Date.now()
+     */
+    now,
+    frame(abortController, fn, reject) {
+        const frameId = requestAnimationFrame((paintStartTimestamp) => {
+            unsubscribe();
+            fn(paintStartTimestamp);
+        });
+        const { unsubscribe } = subscribe(abortController.signal, 'abort', () => {
+            unsubscribe();
+            cancelAnimationFrame(frameId);
+            reject(createAbortError());
+        }, false);
+    },
+    frameAsync(abortController) {
+        return new Promise((resolve, reject) => {
+            this.frame(abortController, resolve, reject);
+        });
+    },
+    getImageData(img, padding = 0) {
+        const context = this.getImageCanvasContext(img);
+        return context.getImageData(-padding, -padding, img.width + 2 * padding, img.height + 2 * padding);
+    },
+    getImageCanvasContext(img) {
+        const canvas = window.document.createElement('canvas');
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) {
+            throw new Error('failed to create canvas 2d context');
+        }
+        canvas.width = img.width;
+        canvas.height = img.height;
+        context.drawImage(img, 0, 0, img.width, img.height);
+        return context;
+    },
+    resolveURL(path) {
+        if (!linkEl)
+            linkEl = document.createElement('a');
+        linkEl.href = path;
+        return linkEl.href;
+    },
+    hardwareConcurrency: typeof navigator !== 'undefined' && navigator.hardwareConcurrency || 4,
+    get prefersReducedMotion() {
+        // In case your test crashes when checking matchMedia, call setMatchMedia from 'src/util/test/util'
+        if (!matchMedia)
+            return false;
+        //Lazily initialize media query
+        if (reducedMotionQuery == null) {
+            reducedMotionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+        }
+        return reducedMotionQuery.matches;
+    },
+};
+
+const rasterUniforms = (context, locations) => ({
+    'u_tl_parent': new Uniform2f(context, locations.u_tl_parent),
+    'u_scale_parent': new Uniform1f(context, locations.u_scale_parent),
+    'u_buffer_scale': new Uniform1f(context, locations.u_buffer_scale),
+    'u_fade_t': new Uniform1f(context, locations.u_fade_t),
+    'u_opacity': new Uniform1f(context, locations.u_opacity),
+    'u_image0': new Uniform1i(context, locations.u_image0),
+    'u_image1': new Uniform1i(context, locations.u_image1),
+    'u_brightness_low': new Uniform1f(context, locations.u_brightness_low),
+    'u_brightness_high': new Uniform1f(context, locations.u_brightness_high),
+    'u_saturation_factor': new Uniform1f(context, locations.u_saturation_factor),
+    'u_contrast_factor': new Uniform1f(context, locations.u_contrast_factor),
+    'u_spin_weights': new Uniform3f(context, locations.u_spin_weights),
+    'u_coords_top': new Uniform4f(context, locations.u_coords_top),
+    'u_coords_bottom': new Uniform4f(context, locations.u_coords_bottom)
+});
+const rasterUniformValues = (parentTL, parentScaleBy, fade, layer, cornerCoords) => ({
+    'u_tl_parent': parentTL,
+    'u_scale_parent': parentScaleBy,
+    // If u_buffer_scale is ever something else than a constant 1,
+    // the north/south pole handling in the vertex shader might need modification
+    // so that the texture coordinares for poles always lie beyond the edge of the texture.
+    // Right now the coordinates are placed right at the texture border.
+    'u_buffer_scale': 1,
+    'u_fade_t': fade.mix,
+    'u_opacity': fade.opacity * layer.paint.get('raster-opacity'),
+    'u_image0': 0,
+    'u_image1': 1,
+    'u_brightness_low': layer.paint.get('raster-brightness-min'),
+    'u_brightness_high': layer.paint.get('raster-brightness-max'),
+    'u_saturation_factor': saturationFactor(layer.paint.get('raster-saturation')),
+    'u_contrast_factor': contrastFactor(layer.paint.get('raster-contrast')),
+    'u_spin_weights': spinWeights(layer.paint.get('raster-hue-rotate')),
+    'u_coords_top': [cornerCoords[0].x, cornerCoords[0].y, cornerCoords[1].x, cornerCoords[1].y],
+    'u_coords_bottom': [cornerCoords[3].x, cornerCoords[3].y, cornerCoords[2].x, cornerCoords[2].y]
+});
+function spinWeights(angle) {
+    angle *= Math.PI / 180;
+    const s = Math.sin(angle);
+    const c = Math.cos(angle);
+    return [
+        (2 * c + 1) / 3,
+        (-Math.sqrt(3) * s - c + 1) / 3,
+        (Math.sqrt(3) * s - c + 1) / 3
+    ];
+}
+function contrastFactor(contrast) {
+    return contrast > 0 ?
+        1 / (1 - contrast) :
+        1 + contrast;
+}
+function saturationFactor(saturation) {
+    return saturation > 0 ?
+        1 - 1 / (1.001 - saturation) :
+        -saturation;
+}
+
+const cornerCoords = [
+    new Point(0, 0),
+    new Point(EXTENT$1, 0),
+    new Point(EXTENT$1, EXTENT$1),
+    new Point(0, EXTENT$1),
+];
+function drawRaster(painter, sourceCache, layer, tileIDs, renderOptions) {
+    if (painter.renderPass !== 'translucent')
+        return;
+    if (layer.paint.get('raster-opacity') === 0)
+        return;
+    if (!tileIDs.length)
+        return;
+    const { isRenderingToTexture } = renderOptions;
+    const source = sourceCache.getSource();
+    const projection = painter.style.projection;
+    const useSubdivision = projection.useSubdivision;
+    // When rendering globe (or any other subdivided projection), two passes are needed.
+    // Subdivided tiles with different granularities might have tiny gaps between them.
+    // To combat this, tile meshes for globe have a slight border region.
+    // However tiles borders will overlap, and a part of a tile often
+    // gets hidden by its neighbour's border, which displays an ugly stretched texture.
+    // To both hide the border stretch and avoid tiny gaps, tiles are first drawn without borders (with gaps),
+    // and then any missing pixels (gaps, not marked in stencil) get overdrawn with tile borders.
+    // This approach also avoids pixel shader overdraw, as any pixel is drawn at most once.
+    // Stencil mask and two-pass is not used for ImageSource sources regardless of projection.
+    if (source instanceof registry$1.source.image) {
+        // Image source - no stencil is used
+        drawTiles(painter, sourceCache, layer, tileIDs, null, false, false, source.tileCoords, source.flippedWindingOrder, isRenderingToTexture);
+    }
+    else if (useSubdivision) {
+        // Two-pass rendering
+        const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
+        drawTiles(painter, sourceCache, layer, coords, stencilBorderless, false, true, cornerCoords, false, isRenderingToTexture); // draw without borders
+        drawTiles(painter, sourceCache, layer, coords, stencilBorders, true, true, cornerCoords, false, isRenderingToTexture); // draw with borders
+    }
+    else {
+        // Simple rendering
+        const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
+        drawTiles(painter, sourceCache, layer, coords, stencil, false, true, cornerCoords, false, isRenderingToTexture);
+    }
+}
+function drawTiles(painter, sourceCache, layer, coords, stencilModes, useBorder, allowPoles, corners, flipCullfaceMode = false, isRenderingToTexture = false) {
+    const minTileZ = coords[coords.length - 1].overscaledZ;
+    const context = painter.context;
+    const gl = context.gl;
+    const program = painter.useProgram('raster');
+    const transform = painter.transform;
+    const projection = painter.style.projection;
+    const colorMode = painter.colorModeForRenderPass();
+    const align = !painter.options.moving;
+    // Draw all tiles
+    for (const coord of coords) {
+        // Set the lower zoom level to sublayer 0, and higher zoom levels to higher sublayers
+        // Use gl.LESS to prevent double drawing in areas where tiles overlap.
+        const depthMode = painter.getDepthModeForSublayer(coord.overscaledZ - minTileZ, layer.paint.get('raster-opacity') === 1 ? DepthMode.ReadWrite : DepthMode.ReadOnly, gl.LESS);
+        const tile = sourceCache.getTile(coord);
+        tile.registerFadeDuration(layer.paint.get('raster-fade-duration'));
+        const parentTile = sourceCache.findLoadedParent(coord, 0);
+        const siblingTile = sourceCache.findLoadedSibling(coord);
+        // Prefer parent tile if present
+        const fadeTileReference = parentTile || siblingTile || null;
+        const fade = getFadeValues(tile, fadeTileReference, sourceCache, layer, painter.transform, painter.style.map.terrain);
+        let parentScaleBy, parentTL;
+        const textureFilter = layer.paint.get('raster-resampling') === 'nearest' ? gl.NEAREST : gl.LINEAR;
+        context.activeTexture.set(gl.TEXTURE0);
+        tile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+        context.activeTexture.set(gl.TEXTURE1);
+        if (parentTile) {
+            parentTile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+            parentScaleBy = Math.pow(2, parentTile.tileID.overscaledZ - tile.tileID.overscaledZ);
+            parentTL = [tile.tileID.canonical.x * parentScaleBy % 1, tile.tileID.canonical.y * parentScaleBy % 1];
+        }
+        else {
+            tile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+        }
+        // Enable anisotropic filtering only when the pitch is greater than 20 degrees
+        // to preserve image sharpness on flat or slightly tilted maps.
+        if (tile.texture.useMipmap && context.extTextureFilterAnisotropic && painter.transform.pitch > 20) {
+            gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, context.extTextureFilterAnisotropicMax);
+        }
+        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const projectionData = transform.getProjectionData({ overscaledTileID: coord, aligned: align, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true });
+        const uniformValues = rasterUniformValues(parentTL || [0, 0], parentScaleBy || 1, fade, layer, corners);
+        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, allowPoles, 'raster');
+        const stencilMode = stencilModes ? stencilModes[coord.overscaledZ] : StencilMode.disabled;
+        program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, flipCullfaceMode ? CullFaceMode.frontCCW : CullFaceMode.backCCW, uniformValues, terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+    }
+}
+function getFadeValues(tile, parentTile, sourceCache, layer, transform, terrain) {
+    const fadeDuration = layer.paint.get('raster-fade-duration');
+    if (!terrain && fadeDuration > 0) {
+        const now = browser.now();
+        const sinceTile = (now - tile.timeAdded) / fadeDuration;
+        const sinceParent = parentTile ? (now - parentTile.timeAdded) / fadeDuration : -1;
+        const source = sourceCache.getSource();
+        const idealZ = coveringZoomLevel(transform, {
+            tileSize: source.tileSize,
+            roundZoom: source.roundZoom
+        });
+        // if no parent or parent is older, fade in; if parent is younger, fade out
+        const fadeIn = !parentTile || Math.abs(parentTile.tileID.overscaledZ - idealZ) > Math.abs(tile.tileID.overscaledZ - idealZ);
+        const childOpacity = (fadeIn && tile.refreshedUponExpiration) ? 1 : clamp(fadeIn ? sinceTile : 1 - sinceParent, 0, 1);
+        // we don't crossfade tiles that were just refreshed upon expiring:
+        // once they're old enough to pass the crossfading threshold
+        // (fadeDuration), unset the `refreshedUponExpiration` flag so we don't
+        // incorrectly fail to crossfade them when zooming
+        if (tile.refreshedUponExpiration && sinceTile >= 1)
+            tile.refreshedUponExpiration = false;
+        if (parentTile) {
+            return {
+                opacity: 1,
+                mix: 1 - childOpacity
+            };
+        }
+        else {
+            return {
+                opacity: childOpacity,
+                mix: 0
+            };
+        }
+    }
+    else {
+        return {
+            opacity: 1,
+            mix: 0
+        };
+    }
+}
+
+const collisionUniforms = (context, locations) => ({
+    'u_pixel_extrude_scale': new Uniform2f(context, locations.u_pixel_extrude_scale)
+});
+const collisionCircleUniforms = (context, locations) => ({
+    'u_viewport_size': new Uniform2f(context, locations.u_viewport_size)
+});
+const collisionUniformValues = (transform) => {
+    return {
+        'u_pixel_extrude_scale': [1.0 / transform.width, 1.0 / transform.height],
+    };
+};
+const collisionCircleUniformValues = (transform) => {
+    return {
+        'u_viewport_size': [transform.width, transform.height]
+    };
+};
+
 // Note: all "sizes" are measured in bytes
 /**
  * @internal
@@ -26976,10 +28300,274 @@ class LineIndexArray extends StructArrayLayout2ui4 {
 class LineStripIndexArray extends StructArrayLayout1ui2 {
 }
 
-const layout$6 = createLayout([
-    { name: 'a_pos', components: 2, type: 'Int16' }
+const symbolLayoutAttributes = createLayout([
+    { name: 'a_pos_offset', components: 4, type: 'Int16' },
+    { name: 'a_data', components: 4, type: 'Uint16' },
+    { name: 'a_pixeloffset', components: 4, type: 'Int16' }
 ], 4);
-const { members: members$4, size: size$4, alignment: alignment$4 } = layout$6;
+const dynamicLayoutAttributes = createLayout([
+    { name: 'a_projected_pos', components: 3, type: 'Float32' }
+], 4);
+const placementOpacityAttributes = createLayout([
+    { name: 'a_fade_opacity', components: 1, type: 'Uint32' }
+], 4);
+const collisionVertexAttributes = createLayout([
+    { name: 'a_placed', components: 2, type: 'Uint8' },
+    { name: 'a_shift', components: 2, type: 'Float32' },
+    { name: 'a_box_real', components: 2, type: 'Int16' },
+]);
+const collisionBox = createLayout([
+    // the box is centered around the anchor point
+    { type: 'Int16', name: 'anchorPointX' },
+    { type: 'Int16', name: 'anchorPointY' },
+    // distances to the edges from the anchor
+    { type: 'Int16', name: 'x1' },
+    { type: 'Int16', name: 'y1' },
+    { type: 'Int16', name: 'x2' },
+    { type: 'Int16', name: 'y2' },
+    // the index of the feature in the original vectortile
+    { type: 'Uint32', name: 'featureIndex' },
+    // the source layer the feature appears in
+    { type: 'Uint16', name: 'sourceLayerIndex' },
+    // the bucket the feature appears in
+    { type: 'Uint16', name: 'bucketIndex' },
+]);
+const collisionBoxLayout = createLayout([
+    { name: 'a_pos', components: 2, type: 'Int16' },
+    { name: 'a_anchor_pos', components: 2, type: 'Int16' },
+    { name: 'a_extrude', components: 2, type: 'Int16' }
+], 4);
+const collisionCircleLayout = createLayout([
+    { name: 'a_pos', components: 2, type: 'Float32' },
+    { name: 'a_radius', components: 1, type: 'Float32' },
+    { name: 'a_flags', components: 2, type: 'Int16' }
+], 4);
+const quadTriangle = createLayout([
+    { name: 'triangle', components: 3, type: 'Uint16' },
+]);
+const placement = createLayout([
+    { type: 'Int16', name: 'anchorX' },
+    { type: 'Int16', name: 'anchorY' },
+    { type: 'Uint16', name: 'glyphStartIndex' },
+    { type: 'Uint16', name: 'numGlyphs' },
+    { type: 'Uint32', name: 'vertexStartIndex' },
+    { type: 'Uint32', name: 'lineStartIndex' },
+    { type: 'Uint32', name: 'lineLength' },
+    { type: 'Uint16', name: 'segment' },
+    { type: 'Uint16', name: 'lowerSize' },
+    { type: 'Uint16', name: 'upperSize' },
+    { type: 'Float32', name: 'lineOffsetX' },
+    { type: 'Float32', name: 'lineOffsetY' },
+    { type: 'Uint8', name: 'writingMode' },
+    { type: 'Uint8', name: 'placedOrientation' },
+    { type: 'Uint8', name: 'hidden' },
+    { type: 'Uint32', name: 'crossTileID' },
+    { type: 'Int16', name: 'associatedIconIndex' }
+]);
+const symbolInstance = createLayout([
+    { type: 'Int16', name: 'anchorX' },
+    { type: 'Int16', name: 'anchorY' },
+    { type: 'Int16', name: 'rightJustifiedTextSymbolIndex' },
+    { type: 'Int16', name: 'centerJustifiedTextSymbolIndex' },
+    { type: 'Int16', name: 'leftJustifiedTextSymbolIndex' },
+    { type: 'Int16', name: 'verticalPlacedTextSymbolIndex' },
+    { type: 'Int16', name: 'placedIconSymbolIndex' },
+    { type: 'Int16', name: 'verticalPlacedIconSymbolIndex' },
+    { type: 'Uint16', name: 'key' },
+    { type: 'Uint16', name: 'textBoxStartIndex' },
+    { type: 'Uint16', name: 'textBoxEndIndex' },
+    { type: 'Uint16', name: 'verticalTextBoxStartIndex' },
+    { type: 'Uint16', name: 'verticalTextBoxEndIndex' },
+    { type: 'Uint16', name: 'iconBoxStartIndex' },
+    { type: 'Uint16', name: 'iconBoxEndIndex' },
+    { type: 'Uint16', name: 'verticalIconBoxStartIndex' },
+    { type: 'Uint16', name: 'verticalIconBoxEndIndex' },
+    { type: 'Uint16', name: 'featureIndex' },
+    { type: 'Uint16', name: 'numHorizontalGlyphVertices' },
+    { type: 'Uint16', name: 'numVerticalGlyphVertices' },
+    { type: 'Uint16', name: 'numIconVertices' },
+    { type: 'Uint16', name: 'numVerticalIconVertices' },
+    { type: 'Uint16', name: 'useRuntimeCollisionCircles' },
+    { type: 'Uint32', name: 'crossTileID' },
+    { type: 'Float32', name: 'textBoxScale' },
+    { type: 'Float32', name: 'collisionCircleDiameter' },
+    { type: 'Uint16', name: 'textAnchorOffsetStartIndex' },
+    { type: 'Uint16', name: 'textAnchorOffsetEndIndex' }
+]);
+const glyphOffset = createLayout([
+    { type: 'Float32', name: 'offsetX' }
+]);
+const lineVertex = createLayout([
+    { type: 'Int16', name: 'x' },
+    { type: 'Int16', name: 'y' },
+    { type: 'Int16', name: 'tileUnitDistanceFromAnchor' }
+]);
+const textAnchorOffset = createLayout([
+    { type: 'Uint16', name: 'textAnchor' },
+    { type: 'Float32', components: 2, name: 'textOffset' }
+]);
+
+let quadTriangles;
+function drawCollisionDebug(painter, sourceCache, layer, coords, isText) {
+    const context = painter.context;
+    const transform = painter.transform;
+    const gl = context.gl;
+    const program = painter.useProgram('collisionBox');
+    const tileBatches = [];
+    let circleCount = 0;
+    let circleOffset = 0;
+    for (let i = 0; i < coords.length; i++) {
+        const coord = coords[i];
+        const tile = sourceCache.getTile(coord);
+        const bucket = tile.getBucket(layer);
+        if (!bucket) {
+            continue;
+        }
+        const buffers = isText ? bucket.textCollisionBox : bucket.iconCollisionBox;
+        // Get collision circle data of this bucket
+        const circleArray = bucket.collisionCircleArray;
+        if (circleArray.length > 0) {
+            tileBatches.push({
+                circleArray,
+                circleOffset,
+                coord
+            });
+            circleCount += circleArray.length / 4; // 4 values per circle
+            circleOffset = circleCount;
+        }
+        // Draw collision boxes
+        if (!buffers) {
+            continue;
+        }
+        program.draw(context, gl.LINES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, collisionUniformValues(painter.transform), painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord), transform.getProjectionData({ overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: true }), layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer, buffers.segments, null, painter.transform.zoom, null, null, buffers.collisionVertexBuffer);
+    }
+    if (!isText || !tileBatches.length) {
+        return;
+    }
+    // Render collision circles
+    const circleProgram = painter.useProgram('collisionCircle');
+    // Construct vertex data
+    const vertexData = new CollisionCircleLayoutArray();
+    vertexData.resize(circleCount * 4);
+    vertexData._trim();
+    let vertexOffset = 0;
+    for (const batch of tileBatches) {
+        for (let i = 0; i < batch.circleArray.length / 4; i++) {
+            const circleIdx = i * 4;
+            const x = batch.circleArray[circleIdx + 0];
+            const y = batch.circleArray[circleIdx + 1];
+            const radius = batch.circleArray[circleIdx + 2];
+            const collision = batch.circleArray[circleIdx + 3];
+            // 4 floats per vertex, 4 vertices per quad
+            vertexData.emplace(vertexOffset++, x, y, radius, collision, 0);
+            vertexData.emplace(vertexOffset++, x, y, radius, collision, 1);
+            vertexData.emplace(vertexOffset++, x, y, radius, collision, 2);
+            vertexData.emplace(vertexOffset++, x, y, radius, collision, 3);
+        }
+    }
+    if (!quadTriangles || quadTriangles.length < circleCount * 2) {
+        quadTriangles = createQuadTriangles(circleCount);
+    }
+    const indexBuffer = context.createIndexBuffer(quadTriangles, true);
+    const vertexBuffer = context.createVertexBuffer(vertexData, collisionCircleLayout.members, true);
+    // Render batches
+    for (const batch of tileBatches) {
+        const uniforms = collisionCircleUniformValues(painter.transform);
+        circleProgram.draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, uniforms, painter.style.map.terrain && painter.style.map.terrain.getTerrainData(batch.coord), null, layer.id, vertexBuffer, indexBuffer, SegmentVector.simpleSegment(0, batch.circleOffset * 2, batch.circleArray.length, batch.circleArray.length / 2), null, painter.transform.zoom, null, null, null);
+    }
+    vertexBuffer.destroy();
+    indexBuffer.destroy();
+}
+function createQuadTriangles(quadCount) {
+    const triCount = quadCount * 2;
+    const array = new QuadTriangleArray();
+    array.resize(triCount);
+    array._trim();
+    // Two triangles and 4 vertices per quad.
+    for (let i = 0; i < triCount; i++) {
+        const idx = i * 6;
+        array.uint16[idx + 0] = i * 4 + 0;
+        array.uint16[idx + 1] = i * 4 + 1;
+        array.uint16[idx + 2] = i * 4 + 2;
+        array.uint16[idx + 3] = i * 4 + 2;
+        array.uint16[idx + 4] = i * 4 + 3;
+        array.uint16[idx + 5] = i * 4 + 0;
+    }
+    return array;
+}
+
+const MAX_GLYPH_ICON_SIZE = 255;
+const SIZE_PACK_FACTOR = 128;
+const MAX_PACKED_SIZE = MAX_GLYPH_ICON_SIZE * SIZE_PACK_FACTOR;
+// For {text,icon}-size, get the bucket-level data that will be needed by
+// the painter to set symbol-size-related uniforms
+function getSizeData(tileZoom, value) {
+    const { expression } = value;
+    if (expression.kind === 'constant') {
+        const layoutSize = expression.evaluate(new EvaluationParameters(tileZoom + 1));
+        return { kind: 'constant', layoutSize };
+    }
+    else if (expression.kind === 'source') {
+        return { kind: 'source' };
+    }
+    else {
+        const { zoomStops, interpolationType } = expression;
+        // calculate covering zoom stops for zoom-dependent values
+        let lower = 0;
+        while (lower < zoomStops.length && zoomStops[lower] <= tileZoom)
+            lower++;
+        lower = Math.max(0, lower - 1);
+        let upper = lower;
+        while (upper < zoomStops.length && zoomStops[upper] < tileZoom + 1)
+            upper++;
+        upper = Math.min(zoomStops.length - 1, upper);
+        const minZoom = zoomStops[lower];
+        const maxZoom = zoomStops[upper];
+        // We'd like to be able to use CameraExpression or CompositeExpression in these
+        // return types rather than ExpressionSpecification, but the former are not
+        // transferrable across Web Worker boundaries.
+        if (expression.kind === 'composite') {
+            return { kind: 'composite', minZoom, maxZoom, interpolationType };
+        }
+        // for camera functions, also save off the function values
+        // evaluated at the covering zoom levels
+        const minSize = expression.evaluate(new EvaluationParameters(minZoom));
+        const maxSize = expression.evaluate(new EvaluationParameters(maxZoom));
+        return { kind: 'camera', minZoom, maxZoom, minSize, maxSize, interpolationType };
+    }
+}
+function evaluateSizeForFeature(sizeData, { uSize, uSizeT }, { lowerSize, upperSize }) {
+    if (sizeData.kind === 'source') {
+        return lowerSize / SIZE_PACK_FACTOR;
+    }
+    else if (sizeData.kind === 'composite') {
+        return interpolateFactory.number(lowerSize / SIZE_PACK_FACTOR, upperSize / SIZE_PACK_FACTOR, uSizeT);
+    }
+    return uSize;
+}
+function evaluateSizeForZoom(sizeData, zoom) {
+    let uSizeT = 0;
+    let uSize = 0;
+    if (sizeData.kind === 'constant') {
+        uSize = sizeData.layoutSize;
+    }
+    else if (sizeData.kind !== 'source') {
+        const { interpolationType, minZoom, maxZoom } = sizeData;
+        // Even though we could get the exact value of the camera function
+        // at z = tr.zoom, we intentionally do not: instead, we interpolate
+        // between the camera function values at a pair of zoom stops covering
+        // [tileZoom, tileZoom + 1] in order to be consistent with this
+        // restriction on composite functions
+        const t = !interpolationType ? 0 : clamp(Interpolate.interpolationFactor(interpolationType, zoom, minZoom, maxZoom), 0, 1);
+        if (sizeData.kind === 'camera') {
+            uSize = interpolateFactory.number(sizeData.minSize, sizeData.maxSize, t);
+        }
+        else {
+            uSizeT = t;
+        }
+    }
+    return { uSizeT, uSize };
+}
 
 /**
  * Packs two numbers, interpreted as 8-bit unsigned integers, into a single
@@ -27780,1802 +29368,6 @@ register('CrossFadedCompositeBinder', CrossFadedCompositeBinder);
 register('CompositeExpressionBinder', CompositeExpressionBinder);
 register('ProgramConfiguration', ProgramConfiguration, { omit: ['_buffers'] });
 register('ProgramConfigurationSet', ProgramConfigurationSet);
-
-// These bounds define the minimum and maximum supported coordinate values.
-// While visible coordinates are within [0, EXTENT], tiles may theoretically
-// contain coordinates within [-Infinity, Infinity]. Our range is limited by the
-// number of bits used to represent the coordinate.
-const BITS = 15;
-const MAX = Math.pow(2, BITS - 1) - 1;
-const MIN = -MAX - 1;
-/**
- * Loads a geometry from a VectorTileFeature and scales it to the common extent
- * used internally.
- * @param feature - the vector tile feature to load
- */
-function loadGeometry(feature) {
-    const scale = EXTENT$1 / feature.extent;
-    const geometry = feature.loadGeometry();
-    for (let r = 0; r < geometry.length; r++) {
-        const ring = geometry[r];
-        for (let p = 0; p < ring.length; p++) {
-            const point = ring[p];
-            // round here because mapbox-gl-native uses integers to represent
-            // points and we need to do the same to avoid rendering differences.
-            const x = Math.round(point.x * scale);
-            const y = Math.round(point.y * scale);
-            point.x = clamp(x, MIN, MAX);
-            point.y = clamp(y, MIN, MAX);
-            if (x < point.x || x > point.x + 1 || y < point.y || y > point.y + 1) {
-                // warn when exceeding allowed extent except for the 1-px-off case
-                // https://github.com/mapbox/mapbox-gl-js/issues/8992
-                warnOnce('Geometry exceeds allowed extent, reduce your vector tile buffer size');
-            }
-        }
-    }
-    return geometry;
-}
-
-/**
- * Construct a new feature based on a VectorTileFeature for expression evaluation, the geometry of which
- * will be loaded based on necessity.
- * @param feature - the feature to evaluate
- * @param needGeometry - if set to true this will load the geometry
- */
-function toEvaluationFeature(feature, needGeometry) {
-    return { type: feature.type,
-        id: feature.id,
-        properties: feature.properties,
-        geometry: needGeometry ? loadGeometry(feature) : [] };
-}
-
-const VERTEX_MIN_VALUE = -32768; // -(2^15)
-// Extrude is in range 0..7, which will be mapped to -1..1 in the shader.
-function addCircleVertex(layoutVertexArray, x, y, extrudeX, extrudeY) {
-    // We pack circle position and extrude into range 0..65535, but vertices are stored as *signed* 16-bit integers, so we need to offset the number by 2^15.
-    layoutVertexArray.emplaceBack(VERTEX_MIN_VALUE + (x * 8) + extrudeX, VERTEX_MIN_VALUE + (y * 8) + extrudeY);
-}
-/**
- * @internal
- * Circles are represented by two triangles.
- *
- * Each corner has a pos that is the center of the circle and an extrusion
- * vector that is where it points.
- */
-class CircleBucket {
-    constructor(options) {
-        this.zoom = options.zoom;
-        this.overscaling = options.overscaling;
-        this.layers = options.layers;
-        this.layerIds = this.layers.map(layer => layer.id);
-        this.index = options.index;
-        this.hasPattern = false;
-        this.layoutVertexArray = new CircleLayoutArray();
-        this.indexArray = new TriangleIndexArray();
-        this.segments = new SegmentVector();
-        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
-        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
-    }
-    populate(features, options, canonical) {
-        const styleLayer = this.layers[0];
-        const bucketFeatures = [];
-        let circleSortKey = null;
-        let sortFeaturesByKey = false;
-        // Heatmap circles are usually large (and map-pitch-aligned), tessellate them to allow curvature along the globe.
-        let subdivide = styleLayer.type === 'heatmap';
-        // Heatmap layers are handled in this bucket and have no evaluated properties, so we check our access
-        if (styleLayer.type === 'circle') {
-            const circleStyle = styleLayer;
-            circleSortKey = circleStyle.layout.get('circle-sort-key');
-            sortFeaturesByKey = !circleSortKey.isConstant();
-            // Circles that are "printed" onto the map surface should be tessellated to follow the globe's curvature.
-            subdivide = subdivide || circleStyle.paint.get('circle-pitch-alignment') === 'map';
-        }
-        const granularity = subdivide ? options.subdivisionGranularity.circle : 1;
-        for (const { feature, id, index, sourceLayerIndex } of features) {
-            const needGeometry = this.layers[0]._featureFilter.needGeometry;
-            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
-            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
-                continue;
-            const sortKey = sortFeaturesByKey ?
-                circleSortKey.evaluate(evaluationFeature, {}, canonical) :
-                undefined;
-            const bucketFeature = {
-                id,
-                properties: feature.properties,
-                type: feature.type,
-                sourceLayerIndex,
-                index,
-                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
-                patterns: {},
-                sortKey
-            };
-            bucketFeatures.push(bucketFeature);
-        }
-        if (sortFeaturesByKey) {
-            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
-        }
-        for (const bucketFeature of bucketFeatures) {
-            const { geometry, index, sourceLayerIndex } = bucketFeature;
-            const feature = features[index].feature;
-            this.addFeature(bucketFeature, geometry, index, canonical, granularity);
-            options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this.index);
-        }
-    }
-    update(states, vtLayer, imagePositions) {
-        if (!this.stateDependentLayers.length)
-            return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
-            imagePositions
-        });
-    }
-    isEmpty() {
-        return this.layoutVertexArray.length === 0;
-    }
-    uploadPending() {
-        return !this.uploaded || this.programConfigurations.needsUpload;
-    }
-    upload(context) {
-        if (!this.uploaded) {
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$4);
-            this.indexBuffer = context.createIndexBuffer(this.indexArray);
-        }
-        this.programConfigurations.upload(context);
-        this.uploaded = true;
-    }
-    destroy() {
-        if (!this.layoutVertexBuffer)
-            return;
-        this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
-        this.programConfigurations.destroy();
-        this.segments.destroy();
-    }
-    addFeature(feature, geometry, index, canonical, granularity = 1) {
-        // Since we store the circle's center in each vertex, we only have 3 bits for actual vertex position in each axis.
-        // Thus the valid range of positions is 0..7.
-        // This gives us 4 possible granularity settings that are symmetrical.
-        // This array stores vertex positions that should by used by the tessellated quad.
-        let extrudes;
-        switch (granularity) {
-            case 1:
-                extrudes = [0, 7];
-                break;
-            case 3:
-                extrudes = [0, 2, 5, 7];
-                break;
-            case 5:
-                extrudes = [0, 1, 3, 4, 6, 7];
-                break;
-            case 7:
-                extrudes = [0, 1, 2, 3, 4, 5, 6, 7];
-                break;
-            default:
-                throw new Error(`Invalid circle bucket granularity: ${granularity}; valid values are 1, 3, 5, 7.`);
-        }
-        const verticesPerAxis = extrudes.length;
-        for (const ring of geometry) {
-            for (const point of ring) {
-                const vx = point.x;
-                const vy = point.y;
-                // Do not include points that are outside the tile boundaries.
-                if (vx < 0 || vx >= EXTENT$1 || vy < 0 || vy >= EXTENT$1) {
-                    continue;
-                }
-                const segment = this.segments.prepareSegment(verticesPerAxis * verticesPerAxis, this.layoutVertexArray, this.indexArray, feature.sortKey);
-                const index = segment.vertexLength;
-                for (let y = 0; y < verticesPerAxis; y++) {
-                    for (let x = 0; x < verticesPerAxis; x++) {
-                        addCircleVertex(this.layoutVertexArray, vx, vy, extrudes[x], extrudes[y]);
-                    }
-                }
-                for (let y = 0; y < verticesPerAxis - 1; y++) {
-                    for (let x = 0; x < verticesPerAxis - 1; x++) {
-                        const lowerIndex = index + y * verticesPerAxis + x;
-                        const upperIndex = index + (y + 1) * verticesPerAxis + x;
-                        this.indexArray.emplaceBack(lowerIndex, upperIndex + 1, lowerIndex + 1);
-                        this.indexArray.emplaceBack(lowerIndex, upperIndex, upperIndex + 1);
-                    }
-                }
-                segment.vertexLength += verticesPerAxis * verticesPerAxis;
-                segment.primitiveLength += (verticesPerAxis - 1) * (verticesPerAxis - 1) * 2;
-            }
-        }
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions: {}, canonical });
-    }
-}
-register('CircleBucket', CircleBucket, { omit: ['layers'] });
-
-class HeatmapBucket extends CircleBucket {
-}
-register('HeatmapBucket', HeatmapBucket, { omit: ['layers'] });
-
-// This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
-/* eslint-disable */
-let paint$9;
-const getPaint$9 = () => paint$9 = paint$9 || new Properties({
-    "heatmap-radius": new DataDrivenProperty(v8Spec["paint_heatmap"]["heatmap-radius"]),
-    "heatmap-weight": new DataDrivenProperty(v8Spec["paint_heatmap"]["heatmap-weight"]),
-    "heatmap-intensity": new DataConstantProperty(v8Spec["paint_heatmap"]["heatmap-intensity"]),
-    "heatmap-color": new ColorRampProperty(v8Spec["paint_heatmap"]["heatmap-color"]),
-    "heatmap-opacity": new DataConstantProperty(v8Spec["paint_heatmap"]["heatmap-opacity"]),
-});
-var properties$9 = ({ get paint() { return getPaint$9(); } });
-
-function createImage(image, { width, height }, channels, data) {
-    if (!data) {
-        data = new Uint8Array(width * height * channels);
-    }
-    else if (data instanceof Uint8ClampedArray) {
-        data = new Uint8Array(data.buffer);
-    }
-    else if (data.length !== width * height * channels) {
-        throw new RangeError(`mismatched image size. expected: ${data.length} but got: ${width * height * channels}`);
-    }
-    image.width = width;
-    image.height = height;
-    image.data = data;
-    return image;
-}
-function resizeImage(image, { width, height }, channels) {
-    if (width === image.width && height === image.height) {
-        return;
-    }
-    const newImage = createImage({}, { width, height }, channels);
-    copyImage(image, newImage, { x: 0, y: 0 }, { x: 0, y: 0 }, {
-        width: Math.min(image.width, width),
-        height: Math.min(image.height, height)
-    }, channels);
-    image.width = width;
-    image.height = height;
-    image.data = newImage.data;
-}
-function copyImage(srcImg, dstImg, srcPt, dstPt, size, channels) {
-    if (size.width === 0 || size.height === 0) {
-        return dstImg;
-    }
-    if (size.width > srcImg.width ||
-        size.height > srcImg.height ||
-        srcPt.x > srcImg.width - size.width ||
-        srcPt.y > srcImg.height - size.height) {
-        throw new RangeError('out of range source coordinates for image copy');
-    }
-    if (size.width > dstImg.width ||
-        size.height > dstImg.height ||
-        dstPt.x > dstImg.width - size.width ||
-        dstPt.y > dstImg.height - size.height) {
-        throw new RangeError('out of range destination coordinates for image copy');
-    }
-    const srcData = srcImg.data;
-    const dstData = dstImg.data;
-    if (srcData === dstData)
-        throw new Error('srcData equals dstData, so image is already copied');
-    for (let y = 0; y < size.height; y++) {
-        const srcOffset = ((srcPt.y + y) * srcImg.width + srcPt.x) * channels;
-        const dstOffset = ((dstPt.y + y) * dstImg.width + dstPt.x) * channels;
-        for (let i = 0; i < size.width * channels; i++) {
-            dstData[dstOffset + i] = srcData[srcOffset + i];
-        }
-    }
-    return dstImg;
-}
-/**
- * An image with alpha color value
- */
-class AlphaImage {
-    constructor(size, data) {
-        createImage(this, size, 1, data);
-    }
-    resize(size) {
-        resizeImage(this, size, 1);
-    }
-    clone() {
-        return new AlphaImage({ width: this.width, height: this.height }, new Uint8Array(this.data));
-    }
-    static copy(srcImg, dstImg, srcPt, dstPt, size) {
-        copyImage(srcImg, dstImg, srcPt, dstPt, size, 1);
-    }
-}
-/**
- * An object to store image data not premultiplied, because ImageData is not premultiplied.
- * UNPACK_PREMULTIPLY_ALPHA_WEBGL must be used when uploading to a texture.
- */
-class RGBAImage {
-    constructor(size, data) {
-        createImage(this, size, 4, data);
-    }
-    resize(size) {
-        resizeImage(this, size, 4);
-    }
-    replace(data, copy) {
-        if (copy) {
-            this.data.set(data);
-        }
-        else if (data instanceof Uint8ClampedArray) {
-            this.data = new Uint8Array(data.buffer);
-        }
-        else {
-            this.data = data;
-        }
-    }
-    clone() {
-        return new RGBAImage({ width: this.width, height: this.height }, new Uint8Array(this.data));
-    }
-    static copy(srcImg, dstImg, srcPt, dstPt, size) {
-        copyImage(srcImg, dstImg, srcPt, dstPt, size, 4);
-    }
-    setPixel(row, col, value) {
-        const rLocation = (row * this.width + col) * 4;
-        this.data[rLocation + 0] = Math.round(value.r * 255 / value.a);
-        this.data[rLocation + 1] = Math.round(value.g * 255 / value.a);
-        this.data[rLocation + 2] = Math.round(value.b * 255 / value.a);
-        this.data[rLocation + 3] = Math.round(value.a * 255);
-    }
-}
-register('AlphaImage', AlphaImage);
-register('RGBAImage', RGBAImage);
-
-/**
- * Given an expression that should evaluate to a color ramp,
- * return a RGBA image representing that ramp expression.
- */
-function renderColorRamp(params) {
-    const evaluationGlobals = {};
-    const width = params.resolution || 256;
-    const height = params.clips ? params.clips.length : 1;
-    const image = params.image || new RGBAImage({ width, height });
-    if (!isPowerOfTwo(width))
-        throw new Error(`width is not a power of 2 - ${width}`);
-    const renderPixel = (stride, index, progress) => {
-        evaluationGlobals[params.evaluationKey] = progress;
-        const pxColor = params.expression.evaluate(evaluationGlobals);
-        image.setPixel(stride / 4 / width, index / 4, pxColor);
-    };
-    if (!params.clips) {
-        for (let i = 0, j = 0; i < width; i++, j += 4) {
-            const progress = i / (width - 1);
-            renderPixel(0, j, progress);
-        }
-    }
-    else {
-        for (let clip = 0, stride = 0; clip < height; ++clip, stride += width * 4) {
-            for (let i = 0, j = 0; i < width; i++, j += 4) {
-                // Remap progress between clips
-                const progress = i / (width - 1);
-                const { start, end } = params.clips[clip];
-                const evaluationProgress = start * (1 - progress) + end * progress;
-                renderPixel(stride, j, evaluationProgress);
-            }
-        }
-    }
-    return image;
-}
-
-function polygonIntersectsPolygon(polygonA, polygonB) {
-    for (let i = 0; i < polygonA.length; i++) {
-        if (polygonContainsPoint(polygonB, polygonA[i]))
-            return true;
-    }
-    for (let i = 0; i < polygonB.length; i++) {
-        if (polygonContainsPoint(polygonA, polygonB[i]))
-            return true;
-    }
-    if (lineIntersectsLine(polygonA, polygonB))
-        return true;
-    return false;
-}
-function polygonIntersectsBufferedPoint(polygon, point, radius) {
-    if (polygonContainsPoint(polygon, point))
-        return true;
-    if (pointIntersectsBufferedLine(point, polygon, radius))
-        return true;
-    return false;
-}
-function polygonIntersectsMultiPolygon(polygon, multiPolygon) {
-    if (polygon.length === 1) {
-        return multiPolygonContainsPoint(multiPolygon, polygon[0]);
-    }
-    for (let m = 0; m < multiPolygon.length; m++) {
-        const ring = multiPolygon[m];
-        for (let n = 0; n < ring.length; n++) {
-            if (polygonContainsPoint(polygon, ring[n]))
-                return true;
-        }
-    }
-    for (let i = 0; i < polygon.length; i++) {
-        if (multiPolygonContainsPoint(multiPolygon, polygon[i]))
-            return true;
-    }
-    for (let k = 0; k < multiPolygon.length; k++) {
-        if (lineIntersectsLine(polygon, multiPolygon[k]))
-            return true;
-    }
-    return false;
-}
-function polygonIntersectsBufferedMultiLine(polygon, multiLine, radius) {
-    for (let i = 0; i < multiLine.length; i++) {
-        const line = multiLine[i];
-        if (polygon.length >= 3) {
-            for (let k = 0; k < line.length; k++) {
-                if (polygonContainsPoint(polygon, line[k]))
-                    return true;
-            }
-        }
-        if (lineIntersectsBufferedLine(polygon, line, radius))
-            return true;
-    }
-    return false;
-}
-function lineIntersectsBufferedLine(lineA, lineB, radius) {
-    if (lineA.length > 1) {
-        if (lineIntersectsLine(lineA, lineB))
-            return true;
-        // Check whether any point in either line is within radius of the other line
-        for (let j = 0; j < lineB.length; j++) {
-            if (pointIntersectsBufferedLine(lineB[j], lineA, radius))
-                return true;
-        }
-    }
-    for (let k = 0; k < lineA.length; k++) {
-        if (pointIntersectsBufferedLine(lineA[k], lineB, radius))
-            return true;
-    }
-    return false;
-}
-function lineIntersectsLine(lineA, lineB) {
-    if (lineA.length === 0 || lineB.length === 0)
-        return false;
-    for (let i = 0; i < lineA.length - 1; i++) {
-        const a0 = lineA[i];
-        const a1 = lineA[i + 1];
-        for (let j = 0; j < lineB.length - 1; j++) {
-            const b0 = lineB[j];
-            const b1 = lineB[j + 1];
-            if (lineSegmentIntersectsLineSegment(a0, a1, b0, b1))
-                return true;
-        }
-    }
-    return false;
-}
-function lineSegmentIntersectsLineSegment(a0, a1, b0, b1) {
-    return isCounterClockwise(a0, b0, b1) !== isCounterClockwise(a1, b0, b1) &&
-        isCounterClockwise(a0, a1, b0) !== isCounterClockwise(a0, a1, b1);
-}
-function pointIntersectsBufferedLine(p, line, radius) {
-    const radiusSquared = radius * radius;
-    if (line.length === 1)
-        return p.distSqr(line[0]) < radiusSquared;
-    for (let i = 1; i < line.length; i++) {
-        // Find line segments that have a distance <= radius^2 to p
-        // In that case, we treat the line as "containing point p".
-        const v = line[i - 1], w = line[i];
-        if (distToSegmentSquared(p, v, w) < radiusSquared)
-            return true;
-    }
-    return false;
-}
-// Code from https://stackoverflow.com/a/1501725/331379.
-function distToSegmentSquared(p, v, w) {
-    const l2 = v.distSqr(w);
-    if (l2 === 0)
-        return p.distSqr(v);
-    const t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
-    if (t < 0)
-        return p.distSqr(v);
-    if (t > 1)
-        return p.distSqr(w);
-    return p.distSqr(w.sub(v)._mult(t)._add(v));
-}
-// point in polygon ray casting algorithm
-function multiPolygonContainsPoint(rings, p) {
-    let c = false, ring, p1, p2;
-    for (let k = 0; k < rings.length; k++) {
-        ring = rings[k];
-        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-            p1 = ring[i];
-            p2 = ring[j];
-            if (((p1.y > p.y) !== (p2.y > p.y)) && (p.x < (p2.x - p1.x) * (p.y - p1.y) / (p2.y - p1.y) + p1.x)) {
-                c = !c;
-            }
-        }
-    }
-    return c;
-}
-function polygonContainsPoint(ring, p) {
-    let c = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const p1 = ring[i];
-        const p2 = ring[j];
-        if (((p1.y > p.y) !== (p2.y > p.y)) && (p.x < (p2.x - p1.x) * (p.y - p1.y) / (p2.y - p1.y) + p1.x)) {
-            c = !c;
-        }
-    }
-    return c;
-}
-function polygonIntersectsBox(ring, boxX1, boxY1, boxX2, boxY2) {
-    for (const p of ring) {
-        if (boxX1 <= p.x &&
-            boxY1 <= p.y &&
-            boxX2 >= p.x &&
-            boxY2 >= p.y)
-            return true;
-    }
-    const corners = [
-        new Point(boxX1, boxY1),
-        new Point(boxX1, boxY2),
-        new Point(boxX2, boxY2),
-        new Point(boxX2, boxY1)
-    ];
-    if (ring.length > 2) {
-        for (const corner of corners) {
-            if (polygonContainsPoint(ring, corner))
-                return true;
-        }
-    }
-    for (let i = 0; i < ring.length - 1; i++) {
-        const p1 = ring[i];
-        const p2 = ring[i + 1];
-        if (edgeIntersectsBox(p1, p2, corners))
-            return true;
-    }
-    return false;
-}
-function edgeIntersectsBox(e1, e2, corners) {
-    const tl = corners[0];
-    const br = corners[2];
-    // the edge and box do not intersect in either the x or y dimensions
-    if (((e1.x < tl.x) && (e2.x < tl.x)) ||
-        ((e1.x > br.x) && (e2.x > br.x)) ||
-        ((e1.y < tl.y) && (e2.y < tl.y)) ||
-        ((e1.y > br.y) && (e2.y > br.y)))
-        return false;
-    // check if all corners of the box are on the same side of the edge
-    const dir = isCounterClockwise(e1, e2, corners[0]);
-    return dir !== isCounterClockwise(e1, e2, corners[1]) ||
-        dir !== isCounterClockwise(e1, e2, corners[2]) ||
-        dir !== isCounterClockwise(e1, e2, corners[3]);
-}
-
-function getMaximumPaintValue(property, layer, bucket) {
-    const value = layer.paint.get(property).value;
-    if (value.kind === 'constant') {
-        return value.value;
-    }
-    else {
-        return bucket.programConfigurations.get(layer.id).getMaxValue(property);
-    }
-}
-function translateDistance(translate) {
-    return Math.sqrt(translate[0] * translate[0] + translate[1] * translate[1]);
-}
-/**
- * @internal
- * Translates a geometry by a certain pixels in tile coordinates
- * @param queryGeometry - The geometry to translate in tile coordinates
- * @param translate - The translation in pixels
- * @param translateAnchor - The anchor of the translation
- * @param bearing - The bearing of the map
- * @param pixelsToTileUnits - The scale factor from pixels to tile units
- * @returns the translated geometry in tile coordinates
- */
-function translate(queryGeometry, translate, translateAnchor, bearing, pixelsToTileUnits) {
-    if (!translate[0] && !translate[1]) {
-        return queryGeometry;
-    }
-    const pt = Point.convert(translate)._mult(pixelsToTileUnits);
-    if (translateAnchor === 'viewport') {
-        pt._rotate(-bearing);
-    }
-    const translated = [];
-    for (let i = 0; i < queryGeometry.length; i++) {
-        const point = queryGeometry[i];
-        translated.push(point.sub(pt));
-    }
-    return translated;
-}
-function offsetLine(rings, offset) {
-    const newRings = [];
-    for (let ringIndex = 0; ringIndex < rings.length; ringIndex++) {
-        const ring = rings[ringIndex];
-        const newRing = [];
-        for (let index = 0; index < ring.length; index++) {
-            const a = ring[index - 1];
-            const b = ring[index];
-            const c = ring[index + 1];
-            const aToB = index === 0 ? new Point(0, 0) : b.sub(a)._unit()._perp();
-            const bToC = index === ring.length - 1 ? new Point(0, 0) : c.sub(b)._unit()._perp();
-            const extrude = aToB._add(bToC)._unit();
-            const cosHalfAngle = extrude.x * bToC.x + extrude.y * bToC.y;
-            if (cosHalfAngle !== 0) {
-                extrude._mult(1 / cosHalfAngle);
-            }
-            newRing.push(extrude._mult(offset)._add(b));
-        }
-        newRings.push(newRing);
-    }
-    return newRings;
-}
-function intersectionTestMapMap({ queryGeometry, size }, point) {
-    return polygonIntersectsBufferedPoint(queryGeometry, point, size);
-}
-function intersectionTestMapViewport({ queryGeometry, size, transform, unwrappedTileID, getElevation }, point) {
-    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
-    const adjustedSize = size * (w / transform.cameraToCenterDistance);
-    return polygonIntersectsBufferedPoint(queryGeometry, point, adjustedSize);
-}
-function intersectionTestViewportMap({ queryGeometry, size, transform, unwrappedTileID, getElevation }, point) {
-    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
-    const adjustedSize = size * (transform.cameraToCenterDistance / w);
-    return polygonIntersectsBufferedPoint(queryGeometry, projectPoint(point, transform, unwrappedTileID, getElevation), adjustedSize);
-}
-function intersectionTestViewportViewport({ queryGeometry, size, transform, unwrappedTileID, getElevation }, point) {
-    return polygonIntersectsBufferedPoint(queryGeometry, projectPoint(point, transform, unwrappedTileID, getElevation), size);
-}
-function circleIntersection({ queryGeometry, size, transform, unwrappedTileID, getElevation, pitchAlignment = 'map', pitchScale = 'map' }, geometry) {
-    const intersectionTest = pitchAlignment === 'map'
-        ? (pitchScale === 'map' ? intersectionTestMapMap : intersectionTestMapViewport)
-        : (pitchScale === 'map' ? intersectionTestViewportMap : intersectionTestViewportViewport);
-    const param = { queryGeometry, size, transform, unwrappedTileID, getElevation };
-    for (const ring of geometry) {
-        for (const point of ring) {
-            if (intersectionTest(param, point)) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-function projectPoint(tilePoint, transform, unwrappedTileID, getElevation) {
-    // Convert `tilePoint` from tile coordinates to clip coordinates.
-    const clipPoint = transform.projectTileCoordinates(tilePoint.x, tilePoint.y, unwrappedTileID, getElevation).point;
-    // Convert `clipPoint` from clip coordinates into pixel/screen coordinates.
-    const pixelPoint = new Point((clipPoint.x * 0.5 + 0.5) * transform.width, (-clipPoint.y * 0.5 + 0.5) * transform.height);
-    return pixelPoint;
-}
-function projectQueryGeometry$1(queryGeometry, transform, unwrappedTileID, getElevation) {
-    return queryGeometry.map((p) => {
-        return projectPoint(p, transform, unwrappedTileID, getElevation);
-    });
-}
-
-const HEATMAP_FULL_RENDER_FBO_KEY = 'big-fb';
-const isHeatmapStyleLayer = (layer) => layer.type === 'heatmap';
-/**
- * A style layer that defines a heatmap
- */
-class HeatmapStyleLayer extends StyleLayer {
-    createBucket(options) {
-        return new HeatmapBucket(options);
-    }
-    constructor(layer, globalState) {
-        super(layer, properties$9, globalState);
-        this.heatmapFbos = new Map();
-        // make sure color ramp texture is generated for default heatmap color too
-        this._updateColorRamp();
-    }
-    _handleSpecialPaintPropertyUpdate(name) {
-        if (name === 'heatmap-color') {
-            this._updateColorRamp();
-        }
-    }
-    _updateColorRamp() {
-        const expression = this._transitionablePaint._values['heatmap-color'].value.expression;
-        this.colorRamp = renderColorRamp({
-            expression,
-            evaluationKey: 'heatmapDensity',
-            image: this.colorRamp
-        });
-        this.colorRampTexture = null;
-    }
-    resize() {
-        if (this.heatmapFbos.has(HEATMAP_FULL_RENDER_FBO_KEY)) {
-            this.heatmapFbos.delete(HEATMAP_FULL_RENDER_FBO_KEY);
-        }
-    }
-    queryRadius(bucket) {
-        return getMaximumPaintValue('heatmap-radius', this, bucket);
-    }
-    queryIntersectsFeature({ queryGeometry, feature, featureState, geometry, transform, pixelsToTileUnits, unwrappedTileID, getElevation }) {
-        return circleIntersection({
-            queryGeometry,
-            size: this.paint.get('heatmap-radius').evaluate(feature, featureState) * pixelsToTileUnits,
-            transform,
-            unwrappedTileID,
-            getElevation
-        }, geometry);
-    }
-    hasOffscreenPass() {
-        return this.paint.get('heatmap-opacity') !== 0 && this.visibility !== 'none';
-    }
-}
-
-function drawHeatmap(painter, sourceCache, layer, tileIDs, renderOptions) {
-    if (layer.paint.get('heatmap-opacity') === 0) {
-        return;
-    }
-    const context = painter.context;
-    const { isRenderingToTexture, isRenderingGlobe } = renderOptions;
-    if (painter.style.map.terrain) {
-        for (const coord of tileIDs) {
-            const tile = sourceCache.getTile(coord);
-            // Skip tiles that have uncovered parents to avoid flickering; we don't need
-            // to use complex tile masking here because the change between zoom levels is subtle,
-            // so it's fine to simply render the parent until all its 4 children are loaded
-            if (sourceCache.hasRenderableParent(coord))
-                continue;
-            if (painter.renderPass === 'offscreen') {
-                prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe);
-            }
-            else if (painter.renderPass === 'translucent') {
-                renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe);
-            }
-        }
-        context.viewport.set([0, 0, painter.width, painter.height]);
-    }
-    else {
-        if (painter.renderPass === 'offscreen') {
-            prepareHeatmapFlat(painter, sourceCache, layer, tileIDs);
-        }
-        else if (painter.renderPass === 'translucent') {
-            renderHeatmapFlat(painter, layer);
-        }
-    }
-}
-function prepareHeatmapFlat(painter, sourceCache, layer, coords) {
-    const context = painter.context;
-    const gl = context.gl;
-    const transform = painter.transform;
-    // Allow kernels to be drawn across boundaries, so that
-    // large kernels are not clipped to tiles
-    const stencilMode = StencilMode.disabled;
-    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
-    const colorMode = new ColorMode([gl.ONE, gl.ONE], Color.transparent, [true, true, true, true]);
-    bindFramebuffer(context, painter, layer);
-    context.clear({ color: Color.transparent });
-    for (let i = 0; i < coords.length; i++) {
-        const coord = coords[i];
-        // Skip tiles that have uncovered parents to avoid flickering; we don't need
-        // to use complex tile masking here because the change between zoom levels is subtle,
-        // so it's fine to simply render the parent until all its 4 children are loaded
-        if (sourceCache.hasRenderableParent(coord))
-            continue;
-        const tile = sourceCache.getTile(coord);
-        const bucket = tile.getBucket(layer);
-        if (!bucket)
-            continue;
-        const programConfiguration = bucket.programConfigurations.get(layer.id);
-        const program = painter.useProgram('heatmap', programConfiguration);
-        const projectionData = transform.getProjectionData({ overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: false });
-        const radiusCorrectionFactor = transform.getCircleRadiusCorrection();
-        program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.backCCW, heatmapUniformValues(tile, transform.zoom, layer.paint.get('heatmap-intensity'), radiusCorrectionFactor), null, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, transform.zoom, programConfiguration);
-    }
-    context.viewport.set([0, 0, painter.width, painter.height]);
-}
-function renderHeatmapFlat(painter, layer) {
-    const context = painter.context;
-    const gl = context.gl;
-    context.setColorMode(painter.colorModeForRenderPass());
-    // Here we bind two different textures from which we'll sample in drawing
-    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
-    // color ramp texture.
-    const fbo = layer.heatmapFbos.get(HEATMAP_FULL_RENDER_FBO_KEY);
-    if (!fbo)
-        return;
-    context.activeTexture.set(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
-    context.activeTexture.set(gl.TEXTURE1);
-    const colorRampTexture = getColorRampTexture(context, layer);
-    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, null, layer.id, painter.viewportBuffer, painter.quadTriangleIndexBuffer, painter.viewportSegments, layer.paint, painter.transform.zoom);
-}
-function prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe) {
-    const context = painter.context;
-    const gl = context.gl;
-    const stencilMode = StencilMode.disabled;
-    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
-    const colorMode = new ColorMode([gl.ONE, gl.ONE], Color.transparent, [true, true, true, true]);
-    const bucket = tile.getBucket(layer);
-    if (!bucket)
-        return;
-    const tileKey = coord.key;
-    let fbo = layer.heatmapFbos.get(tileKey);
-    if (!fbo) {
-        fbo = createHeatmapFbo(context, tile.tileSize, tile.tileSize);
-        layer.heatmapFbos.set(tileKey, fbo);
-    }
-    context.bindFramebuffer.set(fbo.framebuffer);
-    context.viewport.set([0, 0, tile.tileSize, tile.tileSize]);
-    context.clear({ color: Color.transparent });
-    const programConfiguration = bucket.programConfigurations.get(layer.id);
-    const program = painter.useProgram('heatmap', programConfiguration, !isRenderingGlobe);
-    const projectionData = painter.transform.getProjectionData({ overscaledTileID: tile.tileID, applyGlobeMatrix: true, applyTerrainMatrix: true });
-    const terrainData = painter.style.map.terrain.getTerrainData(coord);
-    program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled, heatmapUniformValues(tile, painter.transform.zoom, layer.paint.get('heatmap-intensity'), 1.0), terrainData, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration);
-}
-function renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe) {
-    const context = painter.context;
-    const gl = context.gl;
-    const transform = painter.transform;
-    context.setColorMode(painter.colorModeForRenderPass());
-    const colorRampTexture = getColorRampTexture(context, layer);
-    // Here we bind two different textures from which we'll sample in drawing
-    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
-    // color ramp texture.
-    const tileKey = coord.key;
-    const fbo = layer.heatmapFbos.get(tileKey);
-    if (!fbo)
-        return;
-    context.activeTexture.set(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
-    context.activeTexture.set(gl.TEXTURE1);
-    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-    const projectionData = transform.getProjectionData({ overscaledTileID: coord, applyTerrainMatrix: isRenderingGlobe, applyGlobeMatrix: !isRenderingToTexture });
-    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, projectionData, layer.id, painter.rasterBoundsBuffer, painter.quadTriangleIndexBuffer, painter.rasterBoundsSegments, layer.paint, transform.zoom);
-    // destroy the FBO after rendering
-    fbo.destroy();
-    layer.heatmapFbos.delete(tileKey);
-}
-function bindFramebuffer(context, painter, layer) {
-    const gl = context.gl;
-    context.activeTexture.set(gl.TEXTURE1);
-    // Use a 4x downscaled screen texture for better performance
-    context.viewport.set([0, 0, painter.width / 4, painter.height / 4]);
-    let fbo = layer.heatmapFbos.get(HEATMAP_FULL_RENDER_FBO_KEY);
-    if (!fbo) {
-        fbo = createHeatmapFbo(context, painter.width / 4, painter.height / 4);
-        layer.heatmapFbos.set(HEATMAP_FULL_RENDER_FBO_KEY, fbo);
-    }
-    else {
-        gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
-        context.bindFramebuffer.set(fbo.framebuffer);
-    }
-}
-function createHeatmapFbo(context, width, height) {
-    var _a, _b;
-    const gl = context.gl;
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    // Use the higher precision half-float texture where available (producing much smoother looking heatmaps);
-    // Otherwise, fall back to a low precision texture
-    const numType = (_a = context.HALF_FLOAT) !== null && _a !== void 0 ? _a : gl.UNSIGNED_BYTE;
-    const internalFormat = (_b = context.RGBA16F) !== null && _b !== void 0 ? _b : gl.RGBA;
-    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, gl.RGBA, numType, null);
-    const fbo = context.createFramebuffer(width, height, false, false);
-    fbo.colorAttachment.set(texture);
-    return fbo;
-}
-function getColorRampTexture(context, layer) {
-    if (!layer.colorRampTexture) {
-        layer.colorRampTexture = new Texture(context, layer.colorRamp, context.gl.RGBA);
-    }
-    return layer.colorRampTexture;
-}
-
-const hillshadeUniforms = (context, locations) => ({
-    'u_image': new Uniform1i(context, locations.u_image),
-    'u_latrange': new Uniform2f(context, locations.u_latrange),
-    'u_exaggeration': new Uniform1f(context, locations.u_exaggeration),
-    'u_altitudes': new UniformFloatArray(context, locations.u_altitudes),
-    'u_azimuths': new UniformFloatArray(context, locations.u_azimuths),
-    'u_accent': new UniformColor(context, locations.u_accent),
-    'u_method': new Uniform1i(context, locations.u_method),
-    'u_shadows': new UniformColorArray(context, locations.u_shadows),
-    'u_highlights': new UniformColorArray(context, locations.u_highlights)
-});
-const hillshadePrepareUniforms = (context, locations) => ({
-    'u_matrix': new UniformMatrix4f(context, locations.u_matrix),
-    'u_image': new Uniform1i(context, locations.u_image),
-    'u_dimension': new Uniform2f(context, locations.u_dimension),
-    'u_zoom': new Uniform1f(context, locations.u_zoom),
-    'u_unpack': new Uniform4f(context, locations.u_unpack)
-});
-const hillshadeUniformValues = (painter, tile, layer) => {
-    const accent = layer.paint.get('hillshade-accent-color');
-    let method;
-    switch (layer.paint.get('hillshade-method')) {
-        case 'basic':
-            method = 4;
-            break;
-        case 'combined':
-            method = 1;
-            break;
-        case 'igor':
-            method = 2;
-            break;
-        case 'multidirectional':
-            method = 3;
-            break;
-        case 'standard':
-        default:
-            method = 0;
-            break;
-    }
-    const illumination = layer.getIlluminationProperties();
-    for (let i = 0; i < illumination.directionRadians.length; i++) {
-        // modify azimuthal angle by map rotation if light is anchored at the viewport
-        if (layer.paint.get('hillshade-illumination-anchor') === 'viewport') {
-            illumination.directionRadians[i] += painter.transform.bearingInRadians;
-        }
-    }
-    return {
-        'u_image': 0,
-        'u_latrange': getTileLatRange(painter, tile.tileID),
-        'u_exaggeration': layer.paint.get('hillshade-exaggeration'),
-        'u_altitudes': illumination.altitudeRadians,
-        'u_azimuths': illumination.directionRadians,
-        'u_accent': accent,
-        'u_method': method,
-        'u_highlights': illumination.highlightColor,
-        'u_shadows': illumination.shadowColor
-    };
-};
-const hillshadeUniformPrepareValues = (tileID, dem) => {
-    const stride = dem.stride;
-    const matrix = create$5();
-    // Flip rendering at y axis.
-    ortho(matrix, 0, EXTENT$1, -EXTENT$1, 0, 0, 1);
-    translate$2(matrix, matrix, [0, -EXTENT$1, 0]);
-    return {
-        'u_matrix': matrix,
-        'u_image': 1,
-        'u_dimension': [stride, stride],
-        'u_zoom': tileID.overscaledZ,
-        'u_unpack': dem.getUnpackVector()
-    };
-};
-function getTileLatRange(painter, tileID) {
-    // for scaling the magnitude of a points slope by its latitude
-    const tilesAtZoom = Math.pow(2, tileID.canonical.z);
-    const y = tileID.canonical.y;
-    return [
-        new MercatorCoordinate(0, y / tilesAtZoom).toLngLat().lat,
-        new MercatorCoordinate(0, (y + 1) / tilesAtZoom).toLngLat().lat
-    ];
-}
-
-function drawHillshade(painter, sourceCache, layer, tileIDs, renderOptions) {
-    if (painter.renderPass !== 'offscreen' && painter.renderPass !== 'translucent')
-        return;
-    const { isRenderingToTexture } = renderOptions;
-    const context = painter.context;
-    const projection = painter.style.projection;
-    const useSubdivision = projection.useSubdivision;
-    const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
-    const colorMode = painter.colorModeForRenderPass();
-    if (painter.renderPass === 'offscreen') {
-        // Prepare tiles
-        prepareHillshade(painter, sourceCache, tileIDs, layer, depthMode, StencilMode.disabled, colorMode);
-        context.viewport.set([0, 0, painter.width, painter.height]);
-    }
-    else if (painter.renderPass === 'translucent') {
-        // Globe (or any projection with subdivision) needs two-pass rendering to avoid artifacts when rendering texture tiles.
-        // See comments in draw_raster.ts for more details.
-        if (useSubdivision) {
-            // Two-pass rendering
-            const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
-            renderHillshade(painter, sourceCache, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture); // draw without borders
-            renderHillshade(painter, sourceCache, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture); // draw with borders
-        }
-        else {
-            // Simple rendering
-            const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
-            renderHillshade(painter, sourceCache, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
-        }
-    }
-}
-function renderHillshade(painter, sourceCache, layer, coords, stencilModes, depthMode, colorMode, useBorder, isRenderingToTexture) {
-    var _a;
-    const projection = painter.style.projection;
-    const context = painter.context;
-    const transform = painter.transform;
-    const gl = context.gl;
-    const defines = [`#define NUM_ILLUMINATION_SOURCES ${layer.paint.get('hillshade-highlight-color').values.length}`];
-    const program = painter.useProgram('hillshade', null, false, defines);
-    const align = !painter.options.moving;
-    for (const coord of coords) {
-        const tile = sourceCache.getTile(coord);
-        const fbo = tile.fbo;
-        if (!fbo) {
-            continue;
-        }
-        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
-        const terrainData = (_a = painter.style.map.terrain) === null || _a === void 0 ? void 0 : _a.getTerrainData(coord);
-        context.activeTexture.set(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
-        const projectionData = transform.getProjectionData({
-            overscaledTileID: coord,
-            aligned: align,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
-        });
-        program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW, hillshadeUniformValues(painter, tile, layer), terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
-    }
-}
-// hillshade rendering is done in two steps. the prepare step first calculates the slope of the terrain in the x and y
-// directions for each pixel, and saves those values to a framebuffer texture in the r and g channels.
-function prepareHillshade(painter, sourceCache, tileIDs, layer, depthMode, stencilMode, colorMode) {
-    const context = painter.context;
-    const gl = context.gl;
-    for (const coord of tileIDs) {
-        const tile = sourceCache.getTile(coord);
-        const dem = tile.dem;
-        if (!dem || !dem.data) {
-            continue;
-        }
-        if (!tile.needsHillshadePrepare) {
-            continue;
-        }
-        const tileSize = dem.dim;
-        const textureStride = dem.stride;
-        const pixelData = dem.getPixels();
-        context.activeTexture.set(gl.TEXTURE1);
-        context.pixelStoreUnpackPremultiplyAlpha.set(false);
-        tile.demTexture = tile.demTexture || painter.getTileTexture(textureStride);
-        if (tile.demTexture) {
-            const demTexture = tile.demTexture;
-            demTexture.update(pixelData, { premultiply: false });
-            demTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
-        }
-        else {
-            tile.demTexture = new Texture(context, pixelData, gl.RGBA, { premultiply: false });
-            tile.demTexture.bind(gl.NEAREST, gl.CLAMP_TO_EDGE);
-        }
-        context.activeTexture.set(gl.TEXTURE0);
-        let fbo = tile.fbo;
-        if (!fbo) {
-            const renderTexture = new Texture(context, { width: tileSize, height: tileSize, data: null }, gl.RGBA);
-            renderTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-            fbo = tile.fbo = context.createFramebuffer(tileSize, tileSize, true, false);
-            fbo.colorAttachment.set(renderTexture.texture);
-        }
-        context.bindFramebuffer.set(fbo.framebuffer);
-        context.viewport.set([0, 0, tileSize, tileSize]);
-        painter.useProgram('hillshadePrepare').draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.disabled, hillshadeUniformPrepareValues(tile.tileID, dem), null, null, layer.id, painter.rasterBoundsBuffer, painter.quadTriangleIndexBuffer, painter.rasterBoundsSegments);
-        tile.needsHillshadePrepare = false;
-    }
-}
-
-const lineUniforms = (context, locations) => ({
-    'u_translation': new Uniform2f(context, locations.u_translation),
-    'u_ratio': new Uniform1f(context, locations.u_ratio),
-    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
-    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels)
-});
-const lineGradientUniforms = (context, locations) => ({
-    'u_translation': new Uniform2f(context, locations.u_translation),
-    'u_ratio': new Uniform1f(context, locations.u_ratio),
-    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
-    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels),
-    'u_image': new Uniform1i(context, locations.u_image),
-    'u_image_height': new Uniform1f(context, locations.u_image_height)
-});
-const linePatternUniforms = (context, locations) => ({
-    'u_translation': new Uniform2f(context, locations.u_translation),
-    'u_texsize': new Uniform2f(context, locations.u_texsize),
-    'u_ratio': new Uniform1f(context, locations.u_ratio),
-    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
-    'u_image': new Uniform1i(context, locations.u_image),
-    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels),
-    'u_scale': new Uniform3f(context, locations.u_scale),
-    'u_fade': new Uniform1f(context, locations.u_fade)
-});
-const lineSDFUniforms = (context, locations) => ({
-    'u_translation': new Uniform2f(context, locations.u_translation),
-    'u_ratio': new Uniform1f(context, locations.u_ratio),
-    'u_device_pixel_ratio': new Uniform1f(context, locations.u_device_pixel_ratio),
-    'u_units_to_pixels': new Uniform2f(context, locations.u_units_to_pixels),
-    'u_patternscale_a': new Uniform2f(context, locations.u_patternscale_a),
-    'u_patternscale_b': new Uniform2f(context, locations.u_patternscale_b),
-    'u_sdfgamma': new Uniform1f(context, locations.u_sdfgamma),
-    'u_image': new Uniform1i(context, locations.u_image),
-    'u_tex_y_a': new Uniform1f(context, locations.u_tex_y_a),
-    'u_tex_y_b': new Uniform1f(context, locations.u_tex_y_b),
-    'u_mix': new Uniform1f(context, locations.u_mix)
-});
-const lineUniformValues = (painter, tile, layer, ratioScale) => {
-    const transform = painter.transform;
-    return {
-        'u_translation': calculateTranslation(painter, tile, layer),
-        'u_ratio': ratioScale / pixelsToTileUnits(tile, 1, transform.zoom),
-        'u_device_pixel_ratio': painter.pixelRatio,
-        'u_units_to_pixels': [
-            1 / transform.pixelsToGLUnits[0],
-            1 / transform.pixelsToGLUnits[1]
-        ]
-    };
-};
-const lineGradientUniformValues = (painter, tile, layer, ratioScale, imageHeight) => {
-    return extend$1(lineUniformValues(painter, tile, layer, ratioScale), {
-        'u_image': 0,
-        'u_image_height': imageHeight,
-    });
-};
-const linePatternUniformValues = (painter, tile, layer, ratioScale, crossfade) => {
-    const transform = painter.transform;
-    const tileZoomRatio = calculateTileRatio(tile, transform);
-    return {
-        'u_translation': calculateTranslation(painter, tile, layer),
-        'u_texsize': tile.imageAtlasTexture.size,
-        // camera zoom ratio
-        'u_ratio': ratioScale / pixelsToTileUnits(tile, 1, transform.zoom),
-        'u_device_pixel_ratio': painter.pixelRatio,
-        'u_image': 0,
-        'u_scale': [tileZoomRatio, crossfade.fromScale, crossfade.toScale],
-        'u_fade': crossfade.t,
-        'u_units_to_pixels': [
-            1 / transform.pixelsToGLUnits[0],
-            1 / transform.pixelsToGLUnits[1]
-        ]
-    };
-};
-const lineSDFUniformValues = (painter, tile, layer, ratioScale, dasharray, crossfade) => {
-    const transform = painter.transform;
-    const lineAtlas = painter.lineAtlas;
-    const tileRatio = calculateTileRatio(tile, transform);
-    const round = layer.layout.get('line-cap') === 'round';
-    const posA = lineAtlas.getDash(dasharray.from, round);
-    const posB = lineAtlas.getDash(dasharray.to, round);
-    const widthA = posA.width * crossfade.fromScale;
-    const widthB = posB.width * crossfade.toScale;
-    return extend$1(lineUniformValues(painter, tile, layer, ratioScale), {
-        'u_patternscale_a': [tileRatio / widthA, -posA.height / 2],
-        'u_patternscale_b': [tileRatio / widthB, -posB.height / 2],
-        'u_sdfgamma': lineAtlas.width / (Math.min(widthA, widthB) * 256 * painter.pixelRatio) / 2,
-        'u_image': 0,
-        'u_tex_y_a': posA.y,
-        'u_tex_y_b': posB.y,
-        'u_mix': crossfade.t
-    });
-};
-function calculateTileRatio(tile, transform) {
-    return 1 / pixelsToTileUnits(tile, 1, transform.tileZoom);
-}
-function calculateTranslation(painter, tile, layer) {
-    // Translate line points prior to any transformation
-    return translatePosition(painter.transform, tile, layer.paint.get('line-translate'), layer.paint.get('line-translate-anchor'));
-}
-
-function drawLine(painter, sourceCache, layer, coords, renderOptions) {
-    if (painter.renderPass !== 'translucent')
-        return;
-    const { isRenderingToTexture } = renderOptions;
-    const opacity = layer.paint.get('line-opacity');
-    const width = layer.paint.get('line-width');
-    if (opacity.constantOr(1) === 0 || width.constantOr(1) === 0)
-        return;
-    const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
-    const colorMode = painter.colorModeForRenderPass();
-    const dasharray = layer.paint.get('line-dasharray');
-    const patternProperty = layer.paint.get('line-pattern');
-    const image = patternProperty.constantOr(1);
-    const gradient = layer.paint.get('line-gradient');
-    const crossfade = layer.getCrossfadeParameters();
-    const programId = image ? 'linePattern' :
-        dasharray ? 'lineSDF' :
-            gradient ? 'lineGradient' : 'line';
-    const context = painter.context;
-    const gl = context.gl;
-    const transform = painter.transform;
-    let firstTile = true;
-    for (const coord of coords) {
-        const tile = sourceCache.getTile(coord);
-        if (image && !tile.patternsLoaded())
-            continue;
-        const bucket = tile.getBucket(layer);
-        if (!bucket)
-            continue;
-        const programConfiguration = bucket.programConfigurations.get(layer.id);
-        const prevProgram = painter.context.program.get();
-        const program = painter.useProgram(programId, programConfiguration);
-        const programChanged = firstTile || program.program !== prevProgram;
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
-        const constantPattern = patternProperty.constantOr(null);
-        if (constantPattern && tile.imageAtlas) {
-            const atlas = tile.imageAtlas;
-            const posTo = atlas.patternPositions[constantPattern.to.toString()];
-            const posFrom = atlas.patternPositions[constantPattern.from.toString()];
-            if (posTo && posFrom)
-                programConfiguration.setConstantPatternPositions(posTo, posFrom);
-        }
-        const projectionData = transform.getProjectionData({
-            overscaledTileID: coord,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
-        });
-        const pixelRatio = transform.getPixelScale();
-        const uniformValues = image ? linePatternUniformValues(painter, tile, layer, pixelRatio, crossfade) :
-            dasharray ? lineSDFUniformValues(painter, tile, layer, pixelRatio, dasharray, crossfade) :
-                gradient ? lineGradientUniformValues(painter, tile, layer, pixelRatio, bucket.lineClipsArray.length) :
-                    lineUniformValues(painter, tile, layer, pixelRatio);
-        if (image) {
-            context.activeTexture.set(gl.TEXTURE0);
-            tile.imageAtlasTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-            programConfiguration.updatePaintBuffers(crossfade);
-        }
-        else if (dasharray && (programChanged || painter.lineAtlas.dirty)) {
-            context.activeTexture.set(gl.TEXTURE0);
-            painter.lineAtlas.bind(context);
-        }
-        else if (gradient) {
-            const layerGradient = bucket.gradients[layer.id];
-            let gradientTexture = layerGradient.texture;
-            if (layer.gradientVersion !== layerGradient.version) {
-                let textureResolution = 256;
-                if (layer.stepInterpolant) {
-                    const sourceMaxZoom = sourceCache.getSource().maxzoom;
-                    const potentialOverzoom = coord.canonical.z === sourceMaxZoom ?
-                        Math.ceil(1 << (painter.transform.maxZoom - coord.canonical.z)) : 1;
-                    const lineLength = bucket.maxLineLength / EXTENT$1;
-                    // Logical pixel tile size is 512px, and 1024px right before current zoom + 1
-                    const maxTilePixelSize = 1024;
-                    // Maximum possible texture coverage heuristic, bound by hardware max texture size
-                    const maxTextureCoverage = lineLength * maxTilePixelSize * potentialOverzoom;
-                    textureResolution = clamp(nextPowerOfTwo(maxTextureCoverage), 256, context.maxTextureSize);
-                }
-                layerGradient.gradient = renderColorRamp({
-                    expression: layer.gradientExpression(),
-                    evaluationKey: 'lineProgress',
-                    resolution: textureResolution,
-                    image: layerGradient.gradient || undefined,
-                    clips: bucket.lineClipsArray
-                });
-                if (layerGradient.texture) {
-                    layerGradient.texture.update(layerGradient.gradient);
-                }
-                else {
-                    layerGradient.texture = new Texture(context, layerGradient.gradient, gl.RGBA);
-                }
-                layerGradient.version = layer.gradientVersion;
-                gradientTexture = layerGradient.texture;
-            }
-            context.activeTexture.set(gl.TEXTURE0);
-            gradientTexture.bind(layer.stepInterpolant ? gl.NEAREST : gl.LINEAR, gl.CLAMP_TO_EDGE);
-        }
-        const stencil = painter.stencilModeForClipping(coord);
-        program.draw(context, gl.TRIANGLES, depthMode, stencil, colorMode, CullFaceMode.disabled, uniformValues, terrainData, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration, bucket.layoutVertexBuffer2);
-        firstTile = false;
-        // once refactored so that bound texture state is managed, we'll also be able to remove this firstTile/programChanged logic
-    }
-}
-
-const now = typeof performance !== 'undefined' && performance && performance.now ?
-    performance.now.bind(performance) :
-    Date.now.bind(Date);
-let linkEl;
-let reducedMotionQuery;
-/** */
-const browser = {
-    /**
-     * Provides a function that outputs milliseconds: either performance.now()
-     * or a fallback to Date.now()
-     */
-    now,
-    frame(abortController, fn, reject) {
-        const frameId = requestAnimationFrame((paintStartTimestamp) => {
-            unsubscribe();
-            fn(paintStartTimestamp);
-        });
-        const { unsubscribe } = subscribe(abortController.signal, 'abort', () => {
-            unsubscribe();
-            cancelAnimationFrame(frameId);
-            reject(createAbortError());
-        }, false);
-    },
-    frameAsync(abortController) {
-        return new Promise((resolve, reject) => {
-            this.frame(abortController, resolve, reject);
-        });
-    },
-    getImageData(img, padding = 0) {
-        const context = this.getImageCanvasContext(img);
-        return context.getImageData(-padding, -padding, img.width + 2 * padding, img.height + 2 * padding);
-    },
-    getImageCanvasContext(img) {
-        const canvas = window.document.createElement('canvas');
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (!context) {
-            throw new Error('failed to create canvas 2d context');
-        }
-        canvas.width = img.width;
-        canvas.height = img.height;
-        context.drawImage(img, 0, 0, img.width, img.height);
-        return context;
-    },
-    resolveURL(path) {
-        if (!linkEl)
-            linkEl = document.createElement('a');
-        linkEl.href = path;
-        return linkEl.href;
-    },
-    hardwareConcurrency: typeof navigator !== 'undefined' && navigator.hardwareConcurrency || 4,
-    get prefersReducedMotion() {
-        // In case your test crashes when checking matchMedia, call setMatchMedia from 'src/util/test/util'
-        if (!matchMedia)
-            return false;
-        //Lazily initialize media query
-        if (reducedMotionQuery == null) {
-            reducedMotionQuery = matchMedia('(prefers-reduced-motion: reduce)');
-        }
-        return reducedMotionQuery.matches;
-    },
-};
-
-const rasterUniforms = (context, locations) => ({
-    'u_tl_parent': new Uniform2f(context, locations.u_tl_parent),
-    'u_scale_parent': new Uniform1f(context, locations.u_scale_parent),
-    'u_buffer_scale': new Uniform1f(context, locations.u_buffer_scale),
-    'u_fade_t': new Uniform1f(context, locations.u_fade_t),
-    'u_opacity': new Uniform1f(context, locations.u_opacity),
-    'u_image0': new Uniform1i(context, locations.u_image0),
-    'u_image1': new Uniform1i(context, locations.u_image1),
-    'u_brightness_low': new Uniform1f(context, locations.u_brightness_low),
-    'u_brightness_high': new Uniform1f(context, locations.u_brightness_high),
-    'u_saturation_factor': new Uniform1f(context, locations.u_saturation_factor),
-    'u_contrast_factor': new Uniform1f(context, locations.u_contrast_factor),
-    'u_spin_weights': new Uniform3f(context, locations.u_spin_weights),
-    'u_coords_top': new Uniform4f(context, locations.u_coords_top),
-    'u_coords_bottom': new Uniform4f(context, locations.u_coords_bottom)
-});
-const rasterUniformValues = (parentTL, parentScaleBy, fade, layer, cornerCoords) => ({
-    'u_tl_parent': parentTL,
-    'u_scale_parent': parentScaleBy,
-    // If u_buffer_scale is ever something else than a constant 1,
-    // the north/south pole handling in the vertex shader might need modification
-    // so that the texture coordinares for poles always lie beyond the edge of the texture.
-    // Right now the coordinates are placed right at the texture border.
-    'u_buffer_scale': 1,
-    'u_fade_t': fade.mix,
-    'u_opacity': fade.opacity * layer.paint.get('raster-opacity'),
-    'u_image0': 0,
-    'u_image1': 1,
-    'u_brightness_low': layer.paint.get('raster-brightness-min'),
-    'u_brightness_high': layer.paint.get('raster-brightness-max'),
-    'u_saturation_factor': saturationFactor(layer.paint.get('raster-saturation')),
-    'u_contrast_factor': contrastFactor(layer.paint.get('raster-contrast')),
-    'u_spin_weights': spinWeights(layer.paint.get('raster-hue-rotate')),
-    'u_coords_top': [cornerCoords[0].x, cornerCoords[0].y, cornerCoords[1].x, cornerCoords[1].y],
-    'u_coords_bottom': [cornerCoords[3].x, cornerCoords[3].y, cornerCoords[2].x, cornerCoords[2].y]
-});
-function spinWeights(angle) {
-    angle *= Math.PI / 180;
-    const s = Math.sin(angle);
-    const c = Math.cos(angle);
-    return [
-        (2 * c + 1) / 3,
-        (-Math.sqrt(3) * s - c + 1) / 3,
-        (Math.sqrt(3) * s - c + 1) / 3
-    ];
-}
-function contrastFactor(contrast) {
-    return contrast > 0 ?
-        1 / (1 - contrast) :
-        1 + contrast;
-}
-function saturationFactor(saturation) {
-    return saturation > 0 ?
-        1 - 1 / (1.001 - saturation) :
-        -saturation;
-}
-
-const cornerCoords = [
-    new Point(0, 0),
-    new Point(EXTENT$1, 0),
-    new Point(EXTENT$1, EXTENT$1),
-    new Point(0, EXTENT$1),
-];
-function drawRaster(painter, sourceCache, layer, tileIDs, renderOptions) {
-    if (painter.renderPass !== 'translucent')
-        return;
-    if (layer.paint.get('raster-opacity') === 0)
-        return;
-    if (!tileIDs.length)
-        return;
-    const { isRenderingToTexture } = renderOptions;
-    const source = sourceCache.getSource();
-    const projection = painter.style.projection;
-    const useSubdivision = projection.useSubdivision;
-    // When rendering globe (or any other subdivided projection), two passes are needed.
-    // Subdivided tiles with different granularities might have tiny gaps between them.
-    // To combat this, tile meshes for globe have a slight border region.
-    // However tiles borders will overlap, and a part of a tile often
-    // gets hidden by its neighbour's border, which displays an ugly stretched texture.
-    // To both hide the border stretch and avoid tiny gaps, tiles are first drawn without borders (with gaps),
-    // and then any missing pixels (gaps, not marked in stencil) get overdrawn with tile borders.
-    // This approach also avoids pixel shader overdraw, as any pixel is drawn at most once.
-    // Stencil mask and two-pass is not used for ImageSource sources regardless of projection.
-    if (source instanceof registry$1.source.image) {
-        // Image source - no stencil is used
-        drawTiles(painter, sourceCache, layer, tileIDs, null, false, false, source.tileCoords, source.flippedWindingOrder, isRenderingToTexture);
-    }
-    else if (useSubdivision) {
-        // Two-pass rendering
-        const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
-        drawTiles(painter, sourceCache, layer, coords, stencilBorderless, false, true, cornerCoords, false, isRenderingToTexture); // draw without borders
-        drawTiles(painter, sourceCache, layer, coords, stencilBorders, true, true, cornerCoords, false, isRenderingToTexture); // draw with borders
-    }
-    else {
-        // Simple rendering
-        const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
-        drawTiles(painter, sourceCache, layer, coords, stencil, false, true, cornerCoords, false, isRenderingToTexture);
-    }
-}
-function drawTiles(painter, sourceCache, layer, coords, stencilModes, useBorder, allowPoles, corners, flipCullfaceMode = false, isRenderingToTexture = false) {
-    const minTileZ = coords[coords.length - 1].overscaledZ;
-    const context = painter.context;
-    const gl = context.gl;
-    const program = painter.useProgram('raster');
-    const transform = painter.transform;
-    const projection = painter.style.projection;
-    const colorMode = painter.colorModeForRenderPass();
-    const align = !painter.options.moving;
-    // Draw all tiles
-    for (const coord of coords) {
-        // Set the lower zoom level to sublayer 0, and higher zoom levels to higher sublayers
-        // Use gl.LESS to prevent double drawing in areas where tiles overlap.
-        const depthMode = painter.getDepthModeForSublayer(coord.overscaledZ - minTileZ, layer.paint.get('raster-opacity') === 1 ? DepthMode.ReadWrite : DepthMode.ReadOnly, gl.LESS);
-        const tile = sourceCache.getTile(coord);
-        tile.registerFadeDuration(layer.paint.get('raster-fade-duration'));
-        const parentTile = sourceCache.findLoadedParent(coord, 0);
-        const siblingTile = sourceCache.findLoadedSibling(coord);
-        // Prefer parent tile if present
-        const fadeTileReference = parentTile || siblingTile || null;
-        const fade = getFadeValues(tile, fadeTileReference, sourceCache, layer, painter.transform, painter.style.map.terrain);
-        let parentScaleBy, parentTL;
-        const textureFilter = layer.paint.get('raster-resampling') === 'nearest' ? gl.NEAREST : gl.LINEAR;
-        context.activeTexture.set(gl.TEXTURE0);
-        tile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
-        context.activeTexture.set(gl.TEXTURE1);
-        if (parentTile) {
-            parentTile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
-            parentScaleBy = Math.pow(2, parentTile.tileID.overscaledZ - tile.tileID.overscaledZ);
-            parentTL = [tile.tileID.canonical.x * parentScaleBy % 1, tile.tileID.canonical.y * parentScaleBy % 1];
-        }
-        else {
-            tile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
-        }
-        // Enable anisotropic filtering only when the pitch is greater than 20 degrees
-        // to preserve image sharpness on flat or slightly tilted maps.
-        if (tile.texture.useMipmap && context.extTextureFilterAnisotropic && painter.transform.pitch > 20) {
-            gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, context.extTextureFilterAnisotropicMax);
-        }
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
-        const projectionData = transform.getProjectionData({ overscaledTileID: coord, aligned: align, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true });
-        const uniformValues = rasterUniformValues(parentTL || [0, 0], parentScaleBy || 1, fade, layer, corners);
-        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, allowPoles, 'raster');
-        const stencilMode = stencilModes ? stencilModes[coord.overscaledZ] : StencilMode.disabled;
-        program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, flipCullfaceMode ? CullFaceMode.frontCCW : CullFaceMode.backCCW, uniformValues, terrainData, projectionData, layer.id, mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
-    }
-}
-function getFadeValues(tile, parentTile, sourceCache, layer, transform, terrain) {
-    const fadeDuration = layer.paint.get('raster-fade-duration');
-    if (!terrain && fadeDuration > 0) {
-        const now = browser.now();
-        const sinceTile = (now - tile.timeAdded) / fadeDuration;
-        const sinceParent = parentTile ? (now - parentTile.timeAdded) / fadeDuration : -1;
-        const source = sourceCache.getSource();
-        const idealZ = coveringZoomLevel(transform, {
-            tileSize: source.tileSize,
-            roundZoom: source.roundZoom
-        });
-        // if no parent or parent is older, fade in; if parent is younger, fade out
-        const fadeIn = !parentTile || Math.abs(parentTile.tileID.overscaledZ - idealZ) > Math.abs(tile.tileID.overscaledZ - idealZ);
-        const childOpacity = (fadeIn && tile.refreshedUponExpiration) ? 1 : clamp(fadeIn ? sinceTile : 1 - sinceParent, 0, 1);
-        // we don't crossfade tiles that were just refreshed upon expiring:
-        // once they're old enough to pass the crossfading threshold
-        // (fadeDuration), unset the `refreshedUponExpiration` flag so we don't
-        // incorrectly fail to crossfade them when zooming
-        if (tile.refreshedUponExpiration && sinceTile >= 1)
-            tile.refreshedUponExpiration = false;
-        if (parentTile) {
-            return {
-                opacity: 1,
-                mix: 1 - childOpacity
-            };
-        }
-        else {
-            return {
-                opacity: childOpacity,
-                mix: 0
-            };
-        }
-    }
-    else {
-        return {
-            opacity: 1,
-            mix: 0
-        };
-    }
-}
-
-const collisionUniforms = (context, locations) => ({
-    'u_pixel_extrude_scale': new Uniform2f(context, locations.u_pixel_extrude_scale)
-});
-const collisionCircleUniforms = (context, locations) => ({
-    'u_viewport_size': new Uniform2f(context, locations.u_viewport_size)
-});
-const collisionUniformValues = (transform) => {
-    return {
-        'u_pixel_extrude_scale': [1.0 / transform.width, 1.0 / transform.height],
-    };
-};
-const collisionCircleUniformValues = (transform) => {
-    return {
-        'u_viewport_size': [transform.width, transform.height]
-    };
-};
-
-const symbolLayoutAttributes = createLayout([
-    { name: 'a_pos_offset', components: 4, type: 'Int16' },
-    { name: 'a_data', components: 4, type: 'Uint16' },
-    { name: 'a_pixeloffset', components: 4, type: 'Int16' }
-], 4);
-const dynamicLayoutAttributes = createLayout([
-    { name: 'a_projected_pos', components: 3, type: 'Float32' }
-], 4);
-const placementOpacityAttributes = createLayout([
-    { name: 'a_fade_opacity', components: 1, type: 'Uint32' }
-], 4);
-const collisionVertexAttributes = createLayout([
-    { name: 'a_placed', components: 2, type: 'Uint8' },
-    { name: 'a_shift', components: 2, type: 'Float32' },
-    { name: 'a_box_real', components: 2, type: 'Int16' },
-]);
-const collisionBox = createLayout([
-    // the box is centered around the anchor point
-    { type: 'Int16', name: 'anchorPointX' },
-    { type: 'Int16', name: 'anchorPointY' },
-    // distances to the edges from the anchor
-    { type: 'Int16', name: 'x1' },
-    { type: 'Int16', name: 'y1' },
-    { type: 'Int16', name: 'x2' },
-    { type: 'Int16', name: 'y2' },
-    // the index of the feature in the original vectortile
-    { type: 'Uint32', name: 'featureIndex' },
-    // the source layer the feature appears in
-    { type: 'Uint16', name: 'sourceLayerIndex' },
-    // the bucket the feature appears in
-    { type: 'Uint16', name: 'bucketIndex' },
-]);
-const collisionBoxLayout = createLayout([
-    { name: 'a_pos', components: 2, type: 'Int16' },
-    { name: 'a_anchor_pos', components: 2, type: 'Int16' },
-    { name: 'a_extrude', components: 2, type: 'Int16' }
-], 4);
-const collisionCircleLayout = createLayout([
-    { name: 'a_pos', components: 2, type: 'Float32' },
-    { name: 'a_radius', components: 1, type: 'Float32' },
-    { name: 'a_flags', components: 2, type: 'Int16' }
-], 4);
-const quadTriangle = createLayout([
-    { name: 'triangle', components: 3, type: 'Uint16' },
-]);
-const placement = createLayout([
-    { type: 'Int16', name: 'anchorX' },
-    { type: 'Int16', name: 'anchorY' },
-    { type: 'Uint16', name: 'glyphStartIndex' },
-    { type: 'Uint16', name: 'numGlyphs' },
-    { type: 'Uint32', name: 'vertexStartIndex' },
-    { type: 'Uint32', name: 'lineStartIndex' },
-    { type: 'Uint32', name: 'lineLength' },
-    { type: 'Uint16', name: 'segment' },
-    { type: 'Uint16', name: 'lowerSize' },
-    { type: 'Uint16', name: 'upperSize' },
-    { type: 'Float32', name: 'lineOffsetX' },
-    { type: 'Float32', name: 'lineOffsetY' },
-    { type: 'Uint8', name: 'writingMode' },
-    { type: 'Uint8', name: 'placedOrientation' },
-    { type: 'Uint8', name: 'hidden' },
-    { type: 'Uint32', name: 'crossTileID' },
-    { type: 'Int16', name: 'associatedIconIndex' }
-]);
-const symbolInstance = createLayout([
-    { type: 'Int16', name: 'anchorX' },
-    { type: 'Int16', name: 'anchorY' },
-    { type: 'Int16', name: 'rightJustifiedTextSymbolIndex' },
-    { type: 'Int16', name: 'centerJustifiedTextSymbolIndex' },
-    { type: 'Int16', name: 'leftJustifiedTextSymbolIndex' },
-    { type: 'Int16', name: 'verticalPlacedTextSymbolIndex' },
-    { type: 'Int16', name: 'placedIconSymbolIndex' },
-    { type: 'Int16', name: 'verticalPlacedIconSymbolIndex' },
-    { type: 'Uint16', name: 'key' },
-    { type: 'Uint16', name: 'textBoxStartIndex' },
-    { type: 'Uint16', name: 'textBoxEndIndex' },
-    { type: 'Uint16', name: 'verticalTextBoxStartIndex' },
-    { type: 'Uint16', name: 'verticalTextBoxEndIndex' },
-    { type: 'Uint16', name: 'iconBoxStartIndex' },
-    { type: 'Uint16', name: 'iconBoxEndIndex' },
-    { type: 'Uint16', name: 'verticalIconBoxStartIndex' },
-    { type: 'Uint16', name: 'verticalIconBoxEndIndex' },
-    { type: 'Uint16', name: 'featureIndex' },
-    { type: 'Uint16', name: 'numHorizontalGlyphVertices' },
-    { type: 'Uint16', name: 'numVerticalGlyphVertices' },
-    { type: 'Uint16', name: 'numIconVertices' },
-    { type: 'Uint16', name: 'numVerticalIconVertices' },
-    { type: 'Uint16', name: 'useRuntimeCollisionCircles' },
-    { type: 'Uint32', name: 'crossTileID' },
-    { type: 'Float32', name: 'textBoxScale' },
-    { type: 'Float32', name: 'collisionCircleDiameter' },
-    { type: 'Uint16', name: 'textAnchorOffsetStartIndex' },
-    { type: 'Uint16', name: 'textAnchorOffsetEndIndex' }
-]);
-const glyphOffset = createLayout([
-    { type: 'Float32', name: 'offsetX' }
-]);
-const lineVertex = createLayout([
-    { type: 'Int16', name: 'x' },
-    { type: 'Int16', name: 'y' },
-    { type: 'Int16', name: 'tileUnitDistanceFromAnchor' }
-]);
-const textAnchorOffset = createLayout([
-    { type: 'Uint16', name: 'textAnchor' },
-    { type: 'Float32', components: 2, name: 'textOffset' }
-]);
-
-let quadTriangles;
-function drawCollisionDebug(painter, sourceCache, layer, coords, isText) {
-    const context = painter.context;
-    const transform = painter.transform;
-    const gl = context.gl;
-    const program = painter.useProgram('collisionBox');
-    const tileBatches = [];
-    let circleCount = 0;
-    let circleOffset = 0;
-    for (let i = 0; i < coords.length; i++) {
-        const coord = coords[i];
-        const tile = sourceCache.getTile(coord);
-        const bucket = tile.getBucket(layer);
-        if (!bucket) {
-            continue;
-        }
-        const buffers = isText ? bucket.textCollisionBox : bucket.iconCollisionBox;
-        // Get collision circle data of this bucket
-        const circleArray = bucket.collisionCircleArray;
-        if (circleArray.length > 0) {
-            tileBatches.push({
-                circleArray,
-                circleOffset,
-                coord
-            });
-            circleCount += circleArray.length / 4; // 4 values per circle
-            circleOffset = circleCount;
-        }
-        // Draw collision boxes
-        if (!buffers) {
-            continue;
-        }
-        program.draw(context, gl.LINES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, collisionUniformValues(painter.transform), painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord), transform.getProjectionData({ overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: true }), layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer, buffers.segments, null, painter.transform.zoom, null, null, buffers.collisionVertexBuffer);
-    }
-    if (!isText || !tileBatches.length) {
-        return;
-    }
-    // Render collision circles
-    const circleProgram = painter.useProgram('collisionCircle');
-    // Construct vertex data
-    const vertexData = new CollisionCircleLayoutArray();
-    vertexData.resize(circleCount * 4);
-    vertexData._trim();
-    let vertexOffset = 0;
-    for (const batch of tileBatches) {
-        for (let i = 0; i < batch.circleArray.length / 4; i++) {
-            const circleIdx = i * 4;
-            const x = batch.circleArray[circleIdx + 0];
-            const y = batch.circleArray[circleIdx + 1];
-            const radius = batch.circleArray[circleIdx + 2];
-            const collision = batch.circleArray[circleIdx + 3];
-            // 4 floats per vertex, 4 vertices per quad
-            vertexData.emplace(vertexOffset++, x, y, radius, collision, 0);
-            vertexData.emplace(vertexOffset++, x, y, radius, collision, 1);
-            vertexData.emplace(vertexOffset++, x, y, radius, collision, 2);
-            vertexData.emplace(vertexOffset++, x, y, radius, collision, 3);
-        }
-    }
-    if (!quadTriangles || quadTriangles.length < circleCount * 2) {
-        quadTriangles = createQuadTriangles(circleCount);
-    }
-    const indexBuffer = context.createIndexBuffer(quadTriangles, true);
-    const vertexBuffer = context.createVertexBuffer(vertexData, collisionCircleLayout.members, true);
-    // Render batches
-    for (const batch of tileBatches) {
-        const uniforms = collisionCircleUniformValues(painter.transform);
-        circleProgram.draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, uniforms, painter.style.map.terrain && painter.style.map.terrain.getTerrainData(batch.coord), null, layer.id, vertexBuffer, indexBuffer, SegmentVector.simpleSegment(0, batch.circleOffset * 2, batch.circleArray.length, batch.circleArray.length / 2), null, painter.transform.zoom, null, null, null);
-    }
-    vertexBuffer.destroy();
-    indexBuffer.destroy();
-}
-function createQuadTriangles(quadCount) {
-    const triCount = quadCount * 2;
-    const array = new QuadTriangleArray();
-    array.resize(triCount);
-    array._trim();
-    // Two triangles and 4 vertices per quad.
-    for (let i = 0; i < triCount; i++) {
-        const idx = i * 6;
-        array.uint16[idx + 0] = i * 4 + 0;
-        array.uint16[idx + 1] = i * 4 + 1;
-        array.uint16[idx + 2] = i * 4 + 2;
-        array.uint16[idx + 3] = i * 4 + 2;
-        array.uint16[idx + 4] = i * 4 + 3;
-        array.uint16[idx + 5] = i * 4 + 0;
-    }
-    return array;
-}
-
-const MAX_GLYPH_ICON_SIZE = 255;
-const SIZE_PACK_FACTOR = 128;
-const MAX_PACKED_SIZE = MAX_GLYPH_ICON_SIZE * SIZE_PACK_FACTOR;
-// For {text,icon}-size, get the bucket-level data that will be needed by
-// the painter to set symbol-size-related uniforms
-function getSizeData(tileZoom, value) {
-    const { expression } = value;
-    if (expression.kind === 'constant') {
-        const layoutSize = expression.evaluate(new EvaluationParameters(tileZoom + 1));
-        return { kind: 'constant', layoutSize };
-    }
-    else if (expression.kind === 'source') {
-        return { kind: 'source' };
-    }
-    else {
-        const { zoomStops, interpolationType } = expression;
-        // calculate covering zoom stops for zoom-dependent values
-        let lower = 0;
-        while (lower < zoomStops.length && zoomStops[lower] <= tileZoom)
-            lower++;
-        lower = Math.max(0, lower - 1);
-        let upper = lower;
-        while (upper < zoomStops.length && zoomStops[upper] < tileZoom + 1)
-            upper++;
-        upper = Math.min(zoomStops.length - 1, upper);
-        const minZoom = zoomStops[lower];
-        const maxZoom = zoomStops[upper];
-        // We'd like to be able to use CameraExpression or CompositeExpression in these
-        // return types rather than ExpressionSpecification, but the former are not
-        // transferrable across Web Worker boundaries.
-        if (expression.kind === 'composite') {
-            return { kind: 'composite', minZoom, maxZoom, interpolationType };
-        }
-        // for camera functions, also save off the function values
-        // evaluated at the covering zoom levels
-        const minSize = expression.evaluate(new EvaluationParameters(minZoom));
-        const maxSize = expression.evaluate(new EvaluationParameters(maxZoom));
-        return { kind: 'camera', minZoom, maxZoom, minSize, maxSize, interpolationType };
-    }
-}
-function evaluateSizeForFeature(sizeData, { uSize, uSizeT }, { lowerSize, upperSize }) {
-    if (sizeData.kind === 'source') {
-        return lowerSize / SIZE_PACK_FACTOR;
-    }
-    else if (sizeData.kind === 'composite') {
-        return interpolateFactory.number(lowerSize / SIZE_PACK_FACTOR, upperSize / SIZE_PACK_FACTOR, uSizeT);
-    }
-    return uSize;
-}
-function evaluateSizeForZoom(sizeData, zoom) {
-    let uSizeT = 0;
-    let uSize = 0;
-    if (sizeData.kind === 'constant') {
-        uSize = sizeData.layoutSize;
-    }
-    else if (sizeData.kind !== 'source') {
-        const { interpolationType, minZoom, maxZoom } = sizeData;
-        // Even though we could get the exact value of the camera function
-        // at z = tr.zoom, we intentionally do not: instead, we interpolate
-        // between the camera function values at a pair of zoom stops covering
-        // [tileZoom, tileZoom + 1] in order to be consistent with this
-        // restriction on composite functions
-        const t = !interpolationType ? 0 : clamp(Interpolate.interpolationFactor(interpolationType, zoom, minZoom, maxZoom), 0, 1);
-        if (sizeData.kind === 'camera') {
-            uSize = interpolateFactory.number(sizeData.minSize, sizeData.maxSize, t);
-        }
-        else {
-            uSizeT = t;
-        }
-    }
-    return { uSizeT, uSize };
-}
 
 function transformTextInternal(text, layer, feature) {
     const transform = layer.layout.get('text-transform').evaluate(feature, {});
@@ -31543,6 +31335,54 @@ function fitIconToText(shapedIcon, shapedText, textFit, padding, iconOffset, fon
     return { image, top, right, bottom, left, collisionPadding };
 }
 
+// These bounds define the minimum and maximum supported coordinate values.
+// While visible coordinates are within [0, EXTENT], tiles may theoretically
+// contain coordinates within [-Infinity, Infinity]. Our range is limited by the
+// number of bits used to represent the coordinate.
+const BITS = 15;
+const MAX = Math.pow(2, BITS - 1) - 1;
+const MIN = -MAX - 1;
+/**
+ * Loads a geometry from a VectorTileFeature and scales it to the common extent
+ * used internally.
+ * @param feature - the vector tile feature to load
+ */
+function loadGeometry(feature) {
+    const scale = EXTENT$1 / feature.extent;
+    const geometry = feature.loadGeometry();
+    for (let r = 0; r < geometry.length; r++) {
+        const ring = geometry[r];
+        for (let p = 0; p < ring.length; p++) {
+            const point = ring[p];
+            // round here because mapbox-gl-native uses integers to represent
+            // points and we need to do the same to avoid rendering differences.
+            const x = Math.round(point.x * scale);
+            const y = Math.round(point.y * scale);
+            point.x = clamp(x, MIN, MAX);
+            point.y = clamp(y, MIN, MAX);
+            if (x < point.x || x > point.x + 1 || y < point.y || y > point.y + 1) {
+                // warn when exceeding allowed extent except for the 1-px-off case
+                // https://github.com/mapbox/mapbox-gl-js/issues/8992
+                warnOnce('Geometry exceeds allowed extent, reduce your vector tile buffer size');
+            }
+        }
+    }
+    return geometry;
+}
+
+/**
+ * Construct a new feature based on a VectorTileFeature for expression evaluation, the geometry of which
+ * will be loaded based on necessity.
+ * @param feature - the feature to evaluate
+ * @param needGeometry - if set to true this will load the geometry
+ */
+function toEvaluationFeature(feature, needGeometry) {
+    return { type: feature.type,
+        id: feature.id,
+        properties: feature.properties,
+        geometry: needGeometry ? loadGeometry(feature) : [] };
+}
+
 /** @import Pbf from 'pbf' */
 /** @import {Feature} from 'geojson' */
 
@@ -32023,7 +31863,6 @@ class SymbolBuffers {
         this.opacityVertexBuffer.destroy();
     }
 }
-register('SymbolBuffers', SymbolBuffers);
 class CollisionBuffers {
     constructor(LayoutArray, layoutAttributes, IndexArray) {
         this.layoutVertexArray = new LayoutArray();
@@ -32046,7 +31885,6 @@ class CollisionBuffers {
         this.collisionVertexBuffer.destroy();
     }
 }
-register('CollisionBuffers', CollisionBuffers);
 /**
  * @internal
  * Unlike other buckets, which simply implement `addFeature` with type-specific
@@ -32540,9 +32378,6 @@ class SymbolBucket {
             this.icon.indexBuffer.updateData(this.icon.indexArray);
     }
 }
-register('SymbolBucket', SymbolBucket, {
-    omit: ['layers', 'collisionBoxArray', 'features', 'compareText']
-});
 // this constant is based on the size of StructArray indexes used in a symbol
 // bucket--namely, glyphOffsetArrayStart
 // eg the max valid UInt16 is 65,535
@@ -33643,6 +33478,136 @@ function drawSymbolElements(buffers, segments, layer, painter, program, depthMod
     const context = painter.context;
     const gl = context.gl;
     program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.backCCW, uniformValues, terrainData, projectionData, layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer, segments, layer.paint, painter.transform.zoom, buffers.programConfigurations.get(layer.id), buffers.dynamicLayoutVertexBuffer, buffers.opacityVertexBuffer);
+}
+
+const terrainPreludeUniforms = (context, locations) => ({
+    'u_depth': new Uniform1i(context, locations.u_depth),
+    'u_terrain': new Uniform1i(context, locations.u_terrain),
+    'u_terrain_dim': new Uniform1f(context, locations.u_terrain_dim),
+    'u_terrain_matrix': new UniformMatrix4f(context, locations.u_terrain_matrix),
+    'u_terrain_unpack': new Uniform4f(context, locations.u_terrain_unpack),
+    'u_terrain_exaggeration': new Uniform1f(context, locations.u_terrain_exaggeration)
+});
+const terrainUniforms = (context, locations) => ({
+    'u_texture': new Uniform1i(context, locations.u_texture),
+    'u_ele_delta': new Uniform1f(context, locations.u_ele_delta),
+    'u_fog_matrix': new UniformMatrix4f(context, locations.u_fog_matrix),
+    'u_fog_color': new UniformColor(context, locations.u_fog_color),
+    'u_fog_ground_blend': new Uniform1f(context, locations.u_fog_ground_blend),
+    'u_fog_ground_blend_opacity': new Uniform1f(context, locations.u_fog_ground_blend_opacity),
+    'u_horizon_color': new UniformColor(context, locations.u_horizon_color),
+    'u_horizon_fog_blend': new Uniform1f(context, locations.u_horizon_fog_blend),
+    'u_is_globe_mode': new Uniform1f(context, locations.u_is_globe_mode)
+});
+const terrainDepthUniforms = (context, locations) => ({
+    'u_ele_delta': new Uniform1f(context, locations.u_ele_delta)
+});
+const terrainCoordsUniforms = (context, locations) => ({
+    'u_texture': new Uniform1i(context, locations.u_texture),
+    'u_terrain_coords_id': new Uniform1f(context, locations.u_terrain_coords_id),
+    'u_ele_delta': new Uniform1f(context, locations.u_ele_delta)
+});
+const terrainUniformValues = (eleDelta, fogMatrix, sky, pitch, isGlobeMode) => ({
+    'u_texture': 0,
+    'u_ele_delta': eleDelta,
+    'u_fog_matrix': fogMatrix,
+    'u_fog_color': sky ? sky.properties.get('fog-color') : Color.white,
+    'u_fog_ground_blend': sky ? sky.properties.get('fog-ground-blend') : 1,
+    // Set opacity to 0 when in globe mode to disable fog
+    'u_fog_ground_blend_opacity': isGlobeMode ? 0 : (sky ? sky.calculateFogBlendOpacity(pitch) : 0),
+    'u_horizon_color': sky ? sky.properties.get('horizon-color') : Color.white,
+    'u_horizon_fog_blend': sky ? sky.properties.get('horizon-fog-blend') : 1,
+    'u_is_globe_mode': isGlobeMode ? 1 : 0
+});
+const terrainDepthUniformValues = (eleDelta) => ({
+    'u_ele_delta': eleDelta
+});
+const terrainCoordsUniformValues = (coordsId, eleDelta) => ({
+    'u_terrain_coords_id': coordsId / 255,
+    'u_texture': 0,
+    'u_ele_delta': eleDelta
+});
+
+/**
+ * Redraw the Depth Framebuffer
+ * @param painter - the painter
+ * @param terrain - the terrain
+ */
+function drawDepth(painter, terrain) {
+    const context = painter.context;
+    const gl = context.gl;
+    const tr = painter.transform;
+    const colorMode = ColorMode.unblended;
+    const depthMode = new DepthMode(gl.LEQUAL, DepthMode.ReadWrite, [0, 1]);
+    const tiles = terrain.sourceCache.getRenderableTiles();
+    const program = painter.useProgram('terrainDepth');
+    context.bindFramebuffer.set(terrain.getFramebuffer('depth').framebuffer);
+    context.viewport.set([0, 0, painter.width / devicePixelRatio, painter.height / devicePixelRatio]);
+    context.clear({ color: Color.transparent, depth: 1 });
+    for (const tile of tiles) {
+        const mesh = terrain.getTerrainMesh(tile.tileID);
+        const terrainData = terrain.getTerrainData(tile.tileID);
+        const projectionData = tr.getProjectionData({ overscaledTileID: tile.tileID, applyTerrainMatrix: false, applyGlobeMatrix: true });
+        const uniformValues = terrainDepthUniformValues(terrain.getMeshFrameDelta(tr.zoom));
+        program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, colorMode, CullFaceMode.backCCW, uniformValues, terrainData, projectionData, 'terrain', mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+    }
+    context.bindFramebuffer.set(null);
+    context.viewport.set([0, 0, painter.width, painter.height]);
+}
+/**
+ * Redraw the Coords Framebuffers
+ * @param painter - the painter
+ * @param terrain - the terrain
+ */
+function drawCoords(painter, terrain) {
+    const context = painter.context;
+    const gl = context.gl;
+    const tr = painter.transform;
+    const colorMode = ColorMode.unblended;
+    const depthMode = new DepthMode(gl.LEQUAL, DepthMode.ReadWrite, [0, 1]);
+    const coords = terrain.getCoordsTexture();
+    const tiles = terrain.sourceCache.getRenderableTiles();
+    // draw tile-coords into framebuffer
+    const program = painter.useProgram('terrainCoords');
+    context.bindFramebuffer.set(terrain.getFramebuffer('coords').framebuffer);
+    context.viewport.set([0, 0, painter.width / devicePixelRatio, painter.height / devicePixelRatio]);
+    context.clear({ color: Color.transparent, depth: 1 });
+    terrain.coordsIndex = [];
+    for (const tile of tiles) {
+        const mesh = terrain.getTerrainMesh(tile.tileID);
+        const terrainData = terrain.getTerrainData(tile.tileID);
+        context.activeTexture.set(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, coords.texture);
+        const uniformValues = terrainCoordsUniformValues(255 - terrain.coordsIndex.length, terrain.getMeshFrameDelta(tr.zoom));
+        const projectionData = tr.getProjectionData({ overscaledTileID: tile.tileID, applyTerrainMatrix: false, applyGlobeMatrix: true });
+        program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, colorMode, CullFaceMode.backCCW, uniformValues, terrainData, projectionData, 'terrain', mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+        terrain.coordsIndex.push(tile.tileID.key);
+    }
+    context.bindFramebuffer.set(null);
+    context.viewport.set([0, 0, painter.width, painter.height]);
+}
+function drawTerrain(painter, terrain, tiles, renderOptions) {
+    const { isRenderingGlobe } = renderOptions;
+    const context = painter.context;
+    const gl = context.gl;
+    const tr = painter.transform;
+    const colorMode = painter.colorModeForRenderPass();
+    const depthMode = painter.getDepthModeFor3D();
+    const program = painter.useProgram('terrain');
+    context.bindFramebuffer.set(null);
+    context.viewport.set([0, 0, painter.width, painter.height]);
+    for (const tile of tiles) {
+        const mesh = terrain.getTerrainMesh(tile.tileID);
+        const texture = painter.renderToTexture.getTexture(tile);
+        const terrainData = terrain.getTerrainData(tile.tileID);
+        context.activeTexture.set(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture.texture);
+        const eleDelta = terrain.getMeshFrameDelta(tr.zoom);
+        const fogMatrix = tr.calculateFogMatrix(tile.tileID.toUnwrapped());
+        const uniformValues = terrainUniformValues(eleDelta, fogMatrix, painter.style.sky, tr.pitch, isRenderingGlobe);
+        const projectionData = tr.getProjectionData({ overscaledTileID: tile.tileID, applyTerrainMatrix: false, applyGlobeMatrix: true });
+        program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, colorMode, CullFaceMode.backCCW, uniformValues, terrainData, projectionData, 'terrain', mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
+    }
 }
 
 const webpSupported = {
@@ -37732,8 +37697,8 @@ function resolveTokens(properties, text) {
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
-let layout$5;
-const getLayout$3 = () => layout$5 = layout$5 || new Properties({
+let layout$6;
+const getLayout$3 = () => layout$6 = layout$6 || new Properties({
     "symbol-placement": new DataConstantProperty(v8Spec["layout_symbol"]["symbol-placement"]),
     "symbol-spacing": new DataConstantProperty(v8Spec["layout_symbol"]["symbol-spacing"]),
     "symbol-avoid-edges": new DataConstantProperty(v8Spec["layout_symbol"]["symbol-avoid-edges"]),
@@ -37796,7 +37761,7 @@ const getPaint$8 = () => paint$8 = paint$8 || new Properties({
     "text-translate": new DataConstantProperty(v8Spec["paint_symbol"]["text-translate"]),
     "text-translate-anchor": new DataConstantProperty(v8Spec["paint_symbol"]["text-translate-anchor"]),
 });
-var properties$8 = ({ get paint() { return getPaint$8(); }, get layout() { return getLayout$3(); } });
+var properties$9 = ({ get paint() { return getPaint$8(); }, get layout() { return getLayout$3(); } });
 
 // This is an internal expression class. It is only used in GL JS and
 // has GL JS dependencies which can break the standalone style-spec module
@@ -37838,7 +37803,7 @@ register('FormatSectionOverride', FormatSectionOverride, { omit: ['defaultValue'
 const isSymbolStyleLayer = (layer) => layer.type === 'symbol';
 class SymbolStyleLayer extends StyleLayer {
     constructor(layer, globalState) {
-        super(layer, properties$8, globalState);
+        super(layer, properties$9, globalState);
     }
     recalculate(parameters, availableImages) {
         super.recalculate(parameters, availableImages);
@@ -37900,7 +37865,7 @@ class SymbolStyleLayer extends StyleLayer {
         throw new Error('Should take a different path in FeatureIndex');
     }
     _setPaintOverrides() {
-        for (const overridable of properties$8.paint.overridableProperties) {
+        for (const overridable of properties$9.paint.overridableProperties) {
             if (!SymbolStyleLayer.hasPaintOverride(this.layout, overridable)) {
                 continue;
             }
@@ -37925,7 +37890,7 @@ class SymbolStyleLayer extends StyleLayer {
     }
     static hasPaintOverride(layout, propertyName) {
         const textField = layout.get('text-field');
-        const property = properties$8.paint.properties[propertyName];
+        const property = properties$9.paint.properties[propertyName];
         let hasOverrides = false;
         const checkSections = (sections) => {
             for (const section of sections) {
@@ -41718,6 +41683,4688 @@ class CrossTileSymbolIndex {
     }
 }
 
+class Mesh {
+    constructor(vertexBuffer, indexBuffer, segments) {
+        this.vertexBuffer = vertexBuffer;
+        this.indexBuffer = indexBuffer;
+        this.segments = segments;
+    }
+    destroy() {
+        this.vertexBuffer.destroy();
+        this.indexBuffer.destroy();
+        this.segments.destroy();
+        this.vertexBuffer = null;
+        this.indexBuffer = null;
+        this.segments = null;
+    }
+}
+
+var posAttributes = createLayout([
+    { name: 'a_pos', type: 'Int16', components: 2 }
+]);
+
+const MercatorShaderDefine = '#define PROJECTION_MERCATOR';
+const MercatorShaderVariantKey = 'mercator';
+class MercatorProjection {
+    constructor() {
+        this._cachedMesh = null;
+    }
+    get name() {
+        return 'mercator';
+    }
+    get useSubdivision() {
+        // Mercator never uses subdivision.
+        return false;
+    }
+    get shaderVariantName() {
+        return MercatorShaderVariantKey;
+    }
+    get shaderDefine() {
+        return MercatorShaderDefine;
+    }
+    get shaderPreludeCode() {
+        return registry$1.shader.projectionMercator;
+    }
+    get vertexShaderPreludeCode() {
+        return registry$1.shader.projectionMercator.vertexSource;
+    }
+    get subdivisionGranularity() {
+        return SubdivisionGranularitySetting.noSubdivision;
+    }
+    get useGlobeControls() {
+        return false;
+    }
+    get transitionState() {
+        return 0;
+    }
+    get latitudeErrorCorrectionRadians() {
+        return 0;
+    }
+    destroy() {
+        // Do nothing.
+    }
+    updateGPUdependent(_) {
+        // Do nothing.
+    }
+    getMeshFromTileID(context, _tileID, _hasBorder, _allowPoles, _usage) {
+        if (this._cachedMesh) {
+            return this._cachedMesh;
+        }
+        // The parameters tileID, hasBorder and allowPoles are all ignored on purpose for mercator meshes.
+        const tileExtentArray = new PosArray();
+        tileExtentArray.emplaceBack(0, 0);
+        tileExtentArray.emplaceBack(EXTENT$1, 0);
+        tileExtentArray.emplaceBack(0, EXTENT$1);
+        tileExtentArray.emplaceBack(EXTENT$1, EXTENT$1);
+        const tileExtentBuffer = context.createVertexBuffer(tileExtentArray, posAttributes.members);
+        const tileExtentSegments = SegmentVector.simpleSegment(0, 0, 4, 2);
+        const quadTriangleIndices = new TriangleIndexArray();
+        quadTriangleIndices.emplaceBack(1, 0, 2);
+        quadTriangleIndices.emplaceBack(1, 2, 3);
+        const quadTriangleIndexBuffer = context.createIndexBuffer(quadTriangleIndices);
+        this._cachedMesh = new Mesh(tileExtentBuffer, quadTriangleIndexBuffer, tileExtentSegments);
+        return this._cachedMesh;
+    }
+    recalculate() {
+        // Do nothing.
+    }
+    hasTransition() {
+        return false;
+    }
+    setErrorQueryLatitudeDegrees(_value) {
+        // Do nothing.
+    }
+}
+
+/**
+ * An `EdgeInset` object represents screen space padding applied to the edges of the viewport.
+ * This shifts the apparent center or the vanishing point of the map. This is useful for adding floating UI elements
+ * on top of the map and having the vanishing point shift as UI elements resize.
+ *
+ * @group Geography and Geometry
+ */
+class EdgeInsets {
+    constructor(top = 0, bottom = 0, left = 0, right = 0) {
+        if (isNaN(top) || top < 0 ||
+            isNaN(bottom) || bottom < 0 ||
+            isNaN(left) || left < 0 ||
+            isNaN(right) || right < 0) {
+            throw new Error('Invalid value for edge-insets, top, bottom, left and right must all be numbers');
+        }
+        this.top = top;
+        this.bottom = bottom;
+        this.left = left;
+        this.right = right;
+    }
+    /**
+     * Interpolates the inset in-place.
+     * This maintains the current inset value for any inset not present in `target`.
+     * @param start - interpolation start
+     * @param target - interpolation target
+     * @param t - interpolation step/weight
+     * @returns the insets
+     */
+    interpolate(start, target, t) {
+        if (target.top != null && start.top != null)
+            this.top = interpolateFactory.number(start.top, target.top, t);
+        if (target.bottom != null && start.bottom != null)
+            this.bottom = interpolateFactory.number(start.bottom, target.bottom, t);
+        if (target.left != null && start.left != null)
+            this.left = interpolateFactory.number(start.left, target.left, t);
+        if (target.right != null && start.right != null)
+            this.right = interpolateFactory.number(start.right, target.right, t);
+        return this;
+    }
+    /**
+     * Utility method that computes the new apprent center or vanishing point after applying insets.
+     * This is in pixels and with the top left being (0.0) and +y being downwards.
+     *
+     * @param width - the width
+     * @param height - the height
+     * @returns the point
+     */
+    getCenter(width, height) {
+        // Clamp insets so they never overflow width/height and always calculate a valid center
+        const x = clamp((this.left + width - this.right) / 2, 0, width);
+        const y = clamp((this.top + height - this.bottom) / 2, 0, height);
+        return new Point(x, y);
+    }
+    equals(other) {
+        return this.top === other.top &&
+            this.bottom === other.bottom &&
+            this.left === other.left &&
+            this.right === other.right;
+    }
+    clone() {
+        return new EdgeInsets(this.top, this.bottom, this.left, this.right);
+    }
+    /**
+     * Returns the current state as json, useful when you want to have a
+     * read-only representation of the inset.
+     *
+     * @returns state as json
+     */
+    toJSON() {
+        return {
+            top: this.top,
+            bottom: this.bottom,
+            left: this.left,
+            right: this.right
+        };
+    }
+}
+
+/**
+ * If a path crossing the antimeridian would be shorter, extend the final coordinate so that
+ * interpolating between the two endpoints will cross it.
+ * @param center - The LngLat object of the desired center. This object will be mutated.
+ */
+function normalizeCenter(tr, center) {
+    if (!tr.renderWorldCopies || tr.lngRange)
+        return;
+    const delta = center.lng - tr.center.lng;
+    center.lng +=
+        delta > 180 ? -360 :
+            delta < -180 ? 360 : 0;
+}
+function getTileZoom(zoom) {
+    return Math.max(0, Math.floor(zoom));
+}
+/**
+ * @internal
+ * This class stores all values that define a transform's state,
+ * such as center, zoom, minZoom, etc.
+ * This can be used as a helper for implementing the ITransform interface.
+ */
+class TransformHelper {
+    constructor(callbacks, minZoom, maxZoom, minPitch, maxPitch, renderWorldCopies) {
+        this._callbacks = callbacks;
+        this._tileSize = 512; // constant
+        this._renderWorldCopies = renderWorldCopies === undefined ? true : !!renderWorldCopies;
+        this._minZoom = minZoom || 0;
+        this._maxZoom = maxZoom || 22;
+        this._minPitch = (minPitch === undefined || minPitch === null) ? 0 : minPitch;
+        this._maxPitch = (maxPitch === undefined || maxPitch === null) ? 60 : maxPitch;
+        this.setMaxBounds();
+        this._width = 0;
+        this._height = 0;
+        this._center = new LngLat(0, 0);
+        this._elevation = 0;
+        this._zoom = 0;
+        this._tileZoom = getTileZoom(this._zoom);
+        this._scale = zoomScale(this._zoom);
+        this._bearingInRadians = 0;
+        this._fovInRadians = 0.6435011087932844;
+        this._pitchInRadians = 0;
+        this._rollInRadians = 0;
+        this._unmodified = true;
+        this._edgeInsets = new EdgeInsets();
+        this._minElevationForCurrentTile = 0;
+        this._autoCalculateNearFarZ = true;
+    }
+    apply(thatI, constrain, forceOverrideZ) {
+        this._latRange = thatI.latRange;
+        this._lngRange = thatI.lngRange;
+        this._width = thatI.width;
+        this._height = thatI.height;
+        this._center = thatI.center;
+        this._elevation = thatI.elevation;
+        this._minElevationForCurrentTile = thatI.minElevationForCurrentTile;
+        this._zoom = thatI.zoom;
+        this._tileZoom = getTileZoom(this._zoom);
+        this._scale = zoomScale(this._zoom);
+        this._bearingInRadians = thatI.bearingInRadians;
+        this._fovInRadians = thatI.fovInRadians;
+        this._pitchInRadians = thatI.pitchInRadians;
+        this._rollInRadians = thatI.rollInRadians;
+        this._unmodified = thatI.unmodified;
+        this._edgeInsets = new EdgeInsets(thatI.padding.top, thatI.padding.bottom, thatI.padding.left, thatI.padding.right);
+        this._minZoom = thatI.minZoom;
+        this._maxZoom = thatI.maxZoom;
+        this._minPitch = thatI.minPitch;
+        this._maxPitch = thatI.maxPitch;
+        this._renderWorldCopies = thatI.renderWorldCopies;
+        this._cameraToCenterDistance = thatI.cameraToCenterDistance;
+        this._nearZ = thatI.nearZ;
+        this._farZ = thatI.farZ;
+        this._autoCalculateNearFarZ = !forceOverrideZ && thatI.autoCalculateNearFarZ;
+        if (constrain) {
+            this._constrain();
+        }
+        this._calcMatrices();
+    }
+    get pixelsToClipSpaceMatrix() { return this._pixelsToClipSpaceMatrix; }
+    get clipSpaceToPixelsMatrix() { return this._clipSpaceToPixelsMatrix; }
+    get minElevationForCurrentTile() { return this._minElevationForCurrentTile; }
+    setMinElevationForCurrentTile(ele) {
+        this._minElevationForCurrentTile = ele;
+    }
+    get tileSize() { return this._tileSize; }
+    get tileZoom() { return this._tileZoom; }
+    get scale() { return this._scale; }
+    /**
+     * Gets the transform's width in pixels. Use {@link resize} to set the transform's size.
+     */
+    get width() { return this._width; }
+    /**
+     * Gets the transform's height in pixels. Use {@link resize} to set the transform's size.
+     */
+    get height() { return this._height; }
+    /**
+     * Gets the transform's bearing in radians.
+     */
+    get bearingInRadians() { return this._bearingInRadians; }
+    get lngRange() { return this._lngRange; }
+    get latRange() { return this._latRange; }
+    get pixelsToGLUnits() { return this._pixelsToGLUnits; }
+    get minZoom() { return this._minZoom; }
+    setMinZoom(zoom) {
+        if (this._minZoom === zoom)
+            return;
+        this._minZoom = zoom;
+        this.setZoom(this.getConstrained(this._center, this.zoom).zoom);
+    }
+    get maxZoom() { return this._maxZoom; }
+    setMaxZoom(zoom) {
+        if (this._maxZoom === zoom)
+            return;
+        this._maxZoom = zoom;
+        this.setZoom(this.getConstrained(this._center, this.zoom).zoom);
+    }
+    get minPitch() { return this._minPitch; }
+    setMinPitch(pitch) {
+        if (this._minPitch === pitch)
+            return;
+        this._minPitch = pitch;
+        this.setPitch(Math.max(this.pitch, pitch));
+    }
+    get maxPitch() { return this._maxPitch; }
+    setMaxPitch(pitch) {
+        if (this._maxPitch === pitch)
+            return;
+        this._maxPitch = pitch;
+        this.setPitch(Math.min(this.pitch, pitch));
+    }
+    get renderWorldCopies() { return this._renderWorldCopies; }
+    setRenderWorldCopies(renderWorldCopies) {
+        if (renderWorldCopies === undefined) {
+            renderWorldCopies = true;
+        }
+        else if (renderWorldCopies === null) {
+            renderWorldCopies = false;
+        }
+        this._renderWorldCopies = renderWorldCopies;
+    }
+    get worldSize() {
+        return this._tileSize * this._scale;
+    }
+    get centerOffset() {
+        return this.centerPoint._sub(this.size._div(2));
+    }
+    /**
+     * Gets the transform's dimensions packed into a Point object.
+     */
+    get size() {
+        return new Point(this._width, this._height);
+    }
+    get bearing() {
+        return this._bearingInRadians / Math.PI * 180;
+    }
+    setBearing(bearing) {
+        const b = wrap$1(bearing, -180, 180) * Math.PI / 180;
+        if (this._bearingInRadians === b)
+            return;
+        this._unmodified = false;
+        this._bearingInRadians = b;
+        this._calcMatrices();
+        // 2x2 matrix for rotating points
+        this._rotationMatrix = create$8();
+        rotate$4(this._rotationMatrix, this._rotationMatrix, -this._bearingInRadians);
+    }
+    get rotationMatrix() { return this._rotationMatrix; }
+    get pitchInRadians() {
+        return this._pitchInRadians;
+    }
+    get pitch() {
+        return this._pitchInRadians / Math.PI * 180;
+    }
+    setPitch(pitch) {
+        const p = clamp(pitch, this.minPitch, this.maxPitch) / 180 * Math.PI;
+        if (this._pitchInRadians === p)
+            return;
+        this._unmodified = false;
+        this._pitchInRadians = p;
+        this._calcMatrices();
+    }
+    get rollInRadians() {
+        return this._rollInRadians;
+    }
+    get roll() {
+        return this._rollInRadians / Math.PI * 180;
+    }
+    setRoll(roll) {
+        const r = roll / 180 * Math.PI;
+        if (this._rollInRadians === r)
+            return;
+        this._unmodified = false;
+        this._rollInRadians = r;
+        this._calcMatrices();
+    }
+    get fovInRadians() {
+        return this._fovInRadians;
+    }
+    get fov() {
+        return radiansToDegrees(this._fovInRadians);
+    }
+    setFov(fov) {
+        fov = clamp(fov, 0.1, 150);
+        if (this.fov === fov)
+            return;
+        this._unmodified = false;
+        this._fovInRadians = degreesToRadians(fov);
+        this._calcMatrices();
+    }
+    get zoom() { return this._zoom; }
+    setZoom(zoom) {
+        const constrainedZoom = this.getConstrained(this._center, zoom).zoom;
+        if (this._zoom === constrainedZoom)
+            return;
+        this._unmodified = false;
+        this._zoom = constrainedZoom;
+        this._tileZoom = Math.max(0, Math.floor(constrainedZoom));
+        this._scale = zoomScale(constrainedZoom);
+        this._constrain();
+        this._calcMatrices();
+    }
+    get center() { return this._center; }
+    setCenter(center) {
+        if (center.lat === this._center.lat && center.lng === this._center.lng)
+            return;
+        this._unmodified = false;
+        this._center = center;
+        this._constrain();
+        this._calcMatrices();
+    }
+    /**
+     * Elevation at current center point, meters above sea level
+     */
+    get elevation() { return this._elevation; }
+    setElevation(elevation) {
+        if (elevation === this._elevation)
+            return;
+        this._elevation = elevation;
+        this._constrain();
+        this._calcMatrices();
+    }
+    get padding() { return this._edgeInsets.toJSON(); }
+    setPadding(padding) {
+        if (this._edgeInsets.equals(padding))
+            return;
+        this._unmodified = false;
+        // Update edge-insets in-place
+        this._edgeInsets.interpolate(this._edgeInsets, padding, 1);
+        this._calcMatrices();
+    }
+    /**
+     * The center of the screen in pixels with the top-left corner being (0,0)
+     * and +y axis pointing downwards. This accounts for padding.
+     */
+    get centerPoint() {
+        return this._edgeInsets.getCenter(this._width, this._height);
+    }
+    /**
+     * @internal
+     */
+    get pixelsPerMeter() { return this._pixelPerMeter; }
+    get unmodified() { return this._unmodified; }
+    get cameraToCenterDistance() { return this._cameraToCenterDistance; }
+    get nearZ() { return this._nearZ; }
+    get farZ() { return this._farZ; }
+    get autoCalculateNearFarZ() { return this._autoCalculateNearFarZ; }
+    overrideNearFarZ(nearZ, farZ) {
+        this._autoCalculateNearFarZ = false;
+        this._nearZ = nearZ;
+        this._farZ = farZ;
+        this._calcMatrices();
+    }
+    clearNearFarZOverride() {
+        this._autoCalculateNearFarZ = true;
+        this._calcMatrices();
+    }
+    /**
+     * Returns if the padding params match
+     *
+     * @param padding - the padding to check against
+     * @returns true if they are equal, false otherwise
+     */
+    isPaddingEqual(padding) {
+        return this._edgeInsets.equals(padding);
+    }
+    /**
+     * Helper method to update edge-insets in place
+     *
+     * @param start - the starting padding
+     * @param target - the target padding
+     * @param t - the step/weight
+     */
+    interpolatePadding(start, target, t) {
+        this._unmodified = false;
+        this._edgeInsets.interpolate(start, target, t);
+        this._constrain();
+        this._calcMatrices();
+    }
+    resize(width, height, constrain = true) {
+        this._width = width;
+        this._height = height;
+        if (constrain)
+            this._constrain();
+        this._calcMatrices();
+    }
+    /**
+     * Returns the maximum geographical bounds the map is constrained to, or `null` if none set.
+     * @returns max bounds
+     */
+    getMaxBounds() {
+        if (!this._latRange || this._latRange.length !== 2 ||
+            !this._lngRange || this._lngRange.length !== 2)
+            return null;
+        return new LngLatBounds([this._lngRange[0], this._latRange[0]], [this._lngRange[1], this._latRange[1]]);
+    }
+    /**
+     * Sets or clears the map's geographical constraints.
+     * @param bounds - A {@link LngLatBounds} object describing the new geographic boundaries of the map.
+     */
+    setMaxBounds(bounds) {
+        if (bounds) {
+            this._lngRange = [bounds.getWest(), bounds.getEast()];
+            this._latRange = [bounds.getSouth(), bounds.getNorth()];
+            this._constrain();
+        }
+        else {
+            this._lngRange = null;
+            this._latRange = [-MAX_VALID_LATITUDE, MAX_VALID_LATITUDE];
+        }
+    }
+    getConstrained(lngLat, zoom) {
+        return this._callbacks.getConstrained(lngLat, zoom);
+    }
+    /**
+     * When the map is pitched, some of the 3D features that intersect a query will not intersect
+     * the query at the surface of the earth. Instead the feature may be closer and only intersect
+     * the query because it extrudes into the air.
+     * @param queryGeometry - For point queries, the line from the query point to the "camera point",
+     * for other geometries, the envelope of the query geometry and the "camera point"
+     * @returns a geometry that includes all of the original query as well as all possible ares of the
+     * screen where the *base* of a visible extrusion could be.
+     *
+     */
+    getCameraQueryGeometry(cameraPoint, queryGeometry) {
+        if (queryGeometry.length === 1) {
+            return [queryGeometry[0], cameraPoint];
+        }
+        else {
+            const { minX, minY, maxX, maxY } = Bounds.fromPoints(queryGeometry).extend(cameraPoint);
+            return [
+                new Point(minX, minY),
+                new Point(maxX, minY),
+                new Point(maxX, maxY),
+                new Point(minX, maxY),
+                new Point(minX, minY)
+            ];
+        }
+    }
+    /**
+     * @internal
+     * Snaps the transform's center, zoom, etc. into the valid range.
+     */
+    _constrain() {
+        if (!this.center || !this._width || !this._height || this._constraining)
+            return;
+        this._constraining = true;
+        const unmodified = this._unmodified;
+        const { center, zoom } = this.getConstrained(this.center, this.zoom);
+        this.setCenter(center);
+        this.setZoom(zoom);
+        this._unmodified = unmodified;
+        this._constraining = false;
+    }
+    /**
+     * This function is called every time one of the transform's defining properties (center, pitch, etc.) changes.
+     * This function should update the transform's internal data, such as matrices.
+     * Any derived `_calcMatrices` function should also call the base function first. The base function only depends on the `_width` and `_height` fields.
+     */
+    _calcMatrices() {
+        if (this._width && this._height) {
+            this._pixelsToGLUnits = [2 / this._width, -2 / this._height];
+            let m = identity$2(new Float64Array(16));
+            scale$5(m, m, [this._width / 2, -this._height / 2, 1]);
+            translate$2(m, m, [1, -1, 0]);
+            this._clipSpaceToPixelsMatrix = m;
+            m = identity$2(new Float64Array(16));
+            scale$5(m, m, [1, -1, 1]);
+            translate$2(m, m, [-1, -1, 0]);
+            scale$5(m, m, [2 / this._width, 2 / this._height, 1]);
+            this._pixelsToClipSpaceMatrix = m;
+            const halfFov = this.fovInRadians / 2;
+            this._cameraToCenterDistance = 0.5 / Math.tan(halfFov) * this._height;
+        }
+        this._callbacks.calcMatrices();
+    }
+    calculateCenterFromCameraLngLatAlt(lnglat, alt, bearing, pitch) {
+        const cameraBearing = bearing !== undefined ? bearing : this.bearing;
+        const cameraPitch = pitch = pitch !== undefined ? pitch : this.pitch;
+        const camMercator = MercatorCoordinate.fromLngLat(lnglat, alt);
+        const dzNormalized = -Math.cos(degreesToRadians(cameraPitch));
+        const dhNormalized = Math.sin(degreesToRadians(cameraPitch));
+        const dxNormalized = dhNormalized * Math.sin(degreesToRadians(cameraBearing));
+        const dyNormalized = -dhNormalized * Math.cos(degreesToRadians(cameraBearing));
+        let elevation = this.elevation;
+        const altitudeAGL = alt - elevation;
+        let distanceToCenterMeters;
+        if (dzNormalized * altitudeAGL >= 0.0 || Math.abs(dzNormalized) < 0.1) {
+            distanceToCenterMeters = 10000;
+            elevation = alt + distanceToCenterMeters * dzNormalized;
+        }
+        else {
+            distanceToCenterMeters = -altitudeAGL / dzNormalized;
+        }
+        // The mercator transform scale changes with latitude. At high latitudes, there are more "Merc units" per meter
+        // than at the equator. We treat the center point as our fundamental quantity. This means we want to convert
+        // elevation to Mercator Z using the scale factor at the center point (not the camera point). Since the center point is
+        // initially unknown, we compute it using the scale factor at the camera point. This gives us a better estimate of the
+        // center point scale factor, which we use to recompute the center point. We repeat until the error is very small.
+        // This typically takes about 5 iterations.
+        let metersPerMercUnit = altitudeFromMercatorZ(1, camMercator.y);
+        let centerMercator;
+        let dMercator;
+        let iter = 0;
+        const maxIter = 10;
+        do {
+            iter += 1;
+            if (iter > maxIter) {
+                break;
+            }
+            dMercator = distanceToCenterMeters / metersPerMercUnit;
+            const dx = dxNormalized * dMercator;
+            const dy = dyNormalized * dMercator;
+            centerMercator = new MercatorCoordinate(camMercator.x + dx, camMercator.y + dy);
+            metersPerMercUnit = 1 / centerMercator.meterInMercatorCoordinateUnits();
+        } while (Math.abs(distanceToCenterMeters - dMercator * metersPerMercUnit) > 1.0e-12);
+        const center = centerMercator.toLngLat();
+        const zoom = scaleZoom(this.height / 2 / Math.tan(this.fovInRadians / 2) / dMercator / this.tileSize);
+        return { center, elevation, zoom };
+    }
+    recalculateZoomAndCenter(elevation) {
+        if (this.elevation - elevation === 0)
+            return;
+        // Find the current camera position
+        const originalPixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
+        const cameraToCenterDistanceMeters = this.cameraToCenterDistance / originalPixelPerMeter;
+        const origCenterMercator = MercatorCoordinate.fromLngLat(this.center, this.elevation);
+        const cameraMercator = cameraMercatorCoordinateFromCenterAndRotation(this.center, this.elevation, this.pitch, this.bearing, cameraToCenterDistanceMeters);
+        // update elevation to the new terrain intercept elevation and recalculate the center point
+        this._elevation = elevation;
+        const centerInfo = this.calculateCenterFromCameraLngLatAlt(cameraMercator.toLngLat(), altitudeFromMercatorZ(cameraMercator.z, origCenterMercator.y), this.bearing, this.pitch);
+        // update matrices
+        this._elevation = centerInfo.elevation;
+        this._center = centerInfo.center;
+        this.setZoom(centerInfo.zoom);
+    }
+    getCameraPoint() {
+        const pitch = this.pitchInRadians;
+        const offset = Math.tan(pitch) * (this.cameraToCenterDistance || 1);
+        return this.centerPoint.add(new Point(offset * Math.sin(this.rollInRadians), offset * Math.cos(this.rollInRadians)));
+    }
+    getCameraAltitude() {
+        const altitude = Math.cos(this.pitchInRadians) * this._cameraToCenterDistance / this._pixelPerMeter;
+        return altitude + this.elevation;
+    }
+    getCameraLngLat() {
+        const pixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
+        const cameraToCenterDistanceMeters = this.cameraToCenterDistance / pixelPerMeter;
+        const camMercator = cameraMercatorCoordinateFromCenterAndRotation(this.center, this.elevation, this.pitch, this.bearing, cameraToCenterDistanceMeters);
+        return camMercator.toLngLat();
+    }
+    getMercatorTileCoordinates(overscaledTileID) {
+        if (!overscaledTileID) {
+            return [0, 0, 1, 1];
+        }
+        const scale = (overscaledTileID.canonical.z >= 0) ? (1 << overscaledTileID.canonical.z) : Math.pow(2.0, overscaledTileID.canonical.z);
+        return [
+            overscaledTileID.canonical.x / scale,
+            overscaledTileID.canonical.y / scale,
+            1.0 / scale / EXTENT$1,
+            1.0 / scale / EXTENT$1
+        ];
+    }
+}
+
+class Aabb {
+    constructor(min_, max_) {
+        this.min = min_;
+        this.max = max_;
+        this.center = scale$4([], add$4([], this.min, this.max), 0.5);
+    }
+    quadrant(index) {
+        const split = [(index % 2) === 0, index < 2];
+        const qMin = clone$5(this.min);
+        const qMax = clone$5(this.max);
+        for (let axis = 0; axis < split.length; axis++) {
+            qMin[axis] = split[axis] ? this.min[axis] : this.center[axis];
+            qMax[axis] = split[axis] ? this.center[axis] : this.max[axis];
+        }
+        // Elevation is always constant, hence quadrant.max.z = this.max.z
+        qMax[2] = this.max[2];
+        return new Aabb(qMin, qMax);
+    }
+    distanceX(point) {
+        const pointOnAabb = Math.max(Math.min(this.max[0], point[0]), this.min[0]);
+        return pointOnAabb - point[0];
+    }
+    distanceY(point) {
+        const pointOnAabb = Math.max(Math.min(this.max[1], point[1]), this.min[1]);
+        return pointOnAabb - point[1];
+    }
+    /**
+     * Performs a frustum-aabb intersection test.
+     */
+    intersectsFrustum(frustum) {
+        // Execute separating axis test between two convex objects to find intersections
+        // Each frustum plane together with 3 major axes define the separating axes
+        let fullyInside = true;
+        for (let p = 0; p < frustum.planes.length; p++) {
+            const planeIntersection = this.intersectsPlane(frustum.planes[p]);
+            if (planeIntersection === 0 /* IntersectionResult.None */) {
+                return 0 /* IntersectionResult.None */;
+            }
+            if (planeIntersection === 1 /* IntersectionResult.Partial */) {
+                fullyInside = false;
+            }
+        }
+        if (fullyInside) {
+            return 2 /* IntersectionResult.Full */;
+        }
+        if (frustum.aabb.min[0] > this.max[0] || frustum.aabb.min[1] > this.max[1] || frustum.aabb.min[2] > this.max[2] ||
+            frustum.aabb.max[0] < this.min[0] || frustum.aabb.max[1] < this.min[1] || frustum.aabb.max[2] < this.min[2]) {
+            return 0 /* IntersectionResult.None */;
+        }
+        return 1 /* IntersectionResult.Partial */;
+    }
+    /**
+     * Performs a halfspace-aabb intersection test.
+     */
+    intersectsPlane(plane) {
+        let distMin = plane[3];
+        let distMax = plane[3];
+        for (let i = 0; i < 3; i++) {
+            if (plane[i] > 0) {
+                distMin += plane[i] * this.min[i];
+                distMax += plane[i] * this.max[i];
+            }
+            else {
+                distMax += plane[i] * this.min[i];
+                distMin += plane[i] * this.max[i];
+            }
+        }
+        if (distMin >= 0) {
+            return 2 /* IntersectionResult.Full */;
+        }
+        if (distMax < 0) {
+            return 0 /* IntersectionResult.None */;
+        }
+        return 1 /* IntersectionResult.Partial */;
+    }
+}
+
+class MercatorCoveringTilesDetailsProvider {
+    distanceToTile2d(pointX, pointY, _tileID, aabb) {
+        const distanceX = aabb.distanceX([pointX, pointY]);
+        const distanceY = aabb.distanceY([pointX, pointY]);
+        return Math.hypot(distanceX, distanceY);
+    }
+    /**
+     * Returns the wrap value for a given tile, computed so that tiles will remain loaded when crossing the antimeridian.
+     */
+    getWrap(centerCoord, tileID, parentWrap) {
+        return parentWrap;
+    }
+    /**
+     * Returns the AABB of the specified tile.
+     * @param tileID - Tile x, y and z for zoom.
+     */
+    getTileBoundingVolume(tileID, wrap, elevation, options) {
+        var _a, _b;
+        let minElevation = 0;
+        let maxElevation = 0;
+        if (options === null || options === void 0 ? void 0 : options.terrain) {
+            const overscaledTileID = new OverscaledTileID(tileID.z, wrap, tileID.z, tileID.x, tileID.y);
+            const minMax = options.terrain.getMinMaxElevation(overscaledTileID);
+            minElevation = (_a = minMax.minElevation) !== null && _a !== void 0 ? _a : Math.min(0, elevation);
+            maxElevation = (_b = minMax.maxElevation) !== null && _b !== void 0 ? _b : Math.max(0, elevation);
+        }
+        const numTiles = 1 << tileID.z;
+        return new Aabb([wrap + tileID.x / numTiles, tileID.y / numTiles, minElevation], [wrap + (tileID.x + 1) / numTiles, (tileID.y + 1) / numTiles, maxElevation]);
+    }
+    allowVariableZoom(transform, options) {
+        const zfov = transform.fov * (Math.abs(Math.cos(transform.rollInRadians)) * transform.height + Math.abs(Math.sin(transform.rollInRadians)) * transform.width) / transform.height;
+        const maxConstantZoomPitch = clamp(78.5 - zfov / 2, 0.0, 60.0);
+        return (!!options.terrain || transform.pitch > maxConstantZoomPitch);
+    }
+    allowWorldCopies() {
+        return true;
+    }
+    prepareNextFrame() {
+        // Do nothing
+    }
+}
+
+class Frustum {
+    constructor(points, planes, aabb) {
+        this.points = points;
+        this.planes = planes;
+        this.aabb = aabb;
+    }
+    static fromInvProjectionMatrix(invProj, worldSize = 1, zoom = 0, horizonPlane, flippedNearFar) {
+        const clipSpaceCorners = [
+            [-1, 1, -1, 1],
+            [1, 1, -1, 1],
+            [1, -1, -1, 1],
+            [-1, -1, -1, 1],
+            [-1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, -1, 1, 1],
+            [-1, -1, 1, 1]
+        ];
+        // Globe and mercator projection matrices have different Y directions, hence we need different sets of indices.
+        // This should be fixed in the future.
+        const frustumPlanePointIndices = flippedNearFar ? [
+            [6, 5, 4], // near
+            [0, 1, 2], // far
+            [0, 3, 7], // left
+            [2, 1, 5], // right
+            [3, 2, 6], // bottom
+            [0, 4, 5] // top
+        ] : [
+            [0, 1, 2], // near
+            [6, 5, 4], // far
+            [0, 3, 7], // left
+            [2, 1, 5], // right
+            [3, 2, 6], // bottom
+            [0, 4, 5] // top
+        ];
+        const scale = Math.pow(2, zoom);
+        // Transform frustum corner points from clip space to tile space, Z to meters
+        const frustumCoords = clipSpaceCorners.map(v => unprojectClipSpacePoint(v, invProj, worldSize, scale));
+        if (horizonPlane) {
+            // A horizon clipping plane was supplied.
+            adjustFarPlaneByHorizonPlane(frustumCoords, frustumPlanePointIndices[0], horizonPlane, flippedNearFar);
+        }
+        const frustumPlanes = frustumPlanePointIndices.map((p) => {
+            const a = sub$2([], frustumCoords[p[0]], frustumCoords[p[1]]);
+            const b = sub$2([], frustumCoords[p[2]], frustumCoords[p[1]]);
+            const n = normalize$4([], cross$2([], a, b));
+            const d = -dot$5(n, frustumCoords[p[1]]);
+            return n.concat(d);
+        });
+        const min = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
+        const max = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
+        for (const p of frustumCoords) {
+            for (let i = 0; i < 3; i++) {
+                min[i] = Math.min(min[i], p[i]);
+                max[i] = Math.max(max[i], p[i]);
+            }
+        }
+        return new Frustum(frustumCoords, frustumPlanes, new Aabb(min, max));
+    }
+}
+function unprojectClipSpacePoint(point, invProj, worldSize, scale) {
+    const v = transformMat4$1([], point, invProj);
+    const s = 1.0 / v[3] / worldSize * scale;
+    return mul$3(v, v, [s, s, 1.0 / v[3], s]);
+}
+/**
+ * Modifies points in the supplied `frustumCoords` array so that the frustum's far plane only lies as far as the horizon,
+ * which improves frustum culling effectiveness.
+ * @param frustumCoords - Points of the frustum.
+ * @param nearPlanePointsIndices - Which indices in the `frustumCoords` form the near plane.
+ * @param horizonPlane - The horizon plane.
+ */
+function adjustFarPlaneByHorizonPlane(frustumCoords, nearPlanePointsIndices, horizonPlane, flippedNearFar) {
+    // For each of the 4 edges from near to far plane,
+    // we find at which distance these edges intersect the given clipping plane,
+    // select the maximal value from these distances and then we move
+    // the frustum's far plane so that it is at most as far away from the near plane
+    // as this maximal distance.
+    const nearPlanePointsOffset = flippedNearFar ? 4 : 0;
+    const farPlanePointsOffset = flippedNearFar ? 0 : 4;
+    let maxDist = 0;
+    const cornerRayLengths = [];
+    const cornerRayNormalizedDirections = [];
+    for (let i = 0; i < 4; i++) {
+        const dir = sub$2([], frustumCoords[i + farPlanePointsOffset], frustumCoords[i + nearPlanePointsOffset]);
+        const len = length$4(dir);
+        scale$4(dir, dir, 1.0 / len); // normalize
+        cornerRayLengths.push(len);
+        cornerRayNormalizedDirections.push(dir);
+    }
+    for (let i = 0; i < 4; i++) {
+        const dist = rayPlaneIntersection(frustumCoords[i + nearPlanePointsOffset], cornerRayNormalizedDirections[i], horizonPlane);
+        if (dist !== null && dist >= 0) {
+            maxDist = Math.max(maxDist, dist);
+        }
+        else {
+            // Use the original ray length for rays parallel to the horizon plane, or for rays pointing away from it.
+            maxDist = Math.max(maxDist, cornerRayLengths[i]);
+        }
+    }
+    // Compute the near plane.
+    // We use its normal as the "view vector" - direction in which the camera is looking.
+    const nearPlaneNormalized = getNormalizedNearPlane(frustumCoords, nearPlanePointsIndices);
+    // We also try to adjust the far plane position so that it exactly intersects the point on the horizon
+    // that is most distant from the near plane.
+    const idealFarPlaneDistanceFromNearPlane = getIdealNearFarPlaneDistance(horizonPlane, nearPlaneNormalized);
+    if (idealFarPlaneDistanceFromNearPlane !== null) {
+        const idealCornerRayLength = idealFarPlaneDistanceFromNearPlane / dot$5(cornerRayNormalizedDirections[0], nearPlaneNormalized); // dot(near plane, ray dir) is the same for all 4 corners
+        maxDist = Math.min(maxDist, idealCornerRayLength);
+    }
+    for (let i = 0; i < 4; i++) {
+        const targetLength = Math.min(maxDist, cornerRayLengths[i]);
+        const newPoint = [
+            frustumCoords[i + nearPlanePointsOffset][0] + cornerRayNormalizedDirections[i][0] * targetLength,
+            frustumCoords[i + nearPlanePointsOffset][1] + cornerRayNormalizedDirections[i][1] * targetLength,
+            frustumCoords[i + nearPlanePointsOffset][2] + cornerRayNormalizedDirections[i][2] * targetLength,
+            1,
+        ];
+        frustumCoords[i + farPlanePointsOffset] = newPoint;
+    }
+}
+/**
+ * Returns the near plane equation with unit length direction.
+ * @param frustumCoords - Points of the frustum.
+ * @param nearPlanePointsIndices - Which indices in the `frustumCoords` form the near plane.
+ */
+function getNormalizedNearPlane(frustumCoords, nearPlanePointsIndices) {
+    const nearPlaneA = sub$2([], frustumCoords[nearPlanePointsIndices[0]], frustumCoords[nearPlanePointsIndices[1]]);
+    const nearPlaneB = sub$2([], frustumCoords[nearPlanePointsIndices[2]], frustumCoords[nearPlanePointsIndices[1]]);
+    const nearPlaneNormalized = [0, 0, 0, 0];
+    normalize$4(nearPlaneNormalized, cross$2([], nearPlaneA, nearPlaneB));
+    nearPlaneNormalized[3] = -dot$5(nearPlaneNormalized, frustumCoords[nearPlanePointsIndices[0]]);
+    return nearPlaneNormalized;
+}
+/**
+ * Returns the ideal distance between the frustum's near and far plane so that the far plane only lies as far as the horizon.
+ */
+function getIdealNearFarPlaneDistance(horizonPlane, nearPlaneNormalized) {
+    // Normalize the horizon plane to unit direction
+    const horizonPlaneLen = len$4(horizonPlane);
+    const normalizedHorizonPlane = scale$3([], horizonPlane, 1 / horizonPlaneLen);
+    // Project the view vector onto the horizon plane
+    const projectedViewDirection = sub$2([], nearPlaneNormalized, scale$4([], normalizedHorizonPlane, dot$5(nearPlaneNormalized, normalizedHorizonPlane)));
+    const projectedViewLength = len$4(projectedViewDirection);
+    // projectedViewLength will be 0 if the camera is looking straight down
+    if (projectedViewLength > 0) {
+        // Find the radius and center of the horizon circle (the horizon circle is the intersection of the planet's sphere and the horizon plane).
+        const horizonCircleRadius = Math.sqrt(1 - normalizedHorizonPlane[3] * normalizedHorizonPlane[3]);
+        const horizonCircleCenter = scale$4([], normalizedHorizonPlane, -normalizedHorizonPlane[3]); // The horizon plane normal always points towards the camera.
+        // Find the furthest point on the horizon circle from the near plane.
+        const pointFurthestOnHorizonCircle = add$4([], horizonCircleCenter, scale$4([], projectedViewDirection, horizonCircleRadius / projectedViewLength));
+        // Compute this point's distance from the near plane.
+        return pointPlaneSignedDistance(nearPlaneNormalized, pointFurthestOnHorizonCircle);
+    }
+    else {
+        return null;
+    }
+}
+
+class MercatorTransform {
+    //
+    // Implementation of transform getters and setters
+    //
+    get pixelsToClipSpaceMatrix() {
+        return this._helper.pixelsToClipSpaceMatrix;
+    }
+    get clipSpaceToPixelsMatrix() {
+        return this._helper.clipSpaceToPixelsMatrix;
+    }
+    get pixelsToGLUnits() {
+        return this._helper.pixelsToGLUnits;
+    }
+    get centerOffset() {
+        return this._helper.centerOffset;
+    }
+    get size() {
+        return this._helper.size;
+    }
+    get rotationMatrix() {
+        return this._helper.rotationMatrix;
+    }
+    get centerPoint() {
+        return this._helper.centerPoint;
+    }
+    get pixelsPerMeter() {
+        return this._helper.pixelsPerMeter;
+    }
+    setMinZoom(zoom) {
+        this._helper.setMinZoom(zoom);
+    }
+    setMaxZoom(zoom) {
+        this._helper.setMaxZoom(zoom);
+    }
+    setMinPitch(pitch) {
+        this._helper.setMinPitch(pitch);
+    }
+    setMaxPitch(pitch) {
+        this._helper.setMaxPitch(pitch);
+    }
+    setRenderWorldCopies(renderWorldCopies) {
+        this._helper.setRenderWorldCopies(renderWorldCopies);
+    }
+    setBearing(bearing) {
+        this._helper.setBearing(bearing);
+    }
+    setPitch(pitch) {
+        this._helper.setPitch(pitch);
+    }
+    setRoll(roll) {
+        this._helper.setRoll(roll);
+    }
+    setFov(fov) {
+        this._helper.setFov(fov);
+    }
+    setZoom(zoom) {
+        this._helper.setZoom(zoom);
+    }
+    setCenter(center) {
+        this._helper.setCenter(center);
+    }
+    setElevation(elevation) {
+        this._helper.setElevation(elevation);
+    }
+    setMinElevationForCurrentTile(elevation) {
+        this._helper.setMinElevationForCurrentTile(elevation);
+    }
+    setPadding(padding) {
+        this._helper.setPadding(padding);
+    }
+    interpolatePadding(start, target, t) {
+        return this._helper.interpolatePadding(start, target, t);
+    }
+    isPaddingEqual(padding) {
+        return this._helper.isPaddingEqual(padding);
+    }
+    resize(width, height, constrain = true) {
+        this._helper.resize(width, height, constrain);
+    }
+    getMaxBounds() {
+        return this._helper.getMaxBounds();
+    }
+    setMaxBounds(bounds) {
+        this._helper.setMaxBounds(bounds);
+    }
+    overrideNearFarZ(nearZ, farZ) {
+        this._helper.overrideNearFarZ(nearZ, farZ);
+    }
+    clearNearFarZOverride() {
+        this._helper.clearNearFarZOverride();
+    }
+    getCameraQueryGeometry(queryGeometry) {
+        return this._helper.getCameraQueryGeometry(this.getCameraPoint(), queryGeometry);
+    }
+    get tileSize() {
+        return this._helper.tileSize;
+    }
+    get tileZoom() {
+        return this._helper.tileZoom;
+    }
+    get scale() {
+        return this._helper.scale;
+    }
+    get worldSize() {
+        return this._helper.worldSize;
+    }
+    get width() {
+        return this._helper.width;
+    }
+    get height() {
+        return this._helper.height;
+    }
+    get lngRange() {
+        return this._helper.lngRange;
+    }
+    get latRange() {
+        return this._helper.latRange;
+    }
+    get minZoom() {
+        return this._helper.minZoom;
+    }
+    get maxZoom() {
+        return this._helper.maxZoom;
+    }
+    get zoom() {
+        return this._helper.zoom;
+    }
+    get center() {
+        return this._helper.center;
+    }
+    get minPitch() {
+        return this._helper.minPitch;
+    }
+    get maxPitch() {
+        return this._helper.maxPitch;
+    }
+    get pitch() {
+        return this._helper.pitch;
+    }
+    get pitchInRadians() {
+        return this._helper.pitchInRadians;
+    }
+    get roll() {
+        return this._helper.roll;
+    }
+    get rollInRadians() {
+        return this._helper.rollInRadians;
+    }
+    get bearing() {
+        return this._helper.bearing;
+    }
+    get bearingInRadians() {
+        return this._helper.bearingInRadians;
+    }
+    get fov() {
+        return this._helper.fov;
+    }
+    get fovInRadians() {
+        return this._helper.fovInRadians;
+    }
+    get elevation() {
+        return this._helper.elevation;
+    }
+    get minElevationForCurrentTile() {
+        return this._helper.minElevationForCurrentTile;
+    }
+    get padding() {
+        return this._helper.padding;
+    }
+    get unmodified() {
+        return this._helper.unmodified;
+    }
+    get renderWorldCopies() {
+        return this._helper.renderWorldCopies;
+    }
+    get cameraToCenterDistance() {
+        return this._helper.cameraToCenterDistance;
+    }
+    get nearZ() {
+        return this._helper.nearZ;
+    }
+    get farZ() {
+        return this._helper.farZ;
+    }
+    get autoCalculateNearFarZ() {
+        return this._helper.autoCalculateNearFarZ;
+    }
+    setTransitionState(_value, _error) {
+        // Do nothing
+    }
+    constructor(minZoom, maxZoom, minPitch, maxPitch, renderWorldCopies) {
+        this._posMatrixCache = new Map();
+        this._alignedPosMatrixCache = new Map();
+        this._fogMatrixCacheF32 = new Map();
+        this._helper = new TransformHelper({
+            calcMatrices: () => { this._calcMatrices(); },
+            getConstrained: (center, zoom) => { return this.getConstrained(center, zoom); }
+        }, minZoom, maxZoom, minPitch, maxPitch, renderWorldCopies);
+        this._coveringTilesDetailsProvider = new MercatorCoveringTilesDetailsProvider();
+    }
+    clone() {
+        const clone = new MercatorTransform();
+        clone.apply(this);
+        return clone;
+    }
+    apply(that, constrain, forceOverrideZ) {
+        this._helper.apply(that, constrain, forceOverrideZ);
+    }
+    get cameraPosition() { return this._cameraPosition; }
+    get projectionMatrix() { return this._projectionMatrix; }
+    get modelViewProjectionMatrix() { return this._viewProjMatrix; }
+    get inverseProjectionMatrix() { return this._invProjMatrix; }
+    get mercatorMatrix() { return this._mercatorMatrix; } // Not part of ITransform interface
+    getVisibleUnwrappedCoordinates(tileID) {
+        const result = [new UnwrappedTileID(0, tileID)];
+        if (this._helper._renderWorldCopies) {
+            const utl = this.screenPointToMercatorCoordinate(new Point(0, 0));
+            const utr = this.screenPointToMercatorCoordinate(new Point(this._helper._width, 0));
+            const ubl = this.screenPointToMercatorCoordinate(new Point(this._helper._width, this._helper._height));
+            const ubr = this.screenPointToMercatorCoordinate(new Point(0, this._helper._height));
+            const w0 = Math.floor(Math.min(utl.x, utr.x, ubl.x, ubr.x));
+            const w1 = Math.floor(Math.max(utl.x, utr.x, ubl.x, ubr.x));
+            // Add an extra copy of the world on each side to properly render ImageSources and CanvasSources.
+            // Both sources draw outside the tile boundaries of the tile that "contains them" so we need
+            // to add extra copies on both sides in case offscreen tiles need to draw into on-screen ones.
+            const extraWorldCopy = 1;
+            for (let w = w0 - extraWorldCopy; w <= w1 + extraWorldCopy; w++) {
+                if (w === 0)
+                    continue;
+                result.push(new UnwrappedTileID(w, tileID));
+            }
+        }
+        return result;
+    }
+    getCameraFrustum() {
+        return Frustum.fromInvProjectionMatrix(this._invViewProjMatrix, this.worldSize);
+    }
+    getClippingPlane() {
+        return null;
+    }
+    getCoveringTilesDetailsProvider() {
+        return this._coveringTilesDetailsProvider;
+    }
+    recalculateZoomAndCenter(terrain) {
+        // find position the camera is looking on
+        const center = this.screenPointToLocation(this.centerPoint, terrain);
+        const elevation = terrain ? terrain.getElevationForLngLatZoom(center, this._helper._tileZoom) : 0;
+        this._helper.recalculateZoomAndCenter(elevation);
+    }
+    setLocationAtPoint(lnglat, point) {
+        const z = mercatorZfromAltitude(this.elevation, this.center.lat);
+        const a = this.screenPointToMercatorCoordinateAtZ(point, z);
+        const b = this.screenPointToMercatorCoordinateAtZ(this.centerPoint, z);
+        const loc = MercatorCoordinate.fromLngLat(lnglat);
+        const newCenter = new MercatorCoordinate(loc.x - (a.x - b.x), loc.y - (a.y - b.y));
+        this.setCenter(newCenter === null || newCenter === void 0 ? void 0 : newCenter.toLngLat());
+        if (this._helper._renderWorldCopies) {
+            this.setCenter(this.center.wrap());
+        }
+    }
+    locationToScreenPoint(lnglat, terrain) {
+        return terrain ?
+            this.coordinatePoint(MercatorCoordinate.fromLngLat(lnglat), terrain.getElevationForLngLatZoom(lnglat, this._helper._tileZoom), this._pixelMatrix3D) :
+            this.coordinatePoint(MercatorCoordinate.fromLngLat(lnglat));
+    }
+    screenPointToLocation(p, terrain) {
+        var _a;
+        return (_a = this.screenPointToMercatorCoordinate(p, terrain)) === null || _a === void 0 ? void 0 : _a.toLngLat();
+    }
+    screenPointToMercatorCoordinate(p, terrain) {
+        // get point-coordinate from terrain coordinates framebuffer
+        if (terrain) {
+            const coordinate = terrain.pointCoordinate(p);
+            if (coordinate != null) {
+                return coordinate;
+            }
+        }
+        return this.screenPointToMercatorCoordinateAtZ(p);
+    }
+    screenPointToMercatorCoordinateAtZ(p, mercatorZ) {
+        // calculate point-coordinate on flat earth
+        const targetZ = mercatorZ ? mercatorZ : 0;
+        // since we don't know the correct projected z value for the point,
+        // unproject two points to get a line and then find the point on that
+        // line with z=0
+        const coord0 = [p.x, p.y, 0, 1];
+        const coord1 = [p.x, p.y, 1, 1];
+        transformMat4$1(coord0, coord0, this._pixelMatrixInverse);
+        transformMat4$1(coord1, coord1, this._pixelMatrixInverse);
+        const w0 = coord0[3];
+        const w1 = coord1[3];
+        const x0 = coord0[0] / w0;
+        const x1 = coord1[0] / w1;
+        const y0 = coord0[1] / w0;
+        const y1 = coord1[1] / w1;
+        const z0 = coord0[2] / w0;
+        const z1 = coord1[2] / w1;
+        const t = z0 === z1 ? 0 : (targetZ - z0) / (z1 - z0);
+        return new MercatorCoordinate(interpolateFactory.number(x0, x1, t) / this.worldSize, interpolateFactory.number(y0, y1, t) / this.worldSize, targetZ);
+    }
+    /**
+     * Given a coordinate, return the screen point that corresponds to it
+     * @param coord - the coordinates
+     * @param elevation - the elevation
+     * @param pixelMatrix - the pixel matrix
+     * @returns screen point
+     */
+    coordinatePoint(coord, elevation = 0, pixelMatrix = this._pixelMatrix) {
+        const p = [coord.x * this.worldSize, coord.y * this.worldSize, elevation, 1];
+        transformMat4$1(p, p, pixelMatrix);
+        return new Point(p[0] / p[3], p[1] / p[3]);
+    }
+    getBounds() {
+        const top = Math.max(0, this._helper._height / 2 - getMercatorHorizon(this));
+        return new LngLatBounds()
+            .extend(this.screenPointToLocation(new Point(0, top)))
+            .extend(this.screenPointToLocation(new Point(this._helper._width, top)))
+            .extend(this.screenPointToLocation(new Point(this._helper._width, this._helper._height)))
+            .extend(this.screenPointToLocation(new Point(0, this._helper._height)));
+    }
+    isPointOnMapSurface(p, terrain) {
+        if (terrain) {
+            const coordinate = terrain.pointCoordinate(p);
+            return coordinate != null;
+        }
+        return (p.y > this.height / 2 - getMercatorHorizon(this));
+    }
+    /**
+     * Calculate the posMatrix that, given a tile coordinate, would be used to display the tile on a map.
+     * This function is specific to the mercator projection.
+     * @param tileID - the tile ID
+     * @param aligned - whether to use a pixel-aligned matrix variant, intended for rendering raster tiles
+     * @param useFloat32 - when true, returns a float32 matrix instead of float64. Use float32 for matrices that are passed to shaders, use float64 for everything else.
+     */
+    calculatePosMatrix(tileID, aligned = false, useFloat32) {
+        var _a;
+        const posMatrixKey = (_a = tileID.key) !== null && _a !== void 0 ? _a : calculateTileKey(tileID.wrap, tileID.canonical.z, tileID.canonical.z, tileID.canonical.x, tileID.canonical.y);
+        const cache = aligned ? this._alignedPosMatrixCache : this._posMatrixCache;
+        if (cache.has(posMatrixKey)) {
+            const matrices = cache.get(posMatrixKey);
+            return useFloat32 ? matrices.f32 : matrices.f64;
+        }
+        const tileMatrix = calculateTileMatrix(tileID, this.worldSize);
+        multiply$5(tileMatrix, aligned ? this._alignedProjMatrix : this._viewProjMatrix, tileMatrix);
+        const matrices = {
+            f64: tileMatrix,
+            f32: new Float32Array(tileMatrix), // Must have a 32 bit float version for WebGL, otherwise WebGL calls in Chrome get very slow.
+        };
+        cache.set(posMatrixKey, matrices);
+        // Make sure to return the correct precision
+        return useFloat32 ? matrices.f32 : matrices.f64;
+    }
+    calculateFogMatrix(unwrappedTileID) {
+        const posMatrixKey = unwrappedTileID.key;
+        const cache = this._fogMatrixCacheF32;
+        if (cache.has(posMatrixKey)) {
+            return cache.get(posMatrixKey);
+        }
+        const fogMatrix = calculateTileMatrix(unwrappedTileID, this.worldSize);
+        multiply$5(fogMatrix, this._fogMatrix, fogMatrix);
+        cache.set(posMatrixKey, new Float32Array(fogMatrix)); // Must be 32 bit floats, otherwise WebGL calls in Chrome get very slow.
+        return cache.get(posMatrixKey);
+    }
+    /**
+     * This mercator implementation returns center lngLat and zoom to ensure that:
+     *
+     * 1) everything beyond the bounds is excluded
+     * 2) a given lngLat is as near the center as possible
+     *
+     * Bounds are those set by maxBounds or North & South "Poles" and, if only 1 globe is displayed, antimeridian.
+     */
+    getConstrained(lngLat, zoom) {
+        zoom = clamp(+zoom, this.minZoom, this.maxZoom);
+        const result = {
+            center: new LngLat(lngLat.lng, lngLat.lat),
+            zoom
+        };
+        let lngRange = this._helper._lngRange;
+        if (!this._helper._renderWorldCopies && lngRange === null) {
+            const almost180 = 180 - 1e-10;
+            lngRange = [-almost180, almost180];
+        }
+        const worldSize = this.tileSize * zoomScale(result.zoom); // A world size for the requested zoom level, not the current world size
+        let minY = 0;
+        let maxY = worldSize;
+        let minX = 0;
+        let maxX = worldSize;
+        let scaleY = 0;
+        let scaleX = 0;
+        const { x: screenWidth, y: screenHeight } = this.size;
+        if (this._helper._latRange) {
+            const latRange = this._helper._latRange;
+            minY = mercatorYfromLat(latRange[1]) * worldSize;
+            maxY = mercatorYfromLat(latRange[0]) * worldSize;
+            const shouldZoomIn = maxY - minY < screenHeight;
+            if (shouldZoomIn)
+                scaleY = screenHeight / (maxY - minY);
+        }
+        if (lngRange) {
+            minX = wrap$1(mercatorXfromLng(lngRange[0]) * worldSize, 0, worldSize);
+            maxX = wrap$1(mercatorXfromLng(lngRange[1]) * worldSize, 0, worldSize);
+            if (maxX < minX)
+                maxX += worldSize;
+            const shouldZoomIn = maxX - minX < screenWidth;
+            if (shouldZoomIn)
+                scaleX = screenWidth / (maxX - minX);
+        }
+        const { x: originalX, y: originalY } = projectToWorldCoordinates(worldSize, lngLat);
+        let modifiedX, modifiedY;
+        const scale = Math.max(scaleX || 0, scaleY || 0);
+        if (scale) {
+            // zoom in to exclude all beyond the given lng/lat ranges
+            const newPoint = new Point(scaleX ? (maxX + minX) / 2 : originalX, scaleY ? (maxY + minY) / 2 : originalY);
+            result.center = unprojectFromWorldCoordinates(worldSize, newPoint).wrap();
+            result.zoom += scaleZoom(scale);
+            return result;
+        }
+        if (this._helper._latRange) {
+            const h2 = screenHeight / 2;
+            if (originalY - h2 < minY)
+                modifiedY = minY + h2;
+            if (originalY + h2 > maxY)
+                modifiedY = maxY - h2;
+        }
+        if (lngRange) {
+            const centerX = (minX + maxX) / 2;
+            let wrappedX = originalX;
+            if (this._helper._renderWorldCopies) {
+                wrappedX = wrap$1(originalX, centerX - worldSize / 2, centerX + worldSize / 2);
+            }
+            const w2 = screenWidth / 2;
+            if (wrappedX - w2 < minX)
+                modifiedX = minX + w2;
+            if (wrappedX + w2 > maxX)
+                modifiedX = maxX - w2;
+        }
+        // pan the map if the screen goes off the range
+        if (modifiedX !== undefined || modifiedY !== undefined) {
+            const newPoint = new Point(modifiedX !== null && modifiedX !== void 0 ? modifiedX : originalX, modifiedY !== null && modifiedY !== void 0 ? modifiedY : originalY);
+            result.center = unprojectFromWorldCoordinates(worldSize, newPoint).wrap();
+        }
+        return result;
+    }
+    calculateCenterFromCameraLngLatAlt(lnglat, alt, bearing, pitch) {
+        return this._helper.calculateCenterFromCameraLngLatAlt(lnglat, alt, bearing, pitch);
+    }
+    _calculateNearFarZIfNeeded(cameraToSeaLevelDistance, limitedPitchRadians, offset) {
+        if (!this._helper.autoCalculateNearFarZ) {
+            return;
+        }
+        // In case of negative minimum elevation (e.g. the dead see, under the sea maps) use a lower plane for calculation
+        const minRenderDistanceBelowCameraInMeters = 100;
+        const minElevation = Math.min(this.elevation, this.minElevationForCurrentTile, this.getCameraAltitude() - minRenderDistanceBelowCameraInMeters);
+        const cameraToLowestPointDistance = cameraToSeaLevelDistance - minElevation * this._helper._pixelPerMeter / Math.cos(limitedPitchRadians);
+        const lowestPlane = minElevation < 0 ? cameraToLowestPointDistance : cameraToSeaLevelDistance;
+        // Find the distance from the center point [width/2 + offset.x, height/2 + offset.y] to the
+        // center top point [width/2 + offset.x, 0] in Z units, using the law of sines.
+        // 1 Z unit is equivalent to 1 horizontal px at the center of the map
+        // (the distance between[width/2, height/2] and [width/2 + 1, height/2])
+        const groundAngle = Math.PI / 2 + this.pitchInRadians;
+        const zfov = degreesToRadians(this.fov) * (Math.abs(Math.cos(degreesToRadians(this.roll))) * this.height + Math.abs(Math.sin(degreesToRadians(this.roll))) * this.width) / this.height;
+        const fovAboveCenter = zfov * (0.5 + offset.y / this.height);
+        const topHalfSurfaceDistance = Math.sin(fovAboveCenter) * lowestPlane / Math.sin(clamp(Math.PI - groundAngle - fovAboveCenter, 0.01, Math.PI - 0.01));
+        // Find the distance from the center point to the horizon
+        const horizon = getMercatorHorizon(this);
+        const horizonAngle = Math.atan(horizon / this._helper.cameraToCenterDistance);
+        const minFovCenterToHorizonRadians = degreesToRadians(90 - maxMercatorHorizonAngle);
+        const fovCenterToHorizon = horizonAngle > minFovCenterToHorizonRadians ? 2 * horizonAngle * (0.5 + offset.y / (horizon * 2)) : minFovCenterToHorizonRadians;
+        const topHalfSurfaceDistanceHorizon = Math.sin(fovCenterToHorizon) * lowestPlane / Math.sin(clamp(Math.PI - groundAngle - fovCenterToHorizon, 0.01, Math.PI - 0.01));
+        // Calculate z distance of the farthest fragment that should be rendered.
+        // Add a bit extra to avoid precision problems when a fragment's distance is exactly `furthestDistance`
+        const topHalfMinDistance = Math.min(topHalfSurfaceDistance, topHalfSurfaceDistanceHorizon);
+        this._helper._farZ = (Math.cos(Math.PI / 2 - limitedPitchRadians) * topHalfMinDistance + lowestPlane) * 1.01;
+        // The larger the value of nearZ is
+        // - the more depth precision is available for features (good)
+        // - clipping starts appearing sooner when the camera is close to 3d features (bad)
+        //
+        // Other values work for mapbox-gl-js but deck.gl was encountering precision issues
+        // when rendering custom layers. This value was experimentally chosen and
+        // seems to solve z-fighting issues in deck.gl while not clipping buildings too close to the camera.
+        this._helper._nearZ = this._helper._height / 50;
+    }
+    _calcMatrices() {
+        if (!this._helper._height)
+            return;
+        const offset = this.centerOffset;
+        const point = projectToWorldCoordinates(this.worldSize, this.center);
+        const x = point.x, y = point.y;
+        this._helper._pixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
+        // Calculate the camera to sea-level distance in pixel in respect of terrain
+        const limitedPitchRadians = degreesToRadians(Math.min(this.pitch, maxMercatorHorizonAngle));
+        const cameraToSeaLevelDistance = Math.max(this._helper.cameraToCenterDistance / 2, this._helper.cameraToCenterDistance + this._helper._elevation * this._helper._pixelPerMeter / Math.cos(limitedPitchRadians));
+        this._calculateNearFarZIfNeeded(cameraToSeaLevelDistance, limitedPitchRadians, offset);
+        // matrix for conversion from location to clip space(-1 .. 1)
+        let m;
+        m = new Float64Array(16);
+        perspective(m, this.fovInRadians, this._helper._width / this._helper._height, this._helper._nearZ, this._helper._farZ);
+        this._invProjMatrix = new Float64Array(16);
+        invert$2(this._invProjMatrix, m);
+        // Apply center of perspective offset
+        m[8] = -offset.x * 2 / this._helper._width;
+        m[9] = offset.y * 2 / this._helper._height;
+        this._projectionMatrix = clone$6(m);
+        scale$5(m, m, [1, -1, 1]);
+        translate$2(m, m, [0, 0, -this._helper.cameraToCenterDistance]);
+        rotateZ$3(m, m, -this.rollInRadians);
+        rotateX$3(m, m, this.pitchInRadians);
+        rotateZ$3(m, m, -this.bearingInRadians);
+        translate$2(m, m, [-x, -y, 0]);
+        // The mercatorMatrix can be used to transform points from mercator coordinates
+        // ([0, 0] nw, [1, 1] se) to clip space.
+        this._mercatorMatrix = scale$5([], m, [this.worldSize, this.worldSize, this.worldSize]);
+        // scale vertically to meters per pixel (inverse of ground resolution):
+        scale$5(m, m, [1, 1, this._helper._pixelPerMeter]);
+        // matrix for conversion from world space to screen coordinates in 2D
+        this._pixelMatrix = multiply$5(new Float64Array(16), this.clipSpaceToPixelsMatrix, m);
+        // matrix for conversion from world space to clip space (-1 .. 1)
+        translate$2(m, m, [0, 0, -this.elevation]); // elevate camera over terrain
+        this._viewProjMatrix = m;
+        this._invViewProjMatrix = invert$2([], m);
+        const cameraPos = [0, 0, -1, 1];
+        transformMat4$1(cameraPos, cameraPos, this._invViewProjMatrix);
+        this._cameraPosition = [
+            cameraPos[0] / cameraPos[3],
+            cameraPos[1] / cameraPos[3],
+            cameraPos[2] / cameraPos[3]
+        ];
+        // create a fog matrix, same es proj-matrix but with near clipping-plane in mapcenter
+        // needed to calculate a correct z-value for fog calculation, because projMatrix z value is not
+        this._fogMatrix = new Float64Array(16);
+        perspective(this._fogMatrix, this.fovInRadians, this.width / this.height, cameraToSeaLevelDistance, this._helper._farZ);
+        this._fogMatrix[8] = -offset.x * 2 / this.width;
+        this._fogMatrix[9] = offset.y * 2 / this.height;
+        scale$5(this._fogMatrix, this._fogMatrix, [1, -1, 1]);
+        translate$2(this._fogMatrix, this._fogMatrix, [0, 0, -this.cameraToCenterDistance]);
+        rotateZ$3(this._fogMatrix, this._fogMatrix, -this.rollInRadians);
+        rotateX$3(this._fogMatrix, this._fogMatrix, this.pitchInRadians);
+        rotateZ$3(this._fogMatrix, this._fogMatrix, -this.bearingInRadians);
+        translate$2(this._fogMatrix, this._fogMatrix, [-x, -y, 0]);
+        scale$5(this._fogMatrix, this._fogMatrix, [1, 1, this._helper._pixelPerMeter]);
+        translate$2(this._fogMatrix, this._fogMatrix, [0, 0, -this.elevation]); // elevate camera over terrain
+        // matrix for conversion from world space to screen coordinates in 3D
+        this._pixelMatrix3D = multiply$5(new Float64Array(16), this.clipSpaceToPixelsMatrix, m);
+        // Make a second projection matrix that is aligned to a pixel grid for rendering raster tiles.
+        // We're rounding the (floating point) x/y values to achieve to avoid rendering raster images to fractional
+        // coordinates. Additionally, we adjust by half a pixel in either direction in case that viewport dimension
+        // is an odd integer to preserve rendering to the pixel grid. We're rotating this shift based on the angle
+        // of the transformation so that 0°, 90°, 180°, and 270° rasters are crisp, and adjust the shift so that
+        // it is always <= 0.5 pixels.
+        const xShift = (this._helper._width % 2) / 2, yShift = (this._helper._height % 2) / 2, angleCos = Math.cos(this.bearingInRadians), angleSin = Math.sin(-this.bearingInRadians), dx = x - Math.round(x) + angleCos * xShift + angleSin * yShift, dy = y - Math.round(y) + angleCos * yShift + angleSin * xShift;
+        const alignedM = new Float64Array(m);
+        translate$2(alignedM, alignedM, [dx > 0.5 ? dx - 1 : dx, dy > 0.5 ? dy - 1 : dy, 0]);
+        this._alignedProjMatrix = alignedM;
+        // inverse matrix for conversion from screen coordinates to location
+        m = invert$2(new Float64Array(16), this._pixelMatrix);
+        if (!m)
+            throw new Error('failed to invert matrix');
+        this._pixelMatrixInverse = m;
+        this._clearMatrixCaches();
+    }
+    _clearMatrixCaches() {
+        this._posMatrixCache.clear();
+        this._alignedPosMatrixCache.clear();
+        this._fogMatrixCacheF32.clear();
+    }
+    maxPitchScaleFactor() {
+        // calcMatrices hasn't run yet
+        if (!this._pixelMatrixInverse)
+            return 1;
+        const coord = this.screenPointToMercatorCoordinate(new Point(0, 0));
+        const p = [coord.x * this.worldSize, coord.y * this.worldSize, 0, 1];
+        const topPoint = transformMat4$1(p, p, this._pixelMatrix);
+        return topPoint[3] / this._helper.cameraToCenterDistance;
+    }
+    getCameraPoint() {
+        return this._helper.getCameraPoint();
+    }
+    getCameraAltitude() {
+        return this._helper.getCameraAltitude();
+    }
+    getCameraLngLat() {
+        const pixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
+        const cameraToCenterDistanceMeters = this._helper.cameraToCenterDistance / pixelPerMeter;
+        const camMercator = cameraMercatorCoordinateFromCenterAndRotation(this.center, this.elevation, this.pitch, this.bearing, cameraToCenterDistanceMeters);
+        return camMercator.toLngLat();
+    }
+    lngLatToCameraDepth(lngLat, elevation) {
+        const coord = MercatorCoordinate.fromLngLat(lngLat);
+        const p = [coord.x * this.worldSize, coord.y * this.worldSize, elevation, 1];
+        transformMat4$1(p, p, this._viewProjMatrix);
+        return (p[2] / p[3]);
+    }
+    getProjectionData(params) {
+        const { overscaledTileID, aligned, applyTerrainMatrix } = params;
+        const mercatorTileCoordinates = this._helper.getMercatorTileCoordinates(overscaledTileID);
+        const tilePosMatrix = overscaledTileID ? this.calculatePosMatrix(overscaledTileID, aligned, true) : null;
+        let mainMatrix;
+        if (overscaledTileID && overscaledTileID.terrainRttPosMatrix32f && applyTerrainMatrix) {
+            mainMatrix = overscaledTileID.terrainRttPosMatrix32f;
+        }
+        else if (tilePosMatrix) {
+            mainMatrix = tilePosMatrix; // This matrix should be float32
+        }
+        else {
+            mainMatrix = createIdentityMat4f32();
+        }
+        return {
+            mainMatrix, // Might be set to a custom matrix by different projections.
+            tileMercatorCoords: mercatorTileCoordinates,
+            clippingPlane: [0, 0, 0, 0],
+            projectionTransition: 0.0, // Range 0..1, where 0 is mercator, 1 is another projection, mostly globe.
+            fallbackMatrix: mainMatrix,
+        };
+    }
+    isLocationOccluded(_) {
+        return false;
+    }
+    getPixelScale() {
+        return 1.0;
+    }
+    getCircleRadiusCorrection() {
+        return 1.0;
+    }
+    getPitchedTextCorrection(_textAnchorX, _textAnchorY, _tileID) {
+        return 1.0;
+    }
+    transformLightDirection(dir) {
+        return clone$5(dir);
+    }
+    getRayDirectionFromPixel(_p) {
+        throw new Error('Not implemented.'); // No need for this in mercator transform
+    }
+    projectTileCoordinates(x, y, unwrappedTileID, getElevation) {
+        const matrix = this.calculatePosMatrix(unwrappedTileID);
+        let pos;
+        if (getElevation) { // slow because of handle z-index
+            pos = [x, y, getElevation(x, y), 1];
+            transformMat4$1(pos, pos, matrix);
+        }
+        else { // fast because of ignore z-index
+            pos = [x, y, 0, 1];
+            xyTransformMat4(pos, pos, matrix);
+        }
+        const w = pos[3];
+        return {
+            point: new Point(pos[0] / w, pos[1] / w),
+            signedDistanceFromCamera: w,
+            isOccluded: false
+        };
+    }
+    populateCache(coords) {
+        for (const coord of coords) {
+            // Return value is thrown away, but this function will still
+            // place the pos matrix into the transform's internal cache.
+            this.calculatePosMatrix(coord);
+        }
+    }
+    getMatrixForModel(location, altitude) {
+        const modelAsMercatorCoordinate = MercatorCoordinate.fromLngLat(location, altitude);
+        const scale = modelAsMercatorCoordinate.meterInMercatorCoordinateUnits();
+        const m = createIdentityMat4f64();
+        translate$2(m, m, [modelAsMercatorCoordinate.x, modelAsMercatorCoordinate.y, modelAsMercatorCoordinate.z]);
+        rotateZ$3(m, m, Math.PI);
+        rotateX$3(m, m, Math.PI / 2);
+        scale$5(m, m, [-scale, scale, scale]);
+        return m;
+    }
+    getProjectionDataForCustomLayer(applyGlobeMatrix = true) {
+        const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
+        const projectionData = this.getProjectionData({ overscaledTileID: tileID, applyGlobeMatrix });
+        const tileMatrix = calculateTileMatrix(tileID, this.worldSize);
+        multiply$5(tileMatrix, this._viewProjMatrix, tileMatrix);
+        projectionData.tileMercatorCoords = [0, 0, 1, 1];
+        // Even though we requested projection data for the mercator base tile which covers the entire mercator range,
+        // the shader projection machinery still expects inputs to be in tile units range [0..EXTENT].
+        // Since custom layers are expected to supply mercator coordinates [0..1], we need to rescale
+        // both matrices by EXTENT. We also need to rescale Z.
+        const scale = [EXTENT$1, EXTENT$1, this.worldSize / this._helper.pixelsPerMeter];
+        // We pass full-precision 64bit float matrices to custom layers to prevent precision loss in case the user wants to do further transformations.
+        // Otherwise we get very visible precision-artifacts and twitching for objects that are bulding-scale.
+        const projectionMatrixScaled = createMat4f64();
+        scale$5(projectionMatrixScaled, tileMatrix, scale);
+        projectionData.fallbackMatrix = projectionMatrixScaled;
+        projectionData.mainMatrix = projectionMatrixScaled;
+        return projectionData;
+    }
+    getFastPathSimpleProjectionMatrix(tileID) {
+        return this.calculatePosMatrix(tileID);
+    }
+}
+
+/**
+ * @internal
+ */
+function cameraBoundsWarning() {
+    warnOnce('Map cannot fit within canvas with the given bounds, padding, and/or offset.');
+}
+/**
+ * @internal
+ * Set a transform's rotation to a value interpolated between startEulerAngles and endEulerAngles
+ */
+function updateRotation(args) {
+    if (args.useSlerp) {
+        // At pitch ==0, the Euler angle representation is ambiguous. In this case, set the Euler angles
+        // to the representation requested by the caller
+        if (args.k < 1) {
+            const startRotation = rollPitchBearingToQuat(args.startEulerAngles.roll, args.startEulerAngles.pitch, args.startEulerAngles.bearing);
+            const endRotation = rollPitchBearingToQuat(args.endEulerAngles.roll, args.endEulerAngles.pitch, args.endEulerAngles.bearing);
+            const rotation = new Float64Array(4);
+            slerp(rotation, startRotation, endRotation, args.k);
+            const eulerAngles = getRollPitchBearing(rotation);
+            args.tr.setRoll(eulerAngles.roll);
+            args.tr.setPitch(eulerAngles.pitch);
+            args.tr.setBearing(eulerAngles.bearing);
+        }
+        else {
+            args.tr.setRoll(args.endEulerAngles.roll);
+            args.tr.setPitch(args.endEulerAngles.pitch);
+            args.tr.setBearing(args.endEulerAngles.bearing);
+        }
+    }
+    else {
+        args.tr.setRoll(interpolateFactory.number(args.startEulerAngles.roll, args.endEulerAngles.roll, args.k));
+        args.tr.setPitch(interpolateFactory.number(args.startEulerAngles.pitch, args.endEulerAngles.pitch, args.k));
+        args.tr.setBearing(interpolateFactory.number(args.startEulerAngles.bearing, args.endEulerAngles.bearing, args.k));
+    }
+}
+function cameraForBoxAndBearing(options, padding, bounds, bearing, tr) {
+    const edgePadding = tr.padding;
+    // Consider all corners of the rotated bounding box derived from the given points
+    // when find the camera position that fits the given points.
+    const nwWorld = projectToWorldCoordinates(tr.worldSize, bounds.getNorthWest());
+    const neWorld = projectToWorldCoordinates(tr.worldSize, bounds.getNorthEast());
+    const seWorld = projectToWorldCoordinates(tr.worldSize, bounds.getSouthEast());
+    const swWorld = projectToWorldCoordinates(tr.worldSize, bounds.getSouthWest());
+    const bearingRadians = degreesToRadians(-bearing);
+    const nwRotatedWorld = nwWorld.rotate(bearingRadians);
+    const neRotatedWorld = neWorld.rotate(bearingRadians);
+    const seRotatedWorld = seWorld.rotate(bearingRadians);
+    const swRotatedWorld = swWorld.rotate(bearingRadians);
+    const upperRight = new Point(Math.max(nwRotatedWorld.x, neRotatedWorld.x, swRotatedWorld.x, seRotatedWorld.x), Math.max(nwRotatedWorld.y, neRotatedWorld.y, swRotatedWorld.y, seRotatedWorld.y));
+    const lowerLeft = new Point(Math.min(nwRotatedWorld.x, neRotatedWorld.x, swRotatedWorld.x, seRotatedWorld.x), Math.min(nwRotatedWorld.y, neRotatedWorld.y, swRotatedWorld.y, seRotatedWorld.y));
+    // Calculate zoom: consider the original bbox and padding.
+    const size = upperRight.sub(lowerLeft);
+    const availableWidth = (tr.width - (edgePadding.left + edgePadding.right + padding.left + padding.right));
+    const availableHeight = (tr.height - (edgePadding.top + edgePadding.bottom + padding.top + padding.bottom));
+    const scaleX = availableWidth / size.x;
+    const scaleY = availableHeight / size.y;
+    if (scaleY < 0 || scaleX < 0) {
+        cameraBoundsWarning();
+        return undefined;
+    }
+    const zoom = Math.min(scaleZoom(tr.scale * Math.min(scaleX, scaleY)), options.maxZoom);
+    // Calculate center: apply the zoom, the configured offset, as well as offset that exists as a result of padding.
+    const offset = Point.convert(options.offset);
+    const paddingOffsetX = (padding.left - padding.right) / 2;
+    const paddingOffsetY = (padding.top - padding.bottom) / 2;
+    const paddingOffset = new Point(paddingOffsetX, paddingOffsetY);
+    const rotatedPaddingOffset = paddingOffset.rotate(degreesToRadians(bearing));
+    const offsetAtInitialZoom = offset.add(rotatedPaddingOffset);
+    const offsetAtFinalZoom = offsetAtInitialZoom.mult(tr.scale / zoomScale(zoom));
+    const center = unprojectFromWorldCoordinates(tr.worldSize, 
+    // either world diagonal can be used (NW-SE or NE-SW)
+    nwWorld.add(seWorld).div(2).sub(offsetAtFinalZoom));
+    const result = {
+        center,
+        zoom,
+        bearing
+    };
+    return result;
+}
+
+/**
+ * @internal
+ */
+class MercatorCameraHelper {
+    get useGlobeControls() { return false; }
+    handlePanInertia(pan, transform) {
+        // Reduce the offset so that it never goes past the horizon. If it goes past
+        // the horizon, the pan direction is opposite of the intended direction.
+        const offsetLength = pan.mag();
+        const pixelsToHorizon = Math.abs(getMercatorHorizon(transform));
+        const horizonFactor = 0.75; // Must be < 1 to prevent the offset from crossing the horizon
+        const offsetAsPoint = pan.mult(Math.min(pixelsToHorizon * horizonFactor / offsetLength, 1.0));
+        return {
+            easingOffset: offsetAsPoint,
+            easingCenter: transform.center,
+        };
+    }
+    handleMapControlsRollPitchBearingZoom(deltas, tr) {
+        if (deltas.bearingDelta)
+            tr.setBearing(tr.bearing + deltas.bearingDelta);
+        if (deltas.pitchDelta)
+            tr.setPitch(tr.pitch + deltas.pitchDelta);
+        if (deltas.rollDelta)
+            tr.setRoll(tr.roll + deltas.rollDelta);
+        if (deltas.zoomDelta)
+            tr.setZoom(tr.zoom + deltas.zoomDelta);
+    }
+    handleMapControlsPan(deltas, tr, preZoomAroundLoc) {
+        // If we are rotating about the center point, there is no need to update the transform center. Doing so causes
+        // a small amount of drift of the center point, especially when pitch is close to 90 degrees.
+        // In this case, return early.
+        if (deltas.around.distSqr(tr.centerPoint) < 1.0e-2) {
+            return;
+        }
+        tr.setLocationAtPoint(preZoomAroundLoc, deltas.around);
+    }
+    cameraForBoxAndBearing(options, padding, bounds, bearing, tr) {
+        return cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
+    }
+    handleJumpToCenterZoom(tr, options) {
+        // Mercator zoom & center handling.
+        const optionsZoom = typeof options.zoom !== 'undefined';
+        const zoom = optionsZoom ? +options.zoom : tr.zoom;
+        if (tr.zoom !== zoom) {
+            tr.setZoom(+options.zoom);
+        }
+        if (options.center !== undefined) {
+            tr.setCenter(LngLat.convert(options.center));
+        }
+    }
+    handleEaseTo(tr, options) {
+        const startZoom = tr.zoom;
+        const startPadding = tr.padding;
+        const startEulerAngles = { roll: tr.roll, pitch: tr.pitch, bearing: tr.bearing };
+        const endRoll = options.roll === undefined ? tr.roll : options.roll;
+        const endPitch = options.pitch === undefined ? tr.pitch : options.pitch;
+        const endBearing = options.bearing === undefined ? tr.bearing : options.bearing;
+        const endEulerAngles = { roll: endRoll, pitch: endPitch, bearing: endBearing };
+        const optionsZoom = typeof options.zoom !== 'undefined';
+        const doPadding = !tr.isPaddingEqual(options.padding);
+        let isZooming = false;
+        const zoom = optionsZoom ? +options.zoom : tr.zoom;
+        let pointAtOffset = tr.centerPoint.add(options.offsetAsPoint);
+        const locationAtOffset = tr.screenPointToLocation(pointAtOffset);
+        const { center, zoom: endZoom } = tr.getConstrained(LngLat.convert(options.center || locationAtOffset), zoom !== null && zoom !== void 0 ? zoom : startZoom);
+        normalizeCenter(tr, center);
+        const from = projectToWorldCoordinates(tr.worldSize, locationAtOffset);
+        const delta = projectToWorldCoordinates(tr.worldSize, center).sub(from);
+        const finalScale = zoomScale(endZoom - startZoom);
+        isZooming = (endZoom !== startZoom);
+        const easeFunc = (k) => {
+            if (isZooming) {
+                tr.setZoom(interpolateFactory.number(startZoom, endZoom, k));
+            }
+            if (!rollPitchBearingEqual(startEulerAngles, endEulerAngles)) {
+                updateRotation({
+                    startEulerAngles,
+                    endEulerAngles,
+                    tr,
+                    k,
+                    useSlerp: startEulerAngles.roll != endEulerAngles.roll
+                });
+            }
+            if (doPadding) {
+                tr.interpolatePadding(startPadding, options.padding, k);
+                // When padding is being applied, Transform.centerPoint is changing continuously,
+                // thus we need to recalculate offsetPoint every frame
+                pointAtOffset = tr.centerPoint.add(options.offsetAsPoint);
+            }
+            if (options.around) {
+                tr.setLocationAtPoint(options.around, options.aroundPoint);
+            }
+            else {
+                const scale = zoomScale(tr.zoom - startZoom);
+                const base = endZoom > startZoom ?
+                    Math.min(2, finalScale) :
+                    Math.max(0.5, finalScale);
+                const speedup = Math.pow(base, 1 - k);
+                const newCenter = unprojectFromWorldCoordinates(tr.worldSize, from.add(delta.mult(k * speedup)).mult(scale));
+                tr.setLocationAtPoint(tr.renderWorldCopies ? newCenter.wrap() : newCenter, pointAtOffset);
+            }
+        };
+        return {
+            easeFunc,
+            isZooming,
+            elevationCenter: center,
+        };
+    }
+    handleFlyTo(tr, options) {
+        const optionsZoom = typeof options.zoom !== 'undefined';
+        const startZoom = tr.zoom;
+        // Obtain target center and zoom
+        const constrained = tr.getConstrained(LngLat.convert(options.center || options.locationAtOffset), optionsZoom ? +options.zoom : startZoom);
+        const targetCenter = constrained.center;
+        const targetZoom = constrained.zoom;
+        normalizeCenter(tr, targetCenter);
+        const from = projectToWorldCoordinates(tr.worldSize, options.locationAtOffset);
+        const delta = projectToWorldCoordinates(tr.worldSize, targetCenter).sub(from);
+        const pixelPathLength = delta.mag();
+        const scaleOfZoom = zoomScale(targetZoom - startZoom);
+        const optionsMinZoom = typeof options.minZoom !== 'undefined';
+        let scaleOfMinZoom;
+        if (optionsMinZoom) {
+            const minZoomPreConstrain = Math.min(+options.minZoom, startZoom, targetZoom);
+            const minZoom = tr.getConstrained(targetCenter, minZoomPreConstrain).zoom;
+            scaleOfMinZoom = zoomScale(minZoom - startZoom);
+        }
+        const easeFunc = (k, scale, centerFactor, pointAtOffset) => {
+            tr.setZoom(k === 1 ? targetZoom : startZoom + scaleZoom(scale));
+            const newCenter = k === 1 ? targetCenter : unprojectFromWorldCoordinates(tr.worldSize, from.add(delta.mult(centerFactor)).mult(scale));
+            tr.setLocationAtPoint(tr.renderWorldCopies ? newCenter.wrap() : newCenter, pointAtOffset);
+        };
+        return {
+            easeFunc,
+            scaleOfZoom,
+            targetCenter,
+            scaleOfMinZoom,
+            pixelPathLength,
+        };
+    }
+}
+
+const projectionErrorMeasurementUniforms = (context, locations) => ({
+    'u_input': new Uniform1f(context, locations.u_input),
+    'u_output_expected': new Uniform1f(context, locations.u_output_expected),
+});
+const projectionErrorMeasurementUniformValues = (input, outputExpected) => ({
+    'u_input': input,
+    'u_output_expected': outputExpected,
+});
+
+const cache = new WeakMap();
+function isWebGL2(gl) {
+    var _a;
+    if (cache.has(gl)) {
+        return cache.get(gl);
+    }
+    else {
+        const value = (_a = gl.getParameter(gl.VERSION)) === null || _a === void 0 ? void 0 : _a.startsWith('WebGL 2.0');
+        cache.set(gl, value);
+        return value;
+    }
+}
+
+/**
+ * For vector globe the vertex shader projects mercator coordinates to angular coordinates on a sphere.
+ * This projection requires some inverse trigonometry `atan(exp(...))`, which is inaccurate on some GPUs (mainly on AMD and Nvidia).
+ * The inaccuracy is severe enough to require a workaround. The uncorrected map is shifted north-south by up to several hundred meters in some latitudes.
+ * Since the inaccuracy is hardware-dependant and may change in the future, we need to measure the error at runtime.
+ *
+ * Our approach relies on several assumptions:
+ *
+ * - the error is only present in the "latitude" component (longitude doesn't need any inverse trigonometry)
+ * - the error is continuous and changes slowly with latitude
+ * - at zoom levels where the error is noticeable, the error is more-or-less the same across the entire visible map area (and thus can be described with a single number)
+ *
+ * Solution:
+ *
+ * Every few frames, launch a GPU shader that measures the error for the current map center latitude, and writes it to a 1x1 texture.
+ * Read back that texture, and offset the globe projection matrix according to the error (interpolating smoothly from old error to new error if needed).
+ * The texture readback is done asynchronously using Pixel Pack Buffers (WebGL2) when possible, and has a few frames of latency, but that should not be a problem.
+ *
+ * General operation of this class each frame is:
+ *
+ * - render the error shader into a fbo, read that pixel into a PBO, place a fence
+ * - wait a few frames to allow the GPU (and driver) to actually execute the shader
+ * - wait for the fence to be signalled (guaranteeing the shader to actually be executed)
+ * - read back the PBO's contents
+ * - wait a few more frames
+ * - repeat
+ */
+class ProjectionErrorMeasurement {
+    get awaitingQuery() {
+        return !!this._readbackQueue;
+    }
+    constructor(renderContext) {
+        // We wait at least this many frames after measuring until we read back the value.
+        // After this period, we might wait more frames until a fence is signalled to make sure the rendering is completed.
+        this._readbackWaitFrames = 4;
+        // We wait this many frames after *reading back* a measurement until we trigger measure again.
+        // We could in theory render the measurement pixel immediately, but we wait to make sure
+        // no pipeline stall happens.
+        this._measureWaitFrames = 6;
+        this._texWidth = 1;
+        this._texHeight = 1;
+        this._measuredError = 0; // Result of last measurement
+        this._updateCount = 0;
+        this._lastReadbackFrame = -1000;
+        // There is never more than one readback waiting
+        this._readbackQueue = null;
+        this._cachedRenderContext = renderContext;
+        const context = renderContext.context;
+        const gl = context.gl;
+        this._texFormat = gl.RGBA;
+        this._texType = gl.UNSIGNED_BYTE;
+        const vertexArray = new PosArray();
+        vertexArray.emplaceBack(-1, -1);
+        vertexArray.emplaceBack(2, -1);
+        vertexArray.emplaceBack(-1, 2);
+        const indexArray = new TriangleIndexArray();
+        indexArray.emplaceBack(0, 1, 2);
+        this._fullscreenTriangle = new Mesh(context.createVertexBuffer(vertexArray, posAttributes.members), context.createIndexBuffer(indexArray), SegmentVector.simpleSegment(0, 0, vertexArray.length, indexArray.length));
+        this._resultBuffer = new Uint8Array(4);
+        context.activeTexture.set(gl.TEXTURE1);
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texImage2D(gl.TEXTURE_2D, 0, this._texFormat, this._texWidth, this._texHeight, 0, this._texFormat, this._texType, null);
+        this._fbo = context.createFramebuffer(this._texWidth, this._texHeight, false, false);
+        this._fbo.colorAttachment.set(texture);
+        if (isWebGL2(gl)) {
+            this._pbo = gl.createBuffer();
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this._pbo);
+            gl.bufferData(gl.PIXEL_PACK_BUFFER, 4, gl.STREAM_READ);
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        }
+    }
+    destroy() {
+        const gl = this._cachedRenderContext.context.gl;
+        this._fullscreenTriangle.destroy();
+        this._fbo.destroy();
+        gl.deleteBuffer(this._pbo);
+        this._fullscreenTriangle = null;
+        this._fbo = null;
+        this._pbo = null;
+        this._resultBuffer = null;
+    }
+    updateErrorLoop(normalizedMercatorY, expectedAngleY) {
+        const currentFrame = this._updateCount;
+        if (this._readbackQueue) {
+            // Try to read back if enough frames elapsed. Otherwise do nothing, just wait another frame.
+            if (currentFrame >= this._readbackQueue.frameNumberIssued + this._readbackWaitFrames) {
+                // Try to read back - it is possible that this method does nothing, then
+                // the readback queue will not be cleared and we will retry next frame.
+                this._tryReadback();
+            }
+        }
+        else {
+            if (currentFrame >= this._lastReadbackFrame + this._measureWaitFrames) {
+                this._renderErrorTexture(normalizedMercatorY, expectedAngleY);
+            }
+        }
+        this._updateCount++;
+        return this._measuredError;
+    }
+    _bindFramebuffer() {
+        const context = this._cachedRenderContext.context;
+        const gl = context.gl;
+        context.activeTexture.set(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this._fbo.colorAttachment.get());
+        context.bindFramebuffer.set(this._fbo.framebuffer);
+    }
+    _renderErrorTexture(input, outputExpected) {
+        const context = this._cachedRenderContext.context;
+        const gl = context.gl;
+        // Update framebuffer contents
+        this._bindFramebuffer();
+        context.viewport.set([0, 0, this._texWidth, this._texHeight]);
+        context.clear({ color: Color.transparent });
+        const program = this._cachedRenderContext.useProgram('projectionErrorMeasurement');
+        program.draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, ColorMode.unblended, CullFaceMode.disabled, projectionErrorMeasurementUniformValues(input, outputExpected), null, null, '$clipping', this._fullscreenTriangle.vertexBuffer, this._fullscreenTriangle.indexBuffer, this._fullscreenTriangle.segments);
+        if (this._pbo && isWebGL2(gl)) {
+            // Read back into PBO
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this._pbo);
+            gl.readBuffer(gl.COLOR_ATTACHMENT0);
+            gl.readPixels(0, 0, this._texWidth, this._texHeight, this._texFormat, this._texType, 0);
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+            const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+            gl.flush();
+            this._readbackQueue = {
+                frameNumberIssued: this._updateCount,
+                sync,
+            };
+        }
+        else {
+            // Read it back later.
+            this._readbackQueue = {
+                frameNumberIssued: this._updateCount,
+                sync: null,
+            };
+        }
+    }
+    _tryReadback() {
+        const gl = this._cachedRenderContext.context.gl;
+        if (this._pbo && this._readbackQueue && isWebGL2(gl)) {
+            // WebGL 2 path
+            const waitResult = gl.clientWaitSync(this._readbackQueue.sync, 0, 0);
+            if (waitResult === gl.WAIT_FAILED) {
+                warnOnce('WebGL2 clientWaitSync failed.');
+                this._readbackQueue = null;
+                this._lastReadbackFrame = this._updateCount;
+                return;
+            }
+            if (waitResult === gl.TIMEOUT_EXPIRED) {
+                return; // Wait one more frame
+            }
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this._pbo);
+            gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, this._resultBuffer, 0, 4);
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        }
+        else {
+            // WebGL1 compatible
+            this._bindFramebuffer();
+            gl.readPixels(0, 0, this._texWidth, this._texHeight, this._texFormat, this._texType, this._resultBuffer);
+        }
+        // If we made it here, _resultBuffer contains the new measurement
+        this._readbackQueue = null;
+        this._measuredError = ProjectionErrorMeasurement._parseRGBA8float(this._resultBuffer);
+        this._lastReadbackFrame = this._updateCount;
+    }
+    static _parseRGBA8float(buffer) {
+        let result = 0;
+        result += buffer[0] / 256.0;
+        result += buffer[1] / 65536.0;
+        result += buffer[2] / 16777216.0;
+        if (buffer[3] < 127.0) {
+            result = -result;
+        }
+        return result / 128.0;
+    }
+}
+
+/**
+ * The size of border region for stencil masks, in internal tile coordinates.
+ * Used for globe rendering.
+ */
+const EXTENT_STENCIL_BORDER = EXTENT$1 / 128;
+/**
+ * @internal
+ * Creates a mesh of a quad that covers the entire tile (covering positions in range 0..EXTENT),
+ * is optionally subdivided into finer quads, optionally includes a border
+ * and optionally extends to the north and/or special pole vertices.
+ * Also allocates and populates WebGL buffers for the mesh.
+ * Forces 16 bit indices that are used throughout MapLibre.
+ * @param context - The WebGL context wrapper.
+ * @param options - Specify options for tile mesh creation such as granularity or border.
+ * @returns The mesh vertices and indices, already allocated and uploaded into WebGL buffers.
+ */
+function createTileMeshWithBuffers(context, options) {
+    const tileMesh = createTileMesh(options, '16bit');
+    const vertices = PosArray.deserialize({
+        arrayBuffer: tileMesh.vertices,
+        length: tileMesh.vertices.byteLength / 2 / 2, // Two values per vertex, 16 bit
+    });
+    const indices = TriangleIndexArray.deserialize({
+        arrayBuffer: tileMesh.indices,
+        length: tileMesh.indices.byteLength / 2 / 3, // Three values per triangle, 16 bit
+    });
+    const mesh = new Mesh(context.createVertexBuffer(vertices, posAttributes.members), context.createIndexBuffer(indices), SegmentVector.simpleSegment(0, 0, vertices.length, indices.length));
+    return mesh;
+}
+/**
+ * Creates a mesh of a quad that covers the entire tile (covering positions in range 0..EXTENT),
+ * is optionally subdivided into finer quads, optionally includes a border
+ * and optionally extends to the north and/or special pole vertices.
+ * Additionally the resulting mesh indices type can be specified using `forceIndicesSize`.
+ * @example
+ * ```
+ * // Creating a mesh for a tile that can be used for raster layers, hillshade, etc.
+ * const meshBuffers = createTileMesh({
+ *     granularity: map.style.projection.subdivisionGranularity.tile.getGranularityForZoomLevel(tileID.z),
+ *     generateBorders: true,
+ *     extendToNorthPole: tileID.y === 0,
+ *     extendToSouthPole: tileID.y === (1 << tileID.z) - 1,
+ * }, '16bit');
+ * ```
+ * @param options - Specify options for tile mesh creation such as granularity or border.
+ * @param forceIndicesSize - Specifies what indices type to use. The values '32bit' and '16bit' force their respective indices size. If undefined, the mesh may use either size, and will pick 16 bit indices if possible. If '16bit' is specified and the mesh exceeds 65536 vertices, an exception is thrown.
+ * @returns Typed arrays of the mesh vertices and indices.
+ */
+function createTileMesh(options, forceIndicesSize) {
+    // We only want to generate the north/south border if the tile
+    // does NOT border the north/south edge of the mercator range.
+    const granularity = options.granularity !== undefined ? Math.max(options.granularity, 1) : 1;
+    const quadsPerAxisX = granularity + (options.generateBorders ? 2 : 0); // two extra quads for border
+    const quadsPerAxisY = granularity + ((options.extendToNorthPole || options.generateBorders) ? 1 : 0) + (options.extendToSouthPole || options.generateBorders ? 1 : 0);
+    const verticesPerAxisX = quadsPerAxisX + 1; // one more vertex than quads
+    const verticesPerAxisY = quadsPerAxisY + 1; // one more vertex than quads
+    const offsetX = options.generateBorders ? -1 : 0;
+    const offsetY = (options.generateBorders || options.extendToNorthPole) ? -1 : 0;
+    const endX = granularity + (options.generateBorders ? 1 : 0);
+    const endY = granularity + ((options.generateBorders || options.extendToSouthPole) ? 1 : 0);
+    const vertexCount = verticesPerAxisX * verticesPerAxisY;
+    const indexCount = quadsPerAxisX * quadsPerAxisY * 6;
+    const overflows16bitIndices = verticesPerAxisX * verticesPerAxisY > (1 << 16);
+    if (overflows16bitIndices && forceIndicesSize === '16bit') {
+        throw new Error('Granularity is too large and meshes would not fit inside 16 bit vertex indices.');
+    }
+    const use32bitIndices = overflows16bitIndices || forceIndicesSize === '32bit';
+    const vertices = new Int16Array(vertexCount * 2);
+    let vertexId = 0;
+    for (let y = offsetY; y <= endY; y++) {
+        for (let x = offsetX; x <= endX; x++) {
+            let vx = x / granularity * EXTENT$1;
+            if (x === -1) {
+                vx = -EXTENT_STENCIL_BORDER;
+            }
+            if (x === granularity + 1) {
+                vx = EXTENT$1 + EXTENT_STENCIL_BORDER;
+            }
+            let vy = y / granularity * EXTENT$1;
+            if (y === -1) {
+                vy = options.extendToNorthPole ? NORTH_POLE_Y : (-EXTENT_STENCIL_BORDER);
+            }
+            if (y === granularity + 1) {
+                vy = options.extendToSouthPole ? SOUTH_POLE_Y : EXTENT$1 + EXTENT_STENCIL_BORDER;
+            }
+            vertices[vertexId++] = vx;
+            vertices[vertexId++] = vy;
+        }
+    }
+    const indices = use32bitIndices ? new Uint32Array(indexCount) : new Uint16Array(indexCount);
+    let indexId = 0;
+    for (let y = 0; y < quadsPerAxisY; y++) {
+        for (let x = 0; x < quadsPerAxisX; x++) {
+            const v0 = x + y * verticesPerAxisX;
+            const v1 = (x + 1) + y * verticesPerAxisX;
+            const v2 = x + (y + 1) * verticesPerAxisX;
+            const v3 = (x + 1) + (y + 1) * verticesPerAxisX;
+            // v0----v1
+            //  |  / |
+            //  | /  |
+            // v2----v3
+            indices[indexId++] = v0;
+            indices[indexId++] = v2;
+            indices[indexId++] = v1;
+            indices[indexId++] = v1;
+            indices[indexId++] = v2;
+            indices[indexId++] = v3;
+        }
+    }
+    return {
+        vertices: vertices.buffer.slice(0),
+        indices: indices.buffer.slice(0),
+        uses32bitIndices: use32bitIndices,
+    };
+}
+
+const VerticalPerspectiveShaderDefine = '#define GLOBE';
+const VerticalPerspectiveShaderVariantKey = 'globe';
+const globeConstants = {
+    errorTransitionTimeSeconds: 0.5
+};
+const granularitySettingsGlobe = new SubdivisionGranularitySetting({
+    fill: new SubdivisionGranularityExpression(128, 2),
+    line: new SubdivisionGranularityExpression(512, 0),
+    // Always keep at least some subdivision on raster tiles, etc,
+    // otherwise they will be visibly warped at high zooms (before mercator transition).
+    // This si not needed on fill, because fill geometry tends to already be
+    // highly tessellated and granular at high zooms.
+    tile: new SubdivisionGranularityExpression(128, 32),
+    // Stencil granularity must never be higher than fill granularity,
+    // otherwise we would get seams in the oceans at zoom levels where
+    // stencil has higher granularity than fill.
+    stencil: new SubdivisionGranularityExpression(128, 1),
+    circle: 3
+});
+class VerticalPerspectiveProjection {
+    constructor() {
+        this._tileMeshCache = {};
+        this._errorCorrectionUsable = 0.0;
+        this._errorMeasurementLastValue = 0.0;
+        this._errorCorrectionPreviousValue = 0.0;
+        this._errorMeasurementLastChangeTime = -1000.0;
+    }
+    get name() {
+        return 'vertical-perspective';
+    }
+    get transitionState() {
+        return 1;
+    }
+    get useSubdivision() {
+        return true;
+    }
+    get shaderVariantName() {
+        return VerticalPerspectiveShaderVariantKey;
+    }
+    get shaderDefine() {
+        return VerticalPerspectiveShaderDefine;
+    }
+    get shaderPreludeCode() {
+        return registry$1.shader.projectionGlobe;
+    }
+    get vertexShaderPreludeCode() {
+        return registry$1.shader.projectionMercator.vertexSource;
+    }
+    get subdivisionGranularity() {
+        return granularitySettingsGlobe;
+    }
+    get useGlobeControls() {
+        return true;
+    }
+    /**
+     * @internal
+     * Globe projection periodically measures the error of the GPU's
+     * projection from mercator to globe and computes how much to correct
+     * the globe's latitude alignment.
+     * This stores the correction that should be applied to the projection matrix.
+     */
+    get latitudeErrorCorrectionRadians() { return this._errorCorrectionUsable; }
+    destroy() {
+        if (this._errorMeasurement) {
+            this._errorMeasurement.destroy();
+        }
+    }
+    updateGPUdependent(renderContext) {
+        if (!this._errorMeasurement) {
+            this._errorMeasurement = new ProjectionErrorMeasurement(renderContext);
+        }
+        const mercatorY = mercatorYfromLat(this._errorQueryLatitudeDegrees);
+        const expectedResult = 2.0 * Math.atan(Math.exp(Math.PI - (mercatorY * Math.PI * 2.0))) - Math.PI * 0.5;
+        const newValue = this._errorMeasurement.updateErrorLoop(mercatorY, expectedResult);
+        const now = browser.now();
+        if (newValue !== this._errorMeasurementLastValue) {
+            this._errorCorrectionPreviousValue = this._errorCorrectionUsable; // store the interpolated value
+            this._errorMeasurementLastValue = newValue;
+            this._errorMeasurementLastChangeTime = now;
+        }
+        const sinceUpdateSeconds = (now - this._errorMeasurementLastChangeTime) / 1000.0;
+        const mix = Math.min(Math.max(sinceUpdateSeconds / globeConstants.errorTransitionTimeSeconds, 0.0), 1.0);
+        const newCorrection = -this._errorMeasurementLastValue; // Note the negation
+        this._errorCorrectionUsable = lerp(this._errorCorrectionPreviousValue, newCorrection, easeCubicInOut(mix));
+    }
+    _getMeshKey(options) {
+        return `${options.granularity.toString(36)}_${options.generateBorders ? 'b' : ''}${options.extendToNorthPole ? 'n' : ''}${options.extendToSouthPole ? 's' : ''}`;
+    }
+    getMeshFromTileID(context, canonical, hasBorder, allowPoles, usage) {
+        // Stencil granularity must match fill granularity
+        const granularityConfig = usage === 'stencil' ? granularitySettingsGlobe.stencil : granularitySettingsGlobe.tile;
+        const granularity = granularityConfig.getGranularityForZoomLevel(canonical.z);
+        const north = (canonical.y === 0) && allowPoles;
+        const south = (canonical.y === (1 << canonical.z) - 1) && allowPoles;
+        return this._getMesh(context, {
+            granularity,
+            generateBorders: hasBorder,
+            extendToNorthPole: north,
+            extendToSouthPole: south,
+        });
+    }
+    _getMesh(context, options) {
+        const key = this._getMeshKey(options);
+        if (key in this._tileMeshCache) {
+            return this._tileMeshCache[key];
+        }
+        const mesh = createTileMeshWithBuffers(context, options);
+        this._tileMeshCache[key] = mesh;
+        return mesh;
+    }
+    recalculate(_params) {
+        // Do nothing.
+    }
+    hasTransition() {
+        const now = browser.now();
+        let dirty = false;
+        // Error correction transition
+        dirty = dirty || (now - this._errorMeasurementLastChangeTime) / 1000.0 < (globeConstants.errorTransitionTimeSeconds + 0.2);
+        // Error correction query in flight
+        dirty = dirty || (this._errorMeasurement && this._errorMeasurement.awaitingQuery);
+        return dirty;
+    }
+    setErrorQueryLatitudeDegrees(value) {
+        this._errorQueryLatitudeDegrees = value;
+    }
+}
+
+const properties$8 = new Properties({
+    'type': new DataConstantProperty(v8Spec.projection.type)
+});
+class GlobeProjection extends Evented {
+    constructor(projection) {
+        super();
+        this._transitionable = new Transitionable(properties$8, undefined);
+        this.setProjection(projection);
+        this._transitioning = this._transitionable.untransitioned();
+        this.recalculate(new EvaluationParameters(0));
+        this._mercatorProjection = new MercatorProjection();
+        this._verticalPerspectiveProjection = new VerticalPerspectiveProjection();
+    }
+    get transitionState() {
+        const currentProjectionSpecValue = this.properties.get('type');
+        if (typeof currentProjectionSpecValue === 'string' && currentProjectionSpecValue === 'mercator') {
+            return 0;
+        }
+        if (typeof currentProjectionSpecValue === 'string' && currentProjectionSpecValue === 'vertical-perspective') {
+            return 1;
+        }
+        if (currentProjectionSpecValue instanceof ProjectionDefinition) {
+            if (currentProjectionSpecValue.from === 'vertical-perspective' && currentProjectionSpecValue.to === 'mercator') {
+                return 1 - currentProjectionSpecValue.transition;
+            }
+            if (currentProjectionSpecValue.from === 'mercator' && currentProjectionSpecValue.to === 'vertical-perspective') {
+                return currentProjectionSpecValue.transition;
+            }
+        }
+        ;
+        return 1;
+    }
+    get useGlobeRendering() {
+        return this.transitionState > 0;
+    }
+    get latitudeErrorCorrectionRadians() { return this._verticalPerspectiveProjection.latitudeErrorCorrectionRadians; }
+    get currentProjection() {
+        return this.useGlobeRendering ? this._verticalPerspectiveProjection : this._mercatorProjection;
+    }
+    get name() {
+        return 'globe';
+    }
+    get useSubdivision() {
+        return this.currentProjection.useSubdivision;
+    }
+    get shaderVariantName() {
+        return this.currentProjection.shaderVariantName;
+    }
+    get shaderDefine() {
+        return this.currentProjection.shaderDefine;
+    }
+    get shaderPreludeCode() {
+        return this.currentProjection.shaderPreludeCode;
+    }
+    get vertexShaderPreludeCode() {
+        return this.currentProjection.vertexShaderPreludeCode;
+    }
+    get subdivisionGranularity() {
+        return this.currentProjection.subdivisionGranularity;
+    }
+    get useGlobeControls() {
+        return this.transitionState > 0;
+    }
+    destroy() {
+        this._mercatorProjection.destroy();
+        this._verticalPerspectiveProjection.destroy();
+    }
+    updateGPUdependent(context) {
+        this._mercatorProjection.updateGPUdependent(context);
+        this._verticalPerspectiveProjection.updateGPUdependent(context);
+    }
+    getMeshFromTileID(context, _tileID, _hasBorder, _allowPoles, _usage) {
+        return this.currentProjection.getMeshFromTileID(context, _tileID, _hasBorder, _allowPoles, _usage);
+    }
+    setProjection(projection) {
+        this._transitionable.setValue('type', (projection === null || projection === void 0 ? void 0 : projection.type) || 'mercator');
+    }
+    updateTransitions(parameters) {
+        this._transitioning = this._transitionable.transitioned(parameters, this._transitioning);
+    }
+    hasTransition() {
+        return this._transitioning.hasTransition() || this.currentProjection.hasTransition();
+    }
+    recalculate(parameters) {
+        this.properties = this._transitioning.possiblyEvaluate(parameters);
+    }
+    setErrorQueryLatitudeDegrees(value) {
+        this._verticalPerspectiveProjection.setErrorQueryLatitudeDegrees(value);
+        this._mercatorProjection.setErrorQueryLatitudeDegrees(value);
+    }
+}
+
+function getGlobeCircumferencePixels(transform) {
+    const radius = getGlobeRadiusPixels(transform.worldSize, transform.center.lat);
+    const circumference = 2.0 * Math.PI * radius;
+    return circumference;
+}
+function globeDistanceOfLocationsPixels(transform, a, b) {
+    const vecA = angularCoordinatesToSurfaceVector(a);
+    const vecB = angularCoordinatesToSurfaceVector(b);
+    const dot = dot$5(vecA, vecB);
+    const radians = Math.acos(dot);
+    const circumference = getGlobeCircumferencePixels(transform);
+    return radians / (2.0 * Math.PI) * circumference;
+}
+/**
+ * For given mercator coordinates in range 0..1, returns the angular coordinates on the sphere's surface, in radians.
+ */
+function mercatorCoordinatesToAngularCoordinatesRadians(mercatorX, mercatorY) {
+    const sphericalX = mod(mercatorX * Math.PI * 2.0 + Math.PI, Math.PI * 2);
+    const sphericalY = 2.0 * Math.atan(Math.exp(Math.PI - (mercatorY * Math.PI * 2.0))) - Math.PI * 0.5;
+    return [sphericalX, sphericalY];
+}
+/**
+ * For a given longitude and latitude (note: in radians) returns the normalized vector from the planet center to the specified place on the surface.
+ * @param lngRadians - Longitude in radians.
+ * @param latRadians - Latitude in radians.
+ */
+function angularCoordinatesRadiansToVector(lngRadians, latRadians) {
+    const len = Math.cos(latRadians);
+    const vec = new Float64Array(3);
+    vec[0] = Math.sin(lngRadians) * len;
+    vec[1] = Math.sin(latRadians);
+    vec[2] = Math.cos(lngRadians) * len;
+    return vec;
+}
+/**
+ * Projects a point within a tile to the surface of the unit sphere globe.
+ * @param inTileX - X coordinate inside the tile in range [0 .. 8192].
+ * @param inTileY - Y coordinate inside the tile in range [0 .. 8192].
+ * @param tileIdX - Tile's X coordinate in range [0 .. 2^zoom - 1].
+ * @param tileIdY - Tile's Y coordinate in range [0 .. 2^zoom - 1].
+ * @param tileIdZ - Tile's zoom.
+ * @returns A 3D vector - coordinates of the projected point on a unit sphere.
+ */
+function projectTileCoordinatesToSphere(inTileX, inTileY, tileIdX, tileIdY, tileIdZ) {
+    // This code could be assembled from 3 functions, but this is a hot path for symbol placement,
+    // so for optimization purposes everything is inlined by hand.
+    //
+    // Non-inlined variant of this function would be this:
+    //     const mercator = tileCoordinatesToMercatorCoordinates(inTileX, inTileY, tileID);
+    //     const angular = mercatorCoordinatesToAngularCoordinatesRadians(mercator.x, mercator.y);
+    //     const sphere = angularCoordinatesRadiansToVector(angular[0], angular[1]);
+    //     return sphere;
+    const scale = 1.0 / (1 << tileIdZ);
+    const mercatorX = inTileX / EXTENT$1 * scale + tileIdX * scale;
+    const mercatorY = inTileY / EXTENT$1 * scale + tileIdY * scale;
+    const sphericalX = mod(mercatorX * Math.PI * 2.0 + Math.PI, Math.PI * 2);
+    const sphericalY = 2.0 * Math.atan(Math.exp(Math.PI - (mercatorY * Math.PI * 2.0))) - Math.PI * 0.5;
+    const len = Math.cos(sphericalY);
+    const vec = new Float64Array(3);
+    vec[0] = Math.sin(sphericalX) * len;
+    vec[1] = Math.sin(sphericalY);
+    vec[2] = Math.cos(sphericalX) * len;
+    return vec;
+}
+/**
+ * For a given longitude and latitude (note: in degrees) returns the normalized vector from the planet center to the specified place on the surface.
+ */
+function angularCoordinatesToSurfaceVector(lngLat) {
+    return angularCoordinatesRadiansToVector(lngLat.lng * Math.PI / 180, lngLat.lat * Math.PI / 180);
+}
+function getGlobeRadiusPixels(worldSize, latitudeDegrees) {
+    // We want zoom levels to be consistent between globe and flat views.
+    // This means that the pixel size of features at the map center point
+    // should be the same for both globe and flat view.
+    // For this reason we scale the globe up when map center is nearer to the poles.
+    return worldSize / (2.0 * Math.PI) / Math.cos(latitudeDegrees * Math.PI / 180);
+}
+/**
+ * Given a 3D point on the surface of a unit sphere, returns its angular coordinates in degrees.
+ * The input vector must be normalized.
+ */
+function sphereSurfacePointToCoordinates(surface) {
+    const latRadians = Math.asin(surface[1]);
+    const latDegrees = latRadians / Math.PI * 180.0;
+    const lengthXZ = Math.sqrt(surface[0] * surface[0] + surface[2] * surface[2]);
+    if (lengthXZ > 1e-6) {
+        const projX = surface[0] / lengthXZ;
+        const projZ = surface[2] / lengthXZ;
+        const acosZ = Math.acos(projZ);
+        const lngRadians = (projX > 0) ? acosZ : -acosZ;
+        const lngDegrees = lngRadians / Math.PI * 180.0;
+        return new LngLat(wrap$1(lngDegrees, -180, 180), latDegrees);
+    }
+    else {
+        return new LngLat(0.0, latDegrees);
+    }
+}
+/**
+ * Given a normalized horizon plane in Ax+By+Cz+D=0 format, compute the center and radius of
+ * the circle in that plain that contains the entire visible portion of the unit sphere from horizon
+ * to horizon.
+ * @param horizonPlane - The plane that passes through visible horizon in Ax + By + Cz + D = 0 format where mag(A,B,C)=1
+ * @returns the center point and radius of the disc that passes through the entire visible horizon
+ */
+function horizonPlaneToCenterAndRadius(horizonPlane) {
+    const center = createVec3f64();
+    center[0] = horizonPlane[0] * -horizonPlane[3];
+    center[1] = horizonPlane[1] * -horizonPlane[3];
+    center[2] = horizonPlane[2] * -horizonPlane[3];
+    /*
+                     .*******
+                 ****|\
+               **    | \
+             **      |  1
+            * radius |   \
+           *         |    \
+           *  center +--D--+(0,0,0)
+     */
+    const radius = Math.sqrt(1 - horizonPlane[3] * horizonPlane[3]);
+    return { center, radius };
+}
+/**
+ * Computes the closest point on a sphere to `point`.
+ * @param center - Center of the sphere
+ * @param radius - Radius of the sphere
+ * @param point - Point inside or outside the sphere
+ * @returns A 3d vector of the point on the sphere closest to `point`
+ */
+function clampToSphere(center, radius, point) {
+    const relativeToCenter = createVec3f64();
+    sub$2(relativeToCenter, point, center);
+    const clamped = createVec3f64();
+    scaleAndAdd$2(clamped, center, relativeToCenter, radius / len$4(relativeToCenter));
+    return clamped;
+}
+function planetScaleAtLatitude(latitudeDegrees) {
+    return Math.cos(latitudeDegrees * Math.PI / 180);
+}
+/**
+ * Computes how much to modify zoom to keep the globe size constant when changing latitude.
+ * @param transform - An instance of any transform. Does not have any relation on the computed values.
+ * @param oldLat - Latitude before change, in degrees.
+ * @param newLat - Latitude after change, in degrees.
+ * @returns A value to add to zoom level used for old latitude to keep same planet radius at new latitude.
+ */
+function getZoomAdjustment(oldLat, newLat) {
+    const oldCircumference = planetScaleAtLatitude(oldLat);
+    const newCircumference = planetScaleAtLatitude(newLat);
+    return scaleZoom(newCircumference / oldCircumference);
+}
+function getDegreesPerPixel(worldSize, lat) {
+    return 360.0 / getGlobeCircumferencePixels({ worldSize, center: { lat } });
+}
+/**
+ * Returns transform's new center rotation after applying panning.
+ * @param panDelta - Panning delta, in same units as what is supplied to {@link HandlerManager}.
+ * @param tr - Current transform. This object is not modified by the function.
+ * @returns New center location to set to the map's transform to apply the specified panning.
+ */
+function computeGlobePanCenter(panDelta, tr) {
+    // Apply map bearing to the panning vector
+    const rotatedPanDelta = panDelta.rotate(tr.bearingInRadians);
+    // Compute what the current zoom would be if the transform center would be moved to latitude 0.
+    const normalizedGlobeZoom = tr.zoom + getZoomAdjustment(tr.center.lat, 0);
+    // Note: we divide longitude speed by planet width at the given latitude. But we diminish this effect when the globe is zoomed out a lot.
+    const lngSpeed = lerp(1.0 / planetScaleAtLatitude(tr.center.lat), // speed adjusted by latitude
+    1.0 / planetScaleAtLatitude(Math.min(Math.abs(tr.center.lat), 60)), // also adjusted, but latitude is clamped to 60° to avoid too large speeds near poles
+    remapSaturate(normalizedGlobeZoom, 7, 3, 0, 1.0) // Values chosen so that globe interactions feel good. Not scientific by any means.
+    );
+    const panningDegreesPerPixel = getDegreesPerPixel(tr.worldSize, tr.center.lat);
+    return new LngLat(tr.center.lng - rotatedPanDelta.x * panningDegreesPerPixel * lngSpeed, clamp(tr.center.lat + rotatedPanDelta.y * panningDegreesPerPixel, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
+}
+/**
+ * Integration of `1 / cos(x)`.
+ */
+function integrateSecX(x) {
+    const xHalf = 0.5 * x;
+    const sin = Math.sin(xHalf);
+    const cos = Math.cos(xHalf);
+    return Math.log(sin + cos) - Math.log(cos - sin);
+}
+/**
+ * Interpolates globe center between two locations while preserving apparent rotation speed during interpolation.
+ * @param start - The starting location of the interpolation.
+ * @param deltaLng - Longitude delta to the end of the interpolation.
+ * @param deltaLat - Latitude delta to the end of the interpolation.
+ * @param t - The interpolation point in [0..1], where 0 is starting location, 1 is end location and other values are in between.
+ * @returns The interpolated location.
+ */
+function interpolateLngLatForGlobe(start, deltaLng, deltaLat, t) {
+    // Rate of change of longitude when moving the globe should be roughly 1/cos(latitude)
+    // We want to use this rate of change, even for interpolation during easing.
+    // Thus we know the derivative of our interpolation function: 1/cos(x)
+    // To get our interpolation function, we need to integrate that.
+    const interpolatedLat = start.lat + deltaLat * t;
+    if (Math.abs(deltaLat) > 1) {
+        const endLat = start.lat + deltaLat;
+        const onDifferentHemispheres = Math.sign(endLat) !== Math.sign(start.lat);
+        // Where do we sample the integrated speed curve?
+        const samplePointStart = (onDifferentHemispheres ? -Math.abs(start.lat) : Math.abs(start.lat)) * Math.PI / 180;
+        const samplePointEnd = Math.abs(start.lat + deltaLat) * Math.PI / 180;
+        // Read the integrated speed curve at those points, and at the interpolation value "t".
+        const valueT = integrateSecX(samplePointStart + t * (samplePointEnd - samplePointStart));
+        const valueStart = integrateSecX(samplePointStart);
+        const valueEnd = integrateSecX(samplePointEnd);
+        // Compute new interpolation factor based on the speed curve
+        const newT = (valueT - valueStart) / (valueEnd - valueStart);
+        // Interpolate using that factor
+        const interpolatedLng = start.lng + deltaLng * newT;
+        return new LngLat(interpolatedLng, interpolatedLat);
+    }
+    else {
+        // Fall back to simple interpolation when latitude doesn't change much.
+        const interpolatedLng = start.lng + deltaLng * t;
+        return new LngLat(interpolatedLng, interpolatedLat);
+    }
+}
+
+class BoundingVolumeCache {
+    constructor(boundingVolumeFactory) {
+        this._cachePrevious = new Map();
+        this._cache = new Map();
+        this._hadAnyChanges = false;
+        this._boundingVolumeFactory = boundingVolumeFactory;
+    }
+    /**
+     * Prepares bounding volume cache for next frame. Call at the beginning of a frame.
+     * Bounding volume of any tile accesses in the last frame is kept in the cache, other (unaccessed) bounding volumes are deleted.
+     */
+    swapBuffers() {
+        if (!this._hadAnyChanges) {
+            // If no new bounding volumes were added this frame, no need to conserve memory, do not clear caches.
+            return;
+        }
+        const oldCache = this._cachePrevious;
+        this._cachePrevious = this._cache;
+        this._cache = oldCache;
+        this._cache.clear();
+        this._hadAnyChanges = false;
+    }
+    /**
+     * Returns the bounding volume of the specified tile, fetching it from cache or creating it using the factory function if needed.
+     * @param tileID - Tile x, y and z for zoom.
+     */
+    getTileBoundingVolume(tileID, wrap, elevation, options) {
+        const key = `${tileID.z}_${tileID.x}_${tileID.y}_${(options === null || options === void 0 ? void 0 : options.terrain) ? 't' : ''}`;
+        const cached = this._cache.get(key);
+        if (cached) {
+            return cached;
+        }
+        const cachedPrevious = this._cachePrevious.get(key);
+        if (cachedPrevious) {
+            this._cache.set(key, cachedPrevious);
+            return cachedPrevious;
+        }
+        const boundingVolume = this._boundingVolumeFactory(tileID, wrap, elevation, options);
+        this._cache.set(key, boundingVolume);
+        this._hadAnyChanges = true;
+        return boundingVolume;
+    }
+}
+
+/**
+ * A general convex bounding volume, defined by a set of points.
+ */
+class ConvexVolume {
+    /**
+     * Creates an instance of a general convex bounding volume.
+     * Note that the provided points array is used *as is*, its contents are not copied!
+     *
+     * Additionally, an AABB must be provided for rejecting frustum intersections.
+     * This AABB does not need to bound this convex volume (it may be smaller),
+     * but it *must* accurately bound the actual shape this volume is approximating.
+     * @param points - Points forming the convex shape. Note that this array reference is used *as is*, its contents are not copied!
+     * @param min - The bounding AABB's min point.
+     * @param max - The bounding AABB's min point.
+     */
+    constructor(points, planes, min, max) {
+        this.min = min;
+        this.max = max;
+        this.points = points;
+        this.planes = planes;
+    }
+    /**
+     * Creates a convex BV equivalent to the specified AABB.
+     * @param min - The AABB's min point.
+     * @param max - The AABB's max point.
+     */
+    static fromAabb(min, max) {
+        const points = [];
+        for (let i = 0; i < 8; i++) {
+            points.push([
+                ((i >> 0) & 1) === 1 ? max[0] : min[0],
+                ((i >> 1) & 1) === 1 ? max[1] : min[1],
+                ((i >> 2) & 1) === 1 ? max[2] : min[2]
+            ]);
+        }
+        return new ConvexVolume(points, [
+            [-1, 0, 0, max[0]],
+            [1, 0, 0, -min[0]],
+            [0, -1, 0, max[1]],
+            [0, 1, 0, -min[1]],
+            [0, 0, -1, max[2]],
+            [0, 0, 1, -min[2]]
+        ], min, max);
+    }
+    /**
+     * Creates a convex bounding volume that is actually an oriented bounding box created from the specified center, half-size and rotation angles.
+     * @param center - Center of the OBB.
+     * @param halfSize - The half-size of the OBB in each axis. The box will extend by this value in each direction for the given axis.
+     * @param angles - The rotation of the box. Euler angles, in degrees.
+     */
+    static fromCenterSizeAngles(center, halfSize, angles) {
+        const q = fromEuler([], angles[0], angles[1], angles[2]);
+        const axisX = transformQuat$1([], [halfSize[0], 0, 0], q);
+        const axisY = transformQuat$1([], [0, halfSize[1], 0], q);
+        const axisZ = transformQuat$1([], [0, 0, halfSize[2]], q);
+        // Find the AABB min/max
+        const min = [...center];
+        const max = [...center];
+        for (let i = 0; i < 8; i++) {
+            for (let axis = 0; axis < 3; axis++) {
+                const point = center[axis]
+                    + axisX[axis] * ((((i >> 0) & 1) === 1) ? 1 : -1)
+                    + axisY[axis] * ((((i >> 1) & 1) === 1) ? 1 : -1)
+                    + axisZ[axis] * ((((i >> 2) & 1) === 1) ? 1 : -1);
+                min[axis] = Math.min(min[axis], point);
+                max[axis] = Math.max(max[axis], point);
+            }
+        }
+        const points = [];
+        for (let i = 0; i < 8; i++) {
+            const p = [...center];
+            add$4(p, p, scale$4([], axisX, ((i >> 0) & 1) === 1 ? 1 : -1));
+            add$4(p, p, scale$4([], axisY, ((i >> 1) & 1) === 1 ? 1 : -1));
+            add$4(p, p, scale$4([], axisZ, ((i >> 2) & 1) === 1 ? 1 : -1));
+            points.push(p);
+        }
+        return new ConvexVolume(points, [
+            [...axisX, -dot$5(axisX, points[0])],
+            [...axisY, -dot$5(axisY, points[0])],
+            [...axisZ, -dot$5(axisZ, points[0])],
+            [-axisX[0], -axisX[1], -axisX[2], -dot$5(axisX, points[7])],
+            [-axisY[0], -axisY[1], -axisY[2], -dot$5(axisY, points[7])],
+            [-axisZ[0], -axisZ[1], -axisZ[2], -dot$5(axisZ, points[7])],
+        ], min, max);
+    }
+    /**
+     * Performs an approximate frustum-obb intersection test.
+     */
+    intersectsFrustum(frustum) {
+        // Performance-critical
+        let fullyInside = true;
+        const boxPointCount = this.points.length;
+        const boxPlaneCount = this.planes.length;
+        const frustumPlaneCount = frustum.planes.length;
+        const frustumPointCount = frustum.points.length;
+        // Test whether this volume's points are inside the frustum
+        for (let i = 0; i < frustumPlaneCount; i++) {
+            const plane = frustum.planes[i];
+            let boxPointsPassed = 0;
+            for (let j = 0; j < boxPointCount; j++) {
+                const point = this.points[j];
+                // Get point-plane distance sign
+                if (plane[0] * point[0] + plane[1] * point[1] + plane[2] * point[2] + plane[3] >= 0) {
+                    boxPointsPassed++;
+                }
+            }
+            if (boxPointsPassed === 0) {
+                return 0 /* IntersectionResult.None */;
+            }
+            if (boxPointsPassed < boxPointCount) {
+                fullyInside = false;
+            }
+        }
+        if (fullyInside) {
+            return 2 /* IntersectionResult.Full */;
+        }
+        // Test whether the frustum's points are inside this volume.
+        for (let i = 0; i < boxPlaneCount; i++) {
+            const plane = this.planes[i];
+            let frustumPointsPassed = 0;
+            for (let j = 0; j < frustumPointCount; j++) {
+                const point = frustum.points[j];
+                if (plane[0] * point[0] + plane[1] * point[1] + plane[2] * point[2] + plane[3] >= 0) {
+                    frustumPointsPassed++;
+                }
+            }
+            if (frustumPointsPassed === 0) {
+                return 0 /* IntersectionResult.None */;
+            }
+        }
+        return 1 /* IntersectionResult.Partial */;
+    }
+    /**
+     * Performs an intersection test with a halfspace.
+     */
+    intersectsPlane(plane) {
+        const pointCount = this.points.length;
+        let positivePoints = 0;
+        for (let i = 0; i < pointCount; i++) {
+            const point = this.points[i];
+            if (plane[0] * point[0] + plane[1] * point[1] + plane[2] * point[2] + plane[3] >= 0) {
+                positivePoints++;
+            }
+        }
+        if (positivePoints === pointCount) {
+            return 2 /* IntersectionResult.Full */;
+        }
+        if (positivePoints === 0) {
+            return 0 /* IntersectionResult.None */;
+        }
+        return 1 /* IntersectionResult.Partial */;
+    }
+}
+
+/**
+ * Computes distance of a point to a tile in an arbitrary axis.
+ * World is assumed to have size 1, distance returned is to the nearer tile edge.
+ * @param point - Point position.
+ * @param tile - Tile position.
+ * @param tileSize - Tile size.
+ */
+function distanceToTileSimple(point, tile, tileSize) {
+    const delta = point - tile;
+    return (delta < 0) ? -delta : Math.max(0, delta - tileSize);
+}
+function distanceToTileWrapX(pointX, pointY, tileCornerX, tileCornerY, tileSize) {
+    const tileCornerToPointX = pointX - tileCornerX;
+    let distanceX;
+    if (tileCornerToPointX < 0) {
+        // Point is left of tile
+        distanceX = Math.min(-tileCornerToPointX, 1.0 + tileCornerToPointX - tileSize);
+    }
+    else if (tileCornerToPointX > 1) {
+        // Point is right of tile
+        distanceX = Math.min(Math.max(tileCornerToPointX - tileSize, 0), 1.0 - tileCornerToPointX);
+    }
+    else {
+        // Point is inside tile in the X axis.
+        distanceX = 0;
+    }
+    return Math.max(distanceX, distanceToTileSimple(pointY, tileCornerY, tileSize));
+}
+class GlobeCoveringTilesDetailsProvider {
+    constructor() {
+        this._boundingVolumeCache = new BoundingVolumeCache(this._computeTileBoundingVolume);
+    }
+    /**
+     * Prepares the internal bounding volume cache for the next frame.
+     */
+    prepareNextFrame() {
+        this._boundingVolumeCache.swapBuffers();
+    }
+    /**
+     * Returns the distance of a point to a square tile. If the point is inside the tile, returns 0.
+     * Assumes the world to be of size 1.
+     * Handles distances on a sphere correctly: X is wrapped when crossing the antimeridian,
+     * when crossing the poles Y is mirrored and X is shifted by half world size.
+     */
+    distanceToTile2d(pointX, pointY, tileID, _bv) {
+        const scale = 1 << tileID.z;
+        const tileMercatorSize = 1.0 / scale;
+        const tileCornerX = tileID.x / scale; // In range 0..1
+        const tileCornerY = tileID.y / scale; // In range 0..1
+        const worldSize = 1.0;
+        const halfWorld = 0.5 * worldSize;
+        let smallestDistance = 2.0 * worldSize;
+        // Original tile
+        smallestDistance = Math.min(smallestDistance, distanceToTileWrapX(pointX, pointY, tileCornerX, tileCornerY, tileMercatorSize));
+        // Up
+        smallestDistance = Math.min(smallestDistance, distanceToTileWrapX(pointX, pointY, tileCornerX + halfWorld, -tileCornerY - tileMercatorSize, tileMercatorSize));
+        // Down
+        smallestDistance = Math.min(smallestDistance, distanceToTileWrapX(pointX, pointY, tileCornerX + halfWorld, worldSize + worldSize - tileCornerY - tileMercatorSize, tileMercatorSize));
+        return smallestDistance;
+    }
+    /**
+     * Returns the wrap value for a given tile, computed so that tiles will remain loaded when crossing the antimeridian.
+     */
+    getWrap(centerCoord, tileID, _parentWrap) {
+        const scale = 1 << tileID.z;
+        const tileMercatorSize = 1.0 / scale;
+        const tileX = tileID.x / scale; // In range 0..1
+        const distanceCurrent = distanceToTileSimple(centerCoord.x, tileX, tileMercatorSize);
+        const distanceLeft = distanceToTileSimple(centerCoord.x, tileX - 1.0, tileMercatorSize);
+        const distanceRight = distanceToTileSimple(centerCoord.x, tileX + 1.0, tileMercatorSize);
+        const distanceSmallest = Math.min(distanceCurrent, distanceLeft, distanceRight);
+        if (distanceSmallest === distanceRight) {
+            return 1;
+        }
+        if (distanceSmallest === distanceLeft) {
+            return -1;
+        }
+        return 0;
+    }
+    allowVariableZoom(transform, options) {
+        return coveringZoomLevel(transform, options) > 4;
+    }
+    allowWorldCopies() {
+        return false;
+    }
+    getTileBoundingVolume(tileID, wrap, elevation, options) {
+        return this._boundingVolumeCache.getTileBoundingVolume(tileID, wrap, elevation, options);
+    }
+    _computeTileBoundingVolume(tileID, wrap, elevation, options) {
+        var _a, _b;
+        let minElevation = 0;
+        let maxElevation = 0;
+        if (options === null || options === void 0 ? void 0 : options.terrain) {
+            const overscaledTileID = new OverscaledTileID(tileID.z, wrap, tileID.z, tileID.x, tileID.y);
+            const minMax = options.terrain.getMinMaxElevation(overscaledTileID);
+            minElevation = (_a = minMax.minElevation) !== null && _a !== void 0 ? _a : Math.min(0, elevation);
+            maxElevation = (_b = minMax.maxElevation) !== null && _b !== void 0 ? _b : Math.max(0, elevation);
+        }
+        // Convert elevation to distances from center of a unit sphere planet (so that 1 is surface)
+        minElevation /= earthRadius;
+        maxElevation /= earthRadius;
+        minElevation += 1;
+        maxElevation += 1;
+        if (tileID.z <= 0) {
+            // Tile covers the entire sphere.
+            return ConvexVolume.fromAabb(// We return an AABB in this case.
+            [-maxElevation, -maxElevation, -maxElevation], [maxElevation, maxElevation, maxElevation]);
+        }
+        else if (tileID.z === 1) {
+            // Tile covers a quarter of the sphere.
+            // X is 1 at lng=E90°
+            // Y is 1 at **north** pole
+            // Z is 1 at null island
+            return ConvexVolume.fromAabb(// We also just use AABBs for this zoom level.
+            [tileID.x === 0 ? -maxElevation : 0, tileID.y === 0 ? 0 : -maxElevation, -maxElevation], [tileID.x === 0 ? 0 : maxElevation, tileID.y === 0 ? maxElevation : 0, maxElevation]);
+        }
+        else {
+            const corners = [
+                projectTileCoordinatesToSphere(0, 0, tileID.x, tileID.y, tileID.z),
+                projectTileCoordinatesToSphere(EXTENT$1, 0, tileID.x, tileID.y, tileID.z),
+                projectTileCoordinatesToSphere(EXTENT$1, EXTENT$1, tileID.x, tileID.y, tileID.z),
+                projectTileCoordinatesToSphere(0, EXTENT$1, tileID.x, tileID.y, tileID.z),
+            ];
+            const extremesPoints = [];
+            for (const c of corners) {
+                extremesPoints.push(scale$4([], c, maxElevation));
+            }
+            if (maxElevation !== minElevation) {
+                // Only add additional points if terrain is enabled and is not flat.
+                for (const c of corners) {
+                    extremesPoints.push(scale$4([], c, minElevation));
+                }
+            }
+            // Special handling of poles - we need to extend the tile AABB
+            // to include the pole for tiles that border mercator north/south edge.
+            if (tileID.y === 0) {
+                extremesPoints.push([0, 1, 0]); // North pole
+            }
+            if (tileID.y === (1 << tileID.z) - 1) {
+                extremesPoints.push([0, -1, 0]); // South pole
+            }
+            // Compute a best-fit AABB for the frustum rejection test
+            const aabbMin = [1, 1, 1];
+            const aabbMax = [-1, -1, -1];
+            for (const c of extremesPoints) {
+                for (let i = 0; i < 3; i++) {
+                    aabbMin[i] = Math.min(aabbMin[i], c[i]);
+                    aabbMax[i] = Math.max(aabbMax[i], c[i]);
+                }
+            }
+            // Now we compute the actual bounding volume.
+            // The up/down plane will be normal to the tile's center.
+            // The north/south plane will be used for the tile's north and south edge and will be orthogonal to the up/down plane.
+            // The left and right planes will be determined by the tile's east/west edges and will differ slightly - we are not creating a box!
+            // We will find the min and max extents for the up/down and north/south planes using the set of points
+            // where the extremes are likely to lie.
+            // Vector "center" (from planet center to tile center) will be our up/down axis.
+            const center = projectTileCoordinatesToSphere(EXTENT$1 / 2, EXTENT$1 / 2, tileID.x, tileID.y, tileID.z);
+            // Vector to the east of "center".
+            const centerEast = cross$2([], [0, 1, 0], center);
+            normalize$4(centerEast, centerEast);
+            // Vector to the north of "center" will be our north/south axis.
+            const north = cross$2([], center, centerEast);
+            normalize$4(north, north);
+            // Axes for the east and west edge of our bounding volume.
+            // These axes are NOT opposites of each other, they differ!
+            // They are also not orthogonal to the up/down and north/south axes.
+            const axisEast = cross$2([], corners[2], corners[1]);
+            normalize$4(axisEast, axisEast);
+            const axisWest = cross$2([], corners[0], corners[3]);
+            normalize$4(axisWest, axisWest);
+            // Now we will expand the extremes point set for bounding volume creation.
+            // We will also include the tile center point, since it will always be an extreme for the "center" axis.
+            extremesPoints.push(scale$4([], center, maxElevation));
+            // No need to include a minElevation-scaled center, since we already have minElevation corners in the set and these will always lie lower than the center.
+            // The extremes might also lie on the midpoint of the north or south edge.
+            // For tiles in the north hemisphere, only the south edge can contain an extreme,
+            // since when we imagine the tile's actual shape projected onto the plane normal to "center" vector,
+            // the tile's north edge will curve towards the tile center, thus its extremes are accounted for by the
+            // corners, however the south edge will curve away from the center point, extending beyond the tile's edges,
+            // thus it must be included.
+            // The poles are an exception - they must always be included in the extremes, if the tile touches the north/south mercator range edge.
+            //
+            // A tile's exaggerated shape on the northern hemisphere, projected onto the normal plane of "center".
+            // The "c" is the tile's center point. The "m" is the edge mid point we are looking for.
+            //
+            //      /--       --\
+            //     /   -------   \
+            //    /               \
+            //   /        c        \
+            //  /                   \
+            // /--                 --\
+            //    -----       -----
+            //         ---m---
+            if (tileID.y >= (1 << tileID.z) / 2) {
+                // South hemisphere - include the tile's north edge midpoint
+                extremesPoints.push(scale$4([], projectTileCoordinatesToSphere(EXTENT$1 / 2, 0, tileID.x, tileID.y, tileID.z), maxElevation));
+                // No need to include minElevation variant of this point, for the same reason why we don't include minElevation center.
+            }
+            if (tileID.y < (1 << tileID.z) / 2) {
+                // North hemisphere - include the tile's south edge midpoint
+                extremesPoints.push(scale$4([], projectTileCoordinatesToSphere(EXTENT$1 / 2, EXTENT$1, tileID.x, tileID.y, tileID.z), maxElevation));
+                // No need to include minElevation variant of this point, for the same reason why we don't include minElevation center.
+            }
+            // Find the min and max extends and the midpoints along each axis,
+            // using the set of extreme points.
+            const upDownMinMax = findAxisMinMax(center, extremesPoints);
+            const northSouthMinMax = findAxisMinMax(north, extremesPoints);
+            const planeUp = [-center[0], -center[1], -center[2], upDownMinMax.max];
+            const planeDown = [center[0], center[1], center[2], -upDownMinMax.min];
+            const planeNorth = [-north[0], -north[1], -north[2], northSouthMinMax.max];
+            const planeSouth = [north[0], north[1], north[2], -northSouthMinMax.min];
+            const planeEast = [...axisEast, 0];
+            const planeWest = [...axisWest, 0];
+            const points = [];
+            // North points
+            if (tileID.y === 0) {
+                // If the tile borders a pole, then 
+                points.push(threePlaneIntersection(planeWest, planeEast, planeUp), threePlaneIntersection(planeWest, planeEast, planeDown));
+            }
+            else {
+                points.push(threePlaneIntersection(planeNorth, planeEast, planeUp), threePlaneIntersection(planeNorth, planeEast, planeDown), threePlaneIntersection(planeNorth, planeWest, planeUp), threePlaneIntersection(planeNorth, planeWest, planeDown));
+            }
+            // South points
+            if (tileID.y === (1 << tileID.z) - 1) {
+                points.push(threePlaneIntersection(planeWest, planeEast, planeUp), threePlaneIntersection(planeWest, planeEast, planeDown));
+            }
+            else {
+                points.push(threePlaneIntersection(planeSouth, planeEast, planeUp), threePlaneIntersection(planeSouth, planeEast, planeDown), threePlaneIntersection(planeSouth, planeWest, planeUp), threePlaneIntersection(planeSouth, planeWest, planeDown));
+            }
+            return new ConvexVolume(points, [
+                planeUp,
+                planeDown,
+                planeNorth,
+                planeSouth,
+                planeEast,
+                planeWest
+            ], aabbMin, aabbMax);
+        }
+    }
+}
+function findAxisMinMax(axis, points) {
+    let min = +Infinity;
+    let max = -Infinity;
+    for (const c of points) {
+        const dot = dot$5(axis, c);
+        min = Math.min(min, dot);
+        max = Math.max(max, dot);
+    }
+    return {
+        min,
+        max
+    };
+}
+
+class VerticalPerspectiveTransform {
+    //
+    // Implementation of transform getters and setters
+    //
+    get pixelsToClipSpaceMatrix() {
+        return this._helper.pixelsToClipSpaceMatrix;
+    }
+    get clipSpaceToPixelsMatrix() {
+        return this._helper.clipSpaceToPixelsMatrix;
+    }
+    get pixelsToGLUnits() {
+        return this._helper.pixelsToGLUnits;
+    }
+    get centerOffset() {
+        return this._helper.centerOffset;
+    }
+    get size() {
+        return this._helper.size;
+    }
+    get rotationMatrix() {
+        return this._helper.rotationMatrix;
+    }
+    get centerPoint() {
+        return this._helper.centerPoint;
+    }
+    get pixelsPerMeter() {
+        return this._helper.pixelsPerMeter;
+    }
+    setMinZoom(zoom) {
+        this._helper.setMinZoom(zoom);
+    }
+    setMaxZoom(zoom) {
+        this._helper.setMaxZoom(zoom);
+    }
+    setMinPitch(pitch) {
+        this._helper.setMinPitch(pitch);
+    }
+    setMaxPitch(pitch) {
+        this._helper.setMaxPitch(pitch);
+    }
+    setRenderWorldCopies(renderWorldCopies) {
+        this._helper.setRenderWorldCopies(renderWorldCopies);
+    }
+    setBearing(bearing) {
+        this._helper.setBearing(bearing);
+    }
+    setPitch(pitch) {
+        this._helper.setPitch(pitch);
+    }
+    setRoll(roll) {
+        this._helper.setRoll(roll);
+    }
+    setFov(fov) {
+        this._helper.setFov(fov);
+    }
+    setZoom(zoom) {
+        this._helper.setZoom(zoom);
+    }
+    setCenter(center) {
+        this._helper.setCenter(center);
+    }
+    setElevation(elevation) {
+        this._helper.setElevation(elevation);
+    }
+    setMinElevationForCurrentTile(elevation) {
+        this._helper.setMinElevationForCurrentTile(elevation);
+    }
+    setPadding(padding) {
+        this._helper.setPadding(padding);
+    }
+    interpolatePadding(start, target, t) {
+        return this._helper.interpolatePadding(start, target, t);
+    }
+    isPaddingEqual(padding) {
+        return this._helper.isPaddingEqual(padding);
+    }
+    resize(width, height) {
+        this._helper.resize(width, height);
+    }
+    getMaxBounds() {
+        return this._helper.getMaxBounds();
+    }
+    setMaxBounds(bounds) {
+        this._helper.setMaxBounds(bounds);
+    }
+    overrideNearFarZ(nearZ, farZ) {
+        this._helper.overrideNearFarZ(nearZ, farZ);
+    }
+    clearNearFarZOverride() {
+        this._helper.clearNearFarZOverride();
+    }
+    getCameraQueryGeometry(queryGeometry) {
+        return this._helper.getCameraQueryGeometry(this.getCameraPoint(), queryGeometry);
+    }
+    get tileSize() {
+        return this._helper.tileSize;
+    }
+    get tileZoom() {
+        return this._helper.tileZoom;
+    }
+    get scale() {
+        return this._helper.scale;
+    }
+    get worldSize() {
+        return this._helper.worldSize;
+    }
+    get width() {
+        return this._helper.width;
+    }
+    get height() {
+        return this._helper.height;
+    }
+    get lngRange() {
+        return this._helper.lngRange;
+    }
+    get latRange() {
+        return this._helper.latRange;
+    }
+    get minZoom() {
+        return this._helper.minZoom;
+    }
+    get maxZoom() {
+        return this._helper.maxZoom;
+    }
+    get zoom() {
+        return this._helper.zoom;
+    }
+    get center() {
+        return this._helper.center;
+    }
+    get minPitch() {
+        return this._helper.minPitch;
+    }
+    get maxPitch() {
+        return this._helper.maxPitch;
+    }
+    get pitch() {
+        return this._helper.pitch;
+    }
+    get pitchInRadians() {
+        return this._helper.pitchInRadians;
+    }
+    get roll() {
+        return this._helper.roll;
+    }
+    get rollInRadians() {
+        return this._helper.rollInRadians;
+    }
+    get bearing() {
+        return this._helper.bearing;
+    }
+    get bearingInRadians() {
+        return this._helper.bearingInRadians;
+    }
+    get fov() {
+        return this._helper.fov;
+    }
+    get fovInRadians() {
+        return this._helper.fovInRadians;
+    }
+    get elevation() {
+        return this._helper.elevation;
+    }
+    get minElevationForCurrentTile() {
+        return this._helper.minElevationForCurrentTile;
+    }
+    get padding() {
+        return this._helper.padding;
+    }
+    get unmodified() {
+        return this._helper.unmodified;
+    }
+    get renderWorldCopies() {
+        return this._helper.renderWorldCopies;
+    }
+    get nearZ() {
+        return this._helper.nearZ;
+    }
+    get farZ() {
+        return this._helper.farZ;
+    }
+    get autoCalculateNearFarZ() {
+        return this._helper.autoCalculateNearFarZ;
+    }
+    setTransitionState(_value) {
+        // Do nothing
+    }
+    constructor() {
+        //
+        // Implementation of globe transform
+        //
+        this._cachedClippingPlane = createVec4f64();
+        this._projectionMatrix = createIdentityMat4f64();
+        this._globeViewProjMatrix32f = createIdentityMat4f32(); // Must be 32 bit floats, otherwise WebGL calls in Chrome get very slow.
+        this._globeViewProjMatrixNoCorrection = createIdentityMat4f64();
+        this._globeViewProjMatrixNoCorrectionInverted = createIdentityMat4f64();
+        this._globeProjMatrixInverted = createIdentityMat4f64();
+        this._cameraPosition = createVec3f64();
+        this._globeLatitudeErrorCorrectionRadians = 0;
+        this._helper = new TransformHelper({
+            calcMatrices: () => { this._calcMatrices(); },
+            getConstrained: (center, zoom) => { return this.getConstrained(center, zoom); }
+        });
+        this._coveringTilesDetailsProvider = new GlobeCoveringTilesDetailsProvider();
+    }
+    clone() {
+        const clone = new VerticalPerspectiveTransform();
+        clone.apply(this);
+        return clone;
+    }
+    apply(that, globeLatitudeErrorCorrectionRadians) {
+        this._globeLatitudeErrorCorrectionRadians = globeLatitudeErrorCorrectionRadians || 0;
+        this._helper.apply(that);
+    }
+    get projectionMatrix() { return this._projectionMatrix; }
+    get modelViewProjectionMatrix() { return this._globeViewProjMatrixNoCorrection; }
+    get inverseProjectionMatrix() { return this._globeProjMatrixInverted; }
+    get cameraPosition() {
+        // Return a copy - don't let outside code mutate our precomputed camera position.
+        const copy = createVec3f64(); // Ensure the resulting vector is float64s
+        copy[0] = this._cameraPosition[0];
+        copy[1] = this._cameraPosition[1];
+        copy[2] = this._cameraPosition[2];
+        return copy;
+    }
+    get cameraToCenterDistance() {
+        // Globe uses the same cameraToCenterDistance as mercator.
+        return this._helper.cameraToCenterDistance;
+    }
+    getProjectionData(params) {
+        const { overscaledTileID, applyGlobeMatrix } = params;
+        const mercatorTileCoordinates = this._helper.getMercatorTileCoordinates(overscaledTileID);
+        return {
+            mainMatrix: this._globeViewProjMatrix32f,
+            tileMercatorCoords: mercatorTileCoordinates,
+            clippingPlane: this._cachedClippingPlane,
+            projectionTransition: applyGlobeMatrix ? 1 : 0,
+            fallbackMatrix: this._globeViewProjMatrix32f,
+        };
+    }
+    _computeClippingPlane(globeRadiusPixels) {
+        // We want to compute a plane equation that, when applied to the unit sphere generated
+        // in the vertex shader, places all visible parts of the sphere into the positive half-space
+        // and all the non-visible parts in the negative half-space.
+        // We can then use that to accurately clip all non-visible geometry.
+        // cam....------------A
+        //        ....        |
+        //            ....    |
+        //                ....B
+        //                ggggggggg
+        //          gggggg    |   .gggggg
+        //       ggg          |       ...ggg    ^
+        //     gg             |                 |
+        //    g               |                 y
+        //    g               |                 |
+        //   g                C                 #---x--->
+        //
+        // Notes:
+        // - note the coordinate axes
+        // - "g" marks the globe edge
+        // - the dotted line is the camera center "ray" - we are looking in this direction
+        // - "cam" is camera origin
+        // - "C" is globe center
+        // - "B" is the point on "top" of the globe - camera is looking at B - "B" is the intersection between the camera center ray and the globe
+        // - this._pitchInRadians is the angle at B between points cam,B,A
+        // - this.cameraToCenterDistance is the distance from camera to "B"
+        // - globe radius is (0.5 * this.worldSize)
+        // - "T" is any point where a tangent line from "cam" touches the globe surface
+        // - elevation is assumed to be zero - globe rendering must be separate from terrain rendering anyway
+        const pitch = this.pitchInRadians;
+        // scale things so that the globe radius is 1
+        const distanceCameraToB = this.cameraToCenterDistance / globeRadiusPixels;
+        const radius = 1;
+        // Distance from camera to "A" - the point at the same elevation as camera, right above center point on globe
+        const distanceCameraToA = Math.sin(pitch) * distanceCameraToB;
+        // Distance from "A" to "C"
+        const distanceAtoC = (Math.cos(pitch) * distanceCameraToB + radius);
+        // Distance from camera to "C" - the globe center
+        const distanceCameraToC = Math.sqrt(distanceCameraToA * distanceCameraToA + distanceAtoC * distanceAtoC);
+        // cam - C - T angle cosine (at C)
+        const camCTcosine = radius / distanceCameraToC;
+        // Distance from globe center to the plane defined by all possible "T" points
+        const tangentPlaneDistanceToC = camCTcosine * radius;
+        let vectorCtoCamX = -distanceCameraToA;
+        let vectorCtoCamY = distanceAtoC;
+        // Normalize the vector
+        const vectorCtoCamLength = Math.sqrt(vectorCtoCamX * vectorCtoCamX + vectorCtoCamY * vectorCtoCamY);
+        vectorCtoCamX /= vectorCtoCamLength;
+        vectorCtoCamY /= vectorCtoCamLength;
+        // Note the swizzled components
+        const planeVector = [0, vectorCtoCamX, vectorCtoCamY];
+        // Apply transforms - lat, lng and angle (NOT pitch - already accounted for, as it affects the tangent plane)
+        rotateZ$2(planeVector, planeVector, [0, 0, 0], -this.bearingInRadians);
+        rotateX$2(planeVector, planeVector, [0, 0, 0], -1 * this.center.lat * Math.PI / 180.0);
+        rotateY$2(planeVector, planeVector, [0, 0, 0], this.center.lng * Math.PI / 180.0);
+        // Normalize the plane vector
+        const scale = 1 / length$4(planeVector);
+        scale$4(planeVector, planeVector, scale);
+        return [...planeVector, -tangentPlaneDistanceToC * scale];
+    }
+    isLocationOccluded(location) {
+        return !this.isSurfacePointVisible(angularCoordinatesToSurfaceVector(location));
+    }
+    transformLightDirection(dir) {
+        const sphereX = this._helper._center.lng * Math.PI / 180.0;
+        const sphereY = this._helper._center.lat * Math.PI / 180.0;
+        const len = Math.cos(sphereY);
+        const spherePos = [
+            Math.sin(sphereX) * len,
+            Math.sin(sphereY),
+            Math.cos(sphereX) * len
+        ];
+        const axisRight = [spherePos[2], 0.0, -spherePos[0]]; // Equivalent to cross(vec3(0.0, 1.0, 0.0), vec)
+        const axisDown = [0, 0, 0];
+        cross$2(axisDown, axisRight, spherePos);
+        normalize$4(axisRight, axisRight);
+        normalize$4(axisDown, axisDown);
+        const transformed = [
+            axisRight[0] * dir[0] + axisDown[0] * dir[1] + spherePos[0] * dir[2],
+            axisRight[1] * dir[0] + axisDown[1] * dir[1] + spherePos[1] * dir[2],
+            axisRight[2] * dir[0] + axisDown[2] * dir[1] + spherePos[2] * dir[2]
+        ];
+        const normalized = [0, 0, 0];
+        normalize$4(normalized, transformed);
+        return normalized;
+    }
+    getPixelScale() {
+        return 1.0 / Math.cos(this._helper._center.lat * Math.PI / 180);
+    }
+    getCircleRadiusCorrection() {
+        return Math.cos(this._helper._center.lat * Math.PI / 180);
+    }
+    getPitchedTextCorrection(textAnchorX, textAnchorY, tileID) {
+        const mercator = tileCoordinatesToMercatorCoordinates(textAnchorX, textAnchorY, tileID.canonical);
+        const angular = mercatorCoordinatesToAngularCoordinatesRadians(mercator.x, mercator.y);
+        return this.getCircleRadiusCorrection() / Math.cos(angular[1]);
+    }
+    projectTileCoordinates(x, y, unwrappedTileID, getElevation) {
+        const canonical = unwrappedTileID.canonical;
+        const spherePos = projectTileCoordinatesToSphere(x, y, canonical.x, canonical.y, canonical.z);
+        const elevation = getElevation ? getElevation(x, y) : 0.0;
+        const vectorMultiplier = 1.0 + elevation / earthRadius;
+        const pos = [spherePos[0] * vectorMultiplier, spherePos[1] * vectorMultiplier, spherePos[2] * vectorMultiplier, 1];
+        transformMat4$1(pos, pos, this._globeViewProjMatrixNoCorrection);
+        // Also check whether the point projects to the backfacing side of the sphere.
+        const plane = this._cachedClippingPlane;
+        // dot(position on sphere, occlusion plane equation)
+        const dotResult = plane[0] * spherePos[0] + plane[1] * spherePos[1] + plane[2] * spherePos[2] + plane[3];
+        const isOccluded = dotResult < 0.0;
+        return {
+            point: new Point(pos[0] / pos[3], pos[1] / pos[3]),
+            signedDistanceFromCamera: pos[3],
+            isOccluded
+        };
+    }
+    _calcMatrices() {
+        if (!this._helper._width || !this._helper._height) {
+            return;
+        }
+        const globeRadiusPixels = getGlobeRadiusPixels(this.worldSize, this.center.lat);
+        // Construct a completely separate matrix for globe view
+        const globeMatrix = createMat4f64();
+        const globeMatrixUncorrected = createMat4f64();
+        if (this._helper.autoCalculateNearFarZ) {
+            this._helper._nearZ = 0.5;
+            this._helper._farZ = this.cameraToCenterDistance + globeRadiusPixels * 2.0; // just set the far plane far enough - we will calculate our own z in the vertex shader anyway
+        }
+        perspective(globeMatrix, this.fovInRadians, this.width / this.height, this._helper._nearZ, this._helper._farZ);
+        // Apply center of perspective offset
+        const offset = this.centerOffset;
+        globeMatrix[8] = -offset.x * 2 / this._helper._width;
+        globeMatrix[9] = offset.y * 2 / this._helper._height;
+        this._projectionMatrix = clone$6(globeMatrix);
+        this._globeProjMatrixInverted = createMat4f64();
+        invert$2(this._globeProjMatrixInverted, globeMatrix);
+        translate$2(globeMatrix, globeMatrix, [0, 0, -this.cameraToCenterDistance]);
+        rotateZ$3(globeMatrix, globeMatrix, this.rollInRadians);
+        rotateX$3(globeMatrix, globeMatrix, -this.pitchInRadians);
+        rotateZ$3(globeMatrix, globeMatrix, this.bearingInRadians);
+        translate$2(globeMatrix, globeMatrix, [0.0, 0, -globeRadiusPixels]);
+        // Rotate the sphere to center it on viewed coordinates
+        const scaleVec = createVec3f64();
+        scaleVec[0] = globeRadiusPixels;
+        scaleVec[1] = globeRadiusPixels;
+        scaleVec[2] = globeRadiusPixels;
+        // Keep a atan-correction-free matrix for transformations done on the CPU with accurate math
+        rotateX$3(globeMatrixUncorrected, globeMatrix, this.center.lat * Math.PI / 180.0);
+        rotateY$3(globeMatrixUncorrected, globeMatrixUncorrected, -this.center.lng * Math.PI / 180.0);
+        scale$5(globeMatrixUncorrected, globeMatrixUncorrected, scaleVec); // Scale the unit sphere to a sphere with diameter of 1
+        this._globeViewProjMatrixNoCorrection = globeMatrixUncorrected;
+        rotateX$3(globeMatrix, globeMatrix, this.center.lat * Math.PI / 180.0 - this._globeLatitudeErrorCorrectionRadians);
+        rotateY$3(globeMatrix, globeMatrix, -this.center.lng * Math.PI / 180.0);
+        scale$5(globeMatrix, globeMatrix, scaleVec); // Scale the unit sphere to a sphere with diameter of 1
+        this._globeViewProjMatrix32f = new Float32Array(globeMatrix);
+        this._globeViewProjMatrixNoCorrectionInverted = createMat4f64();
+        invert$2(this._globeViewProjMatrixNoCorrectionInverted, globeMatrixUncorrected);
+        const zero = createVec3f64();
+        this._cameraPosition = createVec3f64();
+        this._cameraPosition[2] = this.cameraToCenterDistance / globeRadiusPixels;
+        rotateZ$2(this._cameraPosition, this._cameraPosition, zero, -this.rollInRadians);
+        rotateX$2(this._cameraPosition, this._cameraPosition, zero, this.pitchInRadians);
+        rotateZ$2(this._cameraPosition, this._cameraPosition, zero, -this.bearingInRadians);
+        add$4(this._cameraPosition, this._cameraPosition, [0, 0, 1]);
+        rotateX$2(this._cameraPosition, this._cameraPosition, zero, -this.center.lat * Math.PI / 180.0);
+        rotateY$2(this._cameraPosition, this._cameraPosition, zero, this.center.lng * Math.PI / 180.0);
+        this._cachedClippingPlane = this._computeClippingPlane(globeRadiusPixels);
+        const matrix = clone$6(this._globeViewProjMatrixNoCorrectionInverted);
+        scale$5(matrix, matrix, [1, 1, -1]);
+        this._cachedFrustum = Frustum.fromInvProjectionMatrix(matrix, 1, 0, this._cachedClippingPlane, true);
+    }
+    calculateFogMatrix(_unwrappedTileID) {
+        warnOnce('calculateFogMatrix is not supported on globe projection.');
+        const m = createMat4f64();
+        identity$2(m);
+        return m;
+    }
+    getVisibleUnwrappedCoordinates(tileID) {
+        // Globe has no wrap.
+        return [new UnwrappedTileID(0, tileID)];
+    }
+    getCameraFrustum() {
+        return this._cachedFrustum;
+    }
+    getClippingPlane() {
+        return this._cachedClippingPlane;
+    }
+    getCoveringTilesDetailsProvider() {
+        return this._coveringTilesDetailsProvider;
+    }
+    recalculateZoomAndCenter(terrain) {
+        if (terrain) {
+            warnOnce('terrain is not fully supported on vertical perspective projection.');
+        }
+        this._helper.recalculateZoomAndCenter(0);
+    }
+    maxPitchScaleFactor() {
+        // In mercaltor it uses the pixelMatrix, but this is not available here...
+        return 1;
+    }
+    getCameraPoint() {
+        return this._helper.getCameraPoint();
+    }
+    getCameraAltitude() {
+        return this._helper.getCameraAltitude();
+    }
+    getCameraLngLat() {
+        return this._helper.getCameraLngLat();
+    }
+    lngLatToCameraDepth(lngLat, elevation) {
+        if (!this._globeViewProjMatrixNoCorrection) {
+            return 1.0; // _calcMatrices hasn't run yet
+        }
+        const vec = angularCoordinatesToSurfaceVector(lngLat);
+        scale$4(vec, vec, (1.0 + elevation / earthRadius));
+        const result = createVec4f64();
+        transformMat4$1(result, [vec[0], vec[1], vec[2], 1], this._globeViewProjMatrixNoCorrection);
+        return result[2] / result[3];
+    }
+    populateCache(_coords) {
+        // Do nothing
+    }
+    getBounds() {
+        const xMid = this.width * 0.5;
+        const yMid = this.height * 0.5;
+        // LngLat extremes will probably tend to be in screen corners or in middle of screen edges.
+        // These test points should result in a pretty good approximation.
+        const testPoints = [
+            new Point(0, 0),
+            new Point(xMid, 0),
+            new Point(this.width, 0),
+            new Point(this.width, yMid),
+            new Point(this.width, this.height),
+            new Point(xMid, this.height),
+            new Point(0, this.height),
+            new Point(0, yMid),
+        ];
+        const projectedPoints = [];
+        for (const p of testPoints) {
+            projectedPoints.push(this.unprojectScreenPoint(p));
+        }
+        // We can't construct a simple min/max aabb, since points might lie on either side of the antimeridian.
+        // We will instead compute the furthest points relative to map center.
+        // We also take advantage of the fact that `unprojectScreenPoint` will snap pixels
+        // outside the planet to the closest point on the planet's horizon.
+        let mostEast = 0, mostWest = 0, mostNorth = 0, mostSouth = 0; // We will store these values signed.
+        const center = this.center;
+        for (const p of projectedPoints) {
+            const dLng = differenceOfAnglesDegrees(center.lng, p.lng);
+            const dLat = differenceOfAnglesDegrees(center.lat, p.lat);
+            if (dLng < mostWest) {
+                mostWest = dLng;
+            }
+            if (dLng > mostEast) {
+                mostEast = dLng;
+            }
+            if (dLat < mostSouth) {
+                mostSouth = dLat;
+            }
+            if (dLat > mostNorth) {
+                mostNorth = dLat;
+            }
+        }
+        const boundsArray = [
+            center.lng + mostWest, // west
+            center.lat + mostSouth, // south
+            center.lng + mostEast, // east
+            center.lat + mostNorth // north
+        ];
+        // Sometimes the poles might end up not being on the horizon,
+        // thus not being detected as the northernmost/southernmost points.
+        // We fix that here.
+        if (this.isSurfacePointOnScreen([0, 1, 0])) {
+            // North pole is visible
+            // This also means that the entire longitude range must be visible
+            boundsArray[3] = 90;
+            boundsArray[0] = -180;
+            boundsArray[2] = 180;
+        }
+        if (this.isSurfacePointOnScreen([0, -1, 0])) {
+            // South pole is visible
+            boundsArray[1] = -90;
+            boundsArray[0] = -180;
+            boundsArray[2] = 180;
+        }
+        return new LngLatBounds(boundsArray);
+    }
+    getConstrained(lngLat, zoom) {
+        // Globe: TODO: respect _lngRange, _latRange
+        // It is possible to implement exact constrain for globe, but I don't think it is worth the effort.
+        const constrainedLat = clamp(lngLat.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE);
+        const constrainedZoom = clamp(+zoom, this.minZoom + getZoomAdjustment(0, constrainedLat), this.maxZoom);
+        return {
+            center: new LngLat(lngLat.lng, constrainedLat),
+            zoom: constrainedZoom
+        };
+    }
+    calculateCenterFromCameraLngLatAlt(lngLat, alt, bearing, pitch) {
+        return this._helper.calculateCenterFromCameraLngLatAlt(lngLat, alt, bearing, pitch);
+    }
+    /**
+     * Note: automatically adjusts zoom to keep planet size consistent
+     * (same size before and after a {@link setLocationAtPoint} call).
+     */
+    setLocationAtPoint(lnglat, point) {
+        // This returns some fake coordinates for pixels that do not lie on the planet.
+        // Whatever uses this `setLocationAtPoint` function will need to account for that.
+        const pointLngLat = this.unprojectScreenPoint(point);
+        const vecToPixelCurrent = angularCoordinatesToSurfaceVector(pointLngLat);
+        const vecToTarget = angularCoordinatesToSurfaceVector(lnglat);
+        const zero = createVec3f64();
+        zero$2(zero);
+        const rotatedPixelVector = createVec3f64();
+        rotateY$2(rotatedPixelVector, vecToPixelCurrent, zero, -this.center.lng * Math.PI / 180.0);
+        rotateX$2(rotatedPixelVector, rotatedPixelVector, zero, this.center.lat * Math.PI / 180.0);
+        // We are looking for the lng,lat that will rotate `vecToTarget`
+        // so that it is equal to `rotatedPixelVector`.
+        // The second rotation around X axis cannot change the X component,
+        // so we first must find the longitude such that rotating `vecToTarget` with it
+        // will place it so its X component is equal to X component of `rotatedPixelVector`.
+        // There will exist zero, one or two longitudes that satisfy this.
+        //      x  |
+        //     /   |
+        //    /    | the line is the target X - rotatedPixelVector.x
+        //   /     | the x is vecToTarget projected to x,z plane
+        //  .      | the dot is origin
+        //
+        // We need to rotate vecToTarget so that it intersects the line.
+        // If vecToTarget is shorter than the distance to the line from origin, it is impossible.
+        // Otherwise, we compute the intersection of the line with a ring with radius equal to
+        // length of vecToTarget projected to XZ plane.
+        const vecToTargetXZLengthSquared = vecToTarget[0] * vecToTarget[0] + vecToTarget[2] * vecToTarget[2];
+        const targetXSquared = rotatedPixelVector[0] * rotatedPixelVector[0];
+        if (vecToTargetXZLengthSquared < targetXSquared) {
+            // Zero solutions - setLocationAtPoint is impossible.
+            return;
+        }
+        // The intersection's Z coordinates
+        const intersectionA = Math.sqrt(vecToTargetXZLengthSquared - targetXSquared);
+        const intersectionB = -intersectionA; // the second solution
+        const lngA = angleToRotateBetweenVectors2D(vecToTarget[0], vecToTarget[2], rotatedPixelVector[0], intersectionA);
+        const lngB = angleToRotateBetweenVectors2D(vecToTarget[0], vecToTarget[2], rotatedPixelVector[0], intersectionB);
+        const vecToTargetLngA = createVec3f64();
+        rotateY$2(vecToTargetLngA, vecToTarget, zero, -lngA);
+        const latA = angleToRotateBetweenVectors2D(vecToTargetLngA[1], vecToTargetLngA[2], rotatedPixelVector[1], rotatedPixelVector[2]);
+        const vecToTargetLngB = createVec3f64();
+        rotateY$2(vecToTargetLngB, vecToTarget, zero, -lngB);
+        const latB = angleToRotateBetweenVectors2D(vecToTargetLngB[1], vecToTargetLngB[2], rotatedPixelVector[1], rotatedPixelVector[2]);
+        // Is at least one of the needed latitudes valid?
+        const limit = Math.PI * 0.5;
+        const isValidA = latA >= -limit && latA <= limit;
+        const isValidB = latB >= -limit && latB <= limit;
+        let validLng;
+        let validLat;
+        if (isValidA && isValidB) {
+            // Pick the solution that is closer to current map center.
+            const centerLngRadians = this.center.lng * Math.PI / 180.0;
+            const centerLatRadians = this.center.lat * Math.PI / 180.0;
+            const lngDistA = distanceOfAnglesRadians(lngA, centerLngRadians);
+            const latDistA = distanceOfAnglesRadians(latA, centerLatRadians);
+            const lngDistB = distanceOfAnglesRadians(lngB, centerLngRadians);
+            const latDistB = distanceOfAnglesRadians(latB, centerLatRadians);
+            if ((lngDistA + latDistA) < (lngDistB + latDistB)) {
+                validLng = lngA;
+                validLat = latA;
+            }
+            else {
+                validLng = lngB;
+                validLat = latB;
+            }
+        }
+        else if (isValidA) {
+            validLng = lngA;
+            validLat = latA;
+        }
+        else if (isValidB) {
+            validLng = lngB;
+            validLat = latB;
+        }
+        else {
+            // No solution.
+            return;
+        }
+        const newLng = validLng / Math.PI * 180;
+        const newLat = validLat / Math.PI * 180;
+        const oldLat = this.center.lat;
+        this.setCenter(new LngLat(newLng, clamp(newLat, -90, 90)));
+        this.setZoom(this.zoom + getZoomAdjustment(oldLat, this.center.lat));
+    }
+    locationToScreenPoint(lnglat, terrain) {
+        const pos = angularCoordinatesToSurfaceVector(lnglat);
+        if (terrain) {
+            const elevation = terrain.getElevationForLngLatZoom(lnglat, this._helper._tileZoom);
+            scale$4(pos, pos, 1.0 + elevation / earthRadius);
+        }
+        return this._projectSurfacePointToScreen(pos);
+    }
+    /**
+     * Projects a given vector on the surface of a unit sphere (or possible above the surface)
+     * and returns its coordinates on screen in pixels.
+     */
+    _projectSurfacePointToScreen(pos) {
+        const projected = createVec4f64();
+        transformMat4$1(projected, [...pos, 1], this._globeViewProjMatrixNoCorrection);
+        projected[0] /= projected[3];
+        projected[1] /= projected[3];
+        return new Point((projected[0] * 0.5 + 0.5) * this.width, (-projected[1] * 0.5 + 0.5) * this.height);
+    }
+    screenPointToMercatorCoordinate(p, terrain) {
+        if (terrain) {
+            // Mercator has terrain handling implemented properly and since terrain
+            // simply draws tile coordinates into a special framebuffer, this works well even for globe.
+            const coordinate = terrain.pointCoordinate(p);
+            if (coordinate) {
+                return coordinate;
+            }
+        }
+        return MercatorCoordinate.fromLngLat(this.unprojectScreenPoint(p));
+    }
+    screenPointToLocation(p, terrain) {
+        var _a;
+        return (_a = this.screenPointToMercatorCoordinate(p, terrain)) === null || _a === void 0 ? void 0 : _a.toLngLat();
+    }
+    isPointOnMapSurface(p, _terrain) {
+        const rayOrigin = this._cameraPosition;
+        const rayDirection = this.getRayDirectionFromPixel(p);
+        const intersection = this.rayPlanetIntersection(rayOrigin, rayDirection);
+        return !!intersection;
+    }
+    /**
+     * Computes normalized direction of a ray from the camera to the given screen pixel.
+     */
+    getRayDirectionFromPixel(p) {
+        const pos = createVec4f64();
+        pos[0] = (p.x / this.width) * 2.0 - 1.0;
+        pos[1] = ((p.y / this.height) * 2.0 - 1.0) * -1.0;
+        pos[2] = 1;
+        pos[3] = 1;
+        transformMat4$1(pos, pos, this._globeViewProjMatrixNoCorrectionInverted);
+        pos[0] /= pos[3];
+        pos[1] /= pos[3];
+        pos[2] /= pos[3];
+        const ray = createVec3f64();
+        ray[0] = pos[0] - this._cameraPosition[0];
+        ray[1] = pos[1] - this._cameraPosition[1];
+        ray[2] = pos[2] - this._cameraPosition[2];
+        const rayNormalized = createVec3f64();
+        normalize$4(rayNormalized, ray);
+        return rayNormalized;
+    }
+    /**
+     * For a given point on the unit sphere of the planet, returns whether it is visible from
+     * camera's position (not taking into account camera rotation at all).
+     */
+    isSurfacePointVisible(p) {
+        const plane = this._cachedClippingPlane;
+        // dot(position on sphere, occlusion plane equation)
+        const dotResult = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
+        return dotResult >= 0.0;
+    }
+    /**
+     * Returns whether surface point is visible on screen.
+     * It must both project to a pixel in screen bounds and not be occluded by the planet.
+     */
+    isSurfacePointOnScreen(vec) {
+        if (!this.isSurfacePointVisible(vec)) {
+            return false;
+        }
+        const projected = createVec4f64();
+        transformMat4$1(projected, [...vec, 1], this._globeViewProjMatrixNoCorrection);
+        projected[0] /= projected[3];
+        projected[1] /= projected[3];
+        projected[2] /= projected[3];
+        return projected[0] > -1 && projected[0] < 1 &&
+            projected[1] > -1 && projected[1] < 1 &&
+            projected[2] > -1 && projected[2] < 1;
+    }
+    /**
+     * Returns the two intersection points of the ray and the planet's sphere,
+     * or null if no intersection occurs.
+     * The intersections are encoded as the parameter for parametric ray equation,
+     * with `tMin` being the first intersection and `tMax` being the second.
+     * Eg. the nearer intersection point can then be computed as `origin + direction * tMin`.
+     * @param origin - The ray origin.
+     * @param direction - The normalized ray direction.
+     */
+    rayPlanetIntersection(origin, direction) {
+        const originDotDirection = dot$5(origin, direction);
+        const planetRadiusSquared = 1.0; // planet is a unit sphere, so its radius squared is 1
+        // Ray-sphere intersection involves a quadratic equation.
+        // However solving it in the traditional schoolbook way leads to floating point precision issues.
+        // Here we instead use the approach suggested in the book Ray Tracing Gems, chapter 7.
+        // https://www.realtimerendering.com/raytracinggems/rtg/index.html
+        const inner = createVec3f64();
+        const scaledDir = createVec3f64();
+        scale$4(scaledDir, direction, originDotDirection);
+        sub$2(inner, origin, scaledDir);
+        const discriminant = planetRadiusSquared - dot$5(inner, inner);
+        if (discriminant < 0) {
+            return null;
+        }
+        const c = dot$5(origin, origin) - planetRadiusSquared;
+        const q = -originDotDirection + (originDotDirection < 0 ? 1 : -1) * Math.sqrt(discriminant);
+        const t0 = c / q;
+        const t1 = q;
+        // Assume the ray origin is never inside the sphere
+        const tMin = Math.min(t0, t1);
+        const tMax = Math.max(t0, t1);
+        return {
+            tMin,
+            tMax
+        };
+    }
+    /**
+     * @internal
+     * Returns a {@link LngLat} representing geographical coordinates that correspond to the specified pixel coordinates.
+     * Note: if the point does not lie on the globe, returns a location on the visible globe horizon (edge) that is
+     * as close to the point as possible.
+     * @param p - Screen point in pixels to unproject.
+     * @param terrain - Optional terrain.
+     */
+    unprojectScreenPoint(p) {
+        // Here we compute the intersection of the ray towards the pixel at `p` and the planet sphere.
+        // As always, we assume that the planet is centered at 0,0,0 and has radius 1.
+        // Ray origin is `_cameraPosition` and direction is `rayNormalized`.
+        const rayOrigin = this._cameraPosition;
+        const rayDirection = this.getRayDirectionFromPixel(p);
+        const intersection = this.rayPlanetIntersection(rayOrigin, rayDirection);
+        if (intersection) {
+            // Ray intersects the sphere -> compute intersection LngLat.
+            // Assume the ray origin is never inside the sphere - just use tMin
+            const intersectionPoint = createVec3f64();
+            add$4(intersectionPoint, rayOrigin, [
+                rayDirection[0] * intersection.tMin,
+                rayDirection[1] * intersection.tMin,
+                rayDirection[2] * intersection.tMin
+            ]);
+            const sphereSurface = createVec3f64();
+            normalize$4(sphereSurface, intersectionPoint);
+            return sphereSurfacePointToCoordinates(sphereSurface);
+        }
+        // Ray does not intersect the sphere -> find the closest point on the horizon to the ray.
+        // Intersect the ray with the clipping plane, since we know that the intersection of the clipping plane and the sphere is the horizon.
+        const horizonPlane = this._cachedClippingPlane;
+        const directionDotPlaneXyz = horizonPlane[0] * rayDirection[0] + horizonPlane[1] * rayDirection[1] + horizonPlane[2] * rayDirection[2];
+        const originToPlaneDistance = pointPlaneSignedDistance(horizonPlane, rayOrigin);
+        const distanceToIntersection = -originToPlaneDistance / directionDotPlaneXyz;
+        const maxRayLength = 2.0; // One globe diameter
+        const planeIntersection = createVec3f64();
+        if (distanceToIntersection > 0) {
+            add$4(planeIntersection, rayOrigin, [
+                rayDirection[0] * distanceToIntersection,
+                rayDirection[1] * distanceToIntersection,
+                rayDirection[2] * distanceToIntersection
+            ]);
+        }
+        else {
+            // When the ray takes too long to hit the plane (>maxRayLength), or if the plane intersection is behind the camera, handle things differently.
+            // Take a point along the ray at distance maxRayLength, project it to clipping plane, then continue as normal to find the horizon point.
+            const distantPoint = createVec3f64();
+            add$4(distantPoint, rayOrigin, [
+                rayDirection[0] * maxRayLength,
+                rayDirection[1] * maxRayLength,
+                rayDirection[2] * maxRayLength
+            ]);
+            const distanceFromPlane = pointPlaneSignedDistance(this._cachedClippingPlane, distantPoint);
+            sub$2(planeIntersection, distantPoint, [
+                this._cachedClippingPlane[0] * distanceFromPlane,
+                this._cachedClippingPlane[1] * distanceFromPlane,
+                this._cachedClippingPlane[2] * distanceFromPlane
+            ]);
+        }
+        const horizonDisk = horizonPlaneToCenterAndRadius(horizonPlane);
+        const closestOnHorizon = clampToSphere(horizonDisk.center, horizonDisk.radius, planeIntersection);
+        return sphereSurfacePointToCoordinates(closestOnHorizon);
+    }
+    getMatrixForModel(location, altitude) {
+        const lnglat = LngLat.convert(location);
+        const scale = 1.0 / earthRadius;
+        const m = createIdentityMat4f64();
+        rotateY$3(m, m, lnglat.lng / 180.0 * Math.PI);
+        rotateX$3(m, m, -lnglat.lat / 180.0 * Math.PI);
+        translate$2(m, m, [0, 0, 1 + altitude / earthRadius]);
+        rotateX$3(m, m, Math.PI * 0.5);
+        scale$5(m, m, [scale, scale, scale]);
+        return m;
+    }
+    getProjectionDataForCustomLayer(applyGlobeMatrix = true) {
+        const globeData = this.getProjectionData({ overscaledTileID: new OverscaledTileID(0, 0, 0, 0, 0), applyGlobeMatrix });
+        globeData.tileMercatorCoords = [0, 0, 1, 1];
+        return globeData;
+    }
+    getFastPathSimpleProjectionMatrix(_tileID) {
+        return undefined;
+    }
+}
+
+/**
+ * Globe transform is a transform that moves between vertical perspective and mercator projections.
+ */
+class GlobeTransform {
+    //
+    // Implementation of transform getters and setters
+    //
+    get pixelsToClipSpaceMatrix() {
+        return this._helper.pixelsToClipSpaceMatrix;
+    }
+    get clipSpaceToPixelsMatrix() {
+        return this._helper.clipSpaceToPixelsMatrix;
+    }
+    get pixelsToGLUnits() {
+        return this._helper.pixelsToGLUnits;
+    }
+    get centerOffset() {
+        return this._helper.centerOffset;
+    }
+    get size() {
+        return this._helper.size;
+    }
+    get rotationMatrix() {
+        return this._helper.rotationMatrix;
+    }
+    get centerPoint() {
+        return this._helper.centerPoint;
+    }
+    get pixelsPerMeter() {
+        return this._helper.pixelsPerMeter;
+    }
+    setMinZoom(zoom) {
+        this._helper.setMinZoom(zoom);
+    }
+    setMaxZoom(zoom) {
+        this._helper.setMaxZoom(zoom);
+    }
+    setMinPitch(pitch) {
+        this._helper.setMinPitch(pitch);
+    }
+    setMaxPitch(pitch) {
+        this._helper.setMaxPitch(pitch);
+    }
+    setRenderWorldCopies(renderWorldCopies) {
+        this._helper.setRenderWorldCopies(renderWorldCopies);
+    }
+    setBearing(bearing) {
+        this._helper.setBearing(bearing);
+    }
+    setPitch(pitch) {
+        this._helper.setPitch(pitch);
+    }
+    setRoll(roll) {
+        this._helper.setRoll(roll);
+    }
+    setFov(fov) {
+        this._helper.setFov(fov);
+    }
+    setZoom(zoom) {
+        this._helper.setZoom(zoom);
+    }
+    setCenter(center) {
+        this._helper.setCenter(center);
+    }
+    setElevation(elevation) {
+        this._helper.setElevation(elevation);
+    }
+    setMinElevationForCurrentTile(elevation) {
+        this._helper.setMinElevationForCurrentTile(elevation);
+    }
+    setPadding(padding) {
+        this._helper.setPadding(padding);
+    }
+    interpolatePadding(start, target, t) {
+        return this._helper.interpolatePadding(start, target, t);
+    }
+    isPaddingEqual(padding) {
+        return this._helper.isPaddingEqual(padding);
+    }
+    resize(width, height, constrainTransform = true) {
+        this._helper.resize(width, height, constrainTransform);
+    }
+    getMaxBounds() {
+        return this._helper.getMaxBounds();
+    }
+    setMaxBounds(bounds) {
+        this._helper.setMaxBounds(bounds);
+    }
+    overrideNearFarZ(nearZ, farZ) {
+        this._helper.overrideNearFarZ(nearZ, farZ);
+    }
+    clearNearFarZOverride() {
+        this._helper.clearNearFarZOverride();
+    }
+    getCameraQueryGeometry(queryGeometry) {
+        return this._helper.getCameraQueryGeometry(this.getCameraPoint(), queryGeometry);
+    }
+    get tileSize() {
+        return this._helper.tileSize;
+    }
+    get tileZoom() {
+        return this._helper.tileZoom;
+    }
+    get scale() {
+        return this._helper.scale;
+    }
+    get worldSize() {
+        return this._helper.worldSize;
+    }
+    get width() {
+        return this._helper.width;
+    }
+    get height() {
+        return this._helper.height;
+    }
+    get lngRange() {
+        return this._helper.lngRange;
+    }
+    get latRange() {
+        return this._helper.latRange;
+    }
+    get minZoom() {
+        return this._helper.minZoom;
+    }
+    get maxZoom() {
+        return this._helper.maxZoom;
+    }
+    get zoom() {
+        return this._helper.zoom;
+    }
+    get center() {
+        return this._helper.center;
+    }
+    get minPitch() {
+        return this._helper.minPitch;
+    }
+    get maxPitch() {
+        return this._helper.maxPitch;
+    }
+    get pitch() {
+        return this._helper.pitch;
+    }
+    get pitchInRadians() {
+        return this._helper.pitchInRadians;
+    }
+    get roll() {
+        return this._helper.roll;
+    }
+    get rollInRadians() {
+        return this._helper.rollInRadians;
+    }
+    get bearing() {
+        return this._helper.bearing;
+    }
+    get bearingInRadians() {
+        return this._helper.bearingInRadians;
+    }
+    get fov() {
+        return this._helper.fov;
+    }
+    get fovInRadians() {
+        return this._helper.fovInRadians;
+    }
+    get elevation() {
+        return this._helper.elevation;
+    }
+    get minElevationForCurrentTile() {
+        return this._helper.minElevationForCurrentTile;
+    }
+    get padding() {
+        return this._helper.padding;
+    }
+    get unmodified() {
+        return this._helper.unmodified;
+    }
+    get renderWorldCopies() {
+        return this._helper.renderWorldCopies;
+    }
+    get cameraToCenterDistance() {
+        return this._helper.cameraToCenterDistance;
+    }
+    get nearZ() {
+        return this._helper.nearZ;
+    }
+    get farZ() {
+        return this._helper.farZ;
+    }
+    get autoCalculateNearFarZ() {
+        return this._helper.autoCalculateNearFarZ;
+    }
+    /**
+     * True when globe render path should be used instead of the old but simpler mercator rendering.
+     * Globe automatically transitions to mercator at high zoom levels, which causes a switch from
+     * globe to mercator render path.
+     */
+    get isGlobeRendering() {
+        return this._globeness > 0;
+    }
+    setTransitionState(globeness, errorCorrectionValue) {
+        this._globeness = globeness;
+        this._globeLatitudeErrorCorrectionRadians = errorCorrectionValue;
+        this._calcMatrices();
+        this._verticalPerspectiveTransform.getCoveringTilesDetailsProvider().prepareNextFrame();
+        this._mercatorTransform.getCoveringTilesDetailsProvider().prepareNextFrame();
+    }
+    get currentTransform() {
+        return this.isGlobeRendering ? this._verticalPerspectiveTransform : this._mercatorTransform;
+    }
+    constructor() {
+        //
+        // Implementation of globe transform
+        //
+        this._globeLatitudeErrorCorrectionRadians = 0;
+        /**
+         * Globe projection can smoothly interpolate between globe view and mercator. This variable controls this interpolation.
+         * Value 0 is mercator, value 1 is globe, anything between is an interpolation between the two projections.
+         */
+        this._globeness = 1.0;
+        this._helper = new TransformHelper({
+            calcMatrices: () => { this._calcMatrices(); },
+            getConstrained: (center, zoom) => { return this.getConstrained(center, zoom); }
+        });
+        this._globeness = 1; // When transform is cloned for use in symbols, `_updateAnimation` function which usually sets this value never gets called.
+        this._mercatorTransform = new MercatorTransform();
+        this._verticalPerspectiveTransform = new VerticalPerspectiveTransform();
+    }
+    clone() {
+        const clone = new GlobeTransform();
+        clone._globeness = this._globeness;
+        clone._globeLatitudeErrorCorrectionRadians = this._globeLatitudeErrorCorrectionRadians;
+        clone.apply(this);
+        return clone;
+    }
+    apply(that) {
+        this._helper.apply(that);
+        this._mercatorTransform.apply(this);
+        this._verticalPerspectiveTransform.apply(this, this._globeLatitudeErrorCorrectionRadians);
+    }
+    get projectionMatrix() { return this.currentTransform.projectionMatrix; }
+    get modelViewProjectionMatrix() { return this.currentTransform.modelViewProjectionMatrix; }
+    get inverseProjectionMatrix() { return this.currentTransform.inverseProjectionMatrix; }
+    get cameraPosition() { return this.currentTransform.cameraPosition; }
+    getProjectionData(params) {
+        const mercatorProjectionData = this._mercatorTransform.getProjectionData(params);
+        const verticalPerspectiveProjectionData = this._verticalPerspectiveTransform.getProjectionData(params);
+        return {
+            mainMatrix: this.isGlobeRendering ? verticalPerspectiveProjectionData.mainMatrix : mercatorProjectionData.mainMatrix,
+            clippingPlane: verticalPerspectiveProjectionData.clippingPlane,
+            tileMercatorCoords: verticalPerspectiveProjectionData.tileMercatorCoords,
+            projectionTransition: params.applyGlobeMatrix ? this._globeness : 0,
+            fallbackMatrix: mercatorProjectionData.fallbackMatrix,
+        };
+    }
+    isLocationOccluded(location) {
+        return this.currentTransform.isLocationOccluded(location);
+    }
+    transformLightDirection(dir) {
+        return this.currentTransform.transformLightDirection(dir);
+    }
+    getPixelScale() {
+        return lerp(this._mercatorTransform.getPixelScale(), this._verticalPerspectiveTransform.getPixelScale(), this._globeness);
+    }
+    getCircleRadiusCorrection() {
+        return lerp(this._mercatorTransform.getCircleRadiusCorrection(), this._verticalPerspectiveTransform.getCircleRadiusCorrection(), this._globeness);
+    }
+    getPitchedTextCorrection(textAnchorX, textAnchorY, tileID) {
+        const mercatorCorrection = this._mercatorTransform.getPitchedTextCorrection(textAnchorX, textAnchorY, tileID);
+        const verticalCorrection = this._verticalPerspectiveTransform.getPitchedTextCorrection(textAnchorX, textAnchorY, tileID);
+        return lerp(mercatorCorrection, verticalCorrection, this._globeness);
+    }
+    projectTileCoordinates(x, y, unwrappedTileID, getElevation) {
+        return this.currentTransform.projectTileCoordinates(x, y, unwrappedTileID, getElevation);
+    }
+    _calcMatrices() {
+        if (!this._helper._width || !this._helper._height) {
+            return;
+        }
+        // VerticalPerspective reads our near/farZ values and autoCalculateNearFarZ:
+        // - if autoCalculateNearFarZ is true then it computes globe Z values
+        // - if autoCalculateNearFarZ is false then it inherits our Z values
+        // In either case, its Z values are consistent with out settings and we want to copy its Z values to our helper.
+        this._verticalPerspectiveTransform.apply(this, this._globeLatitudeErrorCorrectionRadians);
+        this._helper._nearZ = this._verticalPerspectiveTransform.nearZ;
+        this._helper._farZ = this._verticalPerspectiveTransform.farZ;
+        // When transitioning between globe and mercator, we need to synchronize the depth values in both transforms.
+        // For this reason we first update vertical perspective and then sync our Z values to its result.
+        // Now if globe rendering, we always want to force mercator transform to adapt our Z values.
+        // If not, it will either compute its own (autoCalculateNearFarZ=false) or adapt our (autoCalculateNearFarZ=true).
+        // In either case we want to (again) sync our Z values, this time with
+        this._mercatorTransform.apply(this, true, this.isGlobeRendering);
+        this._helper._nearZ = this._mercatorTransform.nearZ;
+        this._helper._farZ = this._mercatorTransform.farZ;
+    }
+    calculateFogMatrix(unwrappedTileID) {
+        return this.currentTransform.calculateFogMatrix(unwrappedTileID);
+    }
+    getVisibleUnwrappedCoordinates(tileID) {
+        return this.currentTransform.getVisibleUnwrappedCoordinates(tileID);
+    }
+    getCameraFrustum() {
+        return this.currentTransform.getCameraFrustum();
+    }
+    getClippingPlane() {
+        return this.currentTransform.getClippingPlane();
+    }
+    getCoveringTilesDetailsProvider() {
+        return this.currentTransform.getCoveringTilesDetailsProvider();
+    }
+    recalculateZoomAndCenter(terrain) {
+        this._mercatorTransform.recalculateZoomAndCenter(terrain);
+        this._verticalPerspectiveTransform.recalculateZoomAndCenter(terrain);
+    }
+    maxPitchScaleFactor() {
+        // Using mercator version of this should be good enough approximation for globe.
+        return this._mercatorTransform.maxPitchScaleFactor();
+    }
+    getCameraPoint() {
+        return this._helper.getCameraPoint();
+    }
+    getCameraAltitude() {
+        return this._helper.getCameraAltitude();
+    }
+    getCameraLngLat() {
+        return this._helper.getCameraLngLat();
+    }
+    lngLatToCameraDepth(lngLat, elevation) {
+        return this.currentTransform.lngLatToCameraDepth(lngLat, elevation);
+    }
+    populateCache(coords) {
+        this._mercatorTransform.populateCache(coords);
+        this._verticalPerspectiveTransform.populateCache(coords);
+    }
+    getBounds() {
+        return this.currentTransform.getBounds();
+    }
+    getConstrained(lngLat, zoom) {
+        return this.currentTransform.getConstrained(lngLat, zoom);
+    }
+    calculateCenterFromCameraLngLatAlt(lngLat, alt, bearing, pitch) {
+        return this._helper.calculateCenterFromCameraLngLatAlt(lngLat, alt, bearing, pitch);
+    }
+    /**
+     * Note: automatically adjusts zoom to keep planet size consistent
+     * (same size before and after a {@link setLocationAtPoint} call).
+     */
+    setLocationAtPoint(lnglat, point) {
+        if (!this.isGlobeRendering) {
+            this._mercatorTransform.setLocationAtPoint(lnglat, point);
+            this.apply(this._mercatorTransform);
+            return;
+        }
+        this._verticalPerspectiveTransform.setLocationAtPoint(lnglat, point);
+        this.apply(this._verticalPerspectiveTransform);
+        return;
+    }
+    locationToScreenPoint(lnglat, terrain) {
+        return this.currentTransform.locationToScreenPoint(lnglat, terrain);
+    }
+    screenPointToMercatorCoordinate(p, terrain) {
+        return this.currentTransform.screenPointToMercatorCoordinate(p, terrain);
+    }
+    screenPointToLocation(p, terrain) {
+        return this.currentTransform.screenPointToLocation(p, terrain);
+    }
+    isPointOnMapSurface(p, terrain) {
+        return this.currentTransform.isPointOnMapSurface(p, terrain);
+    }
+    /**
+     * Computes normalized direction of a ray from the camera to the given screen pixel.
+     */
+    getRayDirectionFromPixel(p) {
+        return this._verticalPerspectiveTransform.getRayDirectionFromPixel(p);
+    }
+    getMatrixForModel(location, altitude) {
+        return this.currentTransform.getMatrixForModel(location, altitude);
+    }
+    getProjectionDataForCustomLayer(applyGlobeMatrix = true) {
+        const mercatorData = this._mercatorTransform.getProjectionDataForCustomLayer(applyGlobeMatrix);
+        if (!this.isGlobeRendering) {
+            return mercatorData;
+        }
+        const globeData = this._verticalPerspectiveTransform.getProjectionDataForCustomLayer(applyGlobeMatrix);
+        globeData.fallbackMatrix = mercatorData.mainMatrix;
+        return globeData;
+    }
+    getFastPathSimpleProjectionMatrix(tileID) {
+        return this.currentTransform.getFastPathSimpleProjectionMatrix(tileID);
+    }
+}
+
+/**
+ * @internal
+ */
+class VerticalPerspectiveCameraHelper {
+    get useGlobeControls() { return true; }
+    handlePanInertia(pan, transform) {
+        const panCenter = computeGlobePanCenter(pan, transform);
+        if (Math.abs(panCenter.lng - transform.center.lng) > 180) {
+            // If easeTo target would be over 180° distant, the animation would move
+            // in the opposite direction that what the user intended.
+            // Thus we clamp the movement to 179.5°.
+            panCenter.lng = transform.center.lng + 179.5 * Math.sign(panCenter.lng - transform.center.lng);
+        }
+        return {
+            easingCenter: panCenter,
+            easingOffset: new Point(0, 0),
+        };
+    }
+    handleMapControlsRollPitchBearingZoom(deltas, tr) {
+        const zoomPixel = deltas.around;
+        const zoomLoc = tr.screenPointToLocation(zoomPixel);
+        if (deltas.bearingDelta)
+            tr.setBearing(tr.bearing + deltas.bearingDelta);
+        if (deltas.pitchDelta)
+            tr.setPitch(tr.pitch + deltas.pitchDelta);
+        if (deltas.rollDelta)
+            tr.setRoll(tr.roll + deltas.rollDelta);
+        const oldZoomPreZoomDelta = tr.zoom;
+        if (deltas.zoomDelta)
+            tr.setZoom(tr.zoom + deltas.zoomDelta);
+        const actualZoomDelta = tr.zoom - oldZoomPreZoomDelta;
+        if (actualZoomDelta === 0) {
+            return;
+        }
+        // Problem: `setLocationAtPoint` for globe works when it is called a single time, but is a little glitchy in practice when used repeatedly for zooming.
+        // - `setLocationAtPoint` repeatedly called at a location behind a pole will eventually glitch out
+        // - `setLocationAtPoint` at location the longitude of which is more than 90° different from current center will eventually glitch out
+        // But otherwise works fine at higher zooms, or when the target is somewhat near the current map center.
+        // Solution: use a heuristic zooming in the problematic cases and interpolate to `setLocationAtPoint` when possible.
+        // Magic numbers that control:
+        // - when zoom movement slowing starts for cursor not on globe (avoid unnatural map movements)
+        // - when we interpolate from exact zooming to heuristic zooming based on longitude difference of target location to current center
+        // - when we interpolate from exact zooming to heuristic zooming based on globe being too small on screen
+        // - when zoom movement slowing starts for globe being too small on viewport (avoids unnatural/unwanted map movements when map is zoomed out a lot)
+        const raySurfaceDistanceForSlowingStart = 0.3; // Zoom movement slowing will start when the planet surface to ray distance is greater than this number (globe radius is 1, so 0.3 is ~2000km form the surface).
+        const slowingMultiplier = 0.5; // The lower this value, the slower will the "zoom movement slowing" occur.
+        const interpolateToHeuristicStartLng = 45; // When zoom location longitude is this many degrees away from map center, we start interpolating from exact zooming to heuristic zooming.
+        const interpolateToHeuristicEndLng = 85; // Longitude difference at which interpolation to heuristic zooming ends.
+        const interpolateToHeuristicExponent = 0.25; // Makes interpolation smoother.
+        const interpolateToHeuristicStartRadius = 0.75; // When globe is this many times larger than the smaller viewport dimension, we start interpolating from exact zooming to heuristic zooming.
+        const interpolateToHeuristicEndRadius = 0.35; // Globe size at which interpolation to heuristic zooming ends.
+        const slowingRadiusStart = 0.9; // If globe is this many times larger than the smaller viewport dimension, start inhibiting map movement while zooming
+        const slowingRadiusStop = 0.5;
+        const slowingRadiusSlowFactor = 0.25; // How much is movement slowed when globe is too small
+        const dLngRaw = differenceOfAnglesDegrees(tr.center.lng, zoomLoc.lng);
+        const dLng = dLngRaw / (Math.abs(dLngRaw / 180) + 1.0); // This gradually reduces the amount of longitude change if the zoom location is very far, eg. on the other side of the pole (possible when looking at a pole).
+        const dLat = differenceOfAnglesDegrees(tr.center.lat, zoomLoc.lat);
+        // Slow zoom movement down if the mouse ray is far from the planet.
+        const rayDirection = tr.getRayDirectionFromPixel(zoomPixel);
+        const rayOrigin = tr.cameraPosition;
+        const distanceToClosestPoint = dot$5(rayOrigin, rayDirection) * -1; // Globe center relative to ray origin is equal to -rayOrigin and rayDirection is normalized, thus we want to compute dot(-rayOrigin, rayDirection).
+        const closestPoint = createVec3f64();
+        add$4(closestPoint, rayOrigin, [
+            rayDirection[0] * distanceToClosestPoint,
+            rayDirection[1] * distanceToClosestPoint,
+            rayDirection[2] * distanceToClosestPoint
+        ]);
+        const distanceFromSurface = length$4(closestPoint) - 1;
+        const distanceFactor = Math.exp(-Math.max(distanceFromSurface - raySurfaceDistanceForSlowingStart, 0) * slowingMultiplier);
+        // Slow zoom movement down if the globe is too small on viewport
+        const radius = getGlobeRadiusPixels(tr.worldSize, tr.center.lat) / Math.min(tr.width, tr.height); // Radius relative to larger viewport dimension
+        const radiusFactor = remapSaturate(radius, slowingRadiusStart, slowingRadiusStop, 1.0, slowingRadiusSlowFactor);
+        // Compute how much to move towards the zoom location
+        const factor = (1.0 - zoomScale(-actualZoomDelta)) * Math.min(distanceFactor, radiusFactor);
+        const oldCenterLat = tr.center.lat;
+        const oldZoom = tr.zoom;
+        const heuristicCenter = new LngLat(tr.center.lng + dLng * factor, clamp(tr.center.lat + dLat * factor, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
+        // Now compute the map center exact zoom
+        tr.setLocationAtPoint(zoomLoc, zoomPixel);
+        const exactCenter = tr.center;
+        // Interpolate between exact zooming and heuristic zooming depending on the longitude difference between current center and zoom location.
+        const interpolationFactorLongitude = remapSaturate(Math.abs(dLngRaw), interpolateToHeuristicStartLng, interpolateToHeuristicEndLng, 0, 1);
+        const interpolationFactorRadius = remapSaturate(radius, interpolateToHeuristicStartRadius, interpolateToHeuristicEndRadius, 0, 1);
+        const heuristicFactor = Math.pow(Math.max(interpolationFactorLongitude, interpolationFactorRadius), interpolateToHeuristicExponent);
+        const lngExactToHeuristic = differenceOfAnglesDegrees(exactCenter.lng, heuristicCenter.lng);
+        const latExactToHeuristic = differenceOfAnglesDegrees(exactCenter.lat, heuristicCenter.lat);
+        tr.setCenter(new LngLat(exactCenter.lng + lngExactToHeuristic * heuristicFactor, exactCenter.lat + latExactToHeuristic * heuristicFactor).wrap());
+        tr.setZoom(oldZoom + getZoomAdjustment(oldCenterLat, tr.center.lat));
+    }
+    handleMapControlsPan(deltas, tr, _preZoomAroundLoc) {
+        if (!deltas.panDelta) {
+            return;
+        }
+        // These are actually very similar to mercator controls, and should converge to them at high zooms.
+        // We avoid using the "grab a place and move it around" approach from mercator here,
+        // since it is not a very pleasant way to pan a globe.
+        const oldLat = tr.center.lat;
+        const oldZoom = tr.zoom;
+        tr.setCenter(computeGlobePanCenter(deltas.panDelta, tr).wrap());
+        // Setting the center might adjust zoom to keep globe size constant, we need to avoid adding this adjustment a second time
+        tr.setZoom(oldZoom + getZoomAdjustment(oldLat, tr.center.lat));
+    }
+    cameraForBoxAndBearing(options, padding, bounds, bearing, tr) {
+        const result = cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
+        // If globe is enabled, we use the parameters computed for mercator, and just update the zoom to fit the bounds.
+        // Get clip space bounds including padding
+        const xLeft = (padding.left) / tr.width * 2.0 - 1.0;
+        const xRight = (tr.width - padding.right) / tr.width * 2.0 - 1.0;
+        const yTop = (padding.top) / tr.height * -2.0 + 1.0;
+        const yBottom = (tr.height - padding.bottom) / tr.height * -2.0 + 1.0;
+        // Get camera bounds
+        const flipEastWest = differenceOfAnglesDegrees(bounds.getWest(), bounds.getEast()) < 0;
+        const lngWest = flipEastWest ? bounds.getEast() : bounds.getWest();
+        const lngEast = flipEastWest ? bounds.getWest() : bounds.getEast();
+        const latNorth = Math.max(bounds.getNorth(), bounds.getSouth()); // "getNorth" doesn't always return north...
+        const latSouth = Math.min(bounds.getNorth(), bounds.getSouth());
+        // Additional vectors will be tested for the rectangle midpoints
+        const lngMid = lngWest + differenceOfAnglesDegrees(lngWest, lngEast) * 0.5;
+        const latMid = latNorth + differenceOfAnglesDegrees(latNorth, latSouth) * 0.5;
+        // Obtain a globe projection matrix that does not include pitch (unsupported)
+        const clonedTr = tr.clone();
+        clonedTr.setCenter(result.center);
+        clonedTr.setBearing(result.bearing);
+        clonedTr.setPitch(0);
+        clonedTr.setRoll(0);
+        clonedTr.setZoom(result.zoom);
+        const matrix = clonedTr.modelViewProjectionMatrix;
+        // Vectors to test - the bounds' corners and edge midpoints
+        const testVectors = [
+            angularCoordinatesToSurfaceVector(bounds.getNorthWest()),
+            angularCoordinatesToSurfaceVector(bounds.getNorthEast()),
+            angularCoordinatesToSurfaceVector(bounds.getSouthWest()),
+            angularCoordinatesToSurfaceVector(bounds.getSouthEast()),
+            // Also test edge midpoints
+            angularCoordinatesToSurfaceVector(new LngLat(lngEast, latMid)),
+            angularCoordinatesToSurfaceVector(new LngLat(lngWest, latMid)),
+            angularCoordinatesToSurfaceVector(new LngLat(lngMid, latNorth)),
+            angularCoordinatesToSurfaceVector(new LngLat(lngMid, latSouth))
+        ];
+        const vecToCenter = angularCoordinatesToSurfaceVector(result.center);
+        // Test each vector, measure how much to scale down the globe to satisfy all tested points that they are inside clip space.
+        let smallestNeededScale = Number.POSITIVE_INFINITY;
+        for (const vec of testVectors) {
+            if (xLeft < 0)
+                smallestNeededScale = VerticalPerspectiveCameraHelper.getLesserNonNegativeNonNull(smallestNeededScale, VerticalPerspectiveCameraHelper.solveVectorScale(vec, vecToCenter, matrix, 'x', xLeft));
+            if (xRight > 0)
+                smallestNeededScale = VerticalPerspectiveCameraHelper.getLesserNonNegativeNonNull(smallestNeededScale, VerticalPerspectiveCameraHelper.solveVectorScale(vec, vecToCenter, matrix, 'x', xRight));
+            if (yTop > 0)
+                smallestNeededScale = VerticalPerspectiveCameraHelper.getLesserNonNegativeNonNull(smallestNeededScale, VerticalPerspectiveCameraHelper.solveVectorScale(vec, vecToCenter, matrix, 'y', yTop));
+            if (yBottom < 0)
+                smallestNeededScale = VerticalPerspectiveCameraHelper.getLesserNonNegativeNonNull(smallestNeededScale, VerticalPerspectiveCameraHelper.solveVectorScale(vec, vecToCenter, matrix, 'y', yBottom));
+        }
+        if (!Number.isFinite(smallestNeededScale) || smallestNeededScale === 0) {
+            cameraBoundsWarning();
+            return undefined;
+        }
+        // Compute target zoom from the obtained scale.
+        result.zoom = clonedTr.zoom + scaleZoom(smallestNeededScale);
+        return result;
+    }
+    /**
+     * Handles the zoom and center change during camera jumpTo.
+     */
+    handleJumpToCenterZoom(tr, options) {
+        // Special zoom & center handling for globe:
+        // Globe constrained center isn't dependent on zoom level
+        const startingLat = tr.center.lat;
+        const constrainedCenter = tr.getConstrained(options.center ? LngLat.convert(options.center) : tr.center, tr.zoom).center;
+        tr.setCenter(constrainedCenter.wrap());
+        // Make sure to compute correct target zoom level if no zoom is specified
+        const targetZoom = (typeof options.zoom !== 'undefined') ? +options.zoom : (tr.zoom + getZoomAdjustment(startingLat, constrainedCenter.lat));
+        if (tr.zoom !== targetZoom) {
+            tr.setZoom(targetZoom);
+        }
+    }
+    handleEaseTo(tr, options) {
+        const startZoom = tr.zoom;
+        const startCenter = tr.center;
+        const startPadding = tr.padding;
+        const startEulerAngles = { roll: tr.roll, pitch: tr.pitch, bearing: tr.bearing };
+        const endRoll = options.roll === undefined ? tr.roll : options.roll;
+        const endPitch = options.pitch === undefined ? tr.pitch : options.pitch;
+        const endBearing = options.bearing === undefined ? tr.bearing : options.bearing;
+        const endEulerAngles = { roll: endRoll, pitch: endPitch, bearing: endBearing };
+        const optionsZoom = typeof options.zoom !== 'undefined';
+        const doPadding = !tr.isPaddingEqual(options.padding);
+        let isZooming = false;
+        // Globe needs special handling for how zoom should be animated.
+        // 1) if zoom is set, ease to the given mercator zoom
+        // 2) if neither is set, assume constant apparent zoom (constant planet size) is to be kept
+        const preConstrainCenter = options.center ?
+            LngLat.convert(options.center) :
+            startCenter;
+        const constrainedCenter = tr.getConstrained(preConstrainCenter, startZoom // zoom can be whatever at this stage, it should not affect anything if globe is enabled
+        ).center;
+        normalizeCenter(tr, constrainedCenter);
+        const clonedTr = tr.clone();
+        clonedTr.setCenter(constrainedCenter);
+        clonedTr.setZoom(optionsZoom ?
+            +options.zoom :
+            startZoom + getZoomAdjustment(startCenter.lat, preConstrainCenter.lat));
+        clonedTr.setBearing(options.bearing);
+        const clampedPoint = new Point(clamp(tr.centerPoint.x + options.offsetAsPoint.x, 0, tr.width), clamp(tr.centerPoint.y + options.offsetAsPoint.y, 0, tr.height));
+        clonedTr.setLocationAtPoint(constrainedCenter, clampedPoint);
+        // Find final animation targets
+        const endCenterWithShift = (options.offset && options.offsetAsPoint.mag()) > 0 ? clonedTr.center : constrainedCenter;
+        const endZoomWithShift = optionsZoom ?
+            +options.zoom :
+            startZoom + getZoomAdjustment(startCenter.lat, endCenterWithShift.lat);
+        // Planet radius for a given zoom level differs according to latitude
+        // Convert zooms to what they would be at equator for the given planet radius
+        const normalizedStartZoom = startZoom + getZoomAdjustment(startCenter.lat, 0);
+        const normalizedEndZoom = endZoomWithShift + getZoomAdjustment(endCenterWithShift.lat, 0);
+        const deltaLng = differenceOfAnglesDegrees(startCenter.lng, endCenterWithShift.lng);
+        const deltaLat = differenceOfAnglesDegrees(startCenter.lat, endCenterWithShift.lat);
+        const finalScale = zoomScale(normalizedEndZoom - normalizedStartZoom);
+        isZooming = (endZoomWithShift !== startZoom);
+        const easeFunc = (k) => {
+            if (!rollPitchBearingEqual(startEulerAngles, endEulerAngles)) {
+                updateRotation({
+                    startEulerAngles,
+                    endEulerAngles,
+                    tr,
+                    k,
+                    useSlerp: startEulerAngles.roll != endEulerAngles.roll
+                });
+            }
+            if (doPadding) {
+                tr.interpolatePadding(startPadding, options.padding, k);
+            }
+            if (options.around) {
+                warnOnce('Easing around a point is not supported under globe projection.');
+                tr.setLocationAtPoint(options.around, options.aroundPoint);
+            }
+            else {
+                const base = normalizedEndZoom > normalizedStartZoom ?
+                    Math.min(2, finalScale) :
+                    Math.max(0.5, finalScale);
+                const speedup = Math.pow(base, 1 - k);
+                const factor = k * speedup;
+                // Spherical lerp might be used here instead, but that was tested and it leads to very weird paths when the interpolated arc gets near the poles.
+                // Instead we interpolate LngLat almost directly, but taking into account that
+                // one degree of longitude gets progressively smaller relative to latitude towards the poles.
+                const newCenter = interpolateLngLatForGlobe(startCenter, deltaLng, deltaLat, factor);
+                tr.setCenter(newCenter.wrap());
+            }
+            if (isZooming) {
+                const normalizedInterpolatedZoom = interpolateFactory.number(normalizedStartZoom, normalizedEndZoom, k);
+                const interpolatedZoom = normalizedInterpolatedZoom + getZoomAdjustment(0, tr.center.lat);
+                tr.setZoom(interpolatedZoom);
+            }
+        };
+        return {
+            easeFunc,
+            isZooming,
+            elevationCenter: endCenterWithShift,
+        };
+    }
+    handleFlyTo(tr, options) {
+        const optionsZoom = typeof options.zoom !== 'undefined';
+        const startCenter = tr.center;
+        const startZoom = tr.zoom;
+        const startPadding = tr.padding;
+        const doPadding = !tr.isPaddingEqual(options.padding);
+        // Obtain target center and zoom
+        const constrainedCenter = tr.getConstrained(LngLat.convert(options.center || options.locationAtOffset), startZoom).center;
+        const targetZoom = optionsZoom ? +options.zoom : tr.zoom + getZoomAdjustment(tr.center.lat, constrainedCenter.lat);
+        // Compute target center that respects offset by creating a temporary transform and calling its `setLocationAtPoint`.
+        const clonedTr = tr.clone();
+        clonedTr.setCenter(constrainedCenter);
+        clonedTr.setZoom(targetZoom);
+        clonedTr.setBearing(options.bearing);
+        const clampedPoint = new Point(clamp(tr.centerPoint.x + options.offsetAsPoint.x, 0, tr.width), clamp(tr.centerPoint.y + options.offsetAsPoint.y, 0, tr.height));
+        clonedTr.setLocationAtPoint(constrainedCenter, clampedPoint);
+        const targetCenter = clonedTr.center;
+        normalizeCenter(tr, targetCenter);
+        const pixelPathLength = globeDistanceOfLocationsPixels(tr, startCenter, targetCenter);
+        const normalizedStartZoom = startZoom + getZoomAdjustment(startCenter.lat, 0);
+        const normalizedTargetZoom = targetZoom + getZoomAdjustment(targetCenter.lat, 0);
+        const scaleOfZoom = zoomScale(normalizedTargetZoom - normalizedStartZoom);
+        const optionsMinZoom = typeof options.minZoom === 'number';
+        let scaleOfMinZoom;
+        if (optionsMinZoom) {
+            const normalizedOptionsMinZoom = +options.minZoom + getZoomAdjustment(targetCenter.lat, 0);
+            const normalizedMinZoomPreConstrain = Math.min(normalizedOptionsMinZoom, normalizedStartZoom, normalizedTargetZoom);
+            const minZoomPreConstrain = normalizedMinZoomPreConstrain + getZoomAdjustment(0, targetCenter.lat);
+            const minZoom = tr.getConstrained(targetCenter, minZoomPreConstrain).zoom;
+            const normalizedMinZoom = minZoom + getZoomAdjustment(targetCenter.lat, 0);
+            scaleOfMinZoom = zoomScale(normalizedMinZoom - normalizedStartZoom);
+        }
+        const deltaLng = differenceOfAnglesDegrees(startCenter.lng, targetCenter.lng);
+        const deltaLat = differenceOfAnglesDegrees(startCenter.lat, targetCenter.lat);
+        const easeFunc = (k, scale, centerFactor, _pointAtOffset) => {
+            const interpolatedCenter = interpolateLngLatForGlobe(startCenter, deltaLng, deltaLat, centerFactor);
+            if (doPadding) {
+                tr.interpolatePadding(startPadding, options.padding, k);
+            }
+            const newCenter = k === 1 ? targetCenter : interpolatedCenter;
+            tr.setCenter(newCenter.wrap());
+            const interpolatedZoom = normalizedStartZoom + scaleZoom(scale);
+            tr.setZoom(k === 1 ? targetZoom : (interpolatedZoom + getZoomAdjustment(0, newCenter.lat)));
+        };
+        return {
+            easeFunc,
+            scaleOfZoom,
+            targetCenter,
+            scaleOfMinZoom,
+            pixelPathLength,
+        };
+    }
+    /**
+     * Computes how much to scale the globe in order for a given point on its surface (a location) to project to a given clip space coordinate in either the X or the Y axis.
+     * @param vector - Position of the queried location on the surface of the unit sphere globe.
+     * @param toCenter - Position of current transform center on the surface of the unit sphere globe.
+     * This is needed because zooming the globe not only changes its scale,
+     * but also moves the camera closer or further away along this vector (pitch is disregarded).
+     * @param projection - The globe projection matrix.
+     * @param targetDimension - The dimension in which the scaled vector must match the target value in clip space.
+     * @param targetValue - The target clip space value in the specified dimension to which the queried vector must project.
+     * @returns How much to scale the globe.
+     */
+    static solveVectorScale(vector, toCenter, projection, targetDimension, targetValue) {
+        // We want to compute how much to scale the sphere in order for the input `vector` to project to `targetValue` in the given `targetDimension` (X or Y).
+        const k = targetValue;
+        const columnXorY = targetDimension === 'x' ?
+            [projection[0], projection[4], projection[8], projection[12]] : // X
+            [projection[1], projection[5], projection[9], projection[13]]; // Y
+        const columnZ = [projection[3], projection[7], projection[11], projection[15]];
+        const vecDotXY = vector[0] * columnXorY[0] + vector[1] * columnXorY[1] + vector[2] * columnXorY[2];
+        const vecDotZ = vector[0] * columnZ[0] + vector[1] * columnZ[1] + vector[2] * columnZ[2];
+        const toCenterDotXY = toCenter[0] * columnXorY[0] + toCenter[1] * columnXorY[1] + toCenter[2] * columnXorY[2];
+        const toCenterDotZ = toCenter[0] * columnZ[0] + toCenter[1] * columnZ[1] + toCenter[2] * columnZ[2];
+        // The following can be derived from writing down what happens to a vector scaled by a parameter ("V * t") when it is multiplied by a projection matrix, then solving for "t".
+        // Or rather, we derive it for a vector "V * t + (1-t) * C". Where V is `vector` and C is `toCenter`. The extra addition is needed because zooming out also moves the camera along "C".
+        const t = (toCenterDotXY + columnXorY[3] - k * toCenterDotZ - k * columnZ[3]) / (toCenterDotXY - vecDotXY - k * toCenterDotZ + k * vecDotZ);
+        if (toCenterDotXY + k * vecDotZ === vecDotXY + k * toCenterDotZ ||
+            columnZ[3] * (vecDotXY - toCenterDotXY) + columnXorY[3] * (toCenterDotZ - vecDotZ) + vecDotXY * toCenterDotZ === toCenterDotXY * vecDotZ) {
+            // The computed result is invalid.
+            return null;
+        }
+        return t;
+    }
+    /**
+     * Returns `newValue` if it is:
+     *
+     * - not null AND
+     * - not negative AND
+     * - smaller than `newValue`,
+     *
+     * ...otherwise returns `oldValue`.
+     */
+    static getLesserNonNegativeNonNull(oldValue, newValue) {
+        if (newValue !== null && newValue >= 0 && newValue < oldValue) {
+            return newValue;
+        }
+        else {
+            return oldValue;
+        }
+    }
+}
+
+/**
+ * @internal
+ */
+class GlobeCameraHelper {
+    constructor(globe) {
+        this._globe = globe;
+        this._mercatorCameraHelper = new MercatorCameraHelper();
+        this._verticalPerspectiveCameraHelper = new VerticalPerspectiveCameraHelper();
+    }
+    get useGlobeControls() { return this._globe.useGlobeRendering; }
+    get currentHelper() {
+        return this.useGlobeControls ? this._verticalPerspectiveCameraHelper : this._mercatorCameraHelper;
+    }
+    handlePanInertia(pan, transform) {
+        return this.currentHelper.handlePanInertia(pan, transform);
+    }
+    handleMapControlsRollPitchBearingZoom(deltas, tr) {
+        return this.currentHelper.handleMapControlsRollPitchBearingZoom(deltas, tr);
+    }
+    handleMapControlsPan(deltas, tr, preZoomAroundLoc) {
+        this.currentHelper.handleMapControlsPan(deltas, tr, preZoomAroundLoc);
+    }
+    cameraForBoxAndBearing(options, padding, bounds, bearing, tr) {
+        return this.currentHelper.cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
+    }
+    /**
+     * Handles the zoom and center change during camera jumpTo.
+     */
+    handleJumpToCenterZoom(tr, options) {
+        this.currentHelper.handleJumpToCenterZoom(tr, options);
+    }
+    handleEaseTo(tr, options) {
+        return this.currentHelper.handleEaseTo(tr, options);
+    }
+    handleFlyTo(tr, options) {
+        return this.currentHelper.handleFlyTo(tr, options);
+    }
+}
+
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
 let paint$7;
@@ -41737,8 +46384,8 @@ class BackgroundStyleLayer extends StyleLayer {
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
-let layout$4;
-const getLayout$2 = () => layout$4 = layout$4 || new Properties({
+let layout$5;
+const getLayout$2 = () => layout$5 = layout$5 || new Properties({
     "circle-sort-key": new DataDrivenProperty(v8Spec["layout_circle"]["circle-sort-key"]),
 });
 let paint$6;
@@ -41766,7 +46413,7 @@ class CircleStyleLayer extends StyleLayer {
         super(layer, properties$6, globalState);
     }
     createBucket(parameters) {
-        return new CircleBucket(parameters);
+        return new registry$1.bucket.circle(parameters);
     }
     queryRadius(bucket) {
         const circleBucket = bucket;
@@ -41888,14 +46535,14 @@ class ColorReliefStyleLayer extends StyleLayer {
     }
 }
 
-const layout$3 = createLayout([
+const layout$4 = createLayout([
     { name: 'a_pos', components: 2, type: 'Int16' },
     { name: 'a_normal_ed', components: 4, type: 'Int16' },
 ], 4);
 const centroidAttributes = createLayout([
     { name: 'a_centroid', components: 2, type: 'Int16' }
 ], 4);
-const { members: members$3, size: size$3, alignment: alignment$3 } = layout$3;
+const { members: members$4, size: size$4, alignment: alignment$4 } = layout$4;
 
 function hasPattern(type, layers, options) {
     const patterns = options.patternDependencies;
@@ -42183,7 +46830,7 @@ class FillExtrusionBucket {
     }
     upload(context) {
         if (!this.uploaded) {
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$3);
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$4);
             this.centroidVertexBuffer = context.createVertexBuffer(this.centroidVertexArray, centroidAttributes.members, true);
             this.indexBuffer = context.createIndexBuffer(this.indexArray);
         }
@@ -42307,7 +46954,6 @@ function accumulatePointsToCentroid(centroid, geometry) {
         centroid.sampleCount++;
     }
 }
-register('FillExtrusionBucket', FillExtrusionBucket, { omit: ['layers', 'features'] });
 function isBoundaryEdge(p1, p2) {
     return (p1.x === p2.x && (p1.x < 0 || p1.x > EXTENT$1)) ||
         (p1.y === p2.y && (p1.y < 0 || p1.y > EXTENT$1));
@@ -42497,10 +47143,10 @@ function projectQueryGeometry(queryGeometry, pixelPosMatrix, z) {
     return projectedQueryGeometry;
 }
 
-const layout$2 = createLayout([
+const layout$3 = createLayout([
     { name: 'a_pos', components: 2, type: 'Int16' }
 ], 4);
-const { members: members$2, size: size$2, alignment: alignment$2 } = layout$2;
+const { members: members$3, size: size$3, alignment: alignment$3 } = layout$3;
 
 const EARCUT_MAX_RINGS = 500;
 class FillBucket {
@@ -42583,7 +47229,7 @@ class FillBucket {
     }
     upload(context) {
         if (!this.uploaded) {
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$2);
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$3);
             this.indexBuffer = context.createIndexBuffer(this.indexArray);
             this.indexBuffer2 = context.createIndexBuffer(this.indexArray2);
         }
@@ -42611,12 +47257,11 @@ class FillBucket {
         this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
     }
 }
-register('FillBucket', FillBucket, { omit: ['layers', 'patternFeatures'] });
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
-let layout$1;
-const getLayout$1 = () => layout$1 = layout$1 || new Properties({
+let layout$2;
+const getLayout$1 = () => layout$2 = layout$2 || new Properties({
     "fill-sort-key": new DataDrivenProperty(v8Spec["layout_fill"]["fill-sort-key"]),
 });
 let paint$3;
@@ -42703,13 +47348,13 @@ const lineLayoutAttributes = createLayout([
     { name: 'a_pos_normal', components: 2, type: 'Int16' },
     { name: 'a_data', components: 4, type: 'Uint8' }
 ], 4);
-const { members: members$1, size: size$1, alignment: alignment$1 } = lineLayoutAttributes;
+const { members: members$2, size: size$2, alignment: alignment$2 } = lineLayoutAttributes;
 
 const lineLayoutAttributesExt = createLayout([
     { name: 'a_uv_x', components: 1, type: 'Float32' },
     { name: 'a_split_index', components: 1, type: 'Float32' },
 ]);
-const { members, size, alignment } = lineLayoutAttributesExt;
+const { members: members$1, size: size$1, alignment: alignment$1 } = lineLayoutAttributesExt;
 
 // NOTE ON EXTRUDE SCALE:
 // scale the extrusion vector so that the normal length is this value.
@@ -42833,9 +47478,9 @@ class LineBucket {
     upload(context) {
         if (!this.uploaded) {
             if (this.layoutVertexArray2.length !== 0) {
-                this.layoutVertexBuffer2 = context.createVertexBuffer(this.layoutVertexArray2, members);
+                this.layoutVertexBuffer2 = context.createVertexBuffer(this.layoutVertexArray2, members$1);
             }
-            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$1);
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members$2);
             this.indexBuffer = context.createIndexBuffer(this.indexArray);
         }
         this.programConfigurations.upload(context);
@@ -43158,12 +47803,11 @@ class LineBucket {
         this.updateScaledDistance();
     }
 }
-register('LineBucket', LineBucket, { omit: ['layers', 'patternFeatures'] });
 
 // This file is generated. Edit build/generate-style-code.ts, then run 'npm run codegen'.
 /* eslint-disable */
-let layout;
-const getLayout = () => layout = layout || new Properties({
+let layout$1;
+const getLayout = () => layout$1 = layout$1 || new Properties({
     "line-cap": new DataConstantProperty(v8Spec["layout_line"]["line-cap"]),
     "line-join": new DataDrivenProperty(v8Spec["layout_line"]["line-join"]),
     "line-miter-limit": new DataConstantProperty(v8Spec["layout_line"]["line-miter-limit"]),
@@ -43286,37 +47930,205 @@ class RasterStyleLayer extends StyleLayer {
     }
 }
 
+const layout = createLayout([
+    { name: 'a_pos', components: 2, type: 'Int16' }
+], 4);
+const { members, size, alignment } = layout;
+
+const VERTEX_MIN_VALUE = -32768; // -(2^15)
+// Extrude is in range 0..7, which will be mapped to -1..1 in the shader.
+function addCircleVertex(layoutVertexArray, x, y, extrudeX, extrudeY) {
+    // We pack circle position and extrude into range 0..65535, but vertices are stored as *signed* 16-bit integers, so we need to offset the number by 2^15.
+    layoutVertexArray.emplaceBack(VERTEX_MIN_VALUE + (x * 8) + extrudeX, VERTEX_MIN_VALUE + (y * 8) + extrudeY);
+}
+/**
+ * @internal
+ * Circles are represented by two triangles.
+ *
+ * Each corner has a pos that is the center of the circle and an extrusion
+ * vector that is where it points.
+ */
+class CircleBucket {
+    constructor(options) {
+        this.zoom = options.zoom;
+        this.overscaling = options.overscaling;
+        this.layers = options.layers;
+        this.layerIds = this.layers.map(layer => layer.id);
+        this.index = options.index;
+        this.hasPattern = false;
+        this.layoutVertexArray = new CircleLayoutArray();
+        this.indexArray = new TriangleIndexArray();
+        this.segments = new SegmentVector();
+        this.programConfigurations = new ProgramConfigurationSet(options.layers, options.zoom);
+        this.stateDependentLayerIds = this.layers.filter((l) => l.isStateDependent()).map((l) => l.id);
+    }
+    populate(features, options, canonical) {
+        const styleLayer = this.layers[0];
+        const bucketFeatures = [];
+        let circleSortKey = null;
+        let sortFeaturesByKey = false;
+        // Heatmap circles are usually large (and map-pitch-aligned), tessellate them to allow curvature along the globe.
+        let subdivide = styleLayer.type === 'heatmap';
+        // Heatmap layers are handled in this bucket and have no evaluated properties, so we check our access
+        if (styleLayer.type === 'circle') {
+            const circleStyle = styleLayer;
+            circleSortKey = circleStyle.layout.get('circle-sort-key');
+            sortFeaturesByKey = !circleSortKey.isConstant();
+            // Circles that are "printed" onto the map surface should be tessellated to follow the globe's curvature.
+            subdivide = subdivide || circleStyle.paint.get('circle-pitch-alignment') === 'map';
+        }
+        const granularity = subdivide ? options.subdivisionGranularity.circle : 1;
+        for (const { feature, id, index, sourceLayerIndex } of features) {
+            const needGeometry = this.layers[0]._featureFilter.needGeometry;
+            const evaluationFeature = toEvaluationFeature(feature, needGeometry);
+            if (!this.layers[0]._featureFilter.filter(new EvaluationParameters(this.zoom), evaluationFeature, canonical))
+                continue;
+            const sortKey = sortFeaturesByKey ?
+                circleSortKey.evaluate(evaluationFeature, {}, canonical) :
+                undefined;
+            const bucketFeature = {
+                id,
+                properties: feature.properties,
+                type: feature.type,
+                sourceLayerIndex,
+                index,
+                geometry: needGeometry ? evaluationFeature.geometry : loadGeometry(feature),
+                patterns: {},
+                sortKey
+            };
+            bucketFeatures.push(bucketFeature);
+        }
+        if (sortFeaturesByKey) {
+            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
+        }
+        for (const bucketFeature of bucketFeatures) {
+            const { geometry, index, sourceLayerIndex } = bucketFeature;
+            const feature = features[index].feature;
+            this.addFeature(bucketFeature, geometry, index, canonical, granularity);
+            options.featureIndex.insert(feature, geometry, index, sourceLayerIndex, this.index);
+        }
+    }
+    update(states, vtLayer, imagePositions) {
+        if (!this.stateDependentLayers.length)
+            return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
+            imagePositions
+        });
+    }
+    isEmpty() {
+        return this.layoutVertexArray.length === 0;
+    }
+    uploadPending() {
+        return !this.uploaded || this.programConfigurations.needsUpload;
+    }
+    upload(context) {
+        if (!this.uploaded) {
+            this.layoutVertexBuffer = context.createVertexBuffer(this.layoutVertexArray, members);
+            this.indexBuffer = context.createIndexBuffer(this.indexArray);
+        }
+        this.programConfigurations.upload(context);
+        this.uploaded = true;
+    }
+    destroy() {
+        if (!this.layoutVertexBuffer)
+            return;
+        this.layoutVertexBuffer.destroy();
+        this.indexBuffer.destroy();
+        this.programConfigurations.destroy();
+        this.segments.destroy();
+    }
+    addFeature(feature, geometry, index, canonical, granularity = 1) {
+        // Since we store the circle's center in each vertex, we only have 3 bits for actual vertex position in each axis.
+        // Thus the valid range of positions is 0..7.
+        // This gives us 4 possible granularity settings that are symmetrical.
+        // This array stores vertex positions that should by used by the tessellated quad.
+        let extrudes;
+        switch (granularity) {
+            case 1:
+                extrudes = [0, 7];
+                break;
+            case 3:
+                extrudes = [0, 2, 5, 7];
+                break;
+            case 5:
+                extrudes = [0, 1, 3, 4, 6, 7];
+                break;
+            case 7:
+                extrudes = [0, 1, 2, 3, 4, 5, 6, 7];
+                break;
+            default:
+                throw new Error(`Invalid circle bucket granularity: ${granularity}; valid values are 1, 3, 5, 7.`);
+        }
+        const verticesPerAxis = extrudes.length;
+        for (const ring of geometry) {
+            for (const point of ring) {
+                const vx = point.x;
+                const vy = point.y;
+                // Do not include points that are outside the tile boundaries.
+                if (vx < 0 || vx >= EXTENT$1 || vy < 0 || vy >= EXTENT$1) {
+                    continue;
+                }
+                const segment = this.segments.prepareSegment(verticesPerAxis * verticesPerAxis, this.layoutVertexArray, this.indexArray, feature.sortKey);
+                const index = segment.vertexLength;
+                for (let y = 0; y < verticesPerAxis; y++) {
+                    for (let x = 0; x < verticesPerAxis; x++) {
+                        addCircleVertex(this.layoutVertexArray, vx, vy, extrudes[x], extrudes[y]);
+                    }
+                }
+                for (let y = 0; y < verticesPerAxis - 1; y++) {
+                    for (let x = 0; x < verticesPerAxis - 1; x++) {
+                        const lowerIndex = index + y * verticesPerAxis + x;
+                        const upperIndex = index + (y + 1) * verticesPerAxis + x;
+                        this.indexArray.emplaceBack(lowerIndex, upperIndex + 1, lowerIndex + 1);
+                        this.indexArray.emplaceBack(lowerIndex, upperIndex, upperIndex + 1);
+                    }
+                }
+                segment.vertexLength += verticesPerAxis * verticesPerAxis;
+                segment.primitiveLength += (verticesPerAxis - 1) * (verticesPerAxis - 1) * 2;
+            }
+        }
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions: {}, canonical });
+    }
+}
+
+class HeatmapBucket extends CircleBucket {
+}
+
 // ===== LAYER FEATURES =====
 /**
  * Registers the Background layer feature.
  * Enables rendering of solid color or pattern backgrounds.
  */
 function registerBackground() {
-    registry$1.layer['background'] = BackgroundStyleLayer;
-    registry$1.draw['background'] = drawBackground;
-    registry$1.shader['background'] = prepare(backgroundFrag, backgroundVert);
-    registry$1.shader['backgroundPattern'] = prepare(backgroundPatternFrag, backgroundPatternVert);
+    registry$1.layer.background = BackgroundStyleLayer;
+    registry$1.draw.background = drawBackground;
+    registry$1.shader.background = prepare(backgroundFrag, backgroundVert);
+    registry$1.shader.backgroundPattern = prepare(backgroundPatternFrag, backgroundPatternVert);
 }
 /**
  * Registers the Circle layer feature.
  * Enables rendering of circle markers.
  */
 function registerCircle() {
-    registry$1.layer['circle'] = CircleStyleLayer;
-    registry$1.draw['circle'] = drawCircles;
-    registry$1.shader['circle'] = prepare(circleFrag, circleVert);
+    registry$1.layer.circle = CircleStyleLayer;
+    registry$1.draw.circle = drawCircles;
+    registry$1.shader.circle = prepare(circleFrag, circleVert);
+    registry$1.bucket.circle = CircleBucket;
+    register('CircleBucket', CircleBucket, { omit: ['layers'] });
 }
 /**
  * Registers the Fill layer feature.
  * Enables rendering of filled polygons with optional patterns and outlines.
  */
 function registerFill() {
-    registry$1.layer['fill'] = FillStyleLayer;
-    registry$1.draw['fill'] = drawFill;
-    registry$1.shader['fill'] = prepare(fillFrag, fillVert);
-    registry$1.shader['fillOutline'] = prepare(fillOutlineFrag, fillOutlineVert);
-    registry$1.shader['fillPattern'] = prepare(fillPatternFrag, fillPatternVert);
-    registry$1.shader['fillOutlinePattern'] = prepare(fillOutlinePatternFrag, fillOutlinePatternVert);
+    registry$1.layer.fill = FillStyleLayer;
+    registry$1.draw.fill = drawFill;
+    registry$1.shader.fill = prepare(fillFrag, fillVert);
+    registry$1.shader.fillOutline = prepare(fillOutlineFrag, fillOutlineVert);
+    registry$1.shader.fillPattern = prepare(fillPatternFrag, fillPatternVert);
+    registry$1.shader.fillOutlinePattern = prepare(fillOutlinePatternFrag, fillOutlinePatternVert);
+    registry$1.bucket.fill = FillBucket;
+    register('FillBucket', FillBucket, { omit: ['layers', 'patternFeatures'] });
 }
 /**
  * Registers the Fill-Extrusion layer feature.
@@ -43325,49 +48137,55 @@ function registerFill() {
 function registerFillExtrusion() {
     registry$1.layer['fill-extrusion'] = FillExtrusionStyleLayer;
     registry$1.draw['fill-extrusion'] = drawFillExtrusion;
-    registry$1.shader['fillExtrusion'] = prepare(fillExtrusionFrag, fillExtrusionVert);
-    registry$1.shader['fillExtrusionPattern'] = prepare(fillExtrusionPatternFrag, fillExtrusionPatternVert);
+    registry$1.shader.fillExtrusion = prepare(fillExtrusionFrag, fillExtrusionVert);
+    registry$1.shader.fillExtrusionPattern = prepare(fillExtrusionPatternFrag, fillExtrusionPatternVert);
+    registry$1.bucket['fill-extrusion'] = FillExtrusionBucket;
+    register('FillExtrusionBucket', FillExtrusionBucket, { omit: ['layers', 'features'] });
 }
 /**
  * Registers the Heatmap layer feature.
  * Enables rendering of data density heatmaps.
  */
 function registerHeatmap() {
-    registry$1.layer['heatmap'] = HeatmapStyleLayer;
-    registry$1.draw['heatmap'] = drawHeatmap;
-    registry$1.shader['heatmap'] = prepare(heatmapFrag, heatmapVert);
-    registry$1.shader['heatmapTexture'] = prepare(heatmapTextureFrag, heatmapTextureVert);
+    registry$1.layer.heatmap = HeatmapStyleLayer;
+    registry$1.draw.heatmap = drawHeatmap;
+    registry$1.shader.heatmap = prepare(heatmapFrag, heatmapVert);
+    registry$1.shader.heatmapTexture = prepare(heatmapTextureFrag, heatmapTextureVert);
+    registry$1.bucket.heatmap = HeatmapBucket;
+    register('HeatmapBucket', HeatmapBucket, { omit: ['layers'] });
 }
 /**
  * Registers the Hillshade layer feature.
  * Enables rendering of hillshade relief from DEM data.
  */
 function registerHillshade() {
-    registry$1.layer['hillshade'] = HillshadeStyleLayer;
-    registry$1.draw['hillshade'] = drawHillshade;
-    registry$1.shader['hillshade'] = prepare(hillshadeFrag, hillshadeVert);
-    registry$1.shader['hillshadePrepare'] = prepare(hillshadePrepareFrag, hillshadePrepareVert);
+    registry$1.layer.hillshade = HillshadeStyleLayer;
+    registry$1.draw.hillshade = drawHillshade;
+    registry$1.shader.hillshade = prepare(hillshadeFrag, hillshadeVert);
+    registry$1.shader.hillshadePrepare = prepare(hillshadePrepareFrag, hillshadePrepareVert);
 }
 /**
  * Registers the Line layer feature.
  * Enables rendering of lines with various styles (solid, gradient, pattern, SDF).
  */
 function registerLine() {
-    registry$1.layer['line'] = LineStyleLayer;
-    registry$1.draw['line'] = drawLine;
-    registry$1.shader['line'] = prepare(lineFrag, lineVert);
-    registry$1.shader['lineGradient'] = prepare(lineGradientFrag, lineGradientVert);
-    registry$1.shader['linePattern'] = prepare(linePatternFrag, linePatternVert);
-    registry$1.shader['lineSDF'] = prepare(lineSDFFrag, lineSDFVert);
+    registry$1.layer.line = LineStyleLayer;
+    registry$1.draw.line = drawLine;
+    registry$1.shader.line = prepare(lineFrag, lineVert);
+    registry$1.shader.lineGradient = prepare(lineGradientFrag, lineGradientVert);
+    registry$1.shader.linePattern = prepare(linePatternFrag, linePatternVert);
+    registry$1.shader.lineSDF = prepare(lineSDFFrag, lineSDFVert);
+    registry$1.bucket.line = LineBucket;
+    register('LineBucket', LineBucket, { omit: ['layers', 'patternFeatures'] });
 }
 /**
  * Registers the Raster layer feature.
  * Enables rendering of raster tile images.
  */
 function registerRaster() {
-    registry$1.layer['raster'] = RasterStyleLayer;
-    registry$1.draw['raster'] = drawRaster;
-    registry$1.shader['raster'] = prepare(rasterFrag, rasterVert);
+    registry$1.layer.raster = RasterStyleLayer;
+    registry$1.draw.raster = drawRaster;
+    registry$1.shader.raster = prepare(rasterFrag, rasterVert);
 }
 /**
  * Registers the Color-Relief layer feature.
@@ -43384,9 +48202,9 @@ function registerColorRelief() {
  * This is the most complex feature with additional dependencies.
  */
 function registerSymbol() {
-    registry$1.layer['symbol'] = SymbolStyleLayer;
+    registry$1.layer.symbol = SymbolStyleLayer;
     // Symbol draw function needs special handling with variable offsets
-    registry$1.draw['symbol'] = (painter, sourceCache, layer, coords, renderOptions) => {
+    registry$1.draw.symbol = (painter, sourceCache, layer, coords, renderOptions) => {
         var _a, _b;
         const variableOffsets = (_b = (_a = painter.style) === null || _a === void 0 ? void 0 : _a.placement) === null || _b === void 0 ? void 0 : _b.variableOffsets;
         if (variableOffsets) {
@@ -43394,16 +48212,36 @@ function registerSymbol() {
         }
     };
     // Symbol shaders
-    registry$1.shader['symbolIcon'] = prepare(symbolIconFrag, symbolIconVert);
-    registry$1.shader['symbolSDF'] = prepare(symbolSDFFrag, symbolSDFVert);
-    registry$1.shader['symbolTextAndIcon'] = prepare(symbolTextAndIconFrag, symbolTextAndIconVert);
-    registry$1.shader['collisionBox'] = prepare(collisionBoxFrag, collisionBoxVert);
-    registry$1.shader['collisionCircle'] = prepare(collisionCircleFrag, collisionCircleVert);
+    registry$1.shader.symbolIcon = prepare(symbolIconFrag, symbolIconVert);
+    registry$1.shader.symbolSDF = prepare(symbolSDFFrag, symbolSDFVert);
+    registry$1.shader.symbolTextAndIcon = prepare(symbolTextAndIconFrag, symbolTextAndIconVert);
+    registry$1.shader.collisionBox = prepare(collisionBoxFrag, collisionBoxVert);
+    registry$1.shader.collisionCircle = prepare(collisionCircleFrag, collisionCircleVert);
+    // Symbol bucket
+    registry$1.bucket.symbol = SymbolBucket;
+    // Register for web worker transfer
+    register('SymbolBuffers', SymbolBuffers);
+    register('CollisionBuffers', CollisionBuffers);
+    register('SymbolBucket', SymbolBucket, {
+        omit: ['layers', 'collisionBoxArray', 'features', 'compareText']
+    });
     // Symbol dependencies
     registry$1.symbol.SymbolBucket = SymbolBucket;
     registry$1.symbol.CrossTileSymbolIndex = CrossTileSymbolIndex;
     registry$1.symbol.PauseablePlacement = PauseablePlacement;
     registry$1.symbol.performSymbolLayout = performSymbolLayout;
+}
+/**
+ * Registers the Terrain feature.
+ * Enables 3D terrain rendering from DEM data.
+ */
+function registerTerrain() {
+    registry$1.shader.terrain = prepare(terrainFrag, terrainVert);
+    registry$1.shader.terrainDepth = prepare(terrainDepthFrag, terrainVertDepth);
+    registry$1.shader.terrainCoords = prepare(terrainCoordsFrag, terrainVertCoords);
+    registry$1.terrain.drawTerrain = drawTerrain;
+    registry$1.terrain.drawDepth = drawDepth;
+    registry$1.terrain.drawCoords = drawCoords;
 }
 // ===== UTILITY SHADERS =====
 /**
@@ -43411,18 +48249,15 @@ function registerSymbol() {
  * These are system-level shaders not tied to specific layer types.
  */
 function registerUtilityShaders() {
-    registry$1.shader['atmosphere'] = prepare(atmosphereFrag, atmosphereVert);
-    registry$1.shader['clippingMask'] = prepare(clippingMaskFrag, clippingMaskVert);
-    registry$1.shader['debug'] = prepare(debugFrag, debugVert);
-    registry$1.shader['depth'] = prepare(clippingMaskFrag, depthVert);
-    registry$1.shader['prelude'] = prepare(preludeFrag, preludeVert);
-    registry$1.shader['projectionErrorMeasurement'] = prepare(projectionErrorMeasurementFrag, projectionErrorMeasurementVert);
-    registry$1.shader['projectionMercator'] = prepare('', projectionMercatorVert);
-    registry$1.shader['projectionGlobe'] = prepare('', projectionGlobeVert);
-    registry$1.shader['sky'] = prepare(skyFrag, skyVert);
-    registry$1.shader['terrain'] = prepare(terrainFrag, terrainVert);
-    registry$1.shader['terrainDepth'] = prepare(terrainDepthFrag, terrainVertDepth);
-    registry$1.shader['terrainCoords'] = prepare(terrainCoordsFrag, terrainVertCoords);
+    registry$1.shader.atmosphere = prepare(atmosphereFrag, atmosphereVert);
+    registry$1.shader.clippingMask = prepare(clippingMaskFrag, clippingMaskVert);
+    registry$1.shader.debug = prepare(debugFrag, debugVert);
+    registry$1.shader.depth = prepare(clippingMaskFrag, depthVert);
+    registry$1.shader.prelude = prepare(preludeFrag, preludeVert);
+    registry$1.shader.projectionErrorMeasurement = prepare(projectionErrorMeasurementFrag, projectionErrorMeasurementVert);
+    registry$1.shader.projectionMercator = prepare('', projectionMercatorVert);
+    registry$1.shader.projectionGlobe = prepare('', projectionGlobeVert);
+    registry$1.shader.sky = prepare(skyFrag, skyVert);
 }
 // ===== SOURCES =====
 /**
@@ -43430,21 +48265,21 @@ function registerUtilityShaders() {
  * Enables using an HTML canvas element as a map layer source.
  */
 function registerCanvasSource() {
-    registry$1.source['canvas'] = CanvasSource;
+    registry$1.source.canvas = CanvasSource;
 }
 /**
  * Registers the GeoJSON source.
  * Enables loading GeoJSON data as a map layer source.
  */
 function registerGeoJSONSource() {
-    registry$1.source['geojson'] = GeoJSONSource;
+    registry$1.source.geojson = GeoJSONSource;
 }
 /**
  * Registers the Image source.
  * Enables using a single image positioned at geographic coordinates.
  */
 function registerImageSource() {
-    registry$1.source['image'] = ImageSource;
+    registry$1.source.image = ImageSource;
 }
 /**
  * Registers the Raster-DEM source.
@@ -43458,21 +48293,68 @@ function registerRasterDEMSource() {
  * Enables loading raster tile images (satellite, aerial photos, etc.).
  */
 function registerRasterSource() {
-    registry$1.source['raster'] = RasterTileSource;
+    registry$1.source.raster = RasterTileSource;
 }
 /**
  * Registers the Vector source.
  * Enables loading vector tiles in MVT format.
  */
 function registerVectorSource() {
-    registry$1.source['vector'] = VectorTileSource;
+    registry$1.source.vector = VectorTileSource;
 }
 /**
  * Registers the Video source.
  * Enables using a video element as a map layer source.
  */
 function registerVideoSource() {
-    registry$1.source['video'] = VideoSource;
+    registry$1.source.video = VideoSource;
+}
+// ===== PROJECTIONS =====
+/**
+ * Registers Mercator projection support.
+ * Enables flat 2D map rendering with mercator projection.
+ * This is the most common projection for 2D maps.
+ *
+ * Note: Mercator is also the built-in fallback, so calling this
+ * function is optional unless you need explicit mercator projection
+ * selection in the style spec.
+ */
+function registerMercatorProjection() {
+    registry$1.projection.mercator = {
+        projection: MercatorProjection,
+        transform: MercatorTransform,
+        cameraHelper: MercatorCameraHelper,
+    };
+}
+/**
+ * Registers Vertical Perspective projection support.
+ * Enables pure 3D globe rendering at all zoom levels.
+ * This projection always shows the earth as a sphere.
+ */
+function registerVerticalPerspectiveProjection() {
+    registry$1.projection['vertical-perspective'] = {
+        projection: VerticalPerspectiveProjection,
+        transform: VerticalPerspectiveTransform,
+        cameraHelper: VerticalPerspectiveCameraHelper,
+    };
+}
+/**
+ * Registers Globe projection support.
+ * Enables smart globe view that interpolates between 3D globe and flat mercator
+ * based on zoom level (globe when zoomed out, mercator when zoomed in).
+ *
+ * This internally registers both mercator and vertical-perspective projections
+ * since globe interpolates between them.
+ */
+function registerGlobeProjection() {
+    // Globe relies on both mercator and vertical-perspective
+    registerMercatorProjection();
+    registerVerticalPerspectiveProjection();
+    registry$1.projection.globe = {
+        projection: GlobeProjection,
+        transform: GlobeTransform,
+        cameraHelper: GlobeCameraHelper
+    };
 }
 
 /**
@@ -44191,7 +49073,7 @@ class WorkerTile {
             const imageAtlas = new ImageAtlas(iconMap, patternMap);
             for (const key in buckets) {
                 const bucket = buckets[key];
-                if (registry$1.symbol.SymbolBucket && bucket instanceof registry$1.symbol.SymbolBucket) {
+                if (bucket instanceof registry$1.bucket.symbol) {
                     recalculateLayers(bucket.layers, this.zoom, availableImages);
                     (_b = (_a = registry$1.symbol).performSymbolLayout) === null || _b === void 0 ? void 0 : _b.call(_a, {
                         bucket,
@@ -44205,9 +49087,9 @@ class WorkerTile {
                     });
                 }
                 else if (bucket.hasPattern &&
-                    (bucket instanceof LineBucket ||
-                        bucket instanceof FillBucket ||
-                        bucket instanceof FillExtrusionBucket)) {
+                    (bucket instanceof registry$1.bucket.line ||
+                        bucket instanceof registry$1.bucket.fill ||
+                        bucket instanceof registry$1.bucket['fill-extrusion'])) {
                     recalculateLayers(bucket.layers, this.zoom, availableImages);
                     bucket.addFeatures(options, this.tileID.canonical, imageAtlas.patternPositions);
                 }

@@ -1321,9 +1321,6 @@ declare class SegmentVector {
 	destroy(): void;
 	static simpleSegment(vertexOffset: number, primitiveOffset: number, vertexLength: number, primitiveLength: number): SegmentVector;
 }
-declare class HeatmapBucket extends CircleBucket<HeatmapStyleLayer> {
-	layers: Array<HeatmapStyleLayer>;
-}
 type HeatmapPaintProps = {
 	"heatmap-radius": DataDrivenProperty<number>;
 	"heatmap-weight": DataDrivenProperty<number>;
@@ -1338,6 +1335,9 @@ type HeatmapPaintPropsPossiblyEvaluated = {
 	"heatmap-color": ColorRampProperty;
 	"heatmap-opacity": number;
 };
+declare class HeatmapBucket extends CircleBucket<HeatmapStyleLayer> {
+	layers: Array<HeatmapStyleLayer>;
+}
 type BlendFuncConstant = WebGLRenderingContextBase["ZERO"] | WebGLRenderingContextBase["ONE"] | WebGLRenderingContextBase["SRC_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_SRC_COLOR"] | WebGLRenderingContextBase["DST_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_DST_COLOR"] | WebGLRenderingContextBase["SRC_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_SRC_ALPHA"] | WebGLRenderingContextBase["DST_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_DST_ALPHA"] | WebGLRenderingContextBase["CONSTANT_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_CONSTANT_COLOR"] | WebGLRenderingContextBase["CONSTANT_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_CONSTANT_ALPHA"] | WebGLRenderingContextBase["BLEND_COLOR"];
 type BlendFuncType = [
 	BlendFuncConstant,
@@ -10151,6 +10151,50 @@ declare class PauseablePlacement {
 	}): void;
 	commit(now: number): Placement;
 }
+type GeoJSONFeatureId = number | string;
+type GeoJSONSourceDiff = {
+	/**
+	 * When set to `true` it will remove all features
+	 */
+	removeAll?: boolean;
+	/**
+	 * An array of features IDs to remove
+	 */
+	remove?: Array<GeoJSONFeatureId>;
+	/**
+	 * An array of features to add
+	 */
+	add?: Array<GeoJSON.Feature>;
+	/**
+	 * An array of update objects
+	 */
+	update?: Array<GeoJSONFeatureDiff>;
+};
+type GeoJSONFeatureDiff = {
+	/**
+	 * The feature ID
+	 */
+	id: GeoJSONFeatureId;
+	/**
+	 * If it's a new geometry, place it here
+	 */
+	newGeometry?: GeoJSON.Geometry;
+	/**
+	 * Setting to `true` will remove all preperties
+	 */
+	removeAllProperties?: boolean;
+	/**
+	 * The properties keys to remove
+	 */
+	removeProperties?: Array<string>;
+	/**
+	 * The properties to add or update along side their values
+	 */
+	addOrUpdateProperties?: Array<{
+		key: string;
+		value: any;
+	}>;
+};
 type FeatureIdentifier = {
 	/**
 	 * Unique id of the feature.
@@ -10653,50 +10697,6 @@ declare class StyleLayerIndex {
 	replace(layerConfigs: Array<LayerSpecification>, globalState?: Record<string, any>): void;
 	update(layerConfigs: Array<LayerSpecification>, removedIds: Array<string>, globalState?: Record<string, any>): void;
 }
-type GeoJSONFeatureId = number | string;
-type GeoJSONSourceDiff = {
-	/**
-	 * When set to `true` it will remove all features
-	 */
-	removeAll?: boolean;
-	/**
-	 * An array of features IDs to remove
-	 */
-	remove?: Array<GeoJSONFeatureId>;
-	/**
-	 * An array of features to add
-	 */
-	add?: Array<GeoJSON.Feature>;
-	/**
-	 * An array of update objects
-	 */
-	update?: Array<GeoJSONFeatureDiff>;
-};
-type GeoJSONFeatureDiff = {
-	/**
-	 * The feature ID
-	 */
-	id: GeoJSONFeatureId;
-	/**
-	 * If it's a new geometry, place it here
-	 */
-	newGeometry?: GeoJSON.Geometry;
-	/**
-	 * Setting to `true` will remove all preperties
-	 */
-	removeAllProperties?: boolean;
-	/**
-	 * The properties keys to remove
-	 */
-	removeProperties?: Array<string>;
-	/**
-	 * The properties to add or update along side their values
-	 */
-	addOrUpdateProperties?: Array<{
-		key: string;
-		value: any;
-	}>;
-};
 type GeoJSONWorkerOptions = {
 	source?: string;
 	cluster?: boolean;

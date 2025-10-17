@@ -1323,9 +1323,6 @@ declare class SegmentVector {
 	destroy(): void;
 	static simpleSegment(vertexOffset: number, primitiveOffset: number, vertexLength: number, primitiveLength: number): SegmentVector;
 }
-declare class HeatmapBucket extends CircleBucket<HeatmapStyleLayer> {
-	layers: Array<HeatmapStyleLayer>;
-}
 type HeatmapPaintProps = {
 	"heatmap-radius": DataDrivenProperty<number>;
 	"heatmap-weight": DataDrivenProperty<number>;
@@ -1340,6 +1337,9 @@ type HeatmapPaintPropsPossiblyEvaluated = {
 	"heatmap-color": ColorRampProperty;
 	"heatmap-opacity": number;
 };
+declare class HeatmapBucket extends CircleBucket<HeatmapStyleLayer> {
+	layers: Array<HeatmapStyleLayer>;
+}
 type BlendFuncConstant = WebGLRenderingContextBase["ZERO"] | WebGLRenderingContextBase["ONE"] | WebGLRenderingContextBase["SRC_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_SRC_COLOR"] | WebGLRenderingContextBase["DST_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_DST_COLOR"] | WebGLRenderingContextBase["SRC_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_SRC_ALPHA"] | WebGLRenderingContextBase["DST_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_DST_ALPHA"] | WebGLRenderingContextBase["CONSTANT_COLOR"] | WebGLRenderingContextBase["ONE_MINUS_CONSTANT_COLOR"] | WebGLRenderingContextBase["CONSTANT_ALPHA"] | WebGLRenderingContextBase["ONE_MINUS_CONSTANT_ALPHA"] | WebGLRenderingContextBase["BLEND_COLOR"];
 type BlendFuncType = [
 	BlendFuncConstant,
@@ -14849,6 +14849,11 @@ export declare function registerColorRelief(): void;
  */
 export declare function registerSymbol(): void;
 /**
+ * Registers the Terrain feature.
+ * Enables 3D terrain rendering from DEM data.
+ */
+export declare function registerTerrain(): void;
+/**
  * Registers utility shaders used by the rendering system.
  * These are system-level shaders not tied to specific layer types.
  */
@@ -14888,6 +14893,31 @@ export declare function registerVectorSource(): void;
  * Enables using a video element as a map layer source.
  */
 export declare function registerVideoSource(): void;
+/**
+ * Registers Mercator projection support.
+ * Enables flat 2D map rendering with mercator projection.
+ * This is the most common projection for 2D maps.
+ *
+ * Note: Mercator is also the built-in fallback, so calling this
+ * function is optional unless you need explicit mercator projection
+ * selection in the style spec.
+ */
+export declare function registerMercatorProjection(): void;
+/**
+ * Registers Vertical Perspective projection support.
+ * Enables pure 3D globe rendering at all zoom levels.
+ * This projection always shows the earth as a sphere.
+ */
+export declare function registerVerticalPerspectiveProjection(): void;
+/**
+ * Registers Globe projection support.
+ * Enables smart globe view that interpolates between 3D globe and flat mercator
+ * based on zoom level (globe when zoomed out, mercator when zoomed in).
+ *
+ * This internally registers both mercator and vertical-perspective projections
+ * since globe interpolates between them.
+ */
+export declare function registerGlobeProjection(): void;
 export declare function setRTLTextPlugin(pluginURL: string, lazy: boolean): Promise<void>;
 export declare function getRTLTextPluginStatus(): string;
 export declare function getVersion(): string;
