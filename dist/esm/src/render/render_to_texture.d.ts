@@ -1,10 +1,10 @@
-import { type Painter, type RenderOptions } from './painter';
-import { type Tile } from '../source/tile';
-import { type OverscaledTileID } from '../source/tile_id';
-import { type Style } from '../style/style';
-import { type Terrain } from './terrain';
 import { RenderPool } from '../gl/render_pool';
-import { type Texture } from './texture';
+import type { Tile } from '../source/tile';
+import type { Painter, RenderOptions } from './painter';
+import type { OverscaledTileID } from '../source/tile_id';
+import type { Style } from '../style/style';
+import type { Terrain } from './terrain';
+import type { Texture } from './texture';
 import type { StyleLayer } from '../style/style_layer';
 export declare class RenderToTexture {
     painter: Painter;

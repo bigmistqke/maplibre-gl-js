@@ -6,7 +6,6 @@ import { ProgramConfigurationSet } from '../program_configuration';
 import { TriangleIndexArray } from '../index_array_type';
 import { EXTENT } from '../extent';
 import { VectorTileFeature } from '@mapbox/vector-tile';
-import { register } from '../../util/web_worker_transfer';
 import { hasPattern, addPatternDependencies } from './pattern_bucket_features';
 import { loadGeometry } from '../load_geometry';
 import { toEvaluationFeature } from '../evaluation_feature';
@@ -347,5 +346,4 @@ export class LineBucket {
         this.updateScaledDistance();
     }
 }
-register('LineBucket', LineBucket, { omit: ['layers', 'patternFeatures'] });
 //# sourceMappingURL=line_bucket.js.map

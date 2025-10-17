@@ -67,10 +67,10 @@ export class Tile {
         this.collisionBoxArray = data.collisionBoxArray;
         this.buckets = deserializeBucket(data.buckets, painter === null || painter === void 0 ? void 0 : painter.style);
         this.hasSymbolBuckets = false;
-        if (registry.symbol.SymbolBucket) {
+        if (registry.bucket.symbol) {
             for (const id in this.buckets) {
                 const bucket = this.buckets[id];
-                if (bucket instanceof registry.symbol.SymbolBucket) {
+                if (bucket instanceof registry.bucket.symbol) {
                     this.hasSymbolBuckets = true;
                     if (justReloaded) {
                         bucket.justReloaded = true;
@@ -84,7 +84,7 @@ export class Tile {
             if (this.hasSymbolBuckets) {
                 for (const id in this.buckets) {
                     const bucket = this.buckets[id];
-                    if (bucket instanceof registry.symbol.SymbolBucket && bucket.hasRTLText) {
+                    if (bucket instanceof registry.bucket.symbol && bucket.hasRTLText) {
                         this.hasRTLText = true;
                         rtlMainThreadPluginFactory().lazyLoad();
                         break;

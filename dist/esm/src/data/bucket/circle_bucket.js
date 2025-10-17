@@ -6,7 +6,6 @@ import { TriangleIndexArray } from '../index_array_type';
 import { loadGeometry } from '../load_geometry';
 import { toEvaluationFeature } from '../evaluation_feature';
 import { EXTENT } from '../extent';
-import { register } from '../../util/web_worker_transfer';
 import { EvaluationParameters } from '../../style/evaluation_parameters';
 const VERTEX_MIN_VALUE = -32768;
 function addCircleVertex(layoutVertexArray, x, y, extrudeX, extrudeY) {
@@ -146,5 +145,4 @@ export class CircleBucket {
         this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions: {}, canonical });
     }
 }
-register('CircleBucket', CircleBucket, { omit: ['layers'] });
 //# sourceMappingURL=circle_bucket.js.map

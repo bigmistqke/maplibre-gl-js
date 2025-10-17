@@ -7,8 +7,8 @@ import { getAnchorAlignment, WritingMode } from './shaping';
 import { pixelsToTileUnits } from '../source/pixels_to_tile_units';
 import Point from '@mapbox/point-geometry';
 import { getOverlapMode } from '../style/style_layer/overlap_mode';
-import { translatePosition, warnOnce } from '../util/util';
 import { TextAnchorEnum } from '../style/style_layer/variable_text_anchor';
+import { translatePosition, warnOnce } from '../util/util';
 class OpacityState {
     constructor(prevState, increment, placed, skipFade) {
         if (prevState) {

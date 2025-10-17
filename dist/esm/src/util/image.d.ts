@@ -1,4 +1,4 @@
-import { type Color } from '@maplibre/maplibre-gl-style-spec';
+import type { Color } from '@maplibre/maplibre-gl-style-spec';
 export type Size = {
     width: number;
     height: number;

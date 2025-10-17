@@ -1,12 +1,12 @@
 import { Map } from '../../ui/map';
-import { type Dispatcher } from '../../util/dispatcher';
-import { type IActor } from '../actor';
 import { Evented } from '../evented';
-import { type SourceSpecification, type StyleSpecification, type TerrainSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { type IReadonlyTransform, type ITransform } from '../../geo/transform_interface';
-import { type Style } from '../../style/style';
-import { type Terrain } from '../../render/terrain';
 import { Frustum } from '../primitives/frustum';
+import type { Dispatcher } from '../../util/dispatcher';
+import type { IActor } from '../actor';
+import type { SourceSpecification, StyleSpecification, TerrainSpecification } from '@maplibre/maplibre-gl-style-spec';
+import type { IReadonlyTransform, ITransform } from '../../geo/transform_interface';
+import type { Style } from '../../style/style';
+import type { Terrain } from '../../render/terrain';
 export declare class StubMap extends Evented {
     style: Style;
     transform: IReadonlyTransform;

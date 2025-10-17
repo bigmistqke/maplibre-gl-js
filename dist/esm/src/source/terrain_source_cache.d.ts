@@ -1,10 +1,10 @@
-import { type OverscaledTileID } from './tile_id';
 import { Tile } from './tile';
 import { Evented } from '../util/evented';
+import type { OverscaledTileID } from './tile_id';
 import type { ITransform } from '../geo/transform_interface';
 import type { SourceCache } from '../source/source_cache';
-import { type Terrain } from '../render/terrain';
-import { type CanonicalTileRange } from './image_source';
+import type { Terrain } from '../render/terrain';
+import type { CanonicalTileRange } from './image_source';
 export declare class TerrainSourceCache extends Evented {
     sourceCache: SourceCache;
     _tiles: {

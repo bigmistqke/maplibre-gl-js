@@ -1,4 +1,4 @@
-import { registerCanvasSource, registerGeoJSONSource, registerImageSource, registerRasterDEMSource, registerRasterSource, registerVectorSource, registerVideoSource, registerBackground, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerHeatmap, registerHillshade, registerLine, registerRaster, registerSymbol, registerUtilityShaders, } from './core';
+import { registerCanvasSource, registerGeoJSONSource, registerImageSource, registerRasterDEMSource, registerRasterSource, registerVectorSource, registerVideoSource, registerBackground, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerHeatmap, registerHillshade, registerLine, registerRaster, registerSymbol, registerUtilityShaders, registerGlobeProjection, registerTerrain } from './core';
 registerCanvasSource();
 registerGeoJSONSource();
 registerImageSource();
@@ -16,6 +16,8 @@ registerHillshade();
 registerLine();
 registerRaster();
 registerSymbol();
+registerTerrain();
+registerGlobeProjection();
 registerUtilityShaders();
 export * from './core';
 //# sourceMappingURL=index.js.map

@@ -1,8 +1,8 @@
 import { type QueryIntersectsFeatureParams, StyleLayer } from '../style_layer';
-import { HeatmapBucket } from '../../data/bucket/heatmap_bucket';
-import { type RGBAImage } from '../../util/image';
 import { type HeatmapPaintPropsPossiblyEvaluated } from './heatmap_style_layer_properties.g';
-import { type Transitionable, type Transitioning, type PossiblyEvaluated } from '../properties';
+import type { HeatmapBucket } from '../../data/bucket/heatmap_bucket';
+import type { RGBAImage } from '../../util/image';
+import type { Transitionable, Transitioning, PossiblyEvaluated } from '../properties';
 import type { Texture } from '../../render/texture';
 import type { Framebuffer } from '../../gl/framebuffer';
 import type { HeatmapPaintProps } from './heatmap_style_layer_properties.g';

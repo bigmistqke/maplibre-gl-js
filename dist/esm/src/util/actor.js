@@ -54,7 +54,7 @@ export class Actor {
             };
             const buffers = [];
             const messageToPost = Object.assign(Object.assign({}, message), { id, sourceMapId: this.mapId, origin: location.origin, data: serialize(message.data, buffers) });
-            this.target.postMessage(messageToPost, { transfer: buffers });
+            this.target.postMessage(messageToPost, buffers);
         });
     }
     receive(message) {
@@ -141,7 +141,7 @@ export class Actor {
             error: err ? serialize(err) : null,
             data: serialize(data, buffers)
         };
-        this.target.postMessage(responseMessage, { transfer: buffers });
+        this.target.postMessage(responseMessage, buffers);
     }
     remove() {
         this.invoker.remove();

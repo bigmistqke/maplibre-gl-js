@@ -1,14 +1,14 @@
 import { StyleLayer } from '../style_layer';
-import { CircleBucket } from '../../data/bucket/circle_bucket';
 import { circleIntersection, getMaximumPaintValue, projectQueryGeometry, translateDistance, translate } from '../query_utils';
 import properties from './circle_style_layer_properties.g';
+import { registry } from '../../registry';
 export const isCircleStyleLayer = (layer) => layer.type === 'circle';
 export class CircleStyleLayer extends StyleLayer {
     constructor(layer, globalState) {
         super(layer, properties, globalState);
     }
     createBucket(parameters) {
-        return new CircleBucket(parameters);
+        return new registry.bucket.circle(parameters);
     }
     queryRadius(bucket) {
         const circleBucket = bucket;

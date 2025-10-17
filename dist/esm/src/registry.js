@@ -3,11 +3,17 @@
 ;
 ;
 ;
+;
+;
+;
 export const registry = {
     source: {},
     layer: {},
     draw: {},
     shader: {},
-    symbol: {}
+    bucket: {},
+    symbol: {},
+    terrain: {},
+    projection: {}
 };
 //# sourceMappingURL=registry.js.map

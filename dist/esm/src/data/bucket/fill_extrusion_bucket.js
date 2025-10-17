@@ -7,7 +7,6 @@ import { EXTENT } from '../extent';
 import { VectorTileFeature } from '@mapbox/vector-tile';
 import { classifyRings } from '@maplibre/maplibre-gl-style-spec';
 const EARCUT_MAX_RINGS = 500;
-import { register } from '../../util/web_worker_transfer';
 import { hasPattern, addPatternDependencies } from './pattern_bucket_features';
 import { loadGeometry } from '../load_geometry';
 import { toEvaluationFeature } from '../evaluation_feature';
@@ -185,7 +184,6 @@ function accumulatePointsToCentroid(centroid, geometry) {
         centroid.sampleCount++;
     }
 }
-register('FillExtrusionBucket', FillExtrusionBucket, { omit: ['layers', 'features'] });
 function isBoundaryEdge(p1, p2) {
     return (p1.x === p2.x && (p1.x < 0 || p1.x > EXTENT)) ||
         (p1.y === p2.y && (p1.y < 0 || p1.y > EXTENT));

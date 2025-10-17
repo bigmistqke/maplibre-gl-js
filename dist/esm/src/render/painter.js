@@ -18,7 +18,6 @@ import { Texture } from './texture';
 import { Color } from '@maplibre/maplibre-gl-style-spec';
 import { drawDebug, drawDebugPadding, selectDebugSource } from './draw_debug';
 import { drawCustom } from './draw_custom';
-import { drawDepth, drawCoords } from './draw_terrain';
 import { drawSky, drawAtmosphere } from './draw_sky';
 import { Mesh } from './mesh';
 import { MercatorShaderDefine, MercatorShaderVariantKey } from '../geo/projection/mercator_projection';
@@ -351,6 +350,7 @@ export class Painter {
         this.context.setDefault();
     }
     maybeDrawDepthAndCoords(requireExact) {
+        var _a, _b, _c, _d;
         if (!this.style || !this.style.map || !this.style.map.terrain) {
             return;
         }
@@ -365,8 +365,8 @@ export class Painter {
         mat4.copy(prevMatrix, currMatrix);
         this.terrainFacilitator.renderTime = Date.now();
         this.terrainFacilitator.dirty = false;
-        drawDepth(this, this.style.map.terrain);
-        drawCoords(this, this.style.map.terrain);
+        (_b = (_a = registry.terrain).drawDepth) === null || _b === void 0 ? void 0 : _b.call(_a, this, this.style.map.terrain);
+        (_d = (_c = registry.terrain).drawCoords) === null || _d === void 0 ? void 0 : _d.call(_c, this, this.style.map.terrain);
     }
     renderLayer(painter, sourceCache, layer, coords, renderOptions) {
         if (layer.isHidden(this.transform.zoom))

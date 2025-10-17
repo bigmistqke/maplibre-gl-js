@@ -1,19 +1,19 @@
 import { CollisionIndex } from './collision_index';
-import type { FeatureKey, PlacedBox, PlacedCircles } from './collision_index';
-import { type mat4 } from 'gl-matrix';
 import Point from '@mapbox/point-geometry';
+import { type OverlapMode } from '../style/style_layer/overlap_mode';
+import type { SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated } from '../style/style_layer/symbol_style_layer_properties.g';
+import type { FeatureKey, PlacedBox, PlacedCircles } from './collision_index';
+import type { mat4 } from 'gl-matrix';
+import type { Tile } from '../source/tile';
+import type { SymbolBucket, CollisionArrays, SingleCollisionBox } from '../data/bucket/symbol_bucket';
 import type { IReadonlyTransform, ITransform } from '../geo/transform_interface';
 import type { StyleLayer } from '../style/style_layer';
-import { type PossiblyEvaluated } from '../style/properties';
-import type { SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated } from '../style/style_layer/symbol_style_layer_properties.g';
-import { type OverlapMode } from '../style/style_layer/overlap_mode';
-import type { Tile } from '../source/tile';
-import { type SymbolBucket, type CollisionArrays, type SingleCollisionBox } from '../data/bucket/symbol_bucket';
+import type { PossiblyEvaluated } from '../style/properties';
 import type { CollisionBoxArray, SymbolInstance, TextAnchorOffset } from '../data/array_types.g';
 import type { FeatureIndex } from '../data/feature_index';
 import type { OverscaledTileID, UnwrappedTileID } from '../source/tile_id';
-import { type Terrain } from '../render/terrain';
-import { type TextAnchor } from '../style/style_layer/variable_text_anchor';
+import type { Terrain } from '../render/terrain';
+import type { TextAnchor } from '../style/style_layer/variable_text_anchor';
 declare class OpacityState {
     opacity: number;
     placed: boolean;

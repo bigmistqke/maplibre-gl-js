@@ -48457,7 +48457,9 @@ class Actor {
             };
             const buffers = [];
             const messageToPost = Object.assign(Object.assign({}, message), { id, sourceMapId: this.mapId, origin: location.origin, data: serialize(message.data, buffers) });
-            this.target.postMessage(messageToPost, { transfer: buffers });
+            this.target.postMessage(messageToPost, 
+            // @ts-expect-error
+            buffers);
         });
     }
     receive(message) {
@@ -48562,7 +48564,9 @@ class Actor {
             error: err ? serialize(err) : null,
             data: serialize(data, buffers)
         };
-        this.target.postMessage(responseMessage, { transfer: buffers });
+        this.target.postMessage(responseMessage, 
+        // @ts-expect-error
+        buffers);
     }
     remove() {
         this.invoker.remove();

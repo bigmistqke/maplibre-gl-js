@@ -1,7 +1,7 @@
 import type { StyleGlyph, GlyphMetrics } from '../style/style_glyph';
 import type { ImagePosition } from '../render/image_atlas';
 import type { Rect, GlyphPosition } from '../render/glyph_atlas';
-import { type Formatted } from '@maplibre/maplibre-gl-style-spec';
+import type { Formatted } from '@maplibre/maplibre-gl-style-spec';
 declare enum WritingMode {
     none = 0,
     horizontal = 1,

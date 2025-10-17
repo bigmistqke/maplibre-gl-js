@@ -8,6 +8,7 @@ export declare function registerLine(): void;
 export declare function registerRaster(): void;
 export declare function registerColorRelief(): void;
 export declare function registerSymbol(): void;
+export declare function registerTerrain(): void;
 export declare function registerUtilityShaders(): void;
 export declare function registerCanvasSource(): void;
 export declare function registerGeoJSONSource(): void;
@@ -16,4 +17,7 @@ export declare function registerRasterDEMSource(): void;
 export declare function registerRasterSource(): void;
 export declare function registerVectorSource(): void;
 export declare function registerVideoSource(): void;
+export declare function registerMercatorProjection(): void;
+export declare function registerVerticalPerspectiveProjection(): void;
+export declare function registerGlobeProjection(): void;
 //# sourceMappingURL=features.d.ts.map

@@ -78,6 +78,7 @@ import { drawHillshade } from './render/draw_hillshade';
 import { drawLine } from './render/draw_line';
 import { drawRaster } from './render/draw_raster';
 import { drawSymbols } from './render/draw_symbol';
+import { drawTerrain, drawDepth, drawCoords } from './render/draw_terrain';
 import { CanvasSource } from './source/canvas_source';
 import { GeoJSONSource } from './source/geojson_source';
 import { ImageSource } from './source/image_source';
@@ -88,7 +89,16 @@ import { VideoSource } from './source/video_source';
 import { PauseablePlacement } from './style/pauseable_placement';
 import { CrossTileSymbolIndex } from './symbol/cross_tile_symbol_index';
 import { performSymbolLayout } from './symbol/symbol_layout';
-import { SymbolBucket } from './data/bucket/symbol_bucket';
+import { MercatorProjection } from './geo/projection/mercator_projection';
+import { MercatorTransform } from './geo/projection/mercator_transform';
+import { MercatorCameraHelper } from './geo/projection/mercator_camera_helper';
+import { GlobeProjection } from './geo/projection/globe_projection';
+import { GlobeTransform } from './geo/projection/globe_transform';
+import { GlobeCameraHelper } from './geo/projection/globe_camera_helper';
+import { VerticalPerspectiveProjection } from './geo/projection/vertical_perspective_projection';
+import { VerticalPerspectiveTransform } from './geo/projection/vertical_perspective_transform';
+import { VerticalPerspectiveCameraHelper } from './geo/projection/vertical_perspective_camera_helper';
+import { SymbolBucket, SymbolBuffers, CollisionBuffers } from './data/bucket/symbol_bucket';
 import { BackgroundStyleLayer } from './style/style_layer/background_style_layer';
 import { CircleStyleLayer } from './style/style_layer/circle_style_layer';
 import { ColorReliefStyleLayer } from './style/style_layer/color_relief_style_layer';
@@ -99,55 +109,71 @@ import { HillshadeStyleLayer } from './style/style_layer/hillshade_style_layer';
 import { LineStyleLayer } from './style/style_layer/line_style_layer';
 import { RasterStyleLayer } from './style/style_layer/raster_style_layer';
 import { SymbolStyleLayer } from './style/style_layer/symbol_style_layer';
+import { CircleBucket } from './data/bucket/circle_bucket';
+import { FillBucket } from './data/bucket/fill_bucket';
+import { FillExtrusionBucket } from './data/bucket/fill_extrusion_bucket';
+import { HeatmapBucket } from './data/bucket/heatmap_bucket';
+import { LineBucket } from './data/bucket/line_bucket';
+import { register } from './util/web_worker_transfer';
 export function registerBackground() {
-    registry.layer['background'] = BackgroundStyleLayer;
-    registry.draw['background'] = drawBackground;
-    registry.shader['background'] = prepare(backgroundFrag, backgroundVert);
-    registry.shader['backgroundPattern'] = prepare(backgroundPatternFrag, backgroundPatternVert);
+    registry.layer.background = BackgroundStyleLayer;
+    registry.draw.background = drawBackground;
+    registry.shader.background = prepare(backgroundFrag, backgroundVert);
+    registry.shader.backgroundPattern = prepare(backgroundPatternFrag, backgroundPatternVert);
 }
 export function registerCircle() {
-    registry.layer['circle'] = CircleStyleLayer;
-    registry.draw['circle'] = drawCircles;
-    registry.shader['circle'] = prepare(circleFrag, circleVert);
+    registry.layer.circle = CircleStyleLayer;
+    registry.draw.circle = drawCircles;
+    registry.shader.circle = prepare(circleFrag, circleVert);
+    registry.bucket.circle = CircleBucket;
+    register('CircleBucket', CircleBucket, { omit: ['layers'] });
 }
 export function registerFill() {
-    registry.layer['fill'] = FillStyleLayer;
-    registry.draw['fill'] = drawFill;
-    registry.shader['fill'] = prepare(fillFrag, fillVert);
-    registry.shader['fillOutline'] = prepare(fillOutlineFrag, fillOutlineVert);
-    registry.shader['fillPattern'] = prepare(fillPatternFrag, fillPatternVert);
-    registry.shader['fillOutlinePattern'] = prepare(fillOutlinePatternFrag, fillOutlinePatternVert);
+    registry.layer.fill = FillStyleLayer;
+    registry.draw.fill = drawFill;
+    registry.shader.fill = prepare(fillFrag, fillVert);
+    registry.shader.fillOutline = prepare(fillOutlineFrag, fillOutlineVert);
+    registry.shader.fillPattern = prepare(fillPatternFrag, fillPatternVert);
+    registry.shader.fillOutlinePattern = prepare(fillOutlinePatternFrag, fillOutlinePatternVert);
+    registry.bucket.fill = FillBucket;
+    register('FillBucket', FillBucket, { omit: ['layers', 'patternFeatures'] });
 }
 export function registerFillExtrusion() {
     registry.layer['fill-extrusion'] = FillExtrusionStyleLayer;
     registry.draw['fill-extrusion'] = drawFillExtrusion;
-    registry.shader['fillExtrusion'] = prepare(fillExtrusionFrag, fillExtrusionVert);
-    registry.shader['fillExtrusionPattern'] = prepare(fillExtrusionPatternFrag, fillExtrusionPatternVert);
+    registry.shader.fillExtrusion = prepare(fillExtrusionFrag, fillExtrusionVert);
+    registry.shader.fillExtrusionPattern = prepare(fillExtrusionPatternFrag, fillExtrusionPatternVert);
+    registry.bucket['fill-extrusion'] = FillExtrusionBucket;
+    register('FillExtrusionBucket', FillExtrusionBucket, { omit: ['layers', 'features'] });
 }
 export function registerHeatmap() {
-    registry.layer['heatmap'] = HeatmapStyleLayer;
-    registry.draw['heatmap'] = drawHeatmap;
-    registry.shader['heatmap'] = prepare(heatmapFrag, heatmapVert);
-    registry.shader['heatmapTexture'] = prepare(heatmapTextureFrag, heatmapTextureVert);
+    registry.layer.heatmap = HeatmapStyleLayer;
+    registry.draw.heatmap = drawHeatmap;
+    registry.shader.heatmap = prepare(heatmapFrag, heatmapVert);
+    registry.shader.heatmapTexture = prepare(heatmapTextureFrag, heatmapTextureVert);
+    registry.bucket.heatmap = HeatmapBucket;
+    register('HeatmapBucket', HeatmapBucket, { omit: ['layers'] });
 }
 export function registerHillshade() {
-    registry.layer['hillshade'] = HillshadeStyleLayer;
-    registry.draw['hillshade'] = drawHillshade;
-    registry.shader['hillshade'] = prepare(hillshadeFrag, hillshadeVert);
-    registry.shader['hillshadePrepare'] = prepare(hillshadePrepareFrag, hillshadePrepareVert);
+    registry.layer.hillshade = HillshadeStyleLayer;
+    registry.draw.hillshade = drawHillshade;
+    registry.shader.hillshade = prepare(hillshadeFrag, hillshadeVert);
+    registry.shader.hillshadePrepare = prepare(hillshadePrepareFrag, hillshadePrepareVert);
 }
 export function registerLine() {
-    registry.layer['line'] = LineStyleLayer;
-    registry.draw['line'] = drawLine;
-    registry.shader['line'] = prepare(lineFrag, lineVert);
-    registry.shader['lineGradient'] = prepare(lineGradientFrag, lineGradientVert);
-    registry.shader['linePattern'] = prepare(linePatternFrag, linePatternVert);
-    registry.shader['lineSDF'] = prepare(lineSDFFrag, lineSDFVert);
+    registry.layer.line = LineStyleLayer;
+    registry.draw.line = drawLine;
+    registry.shader.line = prepare(lineFrag, lineVert);
+    registry.shader.lineGradient = prepare(lineGradientFrag, lineGradientVert);
+    registry.shader.linePattern = prepare(linePatternFrag, linePatternVert);
+    registry.shader.lineSDF = prepare(lineSDFFrag, lineSDFVert);
+    registry.bucket.line = LineBucket;
+    register('LineBucket', LineBucket, { omit: ['layers', 'patternFeatures'] });
 }
 export function registerRaster() {
-    registry.layer['raster'] = RasterStyleLayer;
-    registry.draw['raster'] = drawRaster;
-    registry.shader['raster'] = prepare(rasterFrag, rasterVert);
+    registry.layer.raster = RasterStyleLayer;
+    registry.draw.raster = drawRaster;
+    registry.shader.raster = prepare(rasterFrag, rasterVert);
 }
 export function registerColorRelief() {
     registry.layer['color-relief'] = ColorReliefStyleLayer;
@@ -155,57 +181,91 @@ export function registerColorRelief() {
     registry.shader['colorRelief'] = prepare(colorReliefFrag, colorReliefVert);
 }
 export function registerSymbol() {
-    registry.layer['symbol'] = SymbolStyleLayer;
-    registry.draw['symbol'] = (painter, sourceCache, layer, coords, renderOptions) => {
+    registry.layer.symbol = SymbolStyleLayer;
+    registry.draw.symbol = (painter, sourceCache, layer, coords, renderOptions) => {
         var _a, _b;
         const variableOffsets = (_b = (_a = painter.style) === null || _a === void 0 ? void 0 : _a.placement) === null || _b === void 0 ? void 0 : _b.variableOffsets;
         if (variableOffsets) {
             drawSymbols(painter, sourceCache, layer, coords, variableOffsets, renderOptions);
         }
     };
-    registry.shader['symbolIcon'] = prepare(symbolIconFrag, symbolIconVert);
-    registry.shader['symbolSDF'] = prepare(symbolSDFFrag, symbolSDFVert);
-    registry.shader['symbolTextAndIcon'] = prepare(symbolTextAndIconFrag, symbolTextAndIconVert);
-    registry.shader['collisionBox'] = prepare(collisionBoxFrag, collisionBoxVert);
-    registry.shader['collisionCircle'] = prepare(collisionCircleFrag, collisionCircleVert);
+    registry.shader.symbolIcon = prepare(symbolIconFrag, symbolIconVert);
+    registry.shader.symbolSDF = prepare(symbolSDFFrag, symbolSDFVert);
+    registry.shader.symbolTextAndIcon = prepare(symbolTextAndIconFrag, symbolTextAndIconVert);
+    registry.shader.collisionBox = prepare(collisionBoxFrag, collisionBoxVert);
+    registry.shader.collisionCircle = prepare(collisionCircleFrag, collisionCircleVert);
+    registry.bucket.symbol = SymbolBucket;
+    register('SymbolBuffers', SymbolBuffers);
+    register('CollisionBuffers', CollisionBuffers);
+    register('SymbolBucket', SymbolBucket, {
+        omit: ['layers', 'collisionBoxArray', 'features', 'compareText']
+    });
     registry.symbol.SymbolBucket = SymbolBucket;
     registry.symbol.CrossTileSymbolIndex = CrossTileSymbolIndex;
     registry.symbol.PauseablePlacement = PauseablePlacement;
     registry.symbol.performSymbolLayout = performSymbolLayout;
 }
+export function registerTerrain() {
+    registry.shader.terrain = prepare(terrainFrag, terrainVert);
+    registry.shader.terrainDepth = prepare(terrainDepthFrag, terrainVertDepth);
+    registry.shader.terrainCoords = prepare(terrainCoordsFrag, terrainVertCoords);
+    registry.terrain.drawTerrain = drawTerrain;
+    registry.terrain.drawDepth = drawDepth;
+    registry.terrain.drawCoords = drawCoords;
+}
 export function registerUtilityShaders() {
-    registry.shader['atmosphere'] = prepare(atmosphereFrag, atmosphereVert);
-    registry.shader['clippingMask'] = prepare(clippingMaskFrag, clippingMaskVert);
-    registry.shader['debug'] = prepare(debugFrag, debugVert);
-    registry.shader['depth'] = prepare(clippingMaskFrag, depthVert);
-    registry.shader['prelude'] = prepare(preludeFrag, preludeVert);
-    registry.shader['projectionErrorMeasurement'] = prepare(projectionErrorMeasurementFrag, projectionErrorMeasurementVert);
-    registry.shader['projectionMercator'] = prepare('', projectionMercatorVert);
-    registry.shader['projectionGlobe'] = prepare('', projectionGlobeVert);
-    registry.shader['sky'] = prepare(skyFrag, skyVert);
-    registry.shader['terrain'] = prepare(terrainFrag, terrainVert);
-    registry.shader['terrainDepth'] = prepare(terrainDepthFrag, terrainVertDepth);
-    registry.shader['terrainCoords'] = prepare(terrainCoordsFrag, terrainVertCoords);
+    registry.shader.atmosphere = prepare(atmosphereFrag, atmosphereVert);
+    registry.shader.clippingMask = prepare(clippingMaskFrag, clippingMaskVert);
+    registry.shader.debug = prepare(debugFrag, debugVert);
+    registry.shader.depth = prepare(clippingMaskFrag, depthVert);
+    registry.shader.prelude = prepare(preludeFrag, preludeVert);
+    registry.shader.projectionErrorMeasurement = prepare(projectionErrorMeasurementFrag, projectionErrorMeasurementVert);
+    registry.shader.projectionMercator = prepare('', projectionMercatorVert);
+    registry.shader.projectionGlobe = prepare('', projectionGlobeVert);
+    registry.shader.sky = prepare(skyFrag, skyVert);
 }
 export function registerCanvasSource() {
-    registry.source['canvas'] = CanvasSource;
+    registry.source.canvas = CanvasSource;
 }
 export function registerGeoJSONSource() {
-    registry.source['geojson'] = GeoJSONSource;
+    registry.source.geojson = GeoJSONSource;
 }
 export function registerImageSource() {
-    registry.source['image'] = ImageSource;
+    registry.source.image = ImageSource;
 }
 export function registerRasterDEMSource() {
     registry.source['raster-dem'] = RasterDEMTileSource;
 }
 export function registerRasterSource() {
-    registry.source['raster'] = RasterTileSource;
+    registry.source.raster = RasterTileSource;
 }
 export function registerVectorSource() {
-    registry.source['vector'] = VectorTileSource;
+    registry.source.vector = VectorTileSource;
 }
 export function registerVideoSource() {
-    registry.source['video'] = VideoSource;
+    registry.source.video = VideoSource;
+}
+export function registerMercatorProjection() {
+    registry.projection.mercator = {
+        projection: MercatorProjection,
+        transform: MercatorTransform,
+        cameraHelper: MercatorCameraHelper,
+    };
+}
+export function registerVerticalPerspectiveProjection() {
+    registry.projection['vertical-perspective'] = {
+        projection: VerticalPerspectiveProjection,
+        transform: VerticalPerspectiveTransform,
+        cameraHelper: VerticalPerspectiveCameraHelper,
+    };
+}
+export function registerGlobeProjection() {
+    registerMercatorProjection();
+    registerVerticalPerspectiveProjection();
+    registry.projection.globe = {
+        projection: GlobeProjection,
+        transform: GlobeTransform,
+        cameraHelper: GlobeCameraHelper
+    };
 }
 //# sourceMappingURL=features.js.map

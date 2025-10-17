@@ -1,13 +1,13 @@
 import { StyleLayer } from '../style_layer';
-import { HeatmapBucket } from '../../data/bucket/heatmap_bucket';
 import properties from './heatmap_style_layer_properties.g';
 import { renderColorRamp } from '../../util/color_ramp';
+import { registry } from '../../registry';
 import { circleIntersection, getMaximumPaintValue } from '../query_utils';
 export const HEATMAP_FULL_RENDER_FBO_KEY = 'big-fb';
 export const isHeatmapStyleLayer = (layer) => layer.type === 'heatmap';
 export class HeatmapStyleLayer extends StyleLayer {
     createBucket(options) {
-        return new HeatmapBucket(options);
+        return new registry.bucket.heatmap(options);
     }
     constructor(layer, globalState) {
         super(layer, properties, globalState);

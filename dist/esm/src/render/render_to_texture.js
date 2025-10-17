@@ -1,5 +1,4 @@
 import { Color } from '@maplibre/maplibre-gl-style-spec';
-import { drawTerrain } from './draw_terrain';
 import { RenderPool } from '../gl/render_pool';
 import { registry } from '../registry';
 const LAYERS = {
@@ -63,6 +62,7 @@ export class RenderToTexture {
         }
     }
     renderLayer(layer, renderOptions) {
+        var _a, _b, _c, _d;
         if (layer.isHidden(this.painter.transform.zoom))
             return false;
         const options = Object.assign(Object.assign({}, renderOptions), { isRenderingToTexture: true });
@@ -82,7 +82,7 @@ export class RenderToTexture {
             const stack = this._stacks.length - 1, layers = this._stacks[stack] || [];
             for (const tile of this._renderableTiles) {
                 if (this.pool.isFull()) {
-                    drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+                    (_b = (_a = registry.terrain).drawTerrain) === null || _b === void 0 ? void 0 : _b.call(_a, this.painter, this.terrain, this._rttTiles, options);
                     this._rttTiles = [];
                     this.pool.freeAllObjects();
                 }
@@ -111,7 +111,7 @@ export class RenderToTexture {
                         tile.rttCoords[layer.source] = this._coordsAscendingStr[layer.source][tile.tileID.key];
                 }
             }
-            drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+            (_d = (_c = registry.terrain).drawTerrain) === null || _d === void 0 ? void 0 : _d.call(_c, this.painter, this.terrain, this._rttTiles, options);
             this._rttTiles = [];
             this.pool.freeAllObjects();
             return LAYERS[type];

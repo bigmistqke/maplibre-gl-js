@@ -5,7 +5,6 @@ import { ProgramConfigurationSet } from '../program_configuration';
 import { LineIndexArray, TriangleIndexArray } from '../index_array_type';
 import { classifyRings } from '@maplibre/maplibre-gl-style-spec';
 const EARCUT_MAX_RINGS = 500;
-import { register } from '../../util/web_worker_transfer';
 import { hasPattern, addPatternDependencies } from './pattern_bucket_features';
 import { loadGeometry } from '../load_geometry';
 import { toEvaluationFeature } from '../evaluation_feature';
@@ -118,5 +117,4 @@ export class FillBucket {
         this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, { imagePositions, canonical });
     }
 }
-register('FillBucket', FillBucket, { omit: ['layers', 'patternFeatures'] });
 //# sourceMappingURL=fill_bucket.js.map

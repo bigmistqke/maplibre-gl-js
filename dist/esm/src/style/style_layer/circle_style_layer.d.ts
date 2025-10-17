@@ -1,5 +1,5 @@
 import { StyleLayer, type QueryIntersectsFeatureParams } from '../style_layer';
-import { CircleBucket } from '../../data/bucket/circle_bucket';
+import type { CircleBucket } from '../../data/bucket/circle_bucket';
 import { type CircleLayoutPropsPossiblyEvaluated, type CirclePaintPropsPossiblyEvaluated } from './circle_style_layer_properties.g';
 import { type Transitionable, type Transitioning, type Layout, type PossiblyEvaluated } from '../properties';
 import type { LayerSpecification } from '@maplibre/maplibre-gl-style-spec';

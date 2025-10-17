@@ -74,7 +74,7 @@ export declare class SymbolBuffers {
     upload(context: Context, dynamicIndexBuffer: boolean, upload?: boolean, update?: boolean): void;
     destroy(): void;
 }
-declare class CollisionBuffers {
+export declare class CollisionBuffers {
     layoutVertexArray: StructArray;
     layoutAttributes: Array<StructArrayMember>;
     layoutVertexBuffer: VertexBuffer;

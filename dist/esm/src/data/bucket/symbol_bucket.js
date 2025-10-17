@@ -13,7 +13,6 @@ import { toEvaluationFeature } from '../evaluation_feature';
 import { VectorTileFeature } from '@mapbox/vector-tile';
 import { verticalizedCharacterMap } from '../../util/verticalize_punctuation';
 import { getSizeData, MAX_PACKED_SIZE } from '../../symbol/symbol_size';
-import { register } from '../../util/web_worker_transfer';
 import { EvaluationParameters } from '../../style/evaluation_parameters';
 import { Formatted, ResolvedImage } from '@maplibre/maplibre-gl-style-spec';
 import { rtlWorkerPlugin } from '../../source/rtl_text_plugin_worker';
@@ -83,8 +82,7 @@ export class SymbolBuffers {
         this.opacityVertexBuffer.destroy();
     }
 }
-register('SymbolBuffers', SymbolBuffers);
-class CollisionBuffers {
+export class CollisionBuffers {
     constructor(LayoutArray, layoutAttributes, IndexArray) {
         this.layoutVertexArray = new LayoutArray();
         this.layoutAttributes = layoutAttributes;
@@ -106,7 +104,6 @@ class CollisionBuffers {
         this.collisionVertexBuffer.destroy();
     }
 }
-register('CollisionBuffers', CollisionBuffers);
 export class SymbolBucket {
     constructor(options) {
         this.collisionBoxArray = options.collisionBoxArray;
@@ -528,9 +525,6 @@ export class SymbolBucket {
             this.icon.indexBuffer.updateData(this.icon.indexArray);
     }
 }
-register('SymbolBucket', SymbolBucket, {
-    omit: ['layers', 'collisionBoxArray', 'features', 'compareText']
-});
 SymbolBucket.MAX_GLYPHS = 65535;
 SymbolBucket.addDynamicAttributes = addDynamicAttributes;
 export { addDynamicAttributes };

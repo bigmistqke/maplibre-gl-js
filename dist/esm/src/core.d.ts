@@ -91,7 +91,7 @@ import { RasterTileSource } from './source/raster_tile_source';
 import { VectorTileSource } from './source/vector_tile_source';
 import { VideoSource } from './source/video_source';
 import Worker from './source/worker';
-export { registerCanvasSource, registerGeoJSONSource, registerImageSource, registerRasterDEMSource, registerRasterSource, registerVectorSource, registerVideoSource, registerBackground, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerHeatmap, registerHillshade, registerLine, registerRaster, registerSymbol, registerUtilityShaders, } from './features';
+export { registerCanvasSource, registerGeoJSONSource, registerImageSource, registerRasterDEMSource, registerRasterSource, registerVectorSource, registerVideoSource, registerBackground, registerCircle, registerColorRelief, registerFill, registerFillExtrusion, registerHeatmap, registerHillshade, registerLine, registerRaster, registerSymbol, registerUtilityShaders, registerTerrain, registerMercatorProjection, registerVerticalPerspectiveProjection, registerGlobeProjection, } from './features';
 export type * from '@maplibre/maplibre-gl-style-spec';
 declare function setRTLTextPlugin(pluginURL: string, lazy: boolean): Promise<void>;
 declare function getRTLTextPluginStatus(): string;
