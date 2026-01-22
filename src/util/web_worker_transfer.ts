@@ -2,12 +2,15 @@ import {TransferableGridIndex} from './transferable_grid_index';
 import {Color, CompoundExpression, expressions, ResolvedImage, StylePropertyFunction,
     StyleExpression, ZoomDependentExpression, ZoomConstantExpression} from '@maplibre/maplibre-gl-style-spec';
 import {AJAXError} from './ajax';
-import {isImageBitmap, assertedNotNullish, assertNotNullish } from './util';
+import {isImageBitmap, assertedNotNullish, assertNotNullish} from './util';
+
+declare const $SERALIZED: symbol;
 
 /**
  * A class that is serialized to and json, that can be constructed back to the original class in the worker or in the main thread
  */
 type SerializedObject<S extends Serialized = any> = {
+    [$SERALIZED]: true;
     [_: string]: S;
 };
 
@@ -98,7 +101,7 @@ function getClassRegistryKey(input: Object|SerializedObject): string {
     return (input as SerializedObject).$name || klass._classRegistryKey;
 }
 
-function isRegistered(input: unknown): boolean {
+function isRegistered(input: unknown): input is NonNullable<SerializedObject> {
     if (input === null || typeof input !== 'object') {
         return false;
     }
@@ -109,7 +112,7 @@ function isRegistered(input: unknown): boolean {
     return false;
 }
 
-function isSerializeHandledByBuiltin(input: unknown) {
+function isSerializeHandledByBuiltin(input: unknown): input is Exclude<Serialized, Array<Serialized> | SerializedObject> {
     return (!isRegistered(input) && (
         input === null ||
         input === undefined ||
@@ -160,7 +163,7 @@ export function serialize(input: unknown, transferables?: Array<Transferable> | 
                 transferables.push(input.data.buffer);
             }
         }
-        return input as Serialized;
+        return input;
     }
 
     if (Array.isArray(input)) {
@@ -174,7 +177,7 @@ export function serialize(input: unknown, transferables?: Array<Transferable> | 
     if (typeof input !== 'object') {
         throw new Error(`can't serialize object of type ${typeof input}`);
     }
-    assertNotNullish(input);
+
     const classRegistryKey = getClassRegistryKey(input);
     if (!classRegistryKey) {
         throw new Error(`can't serialize object of unregistered class ${input.constructor.name}`);
