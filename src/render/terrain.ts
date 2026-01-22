@@ -163,7 +163,7 @@ export class Terrain {
         if (!dem)
             return 0;
 
-        const pos = vec2.transformMat4([] as any, [x / extent * EXTENT, y / extent * EXTENT], assertedNotNullish(terrain.u_terrain_matrix));
+        const pos = vec2.transformMat4([], [x / extent * EXTENT, y / extent * EXTENT], assertedNotNullish(terrain.u_terrain_matrix));
         const coord = [pos[0] * assertedNotNullish(dem.dim), pos[1] * assertedNotNullish(dem.dim)];
 
         // bilinear interpolation
@@ -218,7 +218,7 @@ export class Terrain {
             this._emptyDemUnpack = [0, 0, 0, 0];
             this._emptyDemTexture = new Texture(context, new RGBAImage({width: 1, height: 1}), context.gl.RGBA, {premultiply: false});
             this._emptyDemTexture.bind(context.gl.NEAREST, context.gl.CLAMP_TO_EDGE);
-            this._emptyDemMatrix = mat4.identity([] as any);
+            this._emptyDemMatrix = mat4.identity([]);
         }
         // find covering dem tile and prepare demTexture
         const sourceTile = this.sourceCache.getSourceTile(tileID, true);
@@ -241,7 +241,7 @@ export class Terrain {
             }
             const dx = tileID.canonical.x - (tileID.canonical.x >> dz << dz);
             const dy = tileID.canonical.y - (tileID.canonical.y >> dz << dz);
-            const demMatrix = mat4.fromScaling(new Float64Array(16) as any, [1 / (EXTENT << dz), 1 / (EXTENT << dz), 0]);
+            const demMatrix = mat4.fromScaling(new Float64Array(16), [1 / (EXTENT << dz), 1 / (EXTENT << dz), 0]);
             mat4.translate(demMatrix, demMatrix, [dx * EXTENT, dy * EXTENT, 0]);
             this._demMatrixCache[tileID.key] = {matrix: demMatrix, coord: tileID};
         }

@@ -62,7 +62,7 @@ function getSunPos(light: Light, transform: IReadonlyTransform): vec3 {
     const _lp = assertedNotNullish(light.properties).get('position');
     const lightPos = [-_lp.x, -_lp.y, -_lp.z] as vec3;
 
-    const lightMat = mat4.identity(new Float64Array(16) as any);
+    const lightMat = mat4.identity(new Float64Array(16));
 
     if (assertedNotNullish(light.properties).get('anchor') === 'map') {
         mat4.rotateZ(lightMat, lightMat, transform.rollInRadians);
@@ -96,7 +96,7 @@ export function drawAtmosphere(painter: Painter, sky: Sky, light: Light) {
 
     const globeRadius = getGlobeRadiusPixels(transform.worldSize, transform.center.lat);
     const invProjMatrix = transform.inverseProjectionMatrix;
-    const vec = new Float64Array(4) as any as vec4;
+    const vec: vec4 = new Float64Array(4);
     vec[3] = 1;
     vec4.transformMat4(vec, vec, transform.modelViewProjectionMatrix);
     vec[0] /= vec[3];
