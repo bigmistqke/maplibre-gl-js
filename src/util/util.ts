@@ -89,7 +89,7 @@ export function pointPlaneSignedDistance(
  * Finds an intersection points of three planes. Returns `null` if no such (single) point exists.
  * The planes *must* be in Hessian normal form - their xyz components must form a unit vector.
  */
-export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4): vec3 {
+export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4): vec3 | null {
     // https://mathworld.wolfram.com/Plane-PlaneIntersection.html
     const det = mat3.determinant([
         plane0[0], plane0[1], plane0[2],
@@ -97,7 +97,7 @@ export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4)
         plane2[0], plane2[1], plane2[2]
     ] as mat3);
     if (det === 0) {
-        throw new Error('Expected determinant to be not 0');
+        return null;
     }
     const cross12 = vec3.cross([], [plane1[0], plane1[1], plane1[2]], [plane2[0], plane2[1], plane2[2]]);
     const cross20 = vec3.cross([], [plane2[0], plane2[1], plane2[2]], [plane0[0], plane0[1], plane0[2]]);
@@ -422,8 +422,8 @@ export function keysDifference<S, T>(
 export function extend<T extends {}, U>(dest: T, source: U): T & U;
 export function extend<T extends {}, U, V>(dest: T, source1: U, source2: V): T & U & V;
 export function extend<T extends {}, U, V, W>(dest: T, source1: U, source2: V, source3: W): T & U & V & W;
-export function extend(dest: Record<string, any>, ...sources: Array<any>): any;
-export function extend(dest: Record<string, any>, ...sources: Array<any>): any {
+export function extend(dest: Record<string | number | symbol, any>, ...sources: Array<any>): any;
+export function extend(dest: Record<string | number | symbol, any>, ...sources: Array<any>): any {
     for (const src of sources) {
         for (const k in src) {
             dest[k] = src[k];
@@ -501,21 +501,22 @@ export function scaleZoom(scale: number) { return Math.log(scale) / Math.LN2; }
  * Create an object by mapping all the values of an existing object while
  * preserving their keys.
  */
-export function mapObject(this: any, input: any, iterator: Function, context?: any): any {
-    const output: Record<string, any> = {};
+// NOTE: Could simplify types by removing this?
+export function mapObject<T extends Record<string, any>, U>(input: T, iterator: (value: T[keyof T], key: keyof T, input: T) => U): {[TKey in keyof T]: U} {
+    const output: Record<string, U> = {};
     for (const key in input) {
-        output[key] = iterator.call(context || this, input[key], key, input);
+        output[key] = iterator(input[key], key, input);
     }
-    return output;
+    return output as {[TKey in keyof T]: U};
 }
 
 /**
  * Create an object by filtering out values of an existing object.
- */
-export function filterObject(this: any, input: any, iterator: Function, context?: any): any {
-    const output: Record<string, any> = {};
+*/
+export function filterObject<T extends Record<string, any>>(input: T, iterator: (value: T[keyof T], key: keyof T, input: T) => boolean | void): Partial<T> {
+    const output: Partial<T> = {};
     for (const key in input) {
-        if (iterator.call(context || this, input[key], key, input)) {
+        if (iterator(input[key], key, input)) {
             output[key] = input[key];
         }
     }

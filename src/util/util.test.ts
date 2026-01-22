@@ -73,26 +73,25 @@ describe('util', () => {
     test('mapObject', () => {
         expect.assertions(5);
         expect(mapObject({}, () => { expect(false).toBeTruthy(); })).toEqual({});
-        const that = {};
         expect(mapObject({map: 'box'}, (value, key, object) => {
             expect(value).toBe('box');
             expect(key).toBe('map');
             expect(object).toEqual({map: 'box'});
             return 'BOX';
-        }, that)).toEqual({map: 'BOX'});
+        })).toEqual({map: 'BOX'});
     });
 
     test('filterObject', () => {
         expect.assertions(6);
         expect(filterObject({}, () => { expect(false).toBeTruthy(); })).toEqual({});
-        const that = {};
-        filterObject({map: 'box'}, function(value, key, object) {
+
+        filterObject({map: 'box'}, (value, key, object) => {
             expect(value).toBe('box');
             expect(key).toBe('map');
             expect(object).toEqual({map: 'box'});
-            expect(this).toBe(that);
             return true;
-        }, that);
+        });
+
         expect(filterObject({map: 'box', box: 'map'}, (value) => {
             return value === 'box';
         })).toEqual({map: 'box'});
