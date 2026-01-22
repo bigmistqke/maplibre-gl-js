@@ -88,6 +88,10 @@ export const verticalizedCharacterMap = {
 
 type VerticalizedCharacter = keyof typeof verticalizedCharacterMap;
 
+function isValidVerticalizedCharacter(char: string): char is VerticalizedCharacter {
+    return char in verticalizedCharacterMap;
+}
+
 export function verticalizePunctuation(input: string) {
     let output = '';
 
@@ -96,14 +100,16 @@ export function verticalizePunctuation(input: string) {
         const prevCharCode = input.charCodeAt(i - 1) || null;
 
         const canReplacePunctuation = (
-            (!nextCharCode || !charHasRotatedVerticalOrientation(nextCharCode) || input[i + 1] in verticalizedCharacterMap) &&
-            (!prevCharCode || !charHasRotatedVerticalOrientation(prevCharCode) || input[i - 1] in verticalizedCharacterMap)
+            (!nextCharCode || !charHasRotatedVerticalOrientation(nextCharCode) || isValidVerticalizedCharacter(input[i + 1])) &&
+            (!prevCharCode || !charHasRotatedVerticalOrientation(prevCharCode) || isValidVerticalizedCharacter(input[i - 1]))
         );
 
-        if (canReplacePunctuation && input[i] in verticalizedCharacterMap) {
-            output += verticalizedCharacterMap[input[i] as VerticalizedCharacter];
+        const key = input[i];
+
+        if (canReplacePunctuation && isValidVerticalizedCharacter(key)) {
+            output += verticalizedCharacterMap[key];
         } else {
-            output += input[i];
+            output += key;
         }
     }
 
