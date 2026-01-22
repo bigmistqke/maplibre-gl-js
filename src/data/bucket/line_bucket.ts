@@ -95,8 +95,8 @@ export class LineBucket implements Bucket {
     scaledDistance: number;
     lineClips?: LineClips;
 
-    e1?: number;
-    e2?: number;
+    e1 = -1;
+    e2 = -1;
 
     index: number;
     zoom: number;
@@ -585,8 +585,10 @@ export class LineBucket implements Bucket {
         }
 
         const e = segment.vertexLength++;
-        if ((this.e1 ?? 0) >= 0 && (this.e2 ?? 0) >= 0) {
-            this.indexArray.emplaceBack(this.e1 ?? 0, e, this.e2 ?? 0);
+        // NOTE: e1/e2 types are `number | undefined` but initialized to -1 in startLine().
+        // If undefined, JS treats `undefined >= 0` as false, preserving original behavior.
+        if (this.e1 >= 0 && this.e2 >= 0) {
+            this.indexArray.emplaceBack(this.e1, e, this.e2);
             segment.primitiveLength++;
         }
         if (up) {
