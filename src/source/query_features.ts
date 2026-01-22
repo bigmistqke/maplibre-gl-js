@@ -99,7 +99,7 @@ function getPixelPosMatrix(transform: IReadonlyTransform, tileID: OverscaledTile
     }
 }
 
-function queryIncludes3DLayer(layers: Set<string> | undefined, styleLayers: {[_: string]: StyleLayer}, sourceID: string) {
+function queryIncludes3DLayer(layers: Set<string> | undefined | null, styleLayers: {[_: string]: StyleLayer}, sourceID: string) {
     if (layers) {
         for (const layerID of layers) {
             const layer = styleLayers[layerID];
@@ -128,7 +128,7 @@ export function queryRenderedFeatures(
     getElevation: undefined | ((id: OverscaledTileID, x: number, y: number) => number)
 ): QueryRenderedFeaturesResults {
 
-    const has3DLayer = assertedNotNullish(queryIncludes3DLayer(params?.layers ?? undefined, styleLayers, sourceCache.id));
+    const has3DLayer = queryIncludes3DLayer(params?.layers, styleLayers, sourceCache.id);
     const maxPitchScaleFactor = transform.maxPitchScaleFactor();
     const tilesIn = sourceCache.tilesIn(queryGeometry, maxPitchScaleFactor, has3DLayer);
 

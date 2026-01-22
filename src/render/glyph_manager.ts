@@ -119,7 +119,7 @@ export class GlyphManager {
             }
         }
         entry.ranges[range] = true;
-        return {stack, id, glyph: assertedNotNullish(response[id]) || null};
+        return {stack, id, glyph: response[id] || null};
     }
 
     _doesCharSupportLocalGlyph(id: number): boolean {

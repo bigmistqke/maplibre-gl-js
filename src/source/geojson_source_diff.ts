@@ -141,7 +141,7 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
             // be careful to clone the feature and/or properties objects to avoid mutating our input
             const cloneFeature = update.newGeometry || update.removeAllProperties;
             // note: removeAllProperties gives us a new properties object, so we can skip the clone step
-            const cloneProperties = !update.removeAllProperties && (assertedNotNullish(update.removeProperties?.length)> 0 || assertedNotNullish(update.addOrUpdateProperties?.length) > 0);
+            const cloneProperties = !update.removeAllProperties && ((update.removeProperties?.length ?? 0) > 0 || (update.addOrUpdateProperties?.length ?? 0) > 0);
             if (cloneFeature || cloneProperties) {
                 feature = {...feature};
                 updateable.set(update.id, feature);
@@ -156,19 +156,19 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
 
             if (update.removeAllProperties) {
                 feature.properties = {};
-            } else if (assertedNotNullish(update.removeProperties?.length)> 0) {
-                for (const prop of assertedNotNullish(update.removeProperties)) {
+            } else if ((update.removeProperties?.length ?? 0) > 0) {
+                for (const prop of update.removeProperties!) {
                     if (Object.prototype.hasOwnProperty.call(feature.properties, prop)) {
                         delete assertedNotNullish(feature.properties)[prop];
                     }
                 }
             }
 
-            if (assertedNotNullish(update.addOrUpdateProperties?.length)> 0) {
+            if ((update.addOrUpdateProperties?.length ?? 0) > 0) {
                 if (!feature.properties) {
                     feature.properties = {};
                 }
-                for (const {key, value} of assertedNotNullish(update.addOrUpdateProperties)) {
+                for (const {key, value} of update.addOrUpdateProperties!) {
                     feature.properties[key] = value;
                 }
             }

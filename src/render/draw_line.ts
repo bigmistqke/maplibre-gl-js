@@ -187,8 +187,8 @@ export function drawLine(painter: Painter, sourceCache: SourceCache, layer: Line
         const programChanged = firstTile || program.program !== prevProgram;
         const terrainData = painterStyle.map.terrain &&  painterStyle.map.terrain.getTerrainData(coord);
 
-        const constantPattern = patternProperty.constantOr(null as any);
-        const constantDasharray = dasharrayProperty && dasharrayProperty.constantOr(null as any);
+        const constantPattern = patternProperty.constantOr(null);
+        const constantDasharray = dasharrayProperty && dasharrayProperty.constantOr(null);
 
         if (constantPattern && tile.imageAtlas) {
             const atlas = tile.imageAtlas;

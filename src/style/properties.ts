@@ -75,7 +75,7 @@ export class PropertyValue<T, R> {
     constructor(property: Property<T, R>, value: PropertyValueSpecification<T> | void, globalState: Record<string, any>) {
         this.property = property;
         this.value = value;
-        this.expression = normalizePropertyExpression(assertedNotNullish(value)=== undefined ? property.specification.default : value, property.specification, globalState);
+        this.expression = normalizePropertyExpression(value === undefined ? property.specification.default : value, property.specification, globalState);
     }
 
     isDataDriven(): boolean {
@@ -118,7 +118,7 @@ class TransitionablePropertyValue<T, R> {
 
     constructor(property: Property<T, R>, globalState: Record<string, any>) {
         this.property = property;
-        this.value = new PropertyValue(property, undefined, globalState) as PropertyValue<T, R>;
+        this.value = new PropertyValue(property, undefined, globalState);
     }
 
     transitioned(parameters: TransitionParameters, prior: TransitioningPropertyValue<T, R>): TransitioningPropertyValue<T, R> {
@@ -191,7 +191,7 @@ export class Transitionable<Props extends Record<string, Property<unknown, unkno
     transitioned(parameters: TransitionParameters, prior: Transitioning<Props>): Transitioning<Props> {
         const result = new Transitioning(this._properties);
         for (const property of Object.keys(this._values)) {
-            (result._values as Record<string, TransitioningPropertyValue<unknown, unknown>>)[property] = assertedNotNullish(this._values[property].transitioned(parameters, prior._values[property]));
+            result._values[property] = assertedNotNullish(this._values[property].transitioned(parameters, prior._values[property]));
         }
         return result;
     }
@@ -199,7 +199,7 @@ export class Transitionable<Props extends Record<string, Property<unknown, unkno
     untransitioned(): Transitioning<Props> {
         const result = new Transitioning(this._properties);
         for (const property of Object.keys(this._values)) {
-            (result._values as Record<string, TransitioningPropertyValue<unknown, unknown>>)[property] = this._values[property].untransitioned();
+            result._values[property] = this._values[property].untransitioned();
         }
         return result;
     }
@@ -288,7 +288,7 @@ export class Transitioning<Props extends Record<string, Property<unknown, unknow
     ): PossiblyEvaluated<Props, any> {
         const result = new PossiblyEvaluated(this._properties);
         for (const property in this._values) {
-            (result._values as Record<string, unknown>)[property] = this._values[property].possiblyEvaluate(parameters, canonical, availableImages);
+            result._values[property] = this._values[property].possiblyEvaluate(parameters, canonical, availableImages);
         }
         return result;
     }
@@ -356,7 +356,7 @@ export class Layout<Props extends Record<string, Property<unknown, unknown>>> {
     ): PossiblyEvaluated<Props, any> {
         const result = new PossiblyEvaluated(this._properties);
         for (const property of Object.keys(this._values)) {
-            (result._values as Record<string, unknown>)[property] = this._values[property].possiblyEvaluate(parameters, canonical, availableImages);
+            result._values[property] = this._values[property].possiblyEvaluate(parameters, canonical, availableImages);
         }
         return result;
     }
@@ -707,11 +707,11 @@ export class Properties<Props extends Record<string, Property<unknown, unknown>>
 
     constructor(properties: Props) {
         this.properties = properties;
-        this.defaultPropertyValues = {} as Map<Props, PropertyValue<unknown, any>>;
-        this.defaultTransitionablePropertyValues = {} as Map<Props, TransitionablePropertyValue<unknown, unknown>>;
-        this.defaultTransitioningPropertyValues = {} as Map<Props, TransitioningPropertyValue<unknown, unknown>>;
-        this.defaultPossiblyEvaluatedValues = {} as Map<Props, PossiblyEvaluatedPropertyValue<unknown>>;
-        this.overridableProperties = [];
+        this.defaultPropertyValues = ({} as any);
+        this.defaultTransitionablePropertyValues = ({} as any);
+        this.defaultTransitioningPropertyValues = ({} as any);
+        this.defaultPossiblyEvaluatedValues = ({} as any);
+        this.overridableProperties = ([] as any);
 
         for (const property in properties) {
             const prop = properties[property];
