@@ -16,7 +16,7 @@ const config: RollupOptions[] = [{
     // - staging/maplibregl/shared.js: the set of modules that are dependencies of both the main module and the worker module
     //
     // This is also where we do all of our source transformations using the plugins.
-    input: ['src/index.ts', 'src/source/worker.ts'],
+    input: ['src/index.ts', 'src/register.ts', 'src/source/worker.ts'],
     output: {
         dir: 'staging/maplibregl',
         format: 'amd',
