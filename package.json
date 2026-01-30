@@ -41,6 +41,7 @@
     "tinyqueue": "^3.0.0"
   },
   "devDependencies": {
+    "@harvestry/cli": "../harvestry/packages/cli",
     "@mapbox/mapbox-gl-rtl-text": "^0.3.0",
     "@mapbox/mvt-fixtures": "^3.10.0",
     "@rollup/plugin-commonjs": "^29.0.0",
@@ -75,6 +76,7 @@
     "@vitest/coverage-v8": "4.0.18",
     "@vitest/eslint-plugin": "^1.6.6",
     "@vitest/ui": "4.0.18",
+    "@bigmistqke/harvestry": "file:../harvestry",
     "address": "^2.0.3",
     "autoprefixer": "^10.4.23",
     "benchmark": "^2.1.4",
@@ -174,7 +176,8 @@
     "gl-stats": "node --no-warnings --loader ts-node/esm test/bench/gl-stats.ts",
     "prepare": "npm run codegen",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.dist.json",
-    "tsnode": "node --experimental-loader=ts-node/esm --no-warnings"
+    "tsnode": "node --experimental-loader=ts-node/esm --no-warnings",
+    "harvest": "harvest"
   },
   "files": [
     "build/",
