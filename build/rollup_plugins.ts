@@ -43,7 +43,9 @@ export const plugins = (production: boolean): Plugin[] => [
         sourceMap: true
     }),
     nodeResolve,
-    typescript(),
+    typescript({
+        outDir: 'staging/maplibregl'
+    }),
     commonjs({
         // global keyword handling causes Webpack compatibility issues, so we disabled it:
         // https://github.com/mapbox/mapbox-gl-js/pull/6956
