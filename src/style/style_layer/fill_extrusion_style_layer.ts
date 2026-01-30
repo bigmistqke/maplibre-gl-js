@@ -1,10 +1,11 @@
+import { getFromHarvestRegistry } from "../../registry";
 import {type QueryIntersectsFeatureParams, StyleLayer} from '../style_layer';
 
-import {FillExtrusionBucket} from '../../data/bucket/fill_extrusion_bucket';
+import type {FillExtrusionBucket} from '../../data/bucket/fill_extrusion_bucket';
 import {polygonIntersectsPolygon, polygonIntersectsMultiPolygon} from '../../util/intersection_tests';
 import {translateDistance, translate} from '../query_utils';
 import properties, {type FillExtrusionPaintPropsPossiblyEvaluated} from './fill_extrusion_style_layer_properties.g';
-import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
+import type {Transitionable, Transitioning, PossiblyEvaluated} from '../properties';
 import {type mat4, vec4} from 'gl-matrix';
 import Point from '@mapbox/point-geometry';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -27,7 +28,7 @@ export class FillExtrusionStyleLayer extends StyleLayer {
     }
 
     createBucket(parameters: BucketParameters<FillExtrusionStyleLayer>) {
-        return new FillExtrusionBucket(parameters);
+        return new (getFromHarvestRegistry('./data/bucket/fill_extrusion_bucket#FillExtrusionBucket'))(parameters);
     }
 
     queryRadius(): number {

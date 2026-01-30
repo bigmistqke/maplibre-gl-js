@@ -1,3 +1,4 @@
+import { getFromHarvestRegistry } from "../registry";
 import {Anchor} from './anchor';
 
 import {getAnchors, getCenterAnchor} from './get_anchors';
@@ -12,7 +13,7 @@ import {
 } from '../util/script_detection';
 import {findPoleOfInaccessibility} from '../util/find_pole_of_inaccessibility';
 import {EXTENT} from '../data/extent';
-import {SymbolBucket} from '../data/bucket/symbol_bucket';
+import type {SymbolBucket} from '../data/bucket/symbol_bucket';
 import {EvaluationParameters} from '../style/evaluation_parameters';
 import {SIZE_PACK_FACTOR, MAX_PACKED_SIZE, MAX_GLYPH_ICON_SIZE} from './symbol_size';
 import ONE_EM from './one_em';
@@ -688,7 +689,7 @@ function addSymbol(bucket: SymbolBucket,
     if (useRuntimeCollisionCircles)
         collisionCircleDiameter *= layoutTextSize / ONE_EM;
 
-    if (bucket.glyphOffsetArray.length >= SymbolBucket.MAX_GLYPHS) warnOnce(
+    if (bucket.glyphOffsetArray.length >= getFromHarvestRegistry('./data/bucket/symbol_bucket#SymbolBucket').MAX_GLYPHS) warnOnce(
         'Too many glyphs being rendered in a tile. See https://github.com/mapbox/mapbox-gl-js/issues/2907'
     );
 

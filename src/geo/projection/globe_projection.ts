@@ -1,15 +1,16 @@
+import { getFromHarvestRegistry } from "../../registry";
 import {ProjectionDefinition, type ProjectionDefinitionSpecification, type ProjectionSpecification, type StylePropertySpecification, latest as styleSpec} from '@maplibre/maplibre-gl-style-spec';
 import {DataConstantProperty, type PossiblyEvaluated, Properties, Transitionable, type Transitioning, type TransitionParameters} from '../../style/properties';
 import {Evented} from '../../util/evented';
 import {EvaluationParameters} from '../../style/evaluation_parameters';
-import {MercatorProjection} from './mercator_projection';
-import {VerticalPerspectiveProjection} from './vertical_perspective_projection';
-import {type Projection, type ProjectionGPUContext, type TileMeshUsage} from './projection';
-import {type PreparedShader} from '../../shaders/shaders';
-import {type SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
-import {type Context} from '../../gl/context';
-import {type CanonicalTileID} from '../../tile/tile_id';
-import {type Mesh} from '../../render/mesh';
+import type {MercatorProjection} from './mercator_projection';
+import type {VerticalPerspectiveProjection} from './vertical_perspective_projection';
+import type {Projection, ProjectionGPUContext, TileMeshUsage} from './projection';
+import type {PreparedShader} from '../../shaders/shaders';
+import type {SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
+import type {Context} from '../../gl/context';
+import type {CanonicalTileID} from '../../tile/tile_id';
+import type {Mesh} from '../../render/mesh';
 
 type ProjectionProps = {
     type: DataConstantProperty<ProjectionDefinition>;
@@ -37,8 +38,8 @@ export class GlobeProjection extends Evented implements Projection {
         this.setProjection(projection);
         this._transitioning = this._transitionable.untransitioned();
         this.recalculate(new EvaluationParameters(0));
-        this._mercatorProjection = new MercatorProjection();
-        this._verticalPerspectiveProjection = new VerticalPerspectiveProjection();
+        this._mercatorProjection = new (getFromHarvestRegistry('./geo/projection/mercator_projection#MercatorProjection'))();
+        this._verticalPerspectiveProjection = new (getFromHarvestRegistry('./geo/projection/vertical_perspective_projection#VerticalPerspectiveProjection'))();
     }
 
     public get transitionState(): number {

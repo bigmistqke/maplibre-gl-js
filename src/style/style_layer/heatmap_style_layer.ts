@@ -1,10 +1,11 @@
+import { getFromHarvestRegistry } from "../../registry";
 import {type QueryIntersectsFeatureParams, StyleLayer} from '../style_layer';
 
-import {HeatmapBucket} from '../../data/bucket/heatmap_bucket';
-import {type RGBAImage} from '../../util/image';
+import type {HeatmapBucket} from '../../data/bucket/heatmap_bucket';
+import type {RGBAImage} from '../../util/image';
 import properties, {type HeatmapPaintPropsPossiblyEvaluated} from './heatmap_style_layer_properties.g';
 import {renderColorRamp} from '../../util/color_ramp';
-import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
+import type {Transitionable, Transitioning, PossiblyEvaluated} from '../properties';
 
 import type {Texture} from '../../render/texture';
 import type {Framebuffer} from '../../gl/framebuffer';
@@ -32,7 +33,7 @@ export class HeatmapStyleLayer extends StyleLayer {
     paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated>;
 
     createBucket(options: any) {
-        return new HeatmapBucket(options);
+        return new (getFromHarvestRegistry('./data/bucket/heatmap_bucket#HeatmapBucket'))(options);
     }
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {

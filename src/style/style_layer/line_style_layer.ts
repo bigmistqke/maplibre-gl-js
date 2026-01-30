@@ -1,5 +1,6 @@
+import { getFromHarvestRegistry } from "../../registry";
 import {type QueryIntersectsFeatureParams, StyleLayer} from '../style_layer';
-import {LineBucket} from '../../data/bucket/line_bucket';
+import type {LineBucket} from '../../data/bucket/line_bucket';
 import {polygonIntersectsBufferedMultiLine} from '../../util/intersection_tests';
 import {getMaximumPaintValue, translateDistance, translate, offsetLine} from '../query_utils';
 import properties, {type LineLayoutPropsPossiblyEvaluated, type LinePaintPropsPossiblyEvaluated} from './line_style_layer_properties.g';
@@ -79,7 +80,7 @@ export class LineStyleLayer extends StyleLayer {
     }
 
     createBucket(parameters: BucketParameters<any>) {
-        return new LineBucket(parameters);
+        return new (getFromHarvestRegistry('./data/bucket/line_bucket#LineBucket'))(parameters);
     }
 
     queryRadius(bucket: Bucket): number {

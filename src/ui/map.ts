@@ -1,3 +1,4 @@
+import { getFromHarvestRegistry } from "../registry";
 import {extend, warnOnce, uniqueId, isImageBitmap, type Complete, pick, type Subscription} from '../util/util';
 import {browser} from '../util/browser';
 import {now} from '../util/time_control';
@@ -24,14 +25,14 @@ import {TaskQueue} from '../util/task_queue';
 import {throttle} from '../util/throttle';
 import {webpSupported} from '../util/webp_supported';
 import {PerformanceMarkers, PerformanceUtils} from '../util/performance';
-import {type Source} from '../source/source';
-import {type StyleLayer} from '../style/style_layer';
+import type {Source} from '../source/source';
+import type {StyleLayer} from '../style/style_layer';
 import {Terrain} from '../render/terrain';
 import {RenderToTexture} from '../render/render_to_texture';
 import {config} from '../util/config';
 import {defaultLocale} from './default_locale';
-import {MercatorTransform} from '../geo/projection/mercator_transform';
-import {MercatorCameraHelper} from '../geo/projection/mercator_camera_helper';
+import type {MercatorTransform} from '../geo/projection/mercator_transform';
+import type {MercatorCameraHelper} from '../geo/projection/mercator_camera_helper';
 import {isAbortError} from '../util/abort_error';
 import {isFramebufferNotCompleteError} from '../util/framebuffer_error';
 import {coveringTiles, type CoveringTilesOptions, createCalculateTileZoomFunction} from '../geo/projection/covering_tiles';
@@ -702,8 +703,8 @@ export class Map extends Camera {
         // For now we will use a temporary MercatorTransform instance.
         // Transform specialization will later be set by style when it creates its projection instance.
         // When this happens, the new transform will inherit all properties of this temporary transform.
-        const transform = new MercatorTransform();
-        const cameraHelper = new MercatorCameraHelper();
+        const transform = new (getFromHarvestRegistry('./geo/projection/mercator_transform#MercatorTransform'))();
+        const cameraHelper = new (getFromHarvestRegistry('./geo/projection/mercator_camera_helper#MercatorCameraHelper'))();
         if (resolvedOptions.minZoom !== undefined) {
             transform.setMinZoom(resolvedOptions.minZoom);
         }

@@ -1,11 +1,12 @@
-import {VectorTileSource} from '../source/vector_tile_source';
-import {RasterTileSource} from '../source/raster_tile_source';
-import {RasterDEMTileSource} from '../source/raster_dem_tile_source';
-import {GeoJSONSource, type GeoJSONSourceShouldReloadTileOptions} from '../source/geojson_source';
-import {VideoSource} from '../source/video_source';
-import {ImageSource} from '../source/image_source';
-import {CanvasSource} from '../source/canvas_source';
-import {type Dispatcher} from '../util/dispatcher';
+import { getFromHarvestRegistry } from "../registry";
+import type {VectorTileSource} from '../source/vector_tile_source';
+import type {RasterTileSource} from '../source/raster_tile_source';
+import type {RasterDEMTileSource} from '../source/raster_dem_tile_source';
+import type {GeoJSONSource, GeoJSONSourceShouldReloadTileOptions} from '../source/geojson_source';
+import type {VideoSource} from '../source/video_source';
+import type {ImageSource} from '../source/image_source';
+import type {CanvasSource} from '../source/canvas_source';
+import type {Dispatcher} from '../util/dispatcher';
 
 import type {SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Event, Evented} from '../util/evented';
@@ -13,7 +14,7 @@ import type {Map} from '../ui/map';
 import type {Tile} from '../tile/tile';
 import type {OverscaledTileID, CanonicalTileID} from '../tile/tile_id';
 import type {CanvasSourceSpecification} from '../source/canvas_source';
-import {type CalculateTileZoomFunction} from '../geo/projection/covering_tiles';
+import type {CalculateTileZoomFunction} from '../geo/projection/covering_tiles';
 
 const registeredSources = {} as {[key:string]: SourceClass};
 
@@ -162,19 +163,19 @@ export const create = (id: string, specification: SourceSpecification | CanvasSo
 const getSourceType = (name: string): SourceClass => {
     switch (name) {
         case 'geojson':
-            return GeoJSONSource;
+            return getFromHarvestRegistry('./source/geojson_source#GeoJSONSource');
         case 'image':
-            return ImageSource;
+            return getFromHarvestRegistry('./source/image_source#ImageSource');
         case 'raster':
-            return RasterTileSource;
+            return getFromHarvestRegistry('./source/raster_tile_source#RasterTileSource');
         case 'raster-dem':
-            return RasterDEMTileSource;
+            return getFromHarvestRegistry('./source/raster_dem_tile_source#RasterDEMTileSource');
         case 'vector':
-            return VectorTileSource;
+            return getFromHarvestRegistry('./source/vector_tile_source#VectorTileSource');
         case 'video':
-            return VideoSource;
+            return getFromHarvestRegistry('./source/video_source#VideoSource');
         case 'canvas':
-            return CanvasSource;
+            return getFromHarvestRegistry('./source/canvas_source#CanvasSource');
     }
     return registeredSources[name];
 };

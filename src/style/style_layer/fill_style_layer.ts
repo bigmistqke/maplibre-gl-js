@@ -1,5 +1,6 @@
+import { getFromHarvestRegistry } from "../../registry";
 import {type QueryIntersectsFeatureParams, StyleLayer} from '../style_layer';
-import {FillBucket} from '../../data/bucket/fill_bucket';
+import type {FillBucket} from '../../data/bucket/fill_bucket';
 import {polygonIntersectsMultiPolygon} from '../../util/intersection_tests';
 import {translateDistance, translate} from '../query_utils';
 import properties, {type FillLayoutPropsPossiblyEvaluated, type FillPaintPropsPossiblyEvaluated} from './fill_style_layer_properties.g';
@@ -34,7 +35,7 @@ export class FillStyleLayer extends StyleLayer {
     }
 
     createBucket(parameters: BucketParameters<any>) {
-        return new FillBucket(parameters);
+        return new (getFromHarvestRegistry('./data/bucket/fill_bucket#FillBucket'))(parameters);
     }
 
     queryRadius(): number {

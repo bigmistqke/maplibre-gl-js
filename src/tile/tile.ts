@@ -1,9 +1,10 @@
+import { getFromHarvestRegistry } from "../registry";
 import {uniqueId, parseCacheControl} from '../util/util';
 import {deserialize as deserializeBucket} from '../data/bucket';
 import {GEOJSON_TILE_LAYER_NAME, type FeatureIndex, type QueryResults} from '../data/feature_index';
 import {GeoJSONFeature} from '../util/vectortile_to_geojson';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
-import {SymbolBucket} from '../data/bucket/symbol_bucket';
+import type {SymbolBucket} from '../data/bucket/symbol_bucket';
 import {CollisionBoxArray} from '../data/array_types.g';
 import {Texture} from '../render/texture';
 import {now} from '../util/time_control';
@@ -237,7 +238,7 @@ export class Tile {
         this.hasSymbolBuckets = false;
         for (const id in this.buckets) {
             const bucket = this.buckets[id];
-            if (bucket instanceof SymbolBucket) {
+            if (getFromHarvestRegistry('./data/bucket/symbol_bucket#SymbolBucket') && bucket instanceof getFromHarvestRegistry('./data/bucket/symbol_bucket#SymbolBucket')) {
                 this.hasSymbolBuckets = true;
                 if (justReloaded) {
                     bucket.justReloaded = true;
@@ -251,7 +252,7 @@ export class Tile {
         if (this.hasSymbolBuckets) {
             for (const id in this.buckets) {
                 const bucket = this.buckets[id];
-                if (bucket instanceof SymbolBucket) {
+                if (getFromHarvestRegistry('./data/bucket/symbol_bucket#SymbolBucket') && bucket instanceof getFromHarvestRegistry('./data/bucket/symbol_bucket#SymbolBucket')) {
                     if (bucket.hasRTLText) {
                         this.hasRTLText = true;
                         rtlMainThreadPluginFactory().lazyLoad();

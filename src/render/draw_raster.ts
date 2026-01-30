@@ -1,6 +1,7 @@
+import { getFromHarvestRegistry } from "../registry";
 import {clamp} from '../util/util';
 
-import {ImageSource} from '../source/image_source';
+import type {ImageSource} from '../source/image_source';
 import {now} from '../util/time_control';
 import {StencilMode} from '../gl/stencil_mode';
 import {DepthMode} from '../gl/depth_mode';
@@ -57,7 +58,7 @@ export function drawRaster(painter: Painter, tileManager: TileManager, layer: Ra
     // This approach also avoids pixel shader overdraw, as any pixel is drawn at most once.
 
     // Stencil mask and two-pass is not used for ImageSource sources regardless of projection.
-    if (source instanceof ImageSource) {
+    if (getFromHarvestRegistry('./source/image_source#ImageSource') && source instanceof getFromHarvestRegistry('./source/image_source#ImageSource')) {
         // Image source - no stencil is used
         drawTiles(painter, tileManager, layer, tileIDs, null, false, false, source.tileCoords, source.flippedWindingOrder, isRenderingToTexture);
     } else if (useSubdivision) {

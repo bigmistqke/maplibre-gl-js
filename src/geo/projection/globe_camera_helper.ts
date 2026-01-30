@@ -1,5 +1,6 @@
-import {MercatorCameraHelper} from './mercator_camera_helper';
-import {VerticalPerspectiveCameraHelper} from './vertical_perspective_camera_helper';
+import { getFromHarvestRegistry } from "../../registry";
+import type {MercatorCameraHelper} from './mercator_camera_helper';
+import type {VerticalPerspectiveCameraHelper} from './vertical_perspective_camera_helper';
 
 import type Point from '@mapbox/point-geometry';
 import type {CameraForBoxAndBearingHandlerResult, EaseToHandlerResult, EaseToHandlerOptions, FlyToHandlerResult, FlyToHandlerOptions, ICameraHelper, MapControlsDeltas} from './camera_helper';
@@ -20,8 +21,8 @@ export class GlobeCameraHelper implements ICameraHelper {
 
     constructor(globe: GlobeProjection) {
         this._globe = globe;
-        this._mercatorCameraHelper = new MercatorCameraHelper();
-        this._verticalPerspectiveCameraHelper = new VerticalPerspectiveCameraHelper();
+        this._mercatorCameraHelper = new (getFromHarvestRegistry('./geo/projection/mercator_camera_helper#MercatorCameraHelper'))();
+        this._verticalPerspectiveCameraHelper = new (getFromHarvestRegistry('./geo/projection/vertical_perspective_camera_helper#VerticalPerspectiveCameraHelper'))();
     }
 
     get useGlobeControls(): boolean { return this._globe.useGlobeRendering; }

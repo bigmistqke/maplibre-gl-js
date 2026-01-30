@@ -1,3 +1,4 @@
+import { getFromHarvestRegistry } from "../registry";
 import {now} from '../util/time_control';
 import {mat4} from 'gl-matrix';
 import {TileManager} from '../tile/tile_manager';
@@ -6,8 +7,8 @@ import {SegmentVector} from '../data/segment';
 import {RasterBoundsArray, PosArray, TriangleIndexArray, LineStripIndexArray} from '../data/array_types.g';
 import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
-import {type ProgramConfiguration} from '../data/program_configuration';
-import {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
+import type {ProgramConfiguration} from '../data/program_configuration';
+import type {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 import {shaders} from '../shaders/shaders';
 import {Program} from './program';
 import {programUniforms} from './program/program_uniforms';
@@ -18,20 +19,20 @@ import {ColorMode} from '../gl/color_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
 import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
-import {drawSymbols} from './draw_symbol';
-import {drawCircles} from './draw_circle';
-import {drawHeatmap} from './draw_heatmap';
-import {drawLine} from './draw_line';
-import {drawFill} from './draw_fill';
-import {drawFillExtrusion} from './draw_fill_extrusion';
-import {drawHillshade} from './draw_hillshade';
-import {drawColorRelief} from './draw_color_relief';
-import {drawRaster} from './draw_raster';
-import {drawBackground} from './draw_background';
+import type {drawSymbols} from './draw_symbol';
+import type {drawCircles} from './draw_circle';
+import type {drawHeatmap} from './draw_heatmap';
+import type {drawLine} from './draw_line';
+import type {drawFill} from './draw_fill';
+import type {drawFillExtrusion} from './draw_fill_extrusion';
+import type {drawHillshade} from './draw_hillshade';
+import type {drawColorRelief} from './draw_color_relief';
+import type {drawRaster} from './draw_raster';
+import type {drawBackground} from './draw_background';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
-import {drawDepth, drawCoords} from './draw_terrain';
-import {type OverscaledTileID} from '../tile/tile_id';
+import type {drawDepth, drawCoords} from './draw_terrain';
+import type {OverscaledTileID} from '../tile/tile_id';
 import {drawSky, drawAtmosphere} from './draw_sky';
 import {Mesh} from './mesh';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection';
@@ -148,7 +149,7 @@ export class Painter {
         this.numSublayers = TileManager.maxOverzooming + TileManager.maxUnderzooming + 1;
         this.depthEpsilon = 1 / Math.pow(2, 16);
 
-        this.crossTileSymbolIndex = new CrossTileSymbolIndex();
+        this.crossTileSymbolIndex = new (getFromHarvestRegistry('./symbol/cross_tile_symbol_index#CrossTileSymbolIndex'))();
     }
 
     /*
@@ -650,8 +651,8 @@ export class Painter {
         mat4.copy(prevMatrix, currMatrix);
         this.terrainFacilitator.renderTime = Date.now();
         this.terrainFacilitator.dirty = false;
-        drawDepth(this, this.style.map.terrain);
-        drawCoords(this, this.style.map.terrain);
+        getFromHarvestRegistry('./render/draw_terrain#drawDepth')(this, this.style.map.terrain);
+        getFromHarvestRegistry('./render/draw_terrain#drawCoords')(this, this.style.map.terrain);
     }
 
     renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
@@ -660,25 +661,25 @@ export class Painter {
         this.id = layer.id;
 
         if (isSymbolStyleLayer(layer)) {
-            drawSymbols(painter, tileManager, layer, coords, this.style.placement.variableOffsets, renderOptions);
+            getFromHarvestRegistry('./render/draw_symbol#drawSymbols')(painter, tileManager, layer, coords, this.style.placement.variableOffsets, renderOptions);
         } else if (isCircleStyleLayer(layer)) {
-            drawCircles(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_circle#drawCircles')(painter, tileManager, layer, coords, renderOptions);
         } else if (isHeatmapStyleLayer(layer)) {
-            drawHeatmap(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_heatmap#drawHeatmap')(painter, tileManager, layer, coords, renderOptions);
         } else if (isLineStyleLayer(layer)) {
-            drawLine(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_line#drawLine')(painter, tileManager, layer, coords, renderOptions);
         } else if (isFillStyleLayer(layer)) {
-            drawFill(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_fill#drawFill')(painter, tileManager, layer, coords, renderOptions);
         } else if (isFillExtrusionStyleLayer(layer)) {
-            drawFillExtrusion(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_fill_extrusion#drawFillExtrusion')(painter, tileManager, layer, coords, renderOptions);
         } else if (isHillshadeStyleLayer(layer)) {
-            drawHillshade(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_hillshade#drawHillshade')(painter, tileManager, layer, coords, renderOptions);
         } else if (isColorReliefStyleLayer(layer)) {
-            drawColorRelief(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_color_relief#drawColorRelief')(painter, tileManager, layer, coords, renderOptions);
         } else if (isRasterStyleLayer(layer)) {
-            drawRaster(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_raster#drawRaster')(painter, tileManager, layer, coords, renderOptions);
         } else if (isBackgroundStyleLayer(layer)) {
-            drawBackground(painter, tileManager, layer, coords, renderOptions);
+            getFromHarvestRegistry('./render/draw_background#drawBackground')(painter, tileManager, layer, coords, renderOptions);
         } else if (isCustomStyleLayer(layer)) {
             drawCustom(painter, tileManager, layer, renderOptions);
         }

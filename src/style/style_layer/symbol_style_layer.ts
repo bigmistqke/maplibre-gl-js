@@ -1,6 +1,7 @@
+import { getFromHarvestRegistry } from "../../registry";
 import {StyleLayer} from '../style_layer';
 
-import {SymbolBucket, type SymbolFeature} from '../../data/bucket/symbol_bucket';
+import type {SymbolBucket, SymbolFeature} from '../../data/bucket/symbol_bucket';
 import {resolveTokens} from '../../util/resolve_tokens';
 import properties, {type SymbolLayoutPropsPossiblyEvaluated, type SymbolPaintPropsPossiblyEvaluated} from './symbol_style_layer_properties.g';
 
@@ -100,7 +101,7 @@ export class SymbolStyleLayer extends StyleLayer {
     }
 
     createBucket(parameters: BucketParameters<any>) {
-        return new SymbolBucket(parameters);
+        return new (getFromHarvestRegistry('./data/bucket/symbol_bucket#SymbolBucket'))(parameters);
     }
 
     queryRadius(): number {

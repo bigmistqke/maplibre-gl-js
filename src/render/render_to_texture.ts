@@ -1,14 +1,15 @@
-import {type Painter, type RenderOptions} from './painter';
-import {type Tile} from '../tile/tile';
+import { getFromHarvestRegistry } from "../registry";
+import type {Painter, RenderOptions} from './painter';
+import type {Tile} from '../tile/tile';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
-import {type OverscaledTileID} from '../tile/tile_id';
-import {drawTerrain} from './draw_terrain';
-import {type Style} from '../style/style';
-import {type Terrain} from './terrain';
+import type {OverscaledTileID} from '../tile/tile_id';
+import type {drawTerrain} from './draw_terrain';
+import type {Style} from '../style/style';
+import type {Terrain} from './terrain';
 import {RenderPool} from '../gl/render_pool';
-import {type Texture} from './texture';
+import type {Texture} from './texture';
 import type {StyleLayer} from '../style/style_layer';
-import {ImageSource} from '../source/image_source';
+import type {ImageSource} from '../source/image_source';
 
 /**
  * lookup table which layers should rendered to texture
@@ -90,7 +91,7 @@ export class RenderToTexture {
             this._coordsAscending[id] = {};
             const tileIDs = style.tileManagers[id].getVisibleCoordinates();
             const source = style.tileManagers[id].getSource();
-            const terrainTileRanges = source instanceof ImageSource ? source.terrainTileRanges : null;
+            const terrainTileRanges = getFromHarvestRegistry('./source/image_source#ImageSource') && source instanceof getFromHarvestRegistry('./source/image_source#ImageSource') ? source.terrainTileRanges : null;
             for (const tileID of tileIDs) {
                 const keys = this.terrain.tileManager.getTerrainCoords(tileID, terrainTileRanges);
                 for (const key in keys) {
@@ -159,7 +160,7 @@ export class RenderToTexture {
             for (const tile of this._renderableTiles) {
                 // if render pool is full draw current tiles to screen and free pool
                 if (this.pool.isFull()) {
-                    drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+                    getFromHarvestRegistry('./render/draw_terrain#drawTerrain')(this.painter, this.terrain, this._rttTiles, options);
                     this._rttTiles = [];
                     this.pool.freeAllObjects();
                 }
@@ -190,7 +191,7 @@ export class RenderToTexture {
                     if (layer.source) tile.rttCoords[layer.source] = this._coordsAscendingStr[layer.source][tile.tileID.key];
                 }
             }
-            drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+            getFromHarvestRegistry('./render/draw_terrain#drawTerrain')(this.painter, this.terrain, this._rttTiles, options);
             this._rttTiles = [];
             this.pool.freeAllObjects();
 

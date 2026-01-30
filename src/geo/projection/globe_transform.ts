@@ -1,8 +1,9 @@
+import { getFromHarvestRegistry } from "../../registry";
 import type {mat2, mat4, vec3, vec4} from 'gl-matrix';
 import {TransformHelper} from '../transform_helper';
-import {MercatorTransform} from './mercator_transform';
-import {VerticalPerspectiveTransform} from './vertical_perspective_transform';
-import {type LngLat, type LngLatLike,} from '../lng_lat';
+import type {MercatorTransform} from './mercator_transform';
+import type {VerticalPerspectiveTransform} from './vertical_perspective_transform';
+import type {LngLat, LngLatLike,} from '../lng_lat';
 import {lerp} from '../../util/util';
 import type {OverscaledTileID, UnwrappedTileID, CanonicalTileID} from '../../tile/tile_id';
 
@@ -259,8 +260,8 @@ export class GlobeTransform implements ITransform {
             defaultConstrain: (center, zoom) => { return this.defaultConstrain(center, zoom); }
         }, options);
         this._globeness = 1; // When transform is cloned for use in symbols, `_updateAnimation` function which usually sets this value never gets called.
-        this._mercatorTransform = new MercatorTransform();
-        this._verticalPerspectiveTransform = new VerticalPerspectiveTransform();
+        this._mercatorTransform = new (getFromHarvestRegistry('./geo/projection/mercator_transform#MercatorTransform'))();
+        this._verticalPerspectiveTransform = new (getFromHarvestRegistry('./geo/projection/vertical_perspective_transform#VerticalPerspectiveTransform'))();
     }
 
     clone(): ITransform {
