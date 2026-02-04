@@ -3,7 +3,11 @@ import {type MercatorCoordinate} from '../mercator_coordinate';
 import {type IReadonlyTransform} from '../transform_interface';
 import {type CoveringTilesOptionsInternal} from './covering_tiles';
 
-export interface CoveringTilesDetailsProvider<TBoundingVolume extends IBoundingVolume = IBoundingVolume> {
+// Default generic is `any` because callers (covering_tiles.ts) pass bounding volumes
+// from getTileBoundingVolume back to distanceToTile2d on the same provider,
+// so the concrete type is self-consistent at runtime. Using IBoundingVolume as default
+// would fail due to generic invariance (TBoundingVolume appears in both parameter and return positions).
+export interface CoveringTilesDetailsProvider<TBoundingVolume extends IBoundingVolume = any> {
     /**
      * Returns the distance from the point to the tile
      * @param pointX - point x.

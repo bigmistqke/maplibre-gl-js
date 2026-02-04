@@ -76,7 +76,7 @@ export class LineStyleLayer extends StyleLayer {
     recalculate(parameters: EvaluationParameters, availableImages: Array<string>) {
         super.recalculate(parameters, availableImages);
         (assertedNotNullish(this.paint)._values as any)['line-floorwidth'] =
-            lineFloorwidthProperty.possiblyEvaluate(assertedNotNullish(this._transitioningPaint)._values['line-width'].value, parameters);
+            lineFloorwidthProperty.possiblyEvaluate(assertedNotNullish(this._transitioningPaint)._values['line-width'].value as PropertyValue<number, PossiblyEvaluatedPropertyValue<number>>, parameters);
     }
 
     createBucket(parameters: BucketParameters<any>) {

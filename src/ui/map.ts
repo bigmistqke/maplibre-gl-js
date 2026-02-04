@@ -1666,13 +1666,15 @@ export class Map extends Camera {
 
         const delegatedListener = this._createDelegatedListener(type, layerIds, listener);
 
-        for (const key in delegatedListener.delegates) {
-            const eventKey = key as keyof MapEventType;
-            const delegate = delegatedListener.delegates[eventKey];
-            delegatedListener.delegates[eventKey] = ((...args: Parameters<Delegate>) => {
+        // Iterate delegates as Record to avoid mapped type invariance issue with union keys.
+        // Type safety is maintained because the wrapper only forwards args to the original delegate.
+        const delegates = delegatedListener.delegates as Record<string, Delegate | undefined>;
+        for (const key in delegates) {
+            const delegate = delegates[key];
+            delegates[key] = (...args: Parameters<Delegate>) => {
                 this._removeDelegatedListener(type, layerIds, listener);
                 delegate?.(...args);
-            }) as typeof delegate;
+            };
         }
 
         this._saveDelegatedListener(type, delegatedListener);
@@ -3234,13 +3236,14 @@ export class Map extends Camera {
 
         let webglcontextcreationerrorDetailObject: any = null;
         const canvas = assertedNotNullish(this._canvas);
-        canvas.addEventListener('webglcontextcreationerror', (args: WebGLContextEvent) => {
+        // NOTE: 'webglcontextcreationerror' is a valid WebGL event but not in TypeScript's HTMLElementEventMap
+        canvas.addEventListener('webglcontextcreationerror' as keyof HTMLElementEventMap, ((args: WebGLContextEvent) => {
             webglcontextcreationerrorDetailObject = {requestedAttributes: attributes};
             if (args) {
                 webglcontextcreationerrorDetailObject.statusMessage = args.statusMessage;
                 webglcontextcreationerrorDetailObject.type = args.type;
             }
-        }, {once: true});
+        }) as EventListener, {once: true});
 
         let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null;
         if (this._canvasContextAttributes.contextType) {

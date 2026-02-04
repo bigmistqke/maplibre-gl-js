@@ -200,17 +200,21 @@ export class Program<Us extends UniformBindings> {
             gl.bindTexture(gl.TEXTURE_2D, terrain.depthTexture);
             context.activeTexture.set(gl.TEXTURE3);
             gl.bindTexture(gl.TEXTURE_2D, terrain.texture);
+            // Dynamic dispatch: loop iterates terrainUniforms keys which map 1:1 to TerrainData properties.
+            // TypeScript can't prove per-key type correspondence in dynamic loops.
+            const terrainUnifs = this.terrainUniforms as Record<string, {set(v: unknown): void}>;
             for (const name in this.terrainUniforms) {
-                const data = terrain[name as unknown as keyof typeof terrain];
-                this.terrainUniforms[name as keyof typeof this.terrainUniforms].set(data);
+                terrainUnifs[name].set(terrain[name as keyof typeof terrain]);
             }
         }
 
         if (projectionData && this.projectionUniforms) {
+            // Dynamic dispatch: projectionObjectToUniformMap maps projection fields to uniform names.
+            // TypeScript can't prove per-key type correspondence in dynamic loops.
+            const projUnifs = this.projectionUniforms as Record<string, {set(v: unknown): void}>;
             for (const fieldName in projectionData) {
                 const uniformName = projectionObjectToUniformMap[fieldName as keyof typeof projectionData];
-                const data = projectionData[fieldName as keyof typeof projectionData];
-                this.projectionUniforms[uniformName].set(data);
+                projUnifs[uniformName].set(projectionData[fieldName as keyof typeof projectionData]);
             }
         }
 

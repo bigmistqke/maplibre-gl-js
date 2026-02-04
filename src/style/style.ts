@@ -1449,6 +1449,7 @@ export class Style extends Evented {
         const terrain = this.map.getTerrain() || undefined;
         const myStyleSheet = assertedNotNullish(this.stylesheet);
 
+        // filterObject returns Partial<T>, but required fields (version, sources, layers) are always defined
         return filterObject({
             version: myStyleSheet.version,
             name: myStyleSheet.name,
@@ -1467,7 +1468,7 @@ export class Style extends Evented {
             layers,
             terrain
         },
-        (value: unknown) => { return value !== undefined; });
+        (value: unknown) => { return value !== undefined; }) as StyleSpecification;
     }
 
     _updateLayer(layer: StyleLayer) {

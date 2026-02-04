@@ -75,7 +75,8 @@ export class PropertyValue<T, R> {
     constructor(property: Property<T, R>, value: PropertyValueSpecification<T> | void, globalState: Record<string, any>) {
         this.property = property;
         this.value = value;
-        this.expression = normalizePropertyExpression(value === undefined ? property.specification.default : value, property.specification, globalState);
+        // NOTE: upstream StylePropertySpecification.default is a broad union that loses the connection to T
+        this.expression = normalizePropertyExpression((value === undefined ? property.specification.default : value) as PropertyValueSpecification<T>, property.specification, globalState);
     }
 
     isDataDriven(): boolean {
