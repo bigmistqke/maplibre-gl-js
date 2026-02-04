@@ -14,7 +14,7 @@ interface DataT {
 }
 
 class ExpressionBenchmark extends Benchmark {
-    data: Array<DataT>;
+    data: Array<DataT> = [];
     style: string | StyleSpecification;
 
     constructor(style: string | StyleSpecification) {
@@ -33,7 +33,7 @@ class ExpressionBenchmark extends Benchmark {
                 continue;
             }
 
-            const expressionData = (rawValue, propertySpec: StylePropertySpecification): DataT => {
+            const expressionData = (rawValue: unknown, propertySpec: StylePropertySpecification): DataT => {
                 const rawExpression = convertFunction(rawValue, propertySpec);
                 const compiledFunction = createFunction(rawValue, propertySpec) as StylePropertyExpression;
                 const compiledExpression = createPropertyExpression(rawExpression, propertySpec);
@@ -49,15 +49,25 @@ class ExpressionBenchmark extends Benchmark {
                 };
             };
 
-            for (const key in layer.paint) {
-                if (isFunction(layer.paint[key])) {
-                    this.data.push(expressionData(layer.paint[key], spec[`paint_${layer.type}`][key]));
+            if (layer.paint) {
+                for (const key in layer.paint) {
+                    if (isFunction((layer.paint as any)[key])) {
+                        const paintSpecObj = (spec as any)[`paint_${layer.type}`];
+                        if (paintSpecObj && paintSpecObj[key]) {
+                            this.data.push(expressionData((layer.paint as any)[key], paintSpecObj[key]));
+                        }
+                    }
                 }
             }
 
-            for (const key in layer.layout) {
-                if (isFunction(layer.layout[key])) {
-                    this.data.push(expressionData(layer.layout[key], spec[`layout_${layer.type}`][key]));
+            if (layer.layout) {
+                for (const key in layer.layout) {
+                    if (isFunction((layer.layout as any)[key])) {
+                        const layoutSpecObj = (spec as any)[`layout_${layer.type}`];
+                        if (layoutSpecObj && layoutSpecObj[key]) {
+                            this.data.push(expressionData((layer.layout as any)[key], layoutSpecObj[key]));
+                        }
+                    }
                 }
             }
         }

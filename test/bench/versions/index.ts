@@ -32,9 +32,9 @@ const styleLocations = locationsWithTileID(styleBenchmarkLocations.features  as 
 
 (window as any).maplibreglBenchmarks = (window as any).maplibreglBenchmarks || {};
 
-const version = process.env.BENCHMARK_VERSION;
+const version = process.env.BENCHMARK_VERSION ?? 'unknown';
 
-function register(name, bench) {
+function register(name: string, bench: any) {
     (window as any).maplibreglBenchmarks[name] = (window as any).maplibreglBenchmarks[name] || {};
     (window as any).maplibreglBenchmarks[name][version] = bench;
 }

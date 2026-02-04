@@ -2,12 +2,12 @@ import {describe, test, expect} from 'vitest';
 import {mergeLines} from './merge_lines';
 import Point from '@mapbox/point-geometry';
 
-function makeFeatures(lines) {
+function makeFeatures(lines: (string | number)[][]) {
     const features = [];
     for (const line of lines) {
         const points = [];
         for (let j = 1; j < line.length; j++) {
-            points.push(new Point(line[j], 0));
+            points.push(new Point(line[j] as number, 0));
         }
         features.push({text: line[0], geometry: [points]});
     }

@@ -3,7 +3,8 @@ import {createMap, beforeMapTest, createStyleSource} from '../../util/test/util'
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 describe('setFeatureState', () => {

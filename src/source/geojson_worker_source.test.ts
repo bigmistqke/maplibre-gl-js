@@ -8,6 +8,7 @@ import {type Actor} from '../util/actor';
 import {type WorkerTileParameters} from './worker_source';
 import {setPerformance, sleep} from '../util/test/util';
 import {type FakeServer, fakeServer} from 'nise';
+import {assertedNotNullish} from '../util/util';
 
 const actor = {send: () => {}} as any as Actor;
 
@@ -48,9 +49,9 @@ describe('reloadTile', () => {
         expect(spy).toHaveBeenCalledTimes(1);
 
         // second call won't give us new rawTileData
-        let data = await source.reloadTile(tileParams as any as WorkerTileParameters);
+        let data = assertedNotNullish(await source.reloadTile(tileParams as any as WorkerTileParameters));
         expect('rawTileData' in data).toBeFalsy();
-        data.rawTileData = firstData.rawTileData;
+        data.rawTileData = assertedNotNullish(firstData).rawTileData;
         expect(data).toEqual(firstData);
 
         // also shouldn't call loadVectorData again
@@ -60,9 +61,9 @@ describe('reloadTile', () => {
         await source.loadData({source: 'sourceId', data: JSON.stringify(geoJson)} as LoadGeoJSONParameters);
 
         // should call loadVectorData again after changing geojson data
-        data = await source.reloadTile(tileParams as any as WorkerTileParameters);
-        expect('rawTileData' in data).toBeTruthy();
-        expect(data).toEqual(firstData);
+        const reloadData = await source.reloadTile(tileParams as any as WorkerTileParameters);
+        expect('rawTileData' in assertedNotNullish(reloadData)).toBeTruthy();
+        expect(assertedNotNullish(reloadData)).toEqual(firstData);
         expect(spy).toHaveBeenCalledTimes(2);
     });
 
@@ -115,30 +116,30 @@ describe('resourceTiming', () => {
 
         const result = await source.loadData({source: 'testSource', request: {url: 'http://localhost/nonexistent', collectResourceTiming: true}} as LoadGeoJSONParameters);
 
-        expect(result.resourceTiming.testSource).toEqual([exampleResourceTiming]);
+        expect(assertedNotNullish(result.resourceTiming).testSource).toEqual([exampleResourceTiming]);
     });
 
     test('loadData - url (resourceTiming fallback method)', async () => {
         const sampleMarks = [100, 350];
-        const marks = {};
-        const measures = {};
+        const marks: {[key: string]: number | undefined} = {};
+        const measures: {[key: string]: any[]} = {};
         window.performance.getEntriesByName = vi.fn().mockImplementation((name) => { return measures[name] || []; });
         vi.spyOn(perf, 'mark').mockImplementation((name) => {
             marks[name] = sampleMarks.shift();
-            return null;
+            return {} as unknown as PerformanceMark; // Test mock
         });
         window.performance.measure = vi.fn().mockImplementation((name, start, end) => {
             measures[name] = measures[name] || [];
             measures[name].push({
-                duration: marks[end] - marks[start],
+                duration: assertedNotNullish(marks[end]) - assertedNotNullish(marks[start]),
                 entryType: 'measure',
                 name,
                 startTime: marks[start]
             });
-            return null;
+            return {} as unknown as PerformanceMeasure; // Test mock
         });
-        vi.spyOn(perf, 'clearMarks').mockImplementation(() => { return null; });
-        vi.spyOn(perf, 'clearMeasures').mockImplementation(() => { return null; });
+        vi.spyOn(perf, 'clearMarks').mockImplementation(() => { return undefined; });
+        vi.spyOn(perf, 'clearMeasures').mockImplementation(() => { return undefined; });
 
         const layerIndex = new StyleLayerIndex(layers);
         const source = new GeoJSONWorkerSource(actor, layerIndex, []);
@@ -146,7 +147,7 @@ describe('resourceTiming', () => {
 
         const result = await source.loadData({source: 'testSource', request: {url: 'http://localhost/nonexistent', collectResourceTiming: true}} as LoadGeoJSONParameters);
 
-        expect(result.resourceTiming.testSource).toEqual(
+        expect(assertedNotNullish(result.resourceTiming).testSource).toEqual(
             [{'duration': 250, 'entryType': 'measure', 'name': 'http://localhost/nonexistent', 'startTime': 100}]
         );
     });
@@ -164,7 +165,8 @@ describe('resourceTiming', () => {
 describe('loadData', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        // Test mock
+        (globalThis as unknown as any).fetch = undefined;
         server = fakeServer.create();
     });
     afterEach(() => {
@@ -310,7 +312,8 @@ describe('loadData', () => {
 describe('getData', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        // Test mock
+        (globalThis as unknown as any).fetch = undefined;
         server = fakeServer.create();
     });
     afterEach(() => {

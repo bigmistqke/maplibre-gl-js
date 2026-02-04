@@ -13,7 +13,7 @@ let server: FakeServer;
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = undefined as typeof global.fetch;
+    global.fetch = undefined as unknown as typeof global.fetch;
     server = fakeServer.create();
 });
 
@@ -155,9 +155,9 @@ describe('setStyle', () => {
         const map = createMap();
         const style = assertedNotNullish(map.style);
         expect(style).toBeTruthy();
-        vi.spyOn(style, '_remove' as keyof Style);
+        vi.spyOn(style, '_remove');
         map.setStyle(null);
-        expect(style._remove).toHaveBeenCalledTimes(1);
+        expect((style._remove as any)).toHaveBeenCalledTimes(1);
     });
 
     test('passing null releases the worker', () => {
@@ -321,9 +321,10 @@ describe('setStyle', () => {
 
     test('Override default style validation', () => {
         let validationOption: boolean | undefined = true;
-        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson: StyleSpecification, options: {validate?: boolean}) => {
+        // Test mock
+        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce(((styleJson: StyleSpecification, options: {validate?: boolean}) => {
             validationOption = options.validate;
-        });
+        }) as any);
         const map = createMap({style: undefined});
         map.setStyle({version: 8, sources: {}, layers: []}, {validate: false});
 
@@ -457,7 +458,8 @@ describe('getStyle', () => {
     test('creates a new Style if diff fails', () => {
         const style = createStyle();
         const map = createMap({style});
-        vi.spyOn(assertedNotNullish(map.style), 'setState' as keyof Style).mockImplementation(() => {
+        // Test mock
+        vi.spyOn(assertedNotNullish(map.style), 'setState' as any).mockImplementation(() => {
             throw new Error('Dummy error');
         });
         vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -470,7 +472,8 @@ describe('getStyle', () => {
     test('creates a new Style if diff option is false', () => {
         const style = createStyle();
         const map = createMap({style});
-        const spy = vi.spyOn(assertedNotNullish(map.style), 'setState' as keyof Style);
+        // Test mock
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'setState' as any);
 
         const previousStyle = map.style;
         map.setStyle(style, {diff: false});
@@ -482,7 +485,8 @@ describe('getStyle', () => {
         test('calls style setSky when set', () => {
             const map = createMap();
             const spy = vi.fn();
-            assertedNotNullish(map.style).setSky = spy;
+            // Test mock
+            assertedNotNullish(map.style).setSky = spy as any;
             map.setSky({'horizon-fog-blend': 0.5});
 
             expect(spy).toHaveBeenCalled();
@@ -500,7 +504,8 @@ describe('getStyle', () => {
         test('calls style setLight when set', () => {
             const map = createMap();
             const spy = vi.fn();
-            assertedNotNullish(map.style).setLight = spy;
+            // Test mock
+            assertedNotNullish(map.style).setLight = spy as any;
             map.setLight({anchor: 'viewport'});
 
             expect(spy).toHaveBeenCalled();
@@ -511,7 +516,8 @@ describe('getStyle', () => {
         test('calls style getLight when invoked', () => {
             const map = createMap();
             const spy = vi.fn();
-            assertedNotNullish(map.style).getLight = spy;
+            // Test mock
+            assertedNotNullish(map.style).getLight = spy as any;
             map.getLight();
 
             expect(spy).toHaveBeenCalled();

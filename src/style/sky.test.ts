@@ -39,7 +39,7 @@ test('Sky with interpolate function', () => {
 });
 
 test('Sky.getSky', () => {
-    const defaults = {'atmosphere-blend': 0.8};
+    const defaults: Record<string, number> = {'atmosphere-blend': 0.8};
 
     expect(new Sky(defaults).getSky()).toEqual(defaults);
 });

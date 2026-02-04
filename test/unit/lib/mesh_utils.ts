@@ -19,9 +19,9 @@ export type SimpleMesh = {
  * Generates a simple grid mesh that has `size` by `size` quads.
  */
 export function getGridMesh(size: number): SimpleMesh {
-    const vertices = [];
-    const indicesTriangles = [];
-    const indicesLines = [];
+    const vertices: number[] = [];
+    const indicesTriangles: number[] = [];
+    const indicesLines: number[] = [];
 
     const verticesPerAxis = size + 1;
 
@@ -94,7 +94,7 @@ export function getGridMesh(size: number): SimpleMesh {
 
 // https://stackoverflow.com/a/47593316
 // https://gist.github.com/tommyettinger/46a874533244883189143505d203312c?permalink_comment_id=4365431#gistcomment-4365431
-function splitmix32(a) {
+function splitmix32(a: number): () => number {
     return function() {
         a |= 0;
         a = a + 0x9e3779b9 | 0;
@@ -110,9 +110,9 @@ function splitmix32(a) {
  * Generates a mesh with the vertices of a grid, but random triangles and lines.
  */
 export function getGridMeshRandom(size: number, triangleCount: number, lineCount: number): SimpleMesh {
-    const vertices = [];
-    const indicesTriangles = [];
-    const indicesLines = [];
+    const vertices: number[] = [];
+    const indicesTriangles: number[] = [];
+    const indicesLines: number[] = [];
 
     const verticesPerAxis = size + 1;
 
@@ -173,7 +173,7 @@ export function getGridMeshRandom(size: number, triangleCount: number, lineCount
  * @returns SVG image as string.
  */
 export function getDebugSvg(flattened: Array<number>, triangles?: Array<number>, edges?: Array<Array<number>>, granularity: number = 1): string {
-    const svg = [];
+    const svg: string[] = [];
 
     const cellSize = EXTENT / granularity;
 
@@ -182,13 +182,15 @@ export function getDebugSvg(flattened: Array<number>, triangles?: Array<number>,
     let maxX = -Infinity;
     let maxY = -Infinity;
 
-    for (let i = 0; i < triangles.length; i++) {
-        const x = flattened[triangles[i] * 2];
-        const y = flattened[triangles[i] * 2 + 1];
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
+    if (triangles) {
+        for (let i = 0; i < triangles.length; i++) {
+            const x = flattened[triangles[i] * 2];
+            const y = flattened[triangles[i] * 2 + 1];
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
     }
 
     svg.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - 10} ${minY - 10} ${maxX - minX + 20} ${maxY - minY + 20}">`);

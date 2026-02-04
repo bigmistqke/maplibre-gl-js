@@ -7,7 +7,9 @@ import type {BenchmarkRowProps} from './components/BenchmarkRow';
 
 function updateUI(benchmarks: BenchmarkRowProps[], finished?: boolean) {
     finished = !!finished;
-    const root = createRoot(document.getElementById('benchmarks'));
+    const benchmarksEl = document.getElementById('benchmarks');
+    if (!benchmarksEl) throw new Error('benchmarks element not found');
+    const root = createRoot(benchmarksEl);
     root.render(<BenchmarksTable benchmarks={benchmarks} finished={finished}/>);
 }
 
@@ -34,7 +36,7 @@ export async function run(benchmarks: BenchmarkRowProps[]) {
 
             try {
                 const measurements = await version.bench.run();
-                const samples = measurements.map(({time, iterations}) => time / iterations);
+                const samples = measurements.map(({time, iterations}: {time: number; iterations: number}) => time / iterations);
                 version.status = 'ended';
                 version.samples = samples;
                 version.summary = summaryStatistics(samples);
@@ -42,7 +44,7 @@ export async function run(benchmarks: BenchmarkRowProps[]) {
                 updateUI(benchmarks);
             } catch (error) {
                 version.status = 'errored';
-                version.error = error;
+                version.error = error instanceof Error ? error : new Error(String(error));
                 updateUI(benchmarks);
             }
         }

@@ -3,6 +3,7 @@ import Point from '@mapbox/point-geometry';
 import {EXTENT} from '../data/extent';
 import {scanlineTriangulateVertexRing, subdividePolygon, subdivideVertexLine} from './subdivision';
 import {CanonicalTileID} from '../source/tile_id';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * With this granularity, all geometry should be subdivided along axes divisible by 4.
@@ -949,7 +950,7 @@ describe('Fill subdivision', () => {
         //
         // 160:   4     3    2
         const ring = [0, 1, 2, 3, 4, 5, 6, 7];
-        const finalIndices = [];
+        const finalIndices: number[] = [];
         scanlineTriangulateVertexRing(vertices, ring, finalIndices);
         checkWindingOrder(vertices, finalIndices);
     });
@@ -958,7 +959,7 @@ describe('Fill subdivision', () => {
         // It should pass on this data
         const vertices = [210, 160, 216, 153, 217, 152, 224, 152, 232, 152, 232, 152, 232, 153, 226, 160, 224, 160, 216, 160];
         const ring = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        const finalIndices = [];
+        const finalIndices: number[] = [];
         scanlineTriangulateVertexRing(vertices, ring, finalIndices);
         checkWindingOrder(vertices, finalIndices);
     });
@@ -991,7 +992,7 @@ function getEdgeOccurrencesMap(triangleIndices: Array<number>): Map<string, numb
             const e1 = Math.max(edge[0], edge[1]);
             const key = `${e0}_${e1}`;
             if (edgeOccurrences.has(key)) {
-                edgeOccurrences.set(key, edgeOccurrences.get(key) + 1);
+                edgeOccurrences.set(key, assertedNotNullish(edgeOccurrences.get(key)) + 1);
             } else {
                 edgeOccurrences.set(key, 1);
             }

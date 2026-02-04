@@ -21,8 +21,8 @@ const defaultSources: { [_: string]: SourceSpecification } = {
     }
 };
 
-const buildMockStyle = (layers, sources = defaultSources) => {
-    const style = new Style(null);
+const buildMockStyle = (layers: {[key: string]: any}, sources = defaultSources) => {
+    const style = new Style(null as any);
     style.sourceCaches = Object.fromEntries(
         Object.entries(sources).map(
             ([id, spec]) => [id, {id, getSource: () => spec} as SourceCache]));

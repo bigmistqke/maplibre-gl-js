@@ -13,13 +13,13 @@ import {StubMap} from '../util/test/util';
 
 const transform = new MercatorTransform();
 
-function createSource(options, transformCallback?) {
-    const source = new RasterDEMTileSource('id', options, {send() {}} as any as Dispatcher, null);
+function createSource(options: Record<string, unknown>, transformCallback?: (url: string, resourceType: string) => {url: string}) {
+    const source = new RasterDEMTileSource('id', options, {send() {}} as unknown as Dispatcher, null);
     source.onAdd({
         transform,
         _requestManager: new RequestManager(transformCallback),
         getPixelRatio() { return 1; }
-    } as any);
+    } as unknown as {transform: any; _requestManager: RequestManager; getPixelRatio(): number});
 
     source.on('error', (e) => {
         throw e.error;
@@ -34,7 +34,7 @@ describe('TerrainSourceCache', () => {
     let tsc: TerrainSourceCache;
 
     beforeAll(async () => {
-        global.fetch = null;
+        global.fetch = null as unknown as typeof global.fetch;
         server = fakeServer.create();
         server.respondWith('/source.json', JSON.stringify({
             minzoom: 5,
@@ -44,7 +44,7 @@ describe('TerrainSourceCache', () => {
             bounds: [-47, -7, -45, -5]
         }));
         const map = new StubMap();
-        style = new Style(map as any);
+        style = new Style(map as unknown as any);
         const loadPromise = style.once('style.load');
         style.loadJSON({
             'version': 8,
@@ -54,7 +54,7 @@ describe('TerrainSourceCache', () => {
         await loadPromise;
         const source = createSource({url: '/source.json'});
         server.respond();
-        style.addSource('terrain', source as any);
+        style.addSource('terrain', source as unknown as any);
         tsc = new TerrainSourceCache(style.sourceCaches.terrain);
     });
 
@@ -70,7 +70,7 @@ describe('TerrainSourceCache', () => {
     test('getSourceTile', () => {
         const tileID = new OverscaledTileID(5, 0, 5, 17, 11);
         const tile = new Tile(tileID, 256);
-        tile.dem = {} as DEMData;
+        tile.dem = {} as unknown as DEMData;
         tsc.sourceCache._tiles[tileID.key] = tile;
         expect(tsc.deltaZoom).toBe(1);
         expect(tsc.getSourceTile(tileID)).toBeFalsy();

@@ -1,6 +1,7 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {FullscreenControl} from './fullscreen_control';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
@@ -26,15 +27,15 @@ describe('FullscreenControl', () => {
         });
 
         const map = createMap();
-        const container = window.document.querySelector('body')!;
+        const container = assertedNotNullish(window.document.querySelector('body'));
         const fullscreen = new FullscreenControl({container});
         map.addControl(fullscreen);
-        const control = map._controls.find((ctrl) => {
+        const control = assertedNotNullish(map._controls.find((ctrl) => {
             return Object.prototype.hasOwnProperty.call(ctrl, '_fullscreen');
-        }) as FullscreenControl;
+        })) as FullscreenControl;
         control._onClickFullscreen();
 
-        expect(control._container.tagName).toBe('BODY');
+        expect(assertedNotNullish(control._container).tagName).toBe('BODY');
     });
 
     test('uses pseudo fullscreen when fullscreen is not supported', () => {
@@ -43,9 +44,9 @@ describe('FullscreenControl', () => {
 
         const fullscreen = new FullscreenControl({});
         map.addControl(fullscreen);
-        const control = map._controls.find((ctrl) => {
+        const control = assertedNotNullish(map._controls.find((ctrl) => {
             return Object.prototype.hasOwnProperty.call(ctrl, '_fullscreen');
-        }) as FullscreenControl;
+        })) as FullscreenControl;
 
         expect(mapContainer.classList.contains('maplibregl-pseudo-fullscreen')).toBe(false);
         control._onClickFullscreen();
@@ -67,14 +68,15 @@ describe('FullscreenControl', () => {
         map.addControl(fullscreen);
 
         const click = new window.Event('click');
+        const button = assertedNotNullish(fullscreen._fullscreenButton);
 
         // Simulate a click to the fullscreen button
-        fullscreen._fullscreenButton.dispatchEvent(click);
+        button.dispatchEvent(click);
         expect(fullscreenstart).toHaveBeenCalled();
         expect(fullscreenend).not.toHaveBeenCalled();
 
         // Second simulated click would exit fullscreen mode
-        fullscreen._fullscreenButton.dispatchEvent(click);
+        button.dispatchEvent(click);
         expect(fullscreenend).toHaveBeenCalled();
     });
 
@@ -86,14 +88,15 @@ describe('FullscreenControl', () => {
         map.addControl(fullscreen);
 
         const click = new window.Event('click');
+        const button = assertedNotNullish(fullscreen._fullscreenButton);
 
         // Simulate a click to the fullscreen button
-        fullscreen._fullscreenButton.dispatchEvent(click);
-        expect(map.cooperativeGestures.isEnabled()).toBeFalsy();
+        button.dispatchEvent(click);
+        expect(assertedNotNullish(map.cooperativeGestures).isEnabled()).toBeFalsy();
 
         // Second simulated click would exit fullscreen mode
-        fullscreen._fullscreenButton.dispatchEvent(click);
-        expect(map.cooperativeGestures.isEnabled()).toBeTruthy();
+        button.dispatchEvent(click);
+        expect(assertedNotNullish(map.cooperativeGestures).isEnabled()).toBeTruthy();
     });
 
     test('if never set, cooperative gestures remain disabled when fullscreen exits', () => {
@@ -103,13 +106,14 @@ describe('FullscreenControl', () => {
         map.addControl(fullscreen);
 
         const click = new window.Event('click');
+        const button = assertedNotNullish(fullscreen._fullscreenButton);
 
         // Simulate a click to the fullscreen button
-        fullscreen._fullscreenButton.dispatchEvent(click);
-        expect(map.cooperativeGestures.isEnabled()).toBeFalsy();
+        button.dispatchEvent(click);
+        expect(assertedNotNullish(map.cooperativeGestures).isEnabled()).toBeFalsy();
 
         // Second simulated click would exit fullscreen mode
-        fullscreen._fullscreenButton.dispatchEvent(click);
-        expect(map.cooperativeGestures.isEnabled()).toBeFalsy();
+        button.dispatchEvent(click);
+        expect(assertedNotNullish(map.cooperativeGestures).isEnabled()).toBeFalsy();
     });
 });

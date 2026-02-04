@@ -83,7 +83,7 @@ type TestStats = {
 
 // https://stackoverflow.com/a/1349426/229714
 function makeHash(): string {
-    const array = [];
+    const array: string[] = [];
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
     for (let i = 0; i < 10; ++i)
@@ -101,7 +101,7 @@ function checkParameter(options: RenderOptions, param: string): boolean {
     return true;
 }
 
-function checkValueParameter(options: RenderOptions, defaultValue: any, param: string) {
+function checkValueParameter(options: RenderOptions, defaultValue: string, param: string): string {
     const index = options.tests.findIndex((elem) => { return String(elem).startsWith(param); });
     if (index === -1)
         return defaultValue;
@@ -110,7 +110,7 @@ function checkValueParameter(options: RenderOptions, defaultValue: any, param: s
     if (split.length !== 2)
         return defaultValue;
 
-    return split[1];
+    return split[1] || defaultValue;
 }
 /**
  * Compares the Unit8Array that was created to the expected file in the file system.
@@ -161,11 +161,11 @@ function compareRenderResults(directory: string, testData: TestData, data: Uint8
     // the least amount of difference; this is useful for covering features that render differently
     // depending on platform, i.e. heatmaps use half-float textures for improved rendering where supported
     let minDiff = Infinity;
-    let minDiffImg: PNG;
-    let minExpectedBuf: Buffer;
+    let minDiffImg: PNG | undefined;
+    let minExpectedBuf: Buffer | undefined;
 
-    for (const path of expectedPaths) {
-        const expectedBuf = fs.readFileSync(path);
+    for (const filePath of expectedPaths) {
+        const expectedBuf = fs.readFileSync(filePath);
         const expectedImg = PNG.sync.read(expectedBuf);
         const diffImg = new PNG({width, height});
         if (!testData.expected) {
@@ -183,7 +183,7 @@ function compareRenderResults(directory: string, testData: TestData, data: Uint8
         }
     }
 
-    if (minDiffImg) {
+    if (minDiffImg && minExpectedBuf) {
         const diffBuf = PNG.sync.write(minDiffImg, {filterType: 4});
         fs.writeFileSync(diffPath, diffBuf);
         testData.diff = diffBuf.toString('base64');
@@ -216,16 +216,20 @@ function getTestStyles(options: RenderOptions, directory: string, port: number):
             const style = JSON.parse(fs.readFileSync(path.join(directory, fixture), 'utf8')) as StyleWithTestData;
             style.metadata = style.metadata || {} as any;
 
-            style.metadata.test = {
+            const baseTest: Partial<TestData> = {
                 id,
                 width: 512,
                 height: 512,
                 pixelRatio: 1,
                 recycleMap: options.recycleMap || false,
                 allowed: 0.00025,
-                threshold: 0.1285,
-                ...style.metadata.test
+                threshold: 0.1285
             };
+
+            style.metadata.test = {
+                ...baseTest,
+                ...style.metadata.test
+            } as TestData;
 
             return style;
         })
@@ -254,8 +258,8 @@ function getTestStyles(options: RenderOptions, directory: string, port: number):
  */
 async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): Promise<Uint8Array> {
 
-    const width = styleForTest.metadata.test.width;
-    const height = styleForTest.metadata.test.height;
+    const width = styleForTest.metadata?.test?.width ?? 512;
+    const height = styleForTest.metadata?.test?.height ?? 512;
 
     await page.setViewport({width, height, deviceScaleFactor: 2});
 
@@ -285,7 +289,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             id: string;
             type: string;
             renderingMode: string;
-            program: WebGLProgram;
+            program: WebGLProgram | null = null;
             constructor() {
                 this.id = 'null-island';
                 this.type = 'custom';
@@ -309,19 +313,23 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 }`;
 
                 const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                if (!vertexShader) throw new Error('Failed to create vertex shader');
                 gl.shaderSource(vertexShader, vertexSource);
                 gl.compileShader(vertexShader);
                 const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                if (!fragmentShader) throw new Error('Failed to create fragment shader');
                 gl.shaderSource(fragmentShader, fragmentSource);
                 gl.compileShader(fragmentShader);
 
                 this.program = gl.createProgram();
+                if (!this.program) throw new Error('Failed to create program');
                 gl.attachShader(this.program, vertexShader);
                 gl.attachShader(this.program, fragmentShader);
                 gl.linkProgram(this.program);
             }
 
-            render(gl: WebGL2RenderingContext, args) {
+            render(gl: WebGL2RenderingContext, args: any) {
+                if (!this.program) throw new Error('Program not initialized');
                 const vertexArray = new Float32Array([0.5, 0.5, 0.0]);
                 gl.useProgram(this.program);
                 const vertexBuffer = gl.createBuffer();
@@ -330,7 +338,8 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 const posAttrib = gl.getAttribLocation(this.program, 'aPos');
                 gl.enableVertexAttribArray(posAttrib);
                 gl.vertexAttribPointer(posAttrib, 3, gl.FLOAT, false, 0, 0);
-                gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'u_matrix'), false, args.defaultProjectionData.mainMatrix);
+                const uMatrixLoc = gl.getUniformLocation(this.program, 'u_matrix');
+                gl.uniformMatrix4fv(uMatrixLoc, false, args.defaultProjectionData.mainMatrix);
                 gl.drawArrays(gl.POINTS, 0, 1);
             }
         }
@@ -339,13 +348,14 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             id: string;
             type: string;
             renderingMode: string;
-            program: WebGLProgram & {
+            program: WebGLProgram | null = null;
+            programData: {
                 a_pos?: number;
                 aPos?: number;
                 uMatrix?:  WebGLUniformLocation;
-            };
-            vertexBuffer: WebGLBuffer;
-            indexBuffer: WebGLBuffer;
+            } = {};
+            vertexBuffer: WebGLBuffer | null = null;
+            indexBuffer: WebGLBuffer | null = null;
             constructor() {
                 this.id = 'tent-3d';
                 this.type = 'custom';
@@ -371,20 +381,23 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 }`;
 
                 const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                if (!vertexShader) throw new Error('Failed to create vertex shader');
                 gl.shaderSource(vertexShader, vertexSource);
                 gl.compileShader(vertexShader);
                 const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                if (!fragmentShader) throw new Error('Failed to create fragment shader');
                 gl.shaderSource(fragmentShader, fragmentSource);
                 gl.compileShader(fragmentShader);
 
                 this.program = gl.createProgram();
+                if (!this.program) throw new Error('Failed to create program');
                 gl.attachShader(this.program, vertexShader);
                 gl.attachShader(this.program, fragmentShader);
                 gl.linkProgram(this.program);
                 gl.validateProgram(this.program);
 
-                this.program.aPos = gl.getAttribLocation(this.program, 'aPos');
-                this.program.uMatrix = gl.getUniformLocation(this.program, 'uMatrix');
+                this.programData.aPos = gl.getAttribLocation(this.program, 'aPos');
+                this.programData.uMatrix = gl.getUniformLocation(this.program, 'uMatrix');
 
                 const x = 0.5 - 0.015;
                 const y = 0.5 - 0.01;
@@ -413,13 +426,16 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
             }
 
-            render(gl: WebGL2RenderingContext, args) {
+            render(gl: WebGL2RenderingContext, args: any) {
+                if (!this.program || !this.vertexBuffer || !this.indexBuffer) {
+                    throw new Error('Program or buffers not initialized');
+                }
                 gl.useProgram(this.program);
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-                gl.enableVertexAttribArray(this.program.a_pos);
-                gl.vertexAttribPointer(this.program.aPos, 3, gl.FLOAT, false, 0, 0);
-                gl.uniformMatrix4fv(this.program.uMatrix, false, args.defaultProjectionData.mainMatrix);
+                gl.enableVertexAttribArray(this.programData.a_pos ?? 0);
+                gl.vertexAttribPointer(this.programData.aPos ?? 0, 3, gl.FLOAT, false, 0, 0);
+                gl.uniformMatrix4fv(this.programData.uMatrix, false, args.defaultProjectionData.mainMatrix);
                 gl.drawElements(gl.TRIANGLES, 12, gl.UNSIGNED_SHORT, 0);
             }
         }
@@ -429,8 +445,8 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             type: string;
             renderingMode: string;
 
-            vertexBuffer: WebGLBuffer;
-            indexBuffer: WebGLBuffer;
+            vertexBuffer: WebGLBuffer | null = null;
+            indexBuffer: WebGLBuffer | null = null;
             shaderMap: Map<string, {
                 program: WebGLProgram;
                 a_pos?: number;
@@ -444,7 +460,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 this.renderingMode = '3d';
             }
 
-            getShader(gl, shaderDescription) {
+            getShader(gl: WebGL2RenderingContext, shaderDescription: any) {
                 if (this.shaderMap.has(shaderDescription.variantName)) {
                     return this.shaderMap.get(shaderDescription.variantName);
                 }
@@ -470,16 +486,19 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
 
                 // create a vertex shader
                 const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                if (!vertexShader) throw new Error('Failed to create vertex shader');
                 gl.shaderSource(vertexShader, vertexSource);
                 gl.compileShader(vertexShader);
 
                 // create a fragment shader
                 const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                if (!fragmentShader) throw new Error('Failed to create fragment shader');
                 gl.shaderSource(fragmentShader, fragmentSource);
                 gl.compileShader(fragmentShader);
 
                 // link the two shaders into a WebGL program
                 const program = gl.createProgram();
+                if (!program) throw new Error('Failed to create program');
                 gl.attachShader(program, vertexShader);
                 gl.attachShader(program, fragmentShader);
                 gl.linkProgram(program);
@@ -494,7 +513,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 return result;
             }
 
-            onAdd (map, gl) {
+            onAdd (map: MaplibreMap, gl: WebGL2RenderingContext) {
                 const x = 0.5 - 0.015;
                 const y = 0.5 - 0.01;
                 const z = 500_000;
@@ -522,40 +541,49 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
             }
 
-            render (gl, args) {
+            render (gl: WebGL2RenderingContext, args: any) {
                 const shader = this.getShader(gl, args.shaderData);
+                if (!shader || !this.vertexBuffer || !this.indexBuffer) {
+                    throw new Error('Shader or buffers not initialized');
+                }
                 gl.useProgram(shader.program);
+                const fallbackMatrixLoc = gl.getUniformLocation(shader.program, 'u_projection_fallback_matrix');
                 gl.uniformMatrix4fv(
-                    gl.getUniformLocation(shader.program, 'u_projection_fallback_matrix'),
+                    fallbackMatrixLoc,
                     false,
                     args.defaultProjectionData.fallbackMatrix
                 );
+                const projectionMatrixLoc = gl.getUniformLocation(shader.program, 'u_projection_matrix');
                 gl.uniformMatrix4fv(
-                    gl.getUniformLocation(shader.program, 'u_projection_matrix'),
+                    projectionMatrixLoc,
                     false,
                     args.defaultProjectionData.mainMatrix
                 );
+                const tileMercatorLoc = gl.getUniformLocation(shader.program, 'u_projection_tile_mercator_coords');
                 gl.uniform4f(
-                    gl.getUniformLocation(shader.program, 'u_projection_tile_mercator_coords'),
+                    tileMercatorLoc,
                     ...args.defaultProjectionData.tileMercatorCoords
                 );
+                const clippingPlaneLoc = gl.getUniformLocation(shader.program, 'u_projection_clipping_plane');
                 gl.uniform4f(
-                    gl.getUniformLocation(shader.program, 'u_projection_clipping_plane'),
+                    clippingPlaneLoc,
                     ...args.defaultProjectionData.clippingPlane
                 );
+                const transitionLoc = gl.getUniformLocation(shader.program, 'u_projection_transition');
                 gl.uniform1f(
-                    gl.getUniformLocation(shader.program, 'u_projection_transition'),
+                    transitionLoc,
                     args.defaultProjectionData.projectionTransition
                 );
 
                 gl.enable(gl.CULL_FACE);
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-                gl.enableVertexAttribArray(shader.aPos);
-                gl.vertexAttribPointer(shader.aPos, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(shader.aPos ?? 0);
+                gl.vertexAttribPointer(shader.aPos ?? 0, 3, gl.FLOAT, false, 0, 0);
                 for (let i = 0; i < 2; i++) {
+                    const colorLoc = gl.getUniformLocation(shader.program, 'u_color');
                     gl.uniform4f(
-                        gl.getUniformLocation(shader.program, 'u_color'),
+                        colorLoc,
                         i === 0 ? 1 : 0.25, 0, 0, 1
                     );
                     gl.cullFace(i === 0 ? gl.BACK : gl.FRONT);
@@ -571,9 +599,12 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
         };
 
         async function updateFakeCanvas(document: Document, id: string, imagePath: string) {
-            const fakeCanvas = document.getElementById(id) as HTMLCanvasElement;
+            const fakeCanvas = document.getElementById(id);
+            if (!(fakeCanvas instanceof HTMLCanvasElement)) {
+                throw new Error(`Element with id ${id} is not a canvas`);
+            }
 
-            const getMeta = async (url) => {
+            const getMeta = async (url: string) => {
                 const img = new Image();
                 img.src = url;
                 img.crossOrigin = 'anonymous';
@@ -588,8 +619,9 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             fakeCanvas.id = id;
 
             const ctx = fakeCanvas.getContext('2d');
-            ctx?.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
-
+            if (ctx) {
+                ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
+            }
         }
 
         /**
@@ -644,7 +676,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                         });
                         break;
                     case 'addImage': {
-                        const getImage = async (url) => {
+                        const getImage = async (url: string) => {
                             const img = new Image();
                             img.src = url;
                             img.crossOrigin = 'anonymous';
@@ -662,20 +694,29 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                         break;
                     case 'updateFakeCanvas': {
                         const canvasSource = map.getSource<CanvasSource>(operation[1]);
-                        canvasSource.play();
-                        // update before pause should be rendered
-                        await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[2]);
-                        canvasSource.pause();
-                        // update after pause should not be rendered
-                        await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[3]);
-                        map._render();
+                        if (canvasSource && 'play' in canvasSource) {
+                            (canvasSource as any).play();
+                            // update before pause should be rendered
+                            if (testData.addFakeCanvas) {
+                                await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[2]);
+                            }
+                            (canvasSource as any).pause();
+                            // update after pause should not be rendered
+                            if (testData.addFakeCanvas) {
+                                await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[3]);
+                            }
+                            map._render();
+                        }
                         break;
                     }
                     case 'setStyle':
                         map.setStyle(operation[1], {localIdeographFontFamily: false as any});
                         break;
                     case 'pauseSource':
-                        map.style.sourceCaches[operation[1]].pause();
+                        const cache = map.style?.sourceCaches[operation[1]];
+                        if (cache && 'pause' in cache) {
+                            (cache as any).pause();
+                        }
                         break;
                     default:
                         if (typeof map[operation[0]] === 'function') {
@@ -689,7 +730,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
         async function createFakeCanvas(document: Document, id: string, imagePath: string): Promise<HTMLCanvasElement> {
             const fakeCanvas: HTMLCanvasElement = document.createElement('canvas');
 
-            const getImage = async (url) => {
+            const getImage = async (url: string) => {
                 const img = new Image();
                 img.src = url;
                 img.crossOrigin = 'anonymous';
@@ -704,7 +745,9 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             fakeCanvas.id = id;
 
             const ctx = fakeCanvas.getContext('2d');
-            ctx?.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
+            if (ctx) {
+                ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
+            }
 
             return fakeCanvas;
         }
@@ -763,8 +806,8 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
 
             await applyOperations(options, map as any, idle);
             const viewport = gl.getParameter(gl.VIEWPORT);
-            const w = options.reportWidth ?? viewport[2];
-            const h = options.reportHeight ?? viewport[3];
+            const w = options.reportWidth ?? (viewport ? viewport[2] : 512);
+            const h = options.reportHeight ?? (viewport ? viewport[3] : 512);
 
             const data = new Uint8Array(w * h * 4);
             gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data);
@@ -781,11 +824,13 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             }
 
             map.remove();
-            delete map.painter.context.gl;
+            delete (map.painter.context as any).gl;
 
             if (options.addFakeCanvas) {
                 const fakeCanvas = window.document.getElementById(options.addFakeCanvas.id);
-                fakeCanvas.parentNode.removeChild(fakeCanvas);
+                if (fakeCanvas && fakeCanvas.parentNode) {
+                    fakeCanvas.parentNode.removeChild(fakeCanvas);
+                }
             }
 
             resolve(data);

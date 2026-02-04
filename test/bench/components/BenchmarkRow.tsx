@@ -4,7 +4,7 @@ import {BenchmarkStatistic} from './BenchmarkStatistic';
 import {RegressionPlot} from './RegressionPlot';
 import {StatisticsPlot} from './StatisticsPlot';
 import {formatSample, Version, versionColor} from './util';
-import React from 'react';
+import React, {ReactElement} from 'react';
 
 export type BenchmarkRowProps = {
     name: string;
@@ -24,8 +24,8 @@ export const BenchmarkRow = (props: BenchmarkRowProps) => {
         [current, main] = props.versions;
     }
 
-    let change;
-    let pInferiority;
+    let change: ReactElement | undefined;
+    let pInferiority: ReactElement | undefined;
     if (endedCount === 2) {
         const delta = current.summary.trimmedMean - main.summary.trimmedMean;
         // Use "Cohen's d" (modified to used the trimmed mean/sd) to decide
@@ -55,7 +55,7 @@ export const BenchmarkRow = (props: BenchmarkRowProps) => {
         </p>;
     }
 
-    const renderStatistic = (title: string, statistic: (version: Version) => any) => {
+    const renderStatistic = (title: string, statistic: (version: Version) => any): ReactElement => {
         return (
             <tr>
                 <th>{title}</th>
@@ -66,7 +66,7 @@ export const BenchmarkRow = (props: BenchmarkRowProps) => {
         );
     };
 
-    const reload = () => {
+    const reload = (): void => {
         location.reload();
     };
 

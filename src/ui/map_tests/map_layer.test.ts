@@ -1,6 +1,6 @@
 import {describe, beforeEach, afterEach, test, expect} from 'vitest';
 import {createMap, beforeMapTest, createStyle, waitForEvent} from '../../util/test/util';
-import {extend} from '../../util/util';
+import {extend, assertedNotNullish} from '../../util/util';
 import {type EvaluationParameters} from '../../style/evaluation_parameters';
 import {fakeServer, type FakeServer} from 'nise';
 import {MessageType} from '../../util/actor_messages';
@@ -9,7 +9,8 @@ let server: FakeServer;
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
     server = fakeServer.create();
 });
 
@@ -44,8 +45,8 @@ test('moveLayer', async () => {
 
     await map.once('render');
     map.moveLayer('layerId1', 'layerId2');
-    expect(map.getLayer('layerId1').id).toBe('layerId1');
-    expect(map.getLayer('layerId2').id).toBe('layerId2');
+    expect(assertedNotNullish(map.getLayer('layerId1')).id).toBe('layerId1');
+    expect(assertedNotNullish(map.getLayer('layerId2')).id).toBe('layerId2');
 });
 
 test('getLayer', async () => {
@@ -70,7 +71,7 @@ test('getLayer', async () => {
     });
 
     await map.once('render');
-    const mapLayer = map.getLayer('layerId');
+    const mapLayer = assertedNotNullish(map.getLayer('layerId'));
     expect(mapLayer.id).toBe(layer.id);
     expect(mapLayer.type).toBe(layer.type);
     expect(mapLayer.source).toBe(layer.source);
@@ -156,14 +157,14 @@ describe('setLayoutProperty', () => {
         });
 
         await map.once('style.load');
-        map.style.dispatcher.broadcast = function (key, value: any) {
+        assertedNotNullish(map.style).dispatcher.broadcast = function (key: any, value: any) {
             expect(key).toBe(MessageType.updateLayers);
-            expect(value.layers.map((layer) => { return layer.id; })).toEqual(['symbol']);
+            expect(value.layers.map((layer: any) => { return layer.id; })).toEqual(['symbol']);
             return Promise.resolve({} as any);
         };
 
         map.setLayoutProperty('symbol', 'text-transform', 'lowercase');
-        map.style.update({} as EvaluationParameters);
+        assertedNotNullish(map.style).update({} as EvaluationParameters);
         expect(map.getLayoutProperty('symbol', 'text-transform')).toBe('lowercase');
     });
 
@@ -390,11 +391,13 @@ describe('setPaintProperty', () => {
 
         await map.once('style.load');
         expect(map.getPaintProperty('background', 'background-color')).toBe(colors[0]);
-        expect(map.getStyle().layers.filter(l => l.id === 'background')[0].paint['background-color']).toBe(colors[0]);
+        const layer0 = assertedNotNullish(map.getStyle()).layers.filter((l: any) => l.id === 'background')[0];
+        expect((assertedNotNullish(layer0.paint) as any)['background-color']).toBe(colors[0]);
         // update property
         map.setPaintProperty('background', 'background-color', colors[1]);
         expect(map.getPaintProperty('background', 'background-color')).toBe(colors[1]);
-        expect(map.getStyle().layers.filter(l => l.id === 'background')[0].paint['background-color']).toBe(colors[1]);
+        const layer1 = assertedNotNullish(map.getStyle()).layers.filter((l: any) => l.id === 'background')[0];
+        expect((assertedNotNullish(layer1.paint) as any)['background-color']).toBe(colors[1]);
     });
 
     test('throw before loaded', () => {

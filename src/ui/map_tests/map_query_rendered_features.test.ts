@@ -1,10 +1,11 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {LngLat} from '../../geo/lng_lat';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
 });
 
 describe('queryRenderedFeatures', () => {
@@ -12,7 +13,7 @@ describe('queryRenderedFeatures', () => {
     test('if no arguments provided', async () => {
         const map = createMap();
         await map.once('load');
-        const spy = vi.spyOn(map.style, 'queryRenderedFeatures');
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'queryRenderedFeatures');
 
         const output = map.queryRenderedFeatures();
 
@@ -25,7 +26,7 @@ describe('queryRenderedFeatures', () => {
     test('if only "geometry" provided', async () => {
         const map = createMap();
         await map.once('load');
-        const spy = vi.spyOn(map.style, 'queryRenderedFeatures');
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'queryRenderedFeatures');
 
         const output = map.queryRenderedFeatures(map.project(new LngLat(0, 0)));
 
@@ -39,7 +40,7 @@ describe('queryRenderedFeatures', () => {
     test('if only "params" provided', async () => {
         const map = createMap();
         await map.once('load');
-        const spy = vi.spyOn(map.style, 'queryRenderedFeatures');
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'queryRenderedFeatures');
 
         const output = map.queryRenderedFeatures({filter: ['all']});
 
@@ -52,7 +53,7 @@ describe('queryRenderedFeatures', () => {
     test('if both "geometry" and "params" provided', async () => {
         const map = createMap();
         await map.once('load');
-        const spy = vi.spyOn(map.style, 'queryRenderedFeatures');
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'queryRenderedFeatures');
 
         const output = map.queryRenderedFeatures({filter: ['all']});
 
@@ -65,7 +66,7 @@ describe('queryRenderedFeatures', () => {
     test('if "geometry" with unwrapped coords provided', async () => {
         const map = createMap();
         await map.once('load');
-        const spy = vi.spyOn(map.style, 'queryRenderedFeatures');
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'queryRenderedFeatures');
 
         map.queryRenderedFeatures(map.project(new LngLat(360, 0)));
 

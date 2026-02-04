@@ -8,7 +8,7 @@ import {EXTENT} from '../data/extent';
 
 const emptyCallbacks = {
     calcMatrices: () => {},
-    constrain: (center, zoom) => { return {center, zoom}; },
+    constrain: (center: any, zoom: any) => { return {center, zoom}; },
 };
 
 describe('TransformHelper', () => {

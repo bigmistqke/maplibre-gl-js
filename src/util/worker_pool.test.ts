@@ -32,7 +32,9 @@ describe('WorkerPool', () => {
 
         // keeps workers if a dispatcher is still active
         expect(workersTerminated).toBe(0);
-        expect(pool.workers.length > 0).toBeTruthy();
+        const poolWorkers = pool.workers;
+        if (!poolWorkers) throw new Error('Workers must be defined');
+        expect(poolWorkers.length > 0).toBeTruthy();
 
         // terminates workers if no dispatchers are active
         pool.release('map-1');

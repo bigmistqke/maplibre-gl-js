@@ -2,6 +2,7 @@ import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {createMap as globalCreateMap, beforeMapTest, sleep, createTerrain} from '../util/test/util';
 import {Marker} from './marker';
 import {Popup, type Offset} from './popup';
+import type {PointLike} from './camera';
 import {LngLat} from '../geo/lng_lat';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
 import Point from '@mapbox/point-geometry';
@@ -365,58 +366,61 @@ describe('marker', () => {
         marker.togglePopup();
 
         const mapHeight = map.getContainer().clientHeight;
-        const markerTop = -marker.getPopup().options.offset['bottom'][1]; // vertical distance from tip of marker to the top in pixels
-        const markerRight = -marker.getPopup().options.offset['right'][0]; // horizontal distance from the tip of the marker to the right in pixels
+        const popup = assertedNotNullish(marker.getPopup());
+        const offset = popup.options.offset as {[key: string]: PointLike};
+        const markerTop = -(offset['bottom'] as [number, number])[1]; // vertical distance from tip of marker to the top in pixels
+        const markerRight = -(offset['right'] as [number, number])[0]; // horizontal distance from the tip of the marker to the right in pixels
 
         // give the popup some height
-        Object.defineProperty(marker.getPopup()._container, 'offsetWidth', {value: 100});
-        Object.defineProperty(marker.getPopup()._container, 'offsetHeight', {value: 100});
+        const popupContainer = assertedNotNullish(popup._container);
+        Object.defineProperty(popupContainer, 'offsetWidth', {value: 100});
+        Object.defineProperty(popupContainer, 'offsetHeight', {value: 100});
 
         // marker should default to above since it has enough space
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-bottom')
+            popupContainer.classList.contains('maplibregl-popup-anchor-bottom')
         ).toBeTruthy();
 
         // move marker to the top forcing the popup to below
         marker.setLngLat(map.unproject([mapHeight / 2, markerTop]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-top')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-top')
         ).toBeTruthy();
 
         // move marker to the right forcing the popup to the left
         marker.setLngLat(map.unproject([mapHeight - markerRight, mapHeight / 2]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-right')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-right')
         ).toBeTruthy();
 
         // move marker to the left forcing the popup to the right
         marker.setLngLat(map.unproject([markerRight, mapHeight / 2]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-left')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-left')
         ).toBeTruthy();
 
         // move marker to the top left forcing the popup to the bottom right
         marker.setLngLat(map.unproject([markerRight, markerTop]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-top-left')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-top-left')
         ).toBeTruthy();
 
         // move marker to the top right forcing the popup to the bottom left
         marker.setLngLat(map.unproject([mapHeight - markerRight, markerTop]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-top-right')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-top-right')
         ).toBeTruthy();
 
         // move marker to the bottom left forcing the popup to the top right
         marker.setLngLat(map.unproject([markerRight, mapHeight]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-bottom-left')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-bottom-left')
         ).toBeTruthy();
 
         // move marker to the bottom right forcing the popup to the top left
         marker.setLngLat(map.unproject([mapHeight - markerRight, mapHeight]));
         expect(
-            marker.getPopup()._container.classList.contains('maplibregl-popup-anchor-bottom-right')
+            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-bottom-right')
         ).toBeTruthy();
 
         map.remove();
@@ -436,7 +440,8 @@ describe('marker', () => {
         marker._lngLat = map.unproject(marker._pos);
         marker.togglePopup();
 
-        expect(marker.getPopup()._pos.x).toBeCloseTo(marker._pos.x, 0);
+        const popup = assertedNotNullish(marker.getPopup());
+        expect(assertedNotNullish(popup._pos).x).toBeCloseTo(marker._pos.x, 0);
         map.remove();
     });
 
@@ -455,7 +460,8 @@ describe('marker', () => {
         marker._lngLat = map.unproject(marker._pos);
         marker.togglePopup();
 
-        expect(marker.getPopup()._pos.x).toBeCloseTo(marker._pos.x, 0);
+        const popup = assertedNotNullish(marker.getPopup());
+        expect(assertedNotNullish(popup._pos).x).toBeCloseTo(marker._pos.x, 0);
         map.remove();
     });
 
@@ -843,11 +849,11 @@ describe('marker', () => {
             .addTo(map);
 
         const rotationRegex = /rotateZ\(-?([0-9]+)deg\)/;
-        const initialRotation = marker.getElement().style.transform.match(rotationRegex)[1];
+        const initialRotation = assertedNotNullish(marker.getElement().style.transform.match(rotationRegex))[1];
 
         map.setBearing(map.getBearing() + 180);
 
-        const finalRotation = marker.getElement().style.transform.match(rotationRegex)[1];
+        const finalRotation = assertedNotNullish(marker.getElement().style.transform.match(rotationRegex))[1];
         expect(initialRotation).not.toBe(finalRotation);
 
         map.remove();
@@ -862,11 +868,11 @@ describe('marker', () => {
         map.setPitch(0);
 
         const rotationRegex = /rotateX\(-?([0-9]+)deg\)/;
-        const initialPitch = marker.getElement().style.transform.match(rotationRegex)[1];
+        const initialPitch = assertedNotNullish(marker.getElement().style.transform.match(rotationRegex))[1];
 
         map.setPitch(45);
 
-        const finalPitch = marker.getElement().style.transform.match(rotationRegex)[1];
+        const finalPitch = assertedNotNullish(marker.getElement().style.transform.match(rotationRegex))[1];
         expect(initialPitch).not.toBe(finalPitch);
 
         map.remove();
@@ -924,21 +930,21 @@ describe('marker', () => {
             .setLngLat([1, 1])
             .addTo(map);
 
-        expect(map._oneTimeListeners.render).toBeUndefined();
+        expect(map._oneTimeListeners?.render).toBeUndefined();
 
         map.fire('terrain');
-        expect(map._oneTimeListeners.render).toHaveLength(1);
+        expect(map._oneTimeListeners?.render).toHaveLength(1);
 
         map.fire('render');
-        expect(map._oneTimeListeners.render).toHaveLength(1);
+        expect(map._oneTimeListeners?.render).toHaveLength(1);
 
         map.fire('render');
-        expect(map._oneTimeListeners.render).toHaveLength(1);
+        expect(map._oneTimeListeners?.render).toHaveLength(1);
 
         // await idle to be fully loaded
         await map.once('idle');
         map.fire('render');
-        expect(map._oneTimeListeners.render).toHaveLength(0);
+        expect(map._oneTimeListeners?.render).toHaveLength(0);
         map.remove();
     });
 
@@ -1007,7 +1013,7 @@ describe('marker', () => {
         expect(marker.getElement().style.opacity).toMatch('.2');
 
         // Remove terrain
-        map.terrain = null;
+        map.terrain = undefined;
         map.fire('terrain');
         await sleep(100);
         expect(marker.getElement().style.opacity).toMatch('1');
@@ -1116,7 +1122,7 @@ describe('marker', () => {
         await sleep(100);
         marker.togglePopup();
 
-        expect(marker._popup.isOpen()).toBeTruthy();
+        expect(assertedNotNullish(marker._popup).isOpen()).toBeTruthy();
 
         map.transform.lngLatToCameraDepth = () => .95; // Mocking distance to marker
 
@@ -1145,7 +1151,7 @@ describe('marker', () => {
 
         marker.togglePopup();
 
-        expect(marker._popup.isOpen()).toBeFalsy();
+        expect(assertedNotNullish(marker._popup).isOpen()).toBeFalsy();
 
         map.remove();
     });
@@ -1158,7 +1164,7 @@ describe('marker', () => {
 
         marker.setLngLat([181, 0]);
 
-        expect(marker._lngLat.lng).toBe(-179);
+        expect(assertedNotNullish(marker._lngLat).lng).toBe(-179);
     });
 
     test('Marker\'s lng is wrapped when slightly crossing 180 with zoomed out globe', async () => {
@@ -1173,7 +1179,7 @@ describe('marker', () => {
 
         marker.setLngLat([181, 0]);
 
-        expect(marker._lngLat.lng).toBe(-179);
+        expect(assertedNotNullish(marker._lngLat).lng).toBe(-179);
     });
 
     test('should round the marker transform position to whole pixels when subpixel positioning is disabled', () => {

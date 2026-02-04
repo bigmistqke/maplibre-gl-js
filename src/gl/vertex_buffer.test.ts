@@ -8,7 +8,11 @@ describe('VertexBuffer', () => {
     let gl: WebGLRenderingContext;
 
     beforeEach(() => {
-        gl = document.createElement('canvas').getContext('webgl');
+        const glContext = document.createElement('canvas').getContext('webgl');
+        if (!glContext) {
+            throw new Error('Failed to get WebGL context');
+        }
+        gl = glContext;
     });
 
     class TestArray extends StructArrayLayout3i6 {}

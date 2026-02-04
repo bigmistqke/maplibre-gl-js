@@ -1,17 +1,21 @@
 import {describe, beforeEach, test, expect} from 'vitest';
 import {createMap as globalCreateMap, beforeMapTest} from '../../util/test/util';
 
-function createMap(logoPosition, maplibreLogo) {
+function createMap(logoPosition: string | undefined, maplibreLogo: boolean | undefined) {
 
-    const mapobj = {
-        logoPosition,
-        maplibreLogo,
+    const mapobj: Record<string, any> = {
         style: {
             version: 8,
             sources: {},
             layers: []
         }
     };
+    if (logoPosition !== undefined) {
+        mapobj.logoPosition = logoPosition;
+    }
+    if (maplibreLogo !== undefined) {
+        mapobj.maplibreLogo = maplibreLogo;
+    }
 
     return globalCreateMap(mapobj);
 }

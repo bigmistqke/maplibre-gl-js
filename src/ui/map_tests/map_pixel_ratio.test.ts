@@ -1,9 +1,10 @@
 import {describe, beforeEach, test, expect} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
 });
 
 test('pixel ratio defaults to devicePixelRatio', () => {
@@ -24,9 +25,9 @@ test('painter has the expected size and pixel ratio', () => {
     Object.defineProperty(container, 'clientWidth', {value: 512});
     Object.defineProperty(container, 'clientHeight', {value: 512});
     const map = createMap({container, pixelRatio: 2});
-    expect(map.painter.pixelRatio).toBe(2);
-    expect(map.painter.width).toBe(1024);
-    expect(map.painter.height).toBe(1024);
+    expect(assertedNotNullish(map.painter).pixelRatio).toBe(2);
+    expect(assertedNotNullish(map.painter).width).toBe(1024);
+    expect(assertedNotNullish(map.painter).height).toBe(1024);
 });
 
 test('canvas has the expected size', () => {
@@ -56,13 +57,13 @@ describe('setPixelRatio', () => {
         Object.defineProperty(container, 'clientWidth', {value: 512});
         Object.defineProperty(container, 'clientHeight', {value: 512});
         const map = createMap({container, pixelRatio: 1});
-        expect(map.painter.pixelRatio).toBe(1);
-        expect(map.painter.width).toBe(512);
-        expect(map.painter.height).toBe(512);
+        expect(assertedNotNullish(map.painter).pixelRatio).toBe(1);
+        expect(assertedNotNullish(map.painter).width).toBe(512);
+        expect(assertedNotNullish(map.painter).height).toBe(512);
         map.setPixelRatio(2);
-        expect(map.painter.pixelRatio).toBe(2);
-        expect(map.painter.width).toBe(1024);
-        expect(map.painter.height).toBe(1024);
+        expect(assertedNotNullish(map.painter).pixelRatio).toBe(2);
+        expect(assertedNotNullish(map.painter).width).toBe(1024);
+        expect(assertedNotNullish(map.painter).height).toBe(1024);
     });
 });
 

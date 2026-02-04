@@ -1,16 +1,18 @@
 import {beforeEach, test, expect, vi} from 'vitest';
+import {Map} from '../map';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {type IControl} from '../control/control';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 test('addControl', () => {
     const map = createMap();
     const control = {
-        onAdd(_) {
+        onAdd(_: Map) {
             expect(map).toBe(_);
             return window.document.createElement('div');
         }
@@ -36,7 +38,7 @@ test('removeControl', () => {
         onAdd() {
             return window.document.createElement('div');
         },
-        onRemove(_) {
+        onRemove(_: Map) {
             expect(map).toBe(_);
         }
     };
@@ -48,14 +50,16 @@ test('removeControl', () => {
 
 test('hasControl', () => {
     const map = createMap();
-    function Ctrl() {}
+    function Ctrl(this: any) {
+        // dummy constructor
+    }
     Ctrl.prototype = {
-        onAdd(_) {
+        onAdd(_: Map) {
             return window.document.createElement('div');
         }
     };
 
-    const control = new Ctrl();
+    const control = new (Ctrl as any)() as any as IControl;
     expect(map.hasControl(control)).toBe(false);
     map.addControl(control);
     expect(map.hasControl(control)).toBe(true);

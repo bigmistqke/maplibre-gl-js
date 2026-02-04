@@ -46,7 +46,7 @@ describe('ColorReliefStyleLayer', () => {
         expect(colorRamp.elevationStops).toEqual([0,1000]);
         expect(colorRamp.colorStops).toEqual([Color.black,Color.white]);
 
-        colorReliefStyleLayer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        colorReliefStyleLayer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
         expect(colorReliefStyleLayer.paint.get('color-relief-opacity')).toEqual(0.5);
     });
 

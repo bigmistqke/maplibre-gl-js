@@ -30,7 +30,7 @@ function createSource(options: any, transformCallback?: any, clearTiles: () => v
         },
         getGlobalState: () => ({}),
         getPixelRatio() { return 1; },
-    } as any as Map);
+    } as unknown as Map);
 
     source.on('error', () => { }); // to prevent console log of errors
 
@@ -40,7 +40,7 @@ function createSource(options: any, transformCallback?: any, clearTiles: () => v
 describe('VectorTileSource', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null as any; // Test mock
+        global.fetch = null as unknown as typeof global.fetch; // Test mock: force null to simulate missing fetch
         server = fakeServer.create();
     });
 
@@ -172,11 +172,11 @@ describe('VectorTileSource', () => {
             await source.loadTile({
                 loadVectorData() {},
                 tileID: new OverscaledTileID(10, 0, 10, 5, 5)
-            } as any as Tile);
+            } as unknown as Tile);
 
             assertNotNullish(receivedMessage);
             expect(receivedMessage.type).toBe(MessageType.loadTile);
-            expect(expectedURL).toBe((receivedMessage.data as WorkerTileParameters).request.url);
+            expect(expectedURL).toBe((receivedMessage.data as unknown as WorkerTileParameters).request.url);
         });
     }
 
@@ -198,7 +198,7 @@ describe('VectorTileSource', () => {
             state: 'loading',
             loadVectorData() {},
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         source.loadTile(tile);
         expect(transformSpy).toHaveBeenCalledTimes(1);
         expect(transformSpy).toHaveBeenCalledWith('http://example.com/10/5/5.png', 'Tile');
@@ -211,7 +211,7 @@ describe('VectorTileSource', () => {
         source.dispatcher = getWrapDispatcher()({
             sendAsync(_message) {
                 const error = new Error();
-                (error as any).status = 404;
+                (error as unknown as {status?: number}).status = 404;
                 return Promise.reject(error);
             }
         });
@@ -223,7 +223,7 @@ describe('VectorTileSource', () => {
             state: 'loading',
             loadVectorData: vi.fn(),
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         await source.loadTile(tile);
         expect(tile.loadVectorData).toHaveBeenCalledTimes(1);
     });
@@ -245,7 +245,7 @@ describe('VectorTileSource', () => {
             state: 'loading',
             loadVectorData: vi.fn(),
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         await expect(source.loadTile(tile)).rejects.toThrow('Error');
         expect(tile.loadVectorData).toHaveBeenCalledTimes(0);
     });
@@ -269,7 +269,7 @@ describe('VectorTileSource', () => {
             state: 'loading',
             loadVectorData: vi.fn(),
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         await source.loadTile(tile);
         expect(tile.loadVectorData).toHaveBeenCalledTimes(1);
     });
@@ -295,7 +295,7 @@ describe('VectorTileSource', () => {
                 events.push('tileLoaded');
             },
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         const initialLoadPromise = source.loadTile(tile);
 
         expect(tile.state).toBe('loading');
@@ -373,7 +373,7 @@ describe('VectorTileSource', () => {
             state: 'loading',
             loadVectorData() {},
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         await source.loadTile(tile);
 
         assertNotNullish(receivedMessage);
@@ -384,7 +384,7 @@ describe('VectorTileSource', () => {
         const source = createSource({url: '/source.json'});
         source.onRemove();
         assertNotNullish(server.lastRequest);
-        expect((server.lastRequest as any).aborted).toBe(true);
+        expect((server.lastRequest as unknown as {aborted?: boolean}).aborted).toBe(true);
     });
 
     test('supports url property updates', () => {

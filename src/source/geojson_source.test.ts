@@ -5,7 +5,7 @@ import {GeoJSONSource, type GeoJSONSourceOptions} from './geojson_source';
 import {type IReadonlyTransform} from '../geo/transform_interface';
 import {EXTENT} from '../data/extent';
 import {LngLat} from '../geo/lng_lat';
-import {extend} from '../util/util';
+import {extend, assertedNotNullish} from '../util/util';
 import {type Dispatcher} from '../util/dispatcher';
 import {type RequestManager} from '../util/request_manager';
 import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings';
@@ -131,7 +131,8 @@ describe('GeoJSONSource.setData', () => {
         const source = new GeoJSONSource('id', {data: {}} as GeoJSONSourceOptions, wrapDispatcher({
             sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
-                    setTimeout(() => resolve({abandoned: true}), 0);
+                    // Test mock
+                    setTimeout(() => resolve({abandoned: true} as any), 0);
                 });
             }
         }), undefined);
@@ -193,7 +194,8 @@ describe('GeoJSONSource.setData', () => {
         const source = new GeoJSONSource('id', {} as GeoJSONSourceOptions, wrapDispatcher({
             sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
-                    setTimeout(() => resolve({abandoned: true}), 0);
+                    // Test mock
+                    setTimeout(() => resolve({abandoned: true} as any), 0);
                 });
             }
         }), undefined);
@@ -214,10 +216,11 @@ describe('GeoJSONSource.onRemove', () => {
                 spy();
                 return Promise.resolve({});
             },
+            // Test mock
             broadcast() {
                 // Ignore
             }
-        }), undefined);
+        } as any), undefined);
         source.onRemove();
         expect(spy).toHaveBeenCalled();
     });
@@ -278,7 +281,8 @@ describe('GeoJSONSource.update', () => {
         const mockDispatcher = wrapDispatcher({
             sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.loadData);
-                expect(message.data.superclusterOptions).toEqual({
+                // Test mock
+                expect((assertedNotNullish(message.data) as any).superclusterOptions).toEqual({
                     maxZoom: 12,
                     minPoints: 3,
                     extent: EXTENT,
@@ -309,9 +313,10 @@ describe('GeoJSONSource.update', () => {
         const mockDispatcher = wrapDispatcher({
             sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.loadData);
-                expect(message.data.cluster).toBe(true);
-                expect(message.data.superclusterOptions.radius).toBe(80 * EXTENT / source.tileSize);
-                expect(message.data.superclusterOptions.maxZoom).toBe(16);
+                // Test mock
+                expect((assertedNotNullish(message.data) as any).cluster).toBe(true);
+                expect((assertedNotNullish(message.data) as any).superclusterOptions.radius).toBe(80 * EXTENT / source.tileSize);
+                expect((assertedNotNullish(message.data) as any).superclusterOptions.maxZoom).toBe(16);
                 spy();
                 return Promise.resolve({});
             }
@@ -335,7 +340,8 @@ describe('GeoJSONSource.update', () => {
         const mockDispatcher = wrapDispatcher({
             sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.loadData);
-                expect(message.data.superclusterOptions).toEqual({
+                // Test mock
+                expect((assertedNotNullish(message.data) as any).superclusterOptions).toEqual({
                     maxZoom: 12,
                     minPoints: 3,
                     extent: EXTENT,
@@ -396,7 +402,8 @@ describe('GeoJSONSource.update', () => {
         const mockDispatcher = wrapDispatcher({
             sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
-                    setTimeout(() => resolve({abandoned: requestCount++ === 0}));
+                    // Test mock
+                    setTimeout(() => resolve({abandoned: requestCount++ === 0} as any));
                 });
             }
         });
@@ -712,7 +719,8 @@ describe('GeoJSONSource.getBounds', () => {
                             [1.1, 1.2],
                             [1.3, 1.4]
                         ]
-                    }
+                    },
+                    properties: {}
                 });
             }
         }), undefined);
@@ -738,7 +746,8 @@ describe('GeoJSONSource.getBounds', () => {
                                 [1.1, 1.2],
                                 [1.3, 1.8]
                             ]
-                        }
+                        },
+                        properties: {}
                     }, {
                         type: 'Feature',
                         geometry: {
@@ -747,7 +756,8 @@ describe('GeoJSONSource.getBounds', () => {
                                 [1.5, 1.6],
                                 [1.7, 1.4]
                             ]
-                        }
+                        },
+                        properties: {}
                     }]
                 });
             }

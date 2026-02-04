@@ -7,9 +7,12 @@ import {StubMap} from '../util/test/util';
 const getStubMap = () => new StubMap() as any;
 
 test('Render must not fail with incompletely loaded style', () => {
-    const gl = document.createElement('canvas').getContext('webgl');
+    const glContext = document.createElement('canvas').getContext('webgl');
+    if (!glContext) {
+        throw new Error('Failed to get WebGL context');
+    }
     const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
-    const painter = new Painter(gl, transform);
+    const painter = new Painter(glContext, transform);
     const map = getStubMap();
     const style = new Style(map);
     style._setProjectionInternal('mercator');

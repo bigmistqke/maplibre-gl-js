@@ -52,7 +52,7 @@ function createCamera(options?: CameraOptions & { globe?: boolean; renderWorldCo
     transform.setMaxZoom(20);
     transform.setMinPitch(0);
     transform.setMaxPitch(60);
-    transform.setRenderWorldCopies(options.renderWorldCopies);
+    transform.setRenderWorldCopies(options.renderWorldCopies ?? true);
     transform.resize(512, 512);
 
     const camera = attachSimulateFrame(new CameraMock(transform, new MercatorCameraHelper(), {} as any));
@@ -61,8 +61,8 @@ function createCamera(options?: CameraOptions & { globe?: boolean; renderWorldCo
     }
     camera.jumpTo(options);
 
-    camera._update = () => {};
-    camera._elevateCameraIfInsideTerrain = (_tr : any) => ({});
+    (camera as any)._update = () => {}; // Test mock: _update is a test-only property
+    (camera as any)._elevateCameraIfInsideTerrain = (_tr : any) => ({}); // Test mock: _elevateCameraIfInsideTerrain is a test-only property
 
     return camera;
 }
@@ -150,7 +150,11 @@ describe('calculateCameraOptionsFromTo', () => {
 
 describe('calculateCameraOptionsFromCameraLngLatAltRotation', () => {
     // Choose initial zoom to avoid center being constrained by mercator latitude limits.
-    const camera = createCamera({zoom: 1, maxPitch: 180});
+    const camera = (() => {
+        const cam = createCamera({zoom: 1});
+        cam.transform.setMaxPitch(180);
+        return cam;
+    })();
 
     test('look straight down', () => {
         const cameraOptions: CameraOptions = camera.calculateCameraOptionsFromCameraLngLatAltRotation({lng: 1, lat: 0}, 0, 0, 0);
@@ -1327,7 +1331,7 @@ describe('flyTo', () => {
         transform.resize(512, 512);
         const camera = attachSimulateFrame(new CameraMock(transform, new MercatorCameraHelper(), {} as any))
             .jumpTo({zoom: 21, center: [0, 0]});
-        camera._update = () => {};
+        (camera as any)._update = () => {}; // Test mock: _update is a test-only property
         expect(() => camera.flyTo({zoom: 7.5, center: [0, 0], offset: [0, 70]})).not.toThrow();
     });
 
@@ -1956,7 +1960,7 @@ describe('flyTo', () => {
         transform.resize(512, 512);
 
         const camera = attachSimulateFrame(new CameraMock(transform, new MercatorCameraHelper(), {} as any));
-        camera._update = () => {};
+        (camera as any)._update = () => {}; // Test mock: _update is a test-only property
 
         const promise = camera.once('moveend');
 
@@ -1981,7 +1985,7 @@ describe('flyTo', () => {
         transform.resize(512, 512);
 
         const camera = attachSimulateFrame(new CameraMock(transform, new MercatorCameraHelper(), {} as any));
-        camera._update = () => {};
+        (camera as any)._update = () => {}; // Test mock: _update is a test-only property
 
         const promise = camera.once('moveend');
 
@@ -2264,7 +2268,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -100.5, lat: 34.7171});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -100.5, lat: 34.7171});
         expect(fixedNum(assertedNotNullish(transform.zoom), 3)).toBe(2.469);
     });
 
@@ -2273,7 +2277,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {bearing: 175}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -100.5, lat: 34.7171});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -100.5, lat: 34.7171});
         expect(fixedNum(assertedNotNullish(transform.zoom), 3)).toBe(2.396);
         expect(transform.bearing).toBe(175);
     });
@@ -2283,7 +2287,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {bearing: -30}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -100.5, lat: 34.7171});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -100.5, lat: 34.7171});
         expect(fixedNum(assertedNotNullish(transform.zoom), 3)).toBe(2.222);
         expect(transform.bearing).toBe(-30);
     });
@@ -2293,7 +2297,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {padding: 15}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -100.5, lat: 34.7171});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -100.5, lat: 34.7171});
         expect(fixedNum(assertedNotNullish(transform.zoom), 3)).toBe(2.382);
     });
 
@@ -2302,7 +2306,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {padding: {top: 15, right: 15, bottom: 15, left: 15}}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -100.5, lat: 34.7171});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -100.5, lat: 34.7171});
     });
 
     test('asymmetrical padding', () => {
@@ -2310,7 +2314,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {padding: {top: 10, right: 75, bottom: 50, left: 25}}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -96.5558, lat: 32.0833});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -96.5558, lat: 32.0833});
     });
 
     test('bearing and asymmetrical padding', () => {
@@ -2318,7 +2322,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {bearing: 90, padding: {top: 10, right: 75, bottom: 50, left: 25}}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -103.3761, lat: 31.7099});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -103.3761, lat: 31.7099});
     });
 
     test('offset', () => {
@@ -2326,7 +2330,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {offset: [0, 100]}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -100.5, lat: 44.4717});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -100.5, lat: 44.4717});
     });
 
     test('offset and padding', () => {
@@ -2334,7 +2338,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {padding: {top: 10, right: 75, bottom: 50, left: 25}, offset: [0, 100]}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -96.5558, lat: 44.4189});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -96.5558, lat: 44.4189});
     });
 
     test('bearing, asymmetrical padding, and offset', () => {
@@ -2342,7 +2346,7 @@ describe('cameraForBounds', () => {
         const bb = [[-133, 16], [-68, 50]] as [LngLatLike, LngLatLike];
         const transform = assertedNotNullish(camera.cameraForBounds(bb, {bearing: 90, padding: {top: 10, right: 75, bottom: 50, left: 25}, offset: [0, 100]}));
 
-        expect(fixedLngLat(transform.center, 4)).toEqual({lng: -103.3761, lat: 43.0929});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(transform.center as LngLatLike)), 4)).toEqual({lng: -103.3761, lat: 43.0929});
     });
 
     test('asymmetrical transform using LngLatBounds instance', () => {
@@ -2350,7 +2354,7 @@ describe('cameraForBounds', () => {
         transform.resize(2048, 512);
 
         const camera = attachSimulateFrame(new CameraMock(transform, new MercatorCameraHelper(), {} as any));
-        camera._update = () => {};
+        (camera as any)._update = () => {}; // Test mock: _update is a test-only property
 
         const bb = new LngLatBounds();
         bb.extend([-66.9326, 49.5904]);
@@ -2358,7 +2362,7 @@ describe('cameraForBounds', () => {
 
         const rotatedTransform = assertedNotNullish(camera.cameraForBounds(bb, {bearing: 45}));
 
-        expect(fixedLngLat(rotatedTransform.center, 4)).toEqual({lng: -95.9669, lat: 38.3048});
+        expect(fixedLngLat(LngLat.convert(assertedNotNullish(rotatedTransform.center as LngLatLike)), 4)).toEqual({lng: -95.9669, lat: 38.3048});
         expect(fixedNum(assertedNotNullish(rotatedTransform.zoom), 3)).toBe(2.507);
         expect(rotatedTransform.bearing).toBe(45);
     });
@@ -2764,7 +2768,7 @@ describe('jumpTo globe projection', () => {
 
 describe('easeTo globe projection', () => {
     describe('globe specific behavior', () => {
-        let camera;
+        let camera: ReturnType<typeof createCameraGlobe>;
 
         beforeEach(() => {
             camera = createCameraGlobe({zoom: 1});
@@ -3108,7 +3112,7 @@ describe('easeTo globe projection', () => {
 
 describe('flyTo globe projection', () => {
     describe('globe specific behavior', () => {
-        let camera;
+        let camera: ReturnType<typeof createCameraGlobe>;
 
         beforeEach(() => {
             camera = createCameraGlobe({zoom: 1});
@@ -3767,7 +3771,7 @@ describe('flyTo globe projection', () => {
             transform.setMaxZoom(10);
 
             const camera = attachSimulateFrame(new CameraMock(transform, new MercatorCameraHelper(), {} as any));
-            camera._update = () => {};
+            (camera as any)._update = () => {}; // Test mock: _update is a test-only property
 
             const start = camera.getCenter();
             const target = new LngLat(12, 34);
@@ -3791,7 +3795,7 @@ describe('flyTo globe projection', () => {
         });
 
         test('resets duration to 0 if it exceeds maxDuration', async () => {
-            let startTime: number;
+            let startTime: number = 0;
             const camera = createCameraGlobe({center: [37.63454, 55.75868], zoom: 18});
 
             camera.on('movestart', () => { startTime = new Date().getTime(); });

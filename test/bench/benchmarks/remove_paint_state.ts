@@ -3,7 +3,7 @@ import emptystyle from '../data/empty.json' with {type: 'json'};
 import Benchmark from '../lib/benchmark';
 import createMap from '../lib/create_map';
 
-function generateLayers(layer) {
+function generateLayers(layer: any): any[] {
     const generated = [];
     for (let i = 0; i < 50; i++) {
         const id = layer.id + i;
@@ -22,7 +22,7 @@ class RemovePaintState extends Benchmark {
     numFeatures: any;
     map: any;
 
-    constructor(center) {
+    constructor(center: any) {
         super();
         this.center = center;
     }

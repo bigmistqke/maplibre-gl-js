@@ -6,7 +6,8 @@ import {config} from '../../util/config';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 describe('mapOptions', () => {
@@ -28,8 +29,8 @@ describe('mapOptions', () => {
 
     test('Style validation is enabled by default', () => {
         let validationOption = false;
-        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson, options) => {
-            validationOption = options.validate;
+        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson, options?: any) => {
+            validationOption = options?.validate ?? false;
         });
         createMap();
         expect(validationOption).toBeTruthy();
@@ -37,8 +38,8 @@ describe('mapOptions', () => {
 
     test('Style validation disabled using mapOptions', () => {
         let validationOption = true;
-        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson, options) => {
-            validationOption = options.validate;
+        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson, options?: any) => {
+            validationOption = options?.validate ?? true;
         });
         createMap({validateStyle: false});
 

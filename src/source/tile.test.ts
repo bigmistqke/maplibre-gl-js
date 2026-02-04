@@ -18,7 +18,7 @@ describe('querySourceFeatures', () => {
         type: 1,
         geometry: [0, 0],
         tags: {oneway: true}
-    } as any as Feature];
+    } as unknown as Feature];
 
     test('not data', () => {
         const tile = new Tile(new OverscaledTileID(3, 0, 2, 1, 2), 0);
@@ -42,7 +42,7 @@ describe('querySourceFeatures', () => {
             expect(result).toHaveLength(1);
             expect(result[0].geometry.coordinates[0]).toEqual([-90, 0]);
             result = [];
-            tile.querySourceFeatures(result, {} as QuerySourceFeatureOptionsStrict); // cast: empty object conforms to the optional-fields-only type
+            tile.querySourceFeatures(result, {} as unknown as QuerySourceFeatureOptionsStrict); // Test mock: empty object conforms to the optional-fields-only type
             expect(result).toHaveLength(1);
             expect(result[0].properties).toEqual(features[0].tags);
         });
@@ -55,7 +55,7 @@ describe('querySourceFeatures', () => {
             tile.querySourceFeatures(result, {sourceLayer: undefined, filter: ['!=', 'oneway', true]});
             expect(result).toHaveLength(0);
             result = [];
-            const polygon = {type: 'Polygon',  coordinates: [[[-91, -1], [-89, -1], [-89, 1], [-91, 1], [-91, -1]]]} as GeoJSON.GeoJSON;
+            const polygon = {type: 'Polygon',  coordinates: [[[-91, -1], [-89, -1], [-89, 1], [-91, 1], [-91, -1]]]} as unknown as GeoJSON.GeoJSON;
             tile.querySourceFeatures(result, {sourceLayer: undefined, filter: ['within', polygon]});
             expect(result).toHaveLength(1);
         });

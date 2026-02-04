@@ -7,9 +7,10 @@ describe('unicodeBlockLookup', () => {
             const lookup = unicodeBlockLookup[codeBlock];
             const match = lookup.toString().match(/^\(char\) => char >= (\d+) && char <= (\d+)$/);
             expect(match).not.toBeNull();
-            expect(match).toHaveLength(3);
-            const lower = Number.parseInt(match[1], 16);
-            const upper = Number.parseInt(match[2], 16);
+            const matchArray = match as RegExpMatchArray;
+            expect(matchArray).toHaveLength(3);
+            const lower = Number.parseInt(matchArray[1], 16);
+            const upper = Number.parseInt(matchArray[2], 16);
             expect(upper).toBeGreaterThan(lower);
         }
     });

@@ -22,7 +22,7 @@ export function createSymbolBucket(layerId: string, font: string, text: string, 
     } as BucketParameters<SymbolStyleLayer>);
 }
 
-export function createSymbolIconBucket(layerId, iconProperty, collisionBoxArray) {
+export function createSymbolIconBucket(layerId: string, iconProperty: string, collisionBoxArray: CollisionBoxArray) {
     const layer = new SymbolStyleLayer({
         id: layerId,
         type: 'symbol',

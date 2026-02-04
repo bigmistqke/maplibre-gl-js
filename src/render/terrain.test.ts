@@ -269,7 +269,14 @@ describe('Terrain', () => {
             getDEMElevation: Terrain.prototype.getDEMElevation,
             getTerrainData() {
                 return {
+                    u_depth: 0,
+                    u_terrain: 0,
+                    u_terrain_dim: 0,
                     u_terrain_matrix: mat4.create(),
+                    u_terrain_unpack: undefined,
+                    u_terrain_exaggeration: 1,
+                    texture: null,
+                    depthTexture: null as any,
                     tile: {
                         dem: {
                             dim: 1,
@@ -279,7 +286,7 @@ describe('Terrain', () => {
                                 return 100 * x + 10 * y;
                             }
                         }
-                    }
+                    } as any
                 };
             }
         };
@@ -294,7 +301,7 @@ describe('Terrain', () => {
     });
 
     test('getElevationForLngLatZoom with lng less than -180 wraps correctly', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any, {_source: {tileSize: 512}} as any, {} as any);
 
         const OVERSCALETILEID_DOES_NOT_THROW = 4;
         terrain.getElevation = () => OVERSCALETILEID_DOES_NOT_THROW;
@@ -302,7 +309,7 @@ describe('Terrain', () => {
     });
 
     test('getMinTileElevationForLngLatZoom with lng less than -180 wraps correctly', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any, {_source: {tileSize: 512}} as any, {} as any);
 
         const OVERSCALETILEID_DOES_NOT_THROW = 4;
         terrain.getMinMaxElevation = () => ({minElevation: OVERSCALETILEID_DOES_NOT_THROW, maxElevation: 42});
@@ -310,7 +317,7 @@ describe('Terrain', () => {
     });
 
     describe('getElevationForLngLatZoom returns 0 for out of bounds', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any, {_source: {tileSize: 512}} as any, {} as any);
 
         test('lng', () => {
             expect(terrain.getElevationForLngLatZoom(new LngLat(180, 0), 0)).toBe(0);

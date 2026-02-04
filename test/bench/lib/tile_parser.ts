@@ -63,7 +63,7 @@ export default class TileParser {
     glyphs: any;
     dashes: any;
     style: Style;
-    actor: IActor;
+    actor!: IActor;
 
     constructor(styleJSON: StyleSpecification, sourceID: string) {
         this.styleJSON = styleJSON;
@@ -78,7 +78,7 @@ export default class TileParser {
         if (!this.icons[key]) {
             this.icons[key] = await this.style.getImages('', params);
         }
-        return this.icons[key];
+        return this.icons[key] ?? undefined;
     }
 
     async loadGlyphs(params: any) {
@@ -86,7 +86,7 @@ export default class TileParser {
         if (!this.glyphs[key]) {
             this.glyphs[key] = await this.style.getGlyphs('', params);
         }
-        return this.glyphs[key];
+        return this.glyphs[key] ?? undefined;
     }
 
     async loadDashes(params: any) {
@@ -94,7 +94,7 @@ export default class TileParser {
         if (!this.dashes[key]) {
             this.dashes[key] = await this.style.getDashes('', params);
         }
-        return this.dashes[key];
+        return this.dashes[key] ?? undefined;
     }
 
     setup(): Promise<void> {
@@ -112,11 +112,17 @@ export default class TileParser {
                 }
                 throw new Error(`Invalid action ${message.type}`);
             }
-        };
+        } as any as IActor;
+
+        const source = this.styleJSON.sources[this.sourceID];
+        const sourceUrl = (source as any)?.url;
+        if (!sourceUrl || typeof sourceUrl !== 'string') {
+            return Promise.reject(new Error(`Source ${this.sourceID} has invalid URL`));
+        }
 
         return Promise.all([
             createStyle(this.styleJSON),
-            fetch((this.styleJSON.sources[this.sourceID] as any).url).then(response => response.json())
+            fetch(sourceUrl).then(response => response.json())
         ]).then(([style, tileJSON]) => {
             this.style = style;
             this.tileJSON = tileJSON;

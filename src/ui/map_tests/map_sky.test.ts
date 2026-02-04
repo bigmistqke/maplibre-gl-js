@@ -1,17 +1,18 @@
 
 import {beforeEach, describe, expect, test, vi} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
 });
 
 describe('setSky', () => {
     test('calls style setSky when set', () => {
         const map = createMap();
         const spy = vi.fn();
-        map.style.setSky = spy;
+        assertedNotNullish(map.style).setSky = spy;
         map.setSky({'atmosphere-blend': 0.5});
 
         expect(spy).toHaveBeenCalled();
@@ -27,7 +28,7 @@ describe('getSky', () => {
     test('calls style getSky when invoked', () => {
         const map = createMap();
         const spy = vi.fn();
-        map.style.getSky = spy;
+        assertedNotNullish(map.style).getSky = spy;
         map.getSky();
 
         expect(spy).toHaveBeenCalled();

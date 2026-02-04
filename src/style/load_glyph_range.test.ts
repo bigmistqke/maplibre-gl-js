@@ -1,6 +1,6 @@
 import {test, expect, vi} from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import {RequestManager} from '../util/request_manager';
 import {loadGlyphRange} from './load_glyph_range';
 import {fakeServer} from 'nise';
@@ -9,7 +9,7 @@ import {bufferToArrayBuffer} from '../util/test/util';
 test('loadGlyphRange', async ()  => {
     global.fetch = null;
 
-    const transform = vi.fn().mockImplementation((url) => {
+    const transform = vi.fn().mockImplementation((url: string) => {
         return {url};
     });
 

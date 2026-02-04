@@ -1,7 +1,7 @@
 import {describe, test, expect, vi} from 'vitest';
 import {Light} from './light';
 import {Color, latest as styleSpec, type LightSpecification} from '@maplibre/maplibre-gl-style-spec';
-import {sphericalToCartesian} from '../util/util';
+import {sphericalToCartesian, assertedNotNullish} from '../util/util';
 import {type EvaluationParameters} from './evaluation_parameters';
 import {type TransitionParameters} from './properties';
 
@@ -11,10 +11,11 @@ test('Light with defaults', () => {
     const light = new Light({});
     light.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters);
 
-    expect(light.properties.get('anchor')).toEqual(spec.anchor.default);
-    expect(light.properties.get('position')).toEqual(sphericalToCartesian(spec.position.default as any as [number, number, number]));
-    expect(light.properties.get('intensity')).toEqual(spec.intensity.default);
-    expect(light.properties.get('color')).toEqual(Color.parse(spec.color.default));
+    const properties = assertedNotNullish(light.properties);
+    expect(properties.get('anchor')).toEqual(spec.anchor.default);
+    expect(properties.get('position')).toEqual(sphericalToCartesian(spec.position.default as unknown as [number, number, number]));
+    expect(properties.get('intensity')).toEqual(spec.intensity.default);
+    expect(properties.get('color')).toEqual(Color.parse(spec.color.default));
 });
 
 test('Light with options', () => {
@@ -25,10 +26,11 @@ test('Light with options', () => {
     });
     light.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters);
 
-    expect(light.properties.get('anchor')).toBe('map');
-    expect(light.properties.get('position')).toEqual(sphericalToCartesian([2, 30, 30]));
-    expect(light.properties.get('intensity')).toBe(1);
-    expect(light.properties.get('color')).toEqual(Color.parse(spec.color.default));
+    const properties = assertedNotNullish(light.properties);
+    expect(properties.get('anchor')).toBe('map');
+    expect(properties.get('position')).toEqual(sphericalToCartesian([2, 30, 30]));
+    expect(properties.get('intensity')).toBe(1);
+    expect(properties.get('color')).toEqual(Color.parse(spec.color.default));
 });
 
 test('Light with stops function', () => {
@@ -39,11 +41,11 @@ test('Light with stops function', () => {
     } as LightSpecification);
     light.recalculate({zoom: 16.5, zoomHistory: {}} as EvaluationParameters);
 
-    expect(light.properties.get('intensity')).toBe(0.5);
+    expect(assertedNotNullish(light.properties).get('intensity')).toBe(0.5);
 });
 
 test('Light.getLight', () => {
-    const defaults = {};
+    const defaults: Record<string, unknown> = {};
     for (const key in spec) {
         defaults[key] = spec[key].default;
     }
@@ -57,7 +59,7 @@ describe('Light.setLight', () => {
         light.setLight({color: 'red', 'color-transition': {duration: 3000}} as LightSpecification);
         light.updateTransitions({transition: true} as any as TransitionParameters);
         light.recalculate({zoom: 16, zoomHistory: {}, now: 1500} as EvaluationParameters);
-        expect(light.properties.get('color')).toEqual(new Color(1, 0.5, 0.5, 1));
+        expect(assertedNotNullish(light.properties).get('color')).toEqual(new Color(1, 0.5, 0.5, 1));
     });
 
     test('validates by default', () => {
@@ -82,6 +84,6 @@ describe('Light.setLight', () => {
 
         expect(lightSpy).toHaveBeenCalledTimes(1);
         expect(lightSpy.mock.calls[0][2]).toEqual({validate: false});
-        expect(light.properties.get('color')).toEqual([999]);
+        expect(assertedNotNullish(light.properties).get('color')).toEqual([999]);
     });
 });

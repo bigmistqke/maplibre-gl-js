@@ -9,7 +9,7 @@ describe('clipLines', () => {
     const minY = -200;
     const maxY = 200;
 
-    const clipLineTest = (lines) => {
+    const clipLineTest = (lines: Point[][]) => {
         return clipLine(lines, minX, minY, maxX, maxY);
     };
 

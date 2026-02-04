@@ -1,21 +1,24 @@
 import {beforeEach, test, expect} from 'vitest';
+import {Map} from '../map';
 import {createMap, beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 test('disable all handlers', () => {
     const map = createMap({interactive: false});
 
-    expect(map.boxZoom.isEnabled()).toBeFalsy();
-    expect(map.doubleClickZoom.isEnabled()).toBeFalsy();
-    expect(map.dragPan.isEnabled()).toBeFalsy();
-    expect(map.dragRotate.isEnabled()).toBeFalsy();
-    expect(map.keyboard.isEnabled()).toBeFalsy();
-    expect(map.scrollZoom.isEnabled()).toBeFalsy();
-    expect(map.touchZoomRotate.isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.boxZoom).isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.doubleClickZoom).isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.dragPan).isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.dragRotate).isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.keyboard).isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.scrollZoom).isEnabled()).toBeFalsy();
+    expect(assertedNotNullish(map.touchZoomRotate).isEnabled()).toBeFalsy();
 });
 
 const handlerNames = [
@@ -26,14 +29,15 @@ const handlerNames = [
     'keyboard',
     'doubleClickZoom',
     'touchZoomRotate'
-];
-handlerNames.forEach((handlerName) => {
+] as const;
+handlerNames.forEach((handlerName: string) => {
     test(`disable "${handlerName}" handler`, () => {
-        const options = {};
+        const options: Record<string, any> = {};
         options[handlerName] = false;
         const map = createMap(options);
 
-        expect(map[handlerName].isEnabled()).toBeFalsy();
+        const handler = map[handlerName as keyof Map];
+        expect(assertedNotNullish(handler as any).isEnabled()).toBeFalsy();
 
     });
 });

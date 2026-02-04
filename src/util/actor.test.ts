@@ -126,7 +126,7 @@ describe('Actor', () => {
         let gotAbortSignal = false;
         worker.worker.actor.registerMessageHandler(MessageType.getClusterExpansionZoom, (_mapId, _params, handlerAbortController) => {
             return new Promise((resolve, reject) => {
-                handlerAbortController.signal.addEventListener('abort', () => {
+                (handlerAbortController ?? new AbortController()).signal.addEventListener('abort', () => {
                     gotAbortSignal = true;
                     reject(createAbortError());
                 });
@@ -184,7 +184,7 @@ describe('Actor', () => {
         const actor = new Actor({
             addEventListener: addEventListenerSpy,
             removeEventListener: removeEventListenerSpy,
-        } as any as ActorTarget, null);
+        } as any as ActorTarget, undefined);
         actor.remove();
         expect(addEventListenerSpy).toHaveBeenCalled();
         expect(removeEventListenerSpy).toHaveBeenCalled();

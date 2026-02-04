@@ -4,7 +4,7 @@ import {Color, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {createStyleLayer} from '../create_style_layer';
 import {degreesToRadians, extend} from '../../util/util';
 
-function createLayerSpec(properties?): LayerSpecification {
+function createLayerSpec(properties?: Partial<LayerSpecification>): LayerSpecification {
     return extend({
         type: 'hillshade',
         id: 'hillshade',

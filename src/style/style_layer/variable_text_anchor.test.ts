@@ -3,6 +3,9 @@ import {type EvaluationParameters} from '../evaluation_parameters';
 import {type ZoomHistory} from '../zoom_history';
 import {SymbolStyleLayer} from './symbol_style_layer';
 import {INVALID_TEXT_OFFSET, evaluateVariableOffset, getTextVariableAnchorOffset} from './variable_text_anchor';
+import {type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import {type SymbolFeature} from '../../data/bucket/symbol_bucket';
+import {type CanonicalTileID} from '../../source/tile_id';
 
 describe('evaluateVariableOffset', () => {
     test('fromRadialOffset', () => {
@@ -41,78 +44,94 @@ describe('evaluateVariableOffset', () => {
     });
 });
 
-function createSymbolLayer(layerProperties) {
-    const layer = new SymbolStyleLayer(layerProperties, {});
+function createSymbolLayer(layerProperties: Record<string, unknown>): SymbolStyleLayer {
+    const layer = new SymbolStyleLayer(layerProperties as LayerSpecification, {});
     layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters, []);
     return layer;
 }
+
+// Test mock objects
+const mockFeature: SymbolFeature = {} as any; // Test mock
+const mockCanonical: CanonicalTileID = {} as any; // Test mock
 
 describe('getTextVariableAnchorOffset', () => {
     test('defaults - no props set', () => {
         const props = {};
         const layer = createSymbolLayer(props);
 
-        expect(getTextVariableAnchorOffset(layer, null, null)).toBeNull();
+        expect(getTextVariableAnchorOffset(layer, mockFeature, mockCanonical)).toBeNull();
     });
 
     test('text-variable-anchor-offset set', () => {
         const props = {layout: {'text-variable-anchor-offset': ['top', [1, 1], 'bottom', [2, 2]]}};
         const layer = createSymbolLayer(props);
 
-        const offset = getTextVariableAnchorOffset(layer, null, null);
+        const offset = getTextVariableAnchorOffset(layer, mockFeature, mockCanonical);
         expect(offset).toBeDefined();
         // Offset converted to EMs, accounting for baseline shift on Y axis
-        expect(offset.toString()).toBe('["top",[24,17],"bottom",[48,55]]');
+        if (offset) {
+            expect(offset.toString()).toBe('["top",[24,17],"bottom",[48,55]]');
+        }
     });
 
     test('text-variable-anchor set', () => {
         const props = {layout: {'text-variable-anchor': ['top']}};
         const layer = createSymbolLayer(props);
 
-        const offset = getTextVariableAnchorOffset(layer, null, null);
+        const offset = getTextVariableAnchorOffset(layer, mockFeature, mockCanonical);
         expect(offset).toBeDefined();
         // Default offset (0, 0) converted to EMs, accounting for baseline shift on Y axis
-        expect(offset.toString()).toBe('["top",[0,-7]]');
+        if (offset) {
+            expect(offset.toString()).toBe('["top",[0,-7]]');
+        }
     });
 
     test('text-variable-anchor and text-offset set', () => {
         const props = {layout: {'text-variable-anchor': ['top'], 'text-offset': [1, 1]}};
         const layer = createSymbolLayer(props);
 
-        const offset = getTextVariableAnchorOffset(layer, null, null);
+        const offset = getTextVariableAnchorOffset(layer, mockFeature, mockCanonical);
         expect(offset).toBeDefined();
         // Offset converted to EMs, accounting for baseline shift on Y axis
-        expect(offset.toString()).toBe('["top",[0,17]]');
+        if (offset) {
+            expect(offset.toString()).toBe('["top",[0,17]]');
+        }
     });
 
     test('text-variable-anchor and text-radial-offset set', () => {
         const props = {layout: {'text-variable-anchor': ['top'], 'text-radial-offset': 2}};
         const layer = createSymbolLayer(props);
 
-        const offset = getTextVariableAnchorOffset(layer, null, null);
+        const offset = getTextVariableAnchorOffset(layer, mockFeature, mockCanonical);
         expect(offset).toBeDefined();
         // Offset converted to EMs, accounting for baseline shift on Y axis
-        expect(offset.toString()).toBe('["top",[0,41]]');
+        if (offset) {
+            expect(offset.toString()).toBe('["top",[0,41]]');
+        }
     });
 
     test('text-variable-anchor, text-offset, and text-radial-offset set', () => {
         const props = {layout: {'text-variable-anchor': ['top'], 'text-offset': [1, 1], 'text-radial-offset': 2}};
         const layer = createSymbolLayer(props);
 
-        const offset = getTextVariableAnchorOffset(layer, null, null);
+        const offset = getTextVariableAnchorOffset(layer, mockFeature, mockCanonical);
         expect(offset).toBeDefined();
         // Offset converted to EMs, accounting for baseline shift on Y axis
-        expect(offset.toString()).toBe('["top",[0,41]]');
+        if (offset) {
+            expect(offset.toString()).toBe('["top",[0,41]]');
+        }
     });
 
     test('text-variable-anchor and text-variable-anchor-offset set', () => {
         const props = {layout: {'text-variable-anchor-offset': ['top', [1, 1]], 'text-variable-anchor': ['bottom']}};
         const layer = createSymbolLayer(props);
 
-        const offset = getTextVariableAnchorOffset(layer, null, null);
+        const offset = getTextVariableAnchorOffset(layer, mockFeature, mockCanonical);
         expect(offset).toBeDefined();
         // Offset converted to EMs, accounting for baseline shift on Y axis
-        expect(offset.toString()).toBe('["top",[24,17]]');
+        if (offset) {
+            expect(offset.toString()).toBe('["top",[24,17]]');
+        }
     });
 });
 

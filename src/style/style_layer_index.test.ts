@@ -10,7 +10,7 @@ describe('StyleLayerIndex', () => {
             {id: '3', type: 'circle', source: 'source', 'source-layer': 'layer', paint: {'circle-color': 'blue'}}
         ]);
 
-        const families = index.familiesBySource['source']['layer'];
+        const families = index.familiesBySource['source'] && index.familiesBySource['source']['layer'];
         expect(families).toHaveLength(2);
         expect(families[0]).toHaveLength(1);
         expect(families[0][0].id).toBe('1');
@@ -36,7 +36,7 @@ describe('StyleLayerIndex', () => {
             {id: '3', type: 'circle', source: 'bar', 'source-layer': 'layer', paint: {'circle-color': 'yellow'}}
         ], []);
 
-        const families = index.familiesBySource['bar']['layer'];
+        const families = index.familiesBySource['bar'] && index.familiesBySource['bar']['layer'];
         expect(families).toHaveLength(2);
         expect(families[0]).toHaveLength(1);
         expect(families[0][0].getPaintProperty('fill-color')).toBe('cyan');
@@ -59,10 +59,10 @@ describe('StyleLayerIndex', () => {
             {id: '6', type: 'background'}
         ]);
 
-        const ids = mapObject(index.familiesBySource, (bySource) => {
-            return mapObject(bySource, (families) => {
-                return families.map((family) => {
-                    return family.map((layer) => layer.id);
+        const ids = mapObject(index.familiesBySource, (bySource: Record<string, any>) => {
+            return mapObject(bySource, (families: any) => {
+                return families.map((family: any) => {
+                    return family.map((layer: any) => layer.id);
                 });
             });
         });

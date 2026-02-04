@@ -2,7 +2,7 @@ import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {describe, beforeEach, afterEach, test, expect, vi} from 'vitest';
 import {SourceCache} from './source_cache';
 import {type Source, addSourceType} from './source';
-import {Tile, FadingRoles, FadingDirections} from './tile';
+import {Tile, FadingRoles, FadingDirections, type TileState} from './tile';
 import {CanonicalTileID, OverscaledTileID} from './tile_id';
 import {LngLat} from '../geo/lng_lat';
 import Point from '@mapbox/point-geometry';
@@ -77,7 +77,7 @@ function createSource(id: string, sourceOptions: any, _dispatcher: any, eventedP
     return source;
 }
 
-addSourceType('mock-source-type', createSource as any);
+addSourceType('mock-source-type', createSource as unknown as any);
 
 function createSourceCache(options?: Record<string, any>, used?: boolean) {
     const sc = new SourceCache('id', extend({
@@ -85,7 +85,7 @@ function createSourceCache(options?: Record<string, any>, used?: boolean) {
         minzoom: 0,
         maxzoom: 14,
         type: 'mock-source-type'
-    }, options), {} as Dispatcher); // as Dispatcher: test mock, no real dispatcher needed
+    }, options) as any, {} as unknown as Dispatcher); // Test mock: no real dispatcher needed
     sc.used = typeof used === 'boolean' ? used : true;
     return sc;
 }
@@ -137,11 +137,11 @@ describe('SourceCache.addTile', () => {
 
     test('updates feature state on added uncached tile', async () => {
         const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
-        let updateFeaturesSpy;
+        let updateFeaturesSpy: ReturnType<typeof vi.spyOn> | undefined;
         const sourceCache = createSourceCache({});
-        let dataPromise: any;
+        let dataPromise: Promise<any> | undefined;
         sourceCache._source.loadTile = async (tile) => {
-            dataPromise = sourceCache.once('data');
+            dataPromise = sourceCache.once('data') as Promise<any>;
             updateFeaturesSpy = vi.spyOn(tile, 'setFeatureState');
             tile.state = 'loaded';
         };
@@ -203,8 +203,8 @@ describe('SourceCache.addTile', () => {
         time.setSeconds(time.getSeconds() + 5);
 
         const sourceCache = createSourceCache();
-        sourceCache._setTileReloadTimer = (id) => {
-            sourceCache._timers[id] = setTimeout(() => {}, 0);
+        sourceCache._setTileReloadTimer = (id: string | number) => {
+            sourceCache._timers[id as string] = setTimeout(() => {}, 0);
         };
         sourceCache._source.loadTile = async (tile) => {
             tile.state = 'loaded';
@@ -341,7 +341,7 @@ describe('SourceCache.removeTile', () => {
         sourceCache._source.loadTile = async () => {
             sourceCache._removeTile(tileID.key);
         };
-        sourceCache.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as any;
+        sourceCache.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as unknown as Record<string, unknown>;
 
         sourceCache._addTile(tileID);
     });
@@ -623,13 +623,13 @@ describe('SourceCache.update', () => {
         });
         await map.once('styledata');
 
-        const style = map.style;
+        const style = assertedNotNullish(map.style);
         const sourceCache = style.sourceCaches['rasterSource'];
         const spy = vi.spyOn(sourceCache, '_updateFadingTiles');
         sourceCache._loadTile = async () => {};
 
         const fakeTile = new Tile(new OverscaledTileID(3, 0, 3, 1, 2), 0);
-        (fakeTile as any).texture = {bind: () => {}, size: [256, 256]};
+        (fakeTile as unknown as {texture?: {bind: () => void; size: number[]}}).texture = {bind: () => {}, size: [256, 256]};
         fakeTile.state = 'loaded';
         sourceCache._tiles[fakeTile.tileID.key] = fakeTile;
 
@@ -646,7 +646,7 @@ describe('SourceCache.update', () => {
         transform.setZoom(1);
 
         const sourceCache = createSourceCache({
-            hasTile: (coord) => (coord.canonical.x !== 0)
+            hasTile: (coord: OverscaledTileID) => (coord.canonical.x !== 0)
         });
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
                 
@@ -688,7 +688,7 @@ describe('SourceCache.update', () => {
 
     test('retains parent tiles for pending children', async () => {
         const transform = new MercatorTransform();
-        (transform as any)._test = 'retains';
+        (transform as unknown as {_test?: string})._test = 'retains';
         transform.resize(511, 511);
         transform.setZoom(0);
 
@@ -1011,7 +1011,7 @@ describe('SourceCache.update', () => {
 describe('SourceCache._updateRetainedTiles', () => {
 
     test('loads ideal tiles if they exist', () => {
-        const stateCache = {};
+        const stateCache: Record<string, TileState> = {};
         const sourceCache = createSourceCache();
         sourceCache._source.loadTile = async (tile) => {
             tile.state = stateCache[tile.tileID.key] || 'errored';
@@ -1107,7 +1107,7 @@ describe('SourceCache._updateRetainedTiles', () => {
 
             //see covering tile logic in source_cache.update
             const idealTileIDs = coveringTiles(transform, {
-                tileSize: sourceCache.usedForTerrain ? sourceCache.tileSize : sourceCache._source.tileSize,
+                tileSize: sourceCache.usedForTerrain ? (sourceCache.tileSize ?? 512) : sourceCache._source.tileSize,
                 minzoom: sourceCache._source.minzoom,
                 maxzoom: sourceCache._source.maxzoom,
                 roundZoom: sourceCache._source.roundZoom,
@@ -1224,7 +1224,7 @@ describe('SourceCache._updateRetainedTiles', () => {
     });
 
     test('adds parent tile if ideal tile errors and no child tiles are loaded', () => {
-        const stateCache = {};
+        const stateCache: Record<string, TileState> = {};
         const sourceCache = createSourceCache();
         sourceCache._source.loadTile = async (tile) => {
             tile.state = stateCache[tile.tileID.key] || 'errored';
@@ -1486,7 +1486,7 @@ describe('SourceCache._updateRetainedTiles', () => {
     test('Retain, then cancel loading tiles when zooming in', () => {
         const sourceCache = createSourceCache();
         // Disabling pending tile canceling (thus retaining) in Map mock:
-        const map = {cancelPendingTileRequestsWhileZooming: false} as Map;
+        const map = {cancelPendingTileRequestsWhileZooming: false} as unknown as Map;
         sourceCache.onAdd(map);
         sourceCache._source.loadTile = async (tile) => {
             tile.state = 'loading';
@@ -1515,7 +1515,7 @@ describe('SourceCache._updateRetainedTiles', () => {
     test('Cancel, then retain, then cancel loading tiles when zooming in', () => {
         const sourceCache = createSourceCache();
         // Applying tile canceling default behavior in Map mock:
-        const map = {cancelPendingTileRequestsWhileZooming: true} as Map;
+        const map = {cancelPendingTileRequestsWhileZooming: true} as unknown as Map;
         sourceCache.onAdd(map);
         sourceCache._source.loadTile = async (tile) => {
             tile.state = 'loading';
@@ -1667,8 +1667,8 @@ describe('SourceCache.tilesIn', () => {
 
     });
 
-    function round(queryGeometry) {
-        return queryGeometry.map((p) => {
+    function round(queryGeometry: any[]) {
+        return queryGeometry.map((p: any) => {
             return p.round();
         });
     }
@@ -1702,7 +1702,7 @@ describe('SourceCache.tilesIn', () => {
         ], 1, true);
 
         tiles.sort((a, b) => { return a.tile.tileID.canonical.x - b.tile.tileID.canonical.x; });
-        tiles.forEach((result) => { delete result.tile.uid; });
+        tiles.forEach((result) => { delete (result.tile as any).uid; }); // Test mock
 
         expect(tiles[0].tile.tileID.key).toBe('011');
         expect(tiles[0].tile.tileSize).toBe(512);
@@ -1747,7 +1747,7 @@ describe('SourceCache.tilesIn', () => {
                 ], 1, true);
 
                 tiles.sort((a, b) => { return a.tile.tileID.canonical.x - b.tile.tileID.canonical.x; });
-                tiles.forEach((result) => { delete result.tile.uid; });
+                tiles.forEach((result) => { delete (result.tile as any).uid; }); // Test mock
 
                 expect(tiles[0].tile.tileID.key).toBe('012');
                 expect(tiles[0].tile.tileSize).toBe(1024);
@@ -2206,8 +2206,8 @@ describe('source cache loaded', () => {
                 });
             });
         };
-        sourceCache._source.hasTile = function (tileID: OverscaledTileID) {
-            return !this.tileBounds || this.tileBounds.contains(tileID.canonical);
+        (sourceCache._source as any).hasTile = function (tileID: OverscaledTileID) {
+            return !(this as any).tileBounds || (this as any).tileBounds.contains(tileID.canonical);
         };
 
         const tr = new MercatorTransform();
@@ -2238,9 +2238,9 @@ describe('source cache loaded', () => {
             });
         };
         sourceCache._source.onAdd = function() {
-            if (this.sourceOptions.noLoad) return;
-            if (this.sourceOptions.error) {
-                this.fire(new ErrorEvent(this.sourceOptions.error));
+            if ((this as any).sourceOptions.noLoad) return;
+            if ((this as any).sourceOptions.error) {
+                this.fire(new ErrorEvent((this as any).sourceOptions.error));
             } else {
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'metadata'}));
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'content'}));
@@ -2280,7 +2280,7 @@ describe('source cache get ids', () => {
         const sourceCache = createSourceCache({});
         sourceCache.transform = new MercatorTransform();
         for (let i = 0; i < ids.length; i++) {
-            sourceCache._tiles[ids[i].key] = {tileID: ids[i]} as any as Tile;
+            sourceCache._tiles[ids[i].key] = {tileID: ids[i]} as unknown as Tile;
         }
         expect(sourceCache.getIds()).toEqual([
             new OverscaledTileID(0, 0, 0, 0, 0).key,

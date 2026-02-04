@@ -6,10 +6,10 @@ import {OverscaledTileID} from '../../../src/source/tile_id';
 import {serialize, deserialize} from '../../../src/util/web_worker_transfer';
 
 export default class WorkerTransfer extends Benchmark {
-    parser: TileParser;
-    payloadTiles: Array<any>;
-    payloadJSON: Array<any>;
-    worker: Worker;
+    parser!: TileParser;
+    payloadTiles!: Array<any>;
+    payloadJSON!: Array<any>;
+    worker!: Worker;
     style: string | StyleSpecification;
 
     constructor(style: string | StyleSpecification) {
@@ -69,7 +69,7 @@ export default class WorkerTransfer extends Benchmark {
     }
 }
 
-function barePayload(obj) {
+function barePayload(obj: any): any {
     // strip all transferable from a worker payload, because we can't transfer them repeatedly in the bench:
     // as soon as it's transferred once, it's no longer available on the main thread
     return JSON.parse(JSON.stringify(obj, (key, value) => ArrayBuffer.isView(value) ? {} : value) || '{}');

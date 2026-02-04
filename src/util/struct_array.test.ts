@@ -65,7 +65,9 @@ describe('StructArray', () => {
 
         array._trim();
         expect(array.capacity).toBe(1);
-        expect(array.arrayBuffer.byteLength).toBe(array.bytesPerElement);
+        const arrayBuffer = array.arrayBuffer;
+        if (!arrayBuffer) throw new Error('Array buffer must be defined');
+        expect(arrayBuffer.byteLength).toBe(array.bytesPerElement);
     });
 });
 

@@ -8,12 +8,12 @@ describe('Dispatcher', () => {
     test('requests and releases workers from pool', () => {
         const workers = [workerFactory(), workerFactory()];
         const mapId = 1;
-        const releaseCalled = [];
+        const releaseCalled: number[] = [];
         const workerPool = {
             acquire () {
                 return workers;
             },
-            release (id) {
+            release (id: number) {
                 releaseCalled.push(id);
             }
         } as any as WorkerPool;
@@ -27,9 +27,9 @@ describe('Dispatcher', () => {
     });
 
     test('reuse workers till map is disposed', () => {
-        let workers = null;
+        let workers: ReturnType<typeof workerFactory>[] | null = null;
         const mapId = 1;
-        const releaseCalled = [];
+        const releaseCalled: number[] = [];
         const workerPool = {
             acquire () {
                 if (!workers) {
@@ -37,7 +37,7 @@ describe('Dispatcher', () => {
                 }
                 return workers;
             },
-            release (id) {
+            release (id: number) {
                 releaseCalled.push(id);
                 workers = null;
             }
@@ -61,10 +61,10 @@ describe('Dispatcher', () => {
     });
 
     test('remove destroys actors', () => {
-        const actorsRemoved = [];
+        const actorsRemoved: Actor[] = [];
         const mapId = 1;
-        const spy = vi.fn().mockImplementation(() => { actorsRemoved.push(this); });
-        Actor.prototype.remove = spy;
+        const spy = vi.fn().mockImplementation(function(this: Actor) { actorsRemoved.push(this); });
+        Actor.prototype.remove = spy as any;
         WorkerPool.workerCount = 4;
 
         const workerPool = new WorkerPool();

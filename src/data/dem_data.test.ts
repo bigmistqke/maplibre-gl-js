@@ -3,7 +3,7 @@ import {DEMData} from './dem_data';
 import {RGBAImage} from '../util/image';
 import {serialize, deserialize} from '../util/web_worker_transfer';
 
-function createMockImage(height, width) {
+function createMockImage(height: number, width: number) {
     // RGBAImage passed to constructor has uniform 1px padding on all sides.
     height += 2;
     width += 2;
@@ -14,7 +14,7 @@ function createMockImage(height, width) {
     return new RGBAImage({height, width}, pixels);
 }
 
-function createMockClampImage(height, width) {
+function createMockClampImage(height: number, width: number) {
     const pixels = new Uint8ClampedArray(height * width * 4);
     for (let i = 0; i < pixels.length; i++) {
         pixels[i] = (i + 1) % 4 === 0 ? 1 : Math.floor(Math.random() * 256);
@@ -180,7 +180,7 @@ function testSerialization(dem0: DEMData, redFactor: number, greenFactor: number
             min,
         });
 
-        const transferrables = [];
+        const transferrables: any[] = [];
         serialize(dem0, transferrables);
         expect(new Uint32Array(transferrables[0])).toEqual(dem0.data);
     };

@@ -648,10 +648,10 @@ describe('popup', () => {
 
         expect(popup._pos).toEqual(map.project([0, 0]));
         expect(
-            popup._container.classList.value
+            assertedNotNullish(popup._container).classList.value
         ).not.toContain('maplibregl-popup-track-pointer');
         expect(
-            map._canvasContainer.classList.value
+            assertedNotNullish(map._canvasContainer).classList.value
         ).not.toContain('maplibregl-track-pointer');
     });
 
@@ -664,7 +664,7 @@ describe('popup', () => {
             .remove();
 
         expect(
-            map._canvasContainer.classList.value
+            assertedNotNullish(map._canvasContainer).classList.value
         ).not.toContain('maplibregl-track-pointer');
     });
 
@@ -676,7 +676,7 @@ describe('popup', () => {
             .addTo(map);
 
         expect(
-            popup._container.classList.value
+            assertedNotNullish(popup._container).classList.value
         ).not.toContain('maplibregl-popup-track-pointer');
     });
 
@@ -745,7 +745,7 @@ describe('popup', () => {
             }));
 
         // Suboptimal because the string matching is case-sensitive
-        const closeButton = popup._container.querySelector('[aria-label^=\'Alt close label\']');
+        const closeButton = assertedNotNullish(popup._container).querySelector('[aria-label^=\'Alt close label\']');
 
         expect(window.document.activeElement).toBe(closeButton);
     });
@@ -756,7 +756,7 @@ describe('popup', () => {
             .setLngLat([0, 0])
             .addTo(createMap());
 
-        const focusableEl = popup._container.querySelector('[data-testid=\'abc\']');
+        const focusableEl = assertedNotNullish(popup._container).querySelector('[data-testid=\'abc\']');
 
         expect(window.document.activeElement).toBe(focusableEl);
     });
@@ -767,8 +767,9 @@ describe('popup', () => {
             .setLngLat([0, 0])
             .addTo(createMap());
 
-        const nonFocusableEl = popup._container.querySelector('[data-testid=\'abc\']');
-        const closeButton = popup._container.querySelector('button[aria-label=\'Close popup\']');
+        const popupContainer = assertedNotNullish(popup._container);
+        const nonFocusableEl = popupContainer.querySelector('[data-testid=\'abc\']');
+        const closeButton = popupContainer.querySelector('button[aria-label=\'Close popup\']');
 
         expect(window.document.activeElement).not.toBe(nonFocusableEl);
         expect(window.document.activeElement).toBe(closeButton);
@@ -786,7 +787,7 @@ describe('popup', () => {
             .setLngLat([0, 0])
             .addTo(createMap());
 
-        const focusableEl = popup._container.querySelector('[data-testid=\'abc\']');
+        const focusableEl = assertedNotNullish(popup._container).querySelector('[data-testid=\'abc\']');
 
         expect(window.document.activeElement).toBe(focusableEl);
     });
@@ -813,7 +814,7 @@ describe('popup', () => {
             .setText('foobar')
             .addTo(map);
 
-        expect(popup.getElement().style.transform).toBe('translate(-50%,-100%) translate(0px,1px)');
+        expect(assertedNotNullish(popup.getElement()).style.transform).toBe('translate(-50%,-100%) translate(0px,1px)');
     });
 
     test('Popup position is not rounded when subpixel positioning is enabled', () => {
@@ -825,7 +826,7 @@ describe('popup', () => {
             .setText('foobar')
             .addTo(map);
 
-        expect(popup.getElement().style.transform).toBe('translate(-50%,-100%) translate(-0.1px,0.9px)');
+        expect(assertedNotNullish(popup.getElement()).style.transform).toBe('translate(-50%,-100%) translate(-0.1px,0.9px)');
     });
 
     test('Popup subpixel positioning can be enabled with Popup.setSubpixelPositioning', () => {
@@ -840,7 +841,7 @@ describe('popup', () => {
         popup.setSubpixelPositioning(true);
         popup.setOffset([-0.1, 0.9]);
 
-        expect(popup.getElement().style.transform).toBe('translate(-50%,-100%) translate(-0.1px,0.9px)');
+        expect(assertedNotNullish(popup.getElement()).style.transform).toBe('translate(-50%,-100%) translate(-0.1px,0.9px)');
     });
     test('Popup subpixel positioning can be disabled with Popup.setSubpixelPositioning', () => {
         const map = createMap();
@@ -854,7 +855,7 @@ describe('popup', () => {
         popup.setSubpixelPositioning(false);
         popup.setOffset([-0.1, 0.9]);
 
-        expect(popup.getElement().style.transform).toBe('translate(-50%,-100%) translate(0px,1px)');
+        expect(assertedNotNullish(popup.getElement()).style.transform).toBe('translate(-50%,-100%) translate(0px,1px)');
     });
     test('Popup changes opacity when location behind globe', async () => {
         const map = createMap();
@@ -869,7 +870,7 @@ describe('popup', () => {
             type: 'globe'
         });
         map.setCenter([180, 0]);
-        expect(popup.getElement().style.opacity).toBe('0.2');
+        expect(assertedNotNullish(popup.getElement()).style.opacity).toBe('0.2');
     });
     test('Popup resets opacity when no longer behind globe', async () => {
         const map = createMap();
@@ -884,8 +885,8 @@ describe('popup', () => {
             type: 'globe'
         });
         map.setCenter([180, 0]);
-        expect(popup.getElement().style.opacity).toBe('0.3');
+        expect(assertedNotNullish(popup.getElement()).style.opacity).toBe('0.3');
         map.setCenter([0, 0]);
-        expect(popup.getElement().style.opacity).toBe('');
+        expect(assertedNotNullish(popup.getElement()).style.opacity).toBe('');
     });
 });

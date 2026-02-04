@@ -1,6 +1,7 @@
 import {describe, beforeEach, test, expect} from 'vitest';
 import {setPerformance} from '../util/test/util';
 import {type GeoJSONFeatureId, type GeoJSONSourceDiff, isUpdateableGeoJSON, toUpdateable, applySourceDiff, mergeSourceDiffs} from './geojson_source_diff';
+import {assertedNotNullish} from '../util/util';
 
 beforeEach(() => {
     setPerformance();
@@ -398,15 +399,15 @@ describe('mergeSourceDiffs', () => {
         } satisfies GeoJSONSourceDiff;
 
         const merged = mergeSourceDiffs(diff1, diff2);
-        expect(merged.add).toHaveLength(1);
-        expect(merged.add[0].geometry).toEqual({type: 'Point', coordinates: [2, 2]});
-        expect(merged.add[0].properties).toEqual({param: 2});
+        expect(assertedNotNullish(merged.add)).toHaveLength(1);
+        expect(assertedNotNullish(merged.add)[0].geometry).toEqual({type: 'Point', coordinates: [2, 2]});
+        expect(assertedNotNullish(merged.add)[0].properties).toEqual({param: 2});
         expect(merged.remove).toHaveLength(2);
-        expect(merged.update).toHaveLength(1);
-        expect(merged.update[0].newGeometry).toBeDefined();
-        expect(merged.update[0].addOrUpdateProperties).toHaveLength(2);
-        expect(merged.update[0].removeProperties).toHaveLength(1);
-        expect(merged.update[0].removeAllProperties).toBeTruthy();
+        expect(assertedNotNullish(merged.update)).toHaveLength(1);
+        expect(assertedNotNullish(merged.update)[0].newGeometry).toBeDefined();
+        expect(assertedNotNullish(merged.update)[0].addOrUpdateProperties).toHaveLength(2);
+        expect(assertedNotNullish(merged.update)[0].removeProperties).toHaveLength(1);
+        expect(assertedNotNullish(merged.update)[0].removeAllProperties).toBeTruthy();
     });
 
     test('merges two diffs add then removeAll', () => {

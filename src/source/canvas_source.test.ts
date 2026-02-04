@@ -1,7 +1,7 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {CanvasSource} from '../source/canvas_source';
 import {Event, Evented} from '../util/evented';
-import {extend} from '../util/util';
+import {extend, assertedNotNullish} from '../util/util';
 import {Tile} from './tile';
 import {OverscaledTileID} from './tile_id';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
@@ -10,7 +10,7 @@ import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {Dispatcher} from '../util/dispatcher';
 import type {MapSourceDataEvent} from '../ui/events';
 
-function createSource(options?) {
+function createSource(options?: any) {
     const c = options && options.canvas || window.document.createElement('canvas');
     c.width = 20;
     c.height = 20;
@@ -49,7 +49,7 @@ class StubMap extends Evented {
 }
 
 describe('CanvasSource', () => {
-    let map;
+    let map: StubMap;
     beforeEach(() => {
         map = new StubMap();
     });
@@ -64,7 +64,7 @@ describe('CanvasSource', () => {
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.dataType === 'source' && e.sourceDataType === 'metadata');
 
-        source.onAdd(map);
+        source.onAdd(map as any);
         await promise;
 
         expect(typeof source.play).toBe('function');
@@ -103,7 +103,7 @@ describe('CanvasSource', () => {
 
         const prmoise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.dataType === 'source' && e.sourceDataType === 'metadata');
 
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         await prmoise;
         expect(source.canvas).toBe(el);
@@ -114,7 +114,7 @@ describe('CanvasSource', () => {
 
         const promise = waitForEvent(map, 'rerender', () => true);
 
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         await expect(promise).resolves.toBeDefined();
     });
@@ -129,7 +129,7 @@ describe('CanvasSource', () => {
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.dataType === 'source' && e.sourceDataType === 'metadata');
 
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         await expect(promise).resolves.toBeDefined();
         expect(spy).not.toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe('CanvasSource', () => {
     test('onRemove stops animation', () => {
         const source = createSource();
 
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         expect(source.hasTransition()).toBe(true);
 
@@ -146,7 +146,7 @@ describe('CanvasSource', () => {
 
         expect(source.hasTransition()).toBe(false);
 
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         expect(source.hasTransition()).toBe(true);
 
@@ -155,15 +155,15 @@ describe('CanvasSource', () => {
     test('play and pause animation', () => {
         const source = createSource();
 
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         expect(source.hasTransition()).toBe(true);
 
-        source.pause();
+        assertedNotNullish(source.pause)();
 
         expect(source.hasTransition()).toBe(false);
 
-        source.play();
+        assertedNotNullish(source.play)();
 
         expect(source.hasTransition()).toBe(true);
 
@@ -174,7 +174,7 @@ describe('CanvasSource', () => {
         const tile = new Tile(new OverscaledTileID(1, 0, 1, 0, 0), 512);
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.dataType === 'source' && e.sourceDataType === 'idle');
-        source.onAdd(map);
+        source.onAdd(map as any);
 
         source.tiles[String(tile.tileID.wrap)] = tile;
         // assign dummies directly so we don't need to stub the gl things

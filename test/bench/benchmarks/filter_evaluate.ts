@@ -6,7 +6,7 @@ import {featureFilter as createFilter, type FilterSpecification} from '@maplibre
 import filters from '../data/filters.json' with {type: 'json'};
 
 export default class FilterEvaluate extends Benchmark {
-    layers: any[];
+    layers: any[] = [];
 
     async setup() {
         const response = await fetch('/test/bench/data/785.vector.pbf');

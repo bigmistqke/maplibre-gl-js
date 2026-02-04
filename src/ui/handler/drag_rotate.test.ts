@@ -1,5 +1,5 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
-import {extend} from '../../util/util';
+import {extend, assertedNotNullish} from '../../util/util';
 import {Map} from '../map';
 import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
@@ -23,19 +23,20 @@ describe('drag rotate', () => {
         // Prevent inertial rotation.
         vi.spyOn(timeControl, 'now').mockReturnValue(0);
 
-        expect(map.dragRotate.isActive()).toBe(false);
+        const dragRotate = assertedNotNullish(map.dragRotate);
+        expect(dragRotate.isActive()).toBe(false);
 
         simulate.mousedown(map.getCanvas(), {buttons: 2, button: 2});
         map._renderTaskQueue.run();
-        expect(map.dragRotate.isActive()).toBe(false);
+        expect(dragRotate.isActive()).toBe(false);
 
         simulate.mousemove(map.getCanvas(), {buttons: 2, clientX: 10, clientY: 10});
         map._renderTaskQueue.run();
-        expect(map.dragRotate.isActive()).toBe(true);
+        expect(dragRotate.isActive()).toBe(true);
 
         simulate.mouseup(map.getCanvas(),   {buttons: 0, button: 2});
         map._renderTaskQueue.run();
-        expect(map.dragRotate.isActive()).toBe(false);
+        expect(dragRotate.isActive()).toBe(false);
 
         map.remove();
     });
@@ -278,7 +279,7 @@ describe('drag rotate', () => {
     test('DragRotateHandler does not rotate or pitch when disabled', () => {
         const map = createMap();
 
-        map.dragRotate.disable();
+        assertedNotNullish(map.dragRotate).disable();
 
         const spy = vi.fn();
 
@@ -594,7 +595,7 @@ describe('drag rotate', () => {
 
     test('DragRotateHandler does not begin a drag on left-button mousedown without the control key', () => {
         const map = createMap();
-        map.dragPan.disable();
+        assertedNotNullish(map.dragPan).disable();
 
         const rotatestart = vi.fn();
         const rotate      = vi.fn();
@@ -627,7 +628,7 @@ describe('drag rotate', () => {
 
     test('DragRotateHandler does not end a right-button drag on left-button mouseup', () => {
         const map = createMap();
-        map.dragPan.disable();
+        assertedNotNullish(map.dragPan).disable();
 
         // Prevent inertial rotation.
         vi.spyOn(timeControl, 'now').mockReturnValue(0);
@@ -681,7 +682,7 @@ describe('drag rotate', () => {
 
     test('DragRotateHandler does not end a control-left-button drag on right-button mouseup', () => {
         const map = createMap();
-        map.dragPan.disable();
+        assertedNotNullish(map.dragPan).disable();
 
         // Prevent inertial rotation.
         vi.spyOn(timeControl, 'now').mockReturnValue(0);
@@ -779,7 +780,8 @@ describe('drag rotate', () => {
         simulate.mousedown(map.getCanvas(), {buttons: 2, button: 2});
         map._renderTaskQueue.run();
 
-        map.dragRotate.disable();
+        const dragRotate = assertedNotNullish(map.dragRotate);
+        dragRotate.disable();
 
         simulate.mousemove(map.getCanvas(), {buttons: 2, clientX: 10, clientY: 10});
         map._renderTaskQueue.run();
@@ -788,7 +790,7 @@ describe('drag rotate', () => {
         expect(rotate).toHaveBeenCalledTimes(0);
         expect(rotateend).toHaveBeenCalledTimes(0);
         expect(map.isMoving()).toBe(false);
-        expect(map.dragRotate.isEnabled()).toBe(false);
+        expect(dragRotate.isEnabled()).toBe(false);
 
         simulate.mouseup(map.getCanvas(), {buttons: 0, button: 2});
         map._renderTaskQueue.run();
@@ -797,7 +799,7 @@ describe('drag rotate', () => {
         expect(rotate).toHaveBeenCalledTimes(0);
         expect(rotateend).toHaveBeenCalledTimes(0);
         expect(map.isMoving()).toBe(false);
-        expect(map.dragRotate.isEnabled()).toBe(false);
+        expect(dragRotate.isEnabled()).toBe(false);
 
         map.remove();
     });

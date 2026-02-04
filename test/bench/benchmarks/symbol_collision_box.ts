@@ -27,7 +27,7 @@ type TestSymbol = {
 // For this benchmark we need a deterministic random number generator. This function provides one.
 // It returns random floats in range 0..1.
 // Taken directly from: https://stackoverflow.com/a/47593316
-function splitmix32(a) {
+function splitmix32(a: number) {
     return function() {
         a |= 0;
         a = a + 0x9e3779b9 | 0;
@@ -40,8 +40,8 @@ function splitmix32(a) {
 }
 
 export default class SymbolCollisionBox extends Benchmark {
-    private _transform: ITransform;
-    private _symbols: Array<TestSymbol>;
+    private _transform!: ITransform;
+    private _symbols!: Array<TestSymbol>;
     private _useGlobeProjection: boolean = false;
 
     constructor(useGlobeProjection: boolean) {
@@ -72,7 +72,7 @@ export default class SymbolCollisionBox extends Benchmark {
         const unwrappedTileID = tileID.toUnwrapped();
 
         const rng = splitmix32(0xdeadbeef);
-        const rndRange = (min, max) => {
+        const rndRange = (min: number, max: number): number => {
             return rng() * (max - min) + min;
         };
 
@@ -121,8 +121,8 @@ export default class SymbolCollisionBox extends Benchmark {
                 s.pitchWithMap,
                 s.rotateWithMap,
                 s.translation,
-                null,
-                null,
+                undefined,
+                undefined,
                 s.shift,
                 s.simpleProjectionMatrix,
             );

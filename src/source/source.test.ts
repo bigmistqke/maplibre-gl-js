@@ -4,7 +4,7 @@ import {type SourceClass, addSourceType, create} from './source';
 
 describe('addSourceType', () => {
     test('adds factory function without a worker url does not dispatch to worker', async () => {
-        const sourceType = vi.fn().mockImplementation(function (id) { this.id = id; }) as SourceClass;
+        const sourceType = vi.fn().mockImplementation(function (id) { this.id = id; }) as unknown as SourceClass;
 
         // expect no call to load worker source
         const spy = vi.spyOn(Dispatcher.prototype, 'broadcast');
@@ -12,12 +12,12 @@ describe('addSourceType', () => {
         await addSourceType('foo', sourceType);
         expect(spy).not.toHaveBeenCalled();
 
-        create('id', {type: 'foo'} as any, null, null);
+        create('id', {type: 'foo'} as unknown as Record<string, unknown>, null, null);
         expect(sourceType).toHaveBeenCalled();
     });
 
     test('create a custom source without an id throws', async () => {
-        const sourceType = vi.fn() as SourceClass;
+        const sourceType = vi.fn() as unknown as SourceClass;
 
         // expect no call to load worker source
         const spy = vi.spyOn(Dispatcher.prototype, 'broadcast');
@@ -25,12 +25,12 @@ describe('addSourceType', () => {
         await addSourceType('foo2', sourceType);
         expect(spy).not.toHaveBeenCalled();
 
-        expect(() => create('id', {type: 'foo2'} as any, null, null)).toThrow();
+        expect(() => create('id', {type: 'foo2'} as unknown as Record<string, unknown>, null, null)).toThrow();
         expect(sourceType).toHaveBeenCalled();
     });
 
     test('refuses to add new type over existing name', async () => {
-        const sourceType = function () {} as any as SourceClass;
+        const sourceType = function () {} as unknown as SourceClass;
         await expect(addSourceType('canvas', sourceType)).rejects.toThrow();
         await expect(addSourceType('geojson', sourceType)).rejects.toThrow();
         await expect(addSourceType('image', sourceType)).rejects.toThrow();

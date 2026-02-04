@@ -22,7 +22,7 @@ describe('FeatureIndex', () => {
             const feature = {
                 properties: {
                     cluster: true,
-                    cluster_id: '123',
+                    cluster_id: 123,
                     promoteId: 'someProperty',
                     someProperty: undefined
                 },
@@ -49,7 +49,7 @@ describe('FeatureIndex', () => {
             }  as any as Feature
         ];
         const tileID = new OverscaledTileID(3, 0, 2, 1, 2);
-        const tile = new Tile(tileID, undefined);
+        const tile = new Tile(tileID, 512);
         const geojsonWrapper = new GeoJSONWrapper(features);
         geojsonWrapper.name = '_geojsonTileLayer';
         const rawTileData = fromVectorTileJs({layers: {'_geojsonTileLayer': geojsonWrapper}});
@@ -67,7 +67,7 @@ describe('FeatureIndex', () => {
             const featureIndex = new FeatureIndex(tileID);
             featureIndex.rawTileData = rawTileData as any as ArrayBuffer;
             featureIndex.bucketLayerIDs = [['layer']];
-            featureIndex.insert(geojsonWrapper.feature(0), [[new Point(1, 1)]], 0, 0, 0);
+            featureIndex.insert(geojsonWrapper.feature(0) as any as VectorTileFeature, [[new Point(1, 1)]], 0, 0, 0);
 
             const result = featureIndex.query({
                 queryPadding: 0,
@@ -82,13 +82,13 @@ describe('FeatureIndex', () => {
                 transform
             } as any, {
                 layer: layer,
-            }, [], undefined);
+            }, [], {} as any);
             expect(result.layer[0].feature.properties).toEqual(features[0].tags);
         });
     });
 });
 
-function createVectorData(options?) {
+function createVectorData(options?: any) {
     const collisionBoxArray = new CollisionBoxArray();
     return extend({
         collisionBoxArray: deserialize(serialize(collisionBoxArray)),

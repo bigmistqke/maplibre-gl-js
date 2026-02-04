@@ -1,6 +1,8 @@
 import {afterEach, beforeEach, describe, expect, test} from 'vitest';
 import {GlobeControl} from './globe_control';
 import {createMap as globalCreateMap, beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
+import type {Map} from '../map';
 
 function createMap() {
     return globalCreateMap({
@@ -8,15 +10,13 @@ function createMap() {
         style: {
             version: 8,
             sources: {},
-            layers: [],
-            owner: 'maplibre',
-            id: 'basic'
+            layers: []
         },
         hash: true
     });
 }
 
-let map;
+let map: Map;
 
 beforeEach(() => {
     beforeMapTest();
@@ -52,15 +52,15 @@ describe('GlobeControl', () => {
         await new Promise(resolve => map.on('load', resolve));
 
         map.addControl(new GlobeControl());
-        expect(map.style.projection.name).toBe('mercator');
-        const button = map.getContainer().querySelector('.maplibregl-ctrl-globe');
+        expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('mercator');
+        const button = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-globe')) as HTMLElement;
 
         button.click();
         await new Promise(resolve => setTimeout(resolve, 0));
-        expect(map.style.projection.name).toBe('globe');
+        expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('globe');
 
         button.click();
         await new Promise(resolve => setTimeout(resolve, 0));
-        expect(map.style.projection.name).toBe('mercator');
+        expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('mercator');
     });
 });

@@ -1,6 +1,6 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import {RequestManager} from '../util/request_manager';
 import {loadSprite, normalizeSpriteURL} from './load_sprite';
 import {type FakeServer, fakeServer} from 'nise';
@@ -58,7 +58,7 @@ describe('loadSprite', () => {
     });
 
     test('backwards compatibility: single string is treated as a URL for the default sprite', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -90,7 +90,7 @@ describe('loadSprite', () => {
     });
 
     test('array of objects support', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -133,13 +133,13 @@ describe('loadSprite', () => {
     });
 
     test('server returns error', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
         const manager = new RequestManager(transform);
 
-        server.respondWith((xhr) => xhr.respond(500));
+        server.respondWith((xhr: any) => xhr.respond(500));
         const promise = loadSprite([{id: 'sprite1', url: 'http://localhost:9966/test/unit/assets/sprite1'}], manager, 1, new AbortController());
         server.respond();
 
@@ -148,7 +148,7 @@ describe('loadSprite', () => {
     });
 
     test('request canceling', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -171,7 +171,7 @@ describe('loadSprite', () => {
     });
 
     test('pixelRatio is respected', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 

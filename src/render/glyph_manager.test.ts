@@ -87,7 +87,7 @@ describe('GlyphManager', () => {
         expect(returnedGlyphs['Arial Unicode MS'][0x3005]).not.toBeNull();
         //Request char from Katakana range (te テ)
         returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30C6]});
-        const glyph = returnedGlyphs['Arial Unicode MS'][0x30c6];
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x30c6]);
         //Ensure that te is locally generated.
         expect(glyph.bitmap.height).toBe(12);
         expect(glyph.bitmap.width).toBe(12);
@@ -98,7 +98,8 @@ describe('GlyphManager', () => {
 
         // Chinese character píng 平
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x5e73]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x5e73].metrics.advance).toBe(0.5);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x5e73]);
+        expect(glyph.metrics.advance).toBe(0.5);
     });
 
     test('GlyphManager generates Katakana PBF locally', async () => {
@@ -106,7 +107,8 @@ describe('GlyphManager', () => {
 
         // Katakana letter te テ
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30c6]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x30c6].metrics.advance).toBe(0.5);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x30c6]);
+        expect(glyph.metrics.advance).toBe(0.5);
     });
 
     test('GlyphManager generates Hiragana PBF locally', async () => {
@@ -114,7 +116,8 @@ describe('GlyphManager', () => {
 
         //Hiragana letter te て
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x3066]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x3066].metrics.advance).toBe(0.5);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x3066]);
+        expect(glyph.metrics.advance).toBe(0.5);
     });
 
     test('GlyphManager consistently generates CJKV text locally', async () => {
@@ -149,7 +152,8 @@ describe('GlyphManager', () => {
 
         // Katakana letter te
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30c6]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x30c6].metrics.advance).toBe(24);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x30c6]);
+        expect(glyph.metrics.advance).toBe(24);
         await manager.getGlyphs({'Arial Unicode MS': [0x30c6]});
         expect(drawSpy).toHaveBeenCalledTimes(1);
     });

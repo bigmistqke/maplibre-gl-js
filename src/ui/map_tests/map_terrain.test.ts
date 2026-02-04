@@ -5,13 +5,14 @@ import {fakeServer, type FakeServer} from 'nise';
 import {type Terrain} from '../../render/terrain';
 import {MercatorTransform} from '../../geo/projection/mercator_transform';
 import {type Map} from '../map';
+import {assertedNotNullish} from '../../util/util';
 
 let server: FakeServer;
 let map: Map;
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
     server = fakeServer.create();
     map = createMap();
 });

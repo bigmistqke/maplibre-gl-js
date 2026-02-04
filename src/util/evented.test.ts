@@ -135,7 +135,7 @@ describe('Evented', () => {
 
     test('on is idempotent', () => {
         const evented = new Evented();
-        const order = [];
+        const order: string[] = [];
         const listenerA = vi.fn(() => order.push('A'));
         const listenerB = vi.fn(() => order.push('B'));
         evented.on('a', listenerA);

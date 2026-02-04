@@ -11,16 +11,31 @@ import {getGlobalWorkerPool} from '../../../src/util/global_worker_pool';
 
 const locations = locationsWithTileID(styleBenchmarkLocations.features as GeoJSON.Feature<GeoJSON.Point>[]);
 
-const benchmarks = (window as any).benchmarks = [];
+interface BenchmarkVersion {
+    name: string;
+    bench: any;
+}
 
-function register(name, Benchmark, locations?, location?) {
-    const versions = [];
+interface RegisteredBenchmark {
+    name: string;
+    versions: BenchmarkVersion[];
+    location?: any;
+}
 
-    for (const style of process.env.MAPLIBRE_STYLES) {
-        versions.push({
-            name: typeof style === 'string' ? style : (style as any).name,
-            bench: new Benchmark(style, locations)
-        });
+const benchmarks: RegisteredBenchmark[] = [];
+(window as any).benchmarks = benchmarks;
+
+function register(name: string, Benchmark: any, locations?: any, location?: any) {
+    const versions: BenchmarkVersion[] = [];
+
+    const styles = process.env.MAPLIBRE_STYLES;
+    if (styles) {
+        for (const style of styles) {
+            versions.push({
+                name: typeof style === 'string' ? style : (style as any).name,
+                bench: new Benchmark(style, locations)
+            });
+        }
     }
     benchmarks.push({name, versions, location});
 }

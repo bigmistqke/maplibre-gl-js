@@ -8,7 +8,7 @@ const height = 768;
 export default class Paint extends Benchmark {
     style: string;
     locations: Array<any>;
-    maps: Array<Map>;
+    maps!: Array<Map>;
 
     constructor(style: string, locations: Array<any>) {
         super();
@@ -40,12 +40,14 @@ export default class Paint extends Benchmark {
             const crossSourceCollisions = true;
             const forceFullPlacement = true;
 
-            map.style._updatePlacement(
-                map.transform,
-                showCollisionBoxes,
-                fadeDuration,
-                crossSourceCollisions,
-                forceFullPlacement);
+            if (map.style) {
+                map.style._updatePlacement(
+                    map.transform,
+                    showCollisionBoxes,
+                    fadeDuration,
+                    crossSourceCollisions,
+                    forceFullPlacement);
+            }
         }
     }
 

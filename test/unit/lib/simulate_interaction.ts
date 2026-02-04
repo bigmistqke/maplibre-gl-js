@@ -6,12 +6,12 @@ function click(target: HTMLElement | Window | Element) {
     target.dispatchEvent(new MouseEvent('click', options));
 }
 
-function drag(target: HTMLElement | Window, mousedownOptions, mouseUpOptions) {
-    mousedownOptions = Object.assign({bubbles: true}, mousedownOptions); // eslint-disable-line no-restricted-properties
-    mouseUpOptions = Object.assign({bubbles: true}, mouseUpOptions); // eslint-disable-line no-restricted-properties
-    target.dispatchEvent(new MouseEvent('mousedown', mousedownOptions));
-    target.dispatchEvent(new MouseEvent('mouseup', mouseUpOptions));
-    target.dispatchEvent(new MouseEvent('click', mouseUpOptions));
+function drag(target: HTMLElement | Window, mousedownOptions?: any, mouseUpOptions?: any) {
+    const downOpts = Object.assign({bubbles: true}, mousedownOptions); // eslint-disable-line no-restricted-properties
+    const upOpts = Object.assign({bubbles: true}, mouseUpOptions); // eslint-disable-line no-restricted-properties
+    target.dispatchEvent(new MouseEvent('mousedown', downOpts));
+    target.dispatchEvent(new MouseEvent('mouseup', upOpts));
+    target.dispatchEvent(new MouseEvent('click', upOpts));
 }
 
 function dragWithMove(target: HTMLElement | Window, start: {x: number; y: number}, end: {x: number; y: number}) {
@@ -32,31 +32,31 @@ function dblclick(target: HTMLElement | Window) {
 }
 
 function keyFunctionFactory(event: string) {
-    return (target: HTMLElement | Window, options) => {
-        options = Object.assign({bubbles: true}, options); // eslint-disable-line no-restricted-properties
-        target.dispatchEvent(new KeyboardEvent(event, options));
+    return (target: HTMLElement | Window, options: any) => {
+        const opts = Object.assign({bubbles: true}, options); // eslint-disable-line no-restricted-properties
+        target.dispatchEvent(new KeyboardEvent(event, opts));
     };
 }
 
 function mouseFunctionFactory(event: string) {
-    return (target: HTMLElement | Window, options?) => {
-        options = Object.assign({bubbles: true}, options); // eslint-disable-line no-restricted-properties
-        target.dispatchEvent(new MouseEvent(event, options));
+    return (target: HTMLElement | Window, options?: any) => {
+        const opts = Object.assign({bubbles: true}, options); // eslint-disable-line no-restricted-properties
+        target.dispatchEvent(new MouseEvent(event, opts));
     };
 }
 
 function wheelFunctionFactory(event: string) {
-    return (target: HTMLElement | Window, options) => {
-        options = Object.assign({bubbles: true}, options); // eslint-disable-line no-restricted-properties
-        target.dispatchEvent(new WheelEvent(event, options));
+    return (target: HTMLElement | Window, options: any) => {
+        const opts = Object.assign({bubbles: true}, options); // eslint-disable-line no-restricted-properties
+        target.dispatchEvent(new WheelEvent(event, opts));
     };
 }
 
 function touchFunctionFactory(event: string) {
-    return (target: HTMLElement | Window, options?) => {
+    return (target: HTMLElement | Window, options?: any) => {
         const defaultTouches = event.endsWith('end') || event.endsWith('cancel') ? [] : [{clientX: 0, clientY: 0}];
-        options = Object.assign({bubbles: true, touches: defaultTouches}, options); // eslint-disable-line no-restricted-properties
-        target.dispatchEvent(new TouchEvent(event, options));
+        const opts = Object.assign({bubbles: true, touches: defaultTouches}, options); // eslint-disable-line no-restricted-properties
+        target.dispatchEvent(new TouchEvent(event, opts));
     };
 }
 

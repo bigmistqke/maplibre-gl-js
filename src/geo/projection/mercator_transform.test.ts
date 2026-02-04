@@ -9,6 +9,7 @@ import {LngLatBounds} from '../lng_lat_bounds';
 import {getMercatorHorizon} from './mercator_utils';
 import {mat4} from 'gl-matrix';
 import {expectToBeCloseToArray} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 describe('transform', () => {
     test('creates a transform', () => {
@@ -24,7 +25,7 @@ describe('transform', () => {
         expect(transform.bearing === 0 ? 0 : transform.bearing).toBe(0);
         transform.setBearing(1);
         expect(transform.bearing).toBe(1);
-        expect([...transform.rotationMatrix]).toEqual([0.9998477101325989, -0.017452405765652657, 0.017452405765652657, 0.9998477101325989]);
+        expect([...assertedNotNullish(transform.rotationMatrix, 'rotationMatrix must be defined')]).toEqual([0.9998477101325989, -0.017452405765652657, 0.017452405765652657, 0.9998477101325989]);
         transform.setBearing(0);
         expect(transform.bearing).toBe(0);
         expect(transform.unmodified).toBe(false);
@@ -232,7 +233,7 @@ describe('transform', () => {
 
         const customLayerMatrix = transform.getProjectionDataForCustomLayer().mainMatrix;
         expect(customLayerMatrix[0].toString().length).toBeGreaterThan(9);
-        expect(transform.pixelsToClipSpaceMatrix[0].toString().length).toBeGreaterThan(9);
+        expect(assertedNotNullish(transform.pixelsToClipSpaceMatrix, 'pixelsToClipSpaceMatrix must be defined')[0].toString().length).toBeGreaterThan(9);
         expect(transform.maxPitchScaleFactor()).toBeCloseTo(2.366025418080343, 5);
     });
 

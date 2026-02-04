@@ -4,7 +4,7 @@ import {createMap, beforeMapTest} from '../../util/test/util';
 let originalGetContext: typeof HTMLCanvasElement.prototype.getContext;
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    (global as any).fetch = undefined;
     originalGetContext = HTMLCanvasElement.prototype.getContext;
 });
 
@@ -43,18 +43,19 @@ test('does not fire "webglcontextrestored" after remove has been called', async 
 });
 
 test('WebGL error while creating map', () => {
-    HTMLCanvasElement.prototype.getContext = function (type: string) {
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string) {
         if (type === 'webgl2' || type === 'webgl') {
             const errorEvent = new Event('webglcontextcreationerror');
             (errorEvent as any).statusMessage = 'mocked webglcontextcreationerror message';
-            (this as HTMLCanvasElement).dispatchEvent(errorEvent);
+            this.dispatchEvent(errorEvent);
             return null;
         }
-    };
+        return null;
+    } as any;
     try {
         createMap();
     } catch (e) {
-        const errorMessageObject = JSON.parse(e.message);
+        const errorMessageObject = JSON.parse((e as Error).message);
 
         // this message is from map code
         expect(errorMessageObject.message).toBe('Failed to initialize WebGL');
@@ -65,24 +66,24 @@ test('WebGL error while creating map', () => {
 });
 
 test('Check Map is being created with desired WebGL version', () => {
-    HTMLCanvasElement.prototype.getContext = function (type: string) {
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string) {
         const errorEvent = new Event('webglcontextcreationerror');
         (errorEvent as any).statusMessage = `${type} is not supported`;
-        (this as HTMLCanvasElement).dispatchEvent(errorEvent);
+        this.dispatchEvent(errorEvent);
         return null;
-    };
+    } as any;
 
     try {
         createMap({canvasContextAttributes: {contextType: 'webgl2'}});
     } catch (e) {
-        const errorMessageObject = JSON.parse(e.message);
+        const errorMessageObject = JSON.parse((e as Error).message);
         expect(errorMessageObject.statusMessage).toBe('webgl2 is not supported');
     }
-  
+
     try {
         createMap({canvasContextAttributes: {contextType: 'webgl'}});
     } catch (e) {
-        const errorMessageObject = JSON.parse(e.message);
+        const errorMessageObject = JSON.parse((e as Error).message);
         expect(errorMessageObject.statusMessage).toBe('webgl is not supported');
     }
 
@@ -111,8 +112,10 @@ test('Hit WebGL max drawing buffer limit', () => {
     Object.defineProperty(container, 'clientWidth', {value: 8000});
     Object.defineProperty(container, 'clientHeight', {value: 4500});
     const map = createMap({container, maxCanvasSize: [16834, 16834], pixelRatio: 1});
-    vi.spyOn(map.painter.context.gl, 'drawingBufferWidth', 'get').mockReturnValue(7536);
-    vi.spyOn(map.painter.context.gl, 'drawingBufferHeight', 'get').mockReturnValue(4239);
+    const painter = map.painter;
+    if (!painter) throw new Error('Painter must be defined');
+    vi.spyOn(painter.context.gl, 'drawingBufferWidth', 'get').mockReturnValue(7536);
+    vi.spyOn(painter.context.gl, 'drawingBufferHeight', 'get').mockReturnValue(4239);
     map.resize();
     expect(map.getCanvas().width).toBe(7536);
     expect(map.getCanvas().height).toBe(4239);
