@@ -5,12 +5,12 @@ import {beforeMapTest} from '../../util/test/util';
 import {Map, type MapOptions} from '../map';
 import type {MapGeoJSONFeature} from '../../util/vectortile_to_geojson';
 
-function createMap(clickTolerance?, dragPan?) {
+function createMap(clickTolerance?: number, dragPan?: boolean) {
     return new Map({
         container: DOM.create('div', '', window.document.body),
         clickTolerance: clickTolerance || 0,
         dragPan: dragPan || true,
-    } as any as MapOptions);
+    } as MapOptions); // Test mock
 }
 
 beforeEach(() => {

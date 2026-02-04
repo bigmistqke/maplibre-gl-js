@@ -4,7 +4,7 @@ import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest} from '../../util/test/util';
 
-function createMap(clickTolerance) {
+function createMap(clickTolerance?: number) {
     return new Map({style: '', container: DOM.create('div', '', window.document.body), clickTolerance});
 }
 

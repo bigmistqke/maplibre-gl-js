@@ -4,10 +4,10 @@ import {beforeMapTest, sleep} from '../../util/test/util';
 import {Map, type MapOptions} from '../map';
 
 function createMap() {
-    return new Map({container: window.document.createElement('div')} as any as MapOptions);
+    return new Map({container: window.document.createElement('div')} as MapOptions); // Test mock
 }
 
-async function simulateDoubleTap(map, delay = 100) {
+async function simulateDoubleTap(map: Map, delay: number = 100) {
     const canvas = map.getCanvas();
 
     simulate.touchstart(canvas, {touches: [{target: canvas, clientX: 0, clientY: 0}]});

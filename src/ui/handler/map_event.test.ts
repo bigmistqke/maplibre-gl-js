@@ -5,7 +5,7 @@ import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest} from '../../util/test/util';
 
 function createMap() {
-    return new Map({interactive: true, container: DOM.create('div', '', window.document.body)} as any as MapOptions);
+    return new Map({interactive: true, container: DOM.create('div', '', window.document.body)} as MapOptions); // Test mock
 }
 
 beforeEach(() => {

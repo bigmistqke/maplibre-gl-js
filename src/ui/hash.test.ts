@@ -4,7 +4,7 @@ import {createMap as globalCreateMap, beforeMapTest} from '../util/test/util';
 import type {Map} from './map';
 
 describe('hash', () => {
-    function createHash(name: string = undefined) {
+    function createHash(name?: string) {
         const hash = new Hash(name);
         hash._updateHash = hash._updateHashUnthrottled.bind(hash);
         return hash;

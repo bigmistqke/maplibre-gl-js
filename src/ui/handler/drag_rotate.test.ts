@@ -7,7 +7,7 @@ import * as timeControl from '../../util/time_control';
 
 import {beforeMapTest} from '../../util/test/util';
 
-function createMap(options?) {
+function createMap(options?: Record<string, unknown>) {
     return new Map(extend({container: DOM.create('div', '', window.document.body)}, options));
 }
 

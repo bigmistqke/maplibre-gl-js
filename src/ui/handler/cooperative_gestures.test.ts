@@ -5,7 +5,7 @@ import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest, sleep} from '../../util/test/util';
 
-function createMap(cooperativeGestures) {
+function createMap(cooperativeGestures?: boolean) {
     return new Map({
         container: DOM.create('div', '', window.document.body),
         style: {
