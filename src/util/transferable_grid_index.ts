@@ -89,12 +89,11 @@ export class TransferableGridIndex {
     // Consider refactoring to use separate mutable/immutable classes or proper type narrowing.
     insert(key: number, x1: number, y1: number, x2: number, y2: number) {
         this._forEachCell(x1, y1, x2, y2, this._insertCell, this.uid++, undefined, undefined);
-        // NOTE: TypeScript strict mode - keys/bboxes are typed as number[] | Int32Array but push() only exists on arrays.
+        if (!Array.isArray(this.keys) || !Array.isArray(this.bboxes)) {
+            throw new Error('Cannot insert into a GridIndex created from an ArrayBuffer.');
+        }
         this.keys.push(key);
-        this.bboxes.push(x1);
-        this.bboxes.push(y1);
-        this.bboxes.push(x2);
-        this.bboxes.push(y2);
+        this.bboxes.push(x1, y1, x2, y2);
     }
 
     _insertReadonly() {

@@ -118,7 +118,7 @@ class TransitionablePropertyValue<T, R> {
 
     constructor(property: Property<T, R>, globalState: Record<string, any>) {
         this.property = property;
-        this.value = new PropertyValue(property, undefined, globalState);
+        this.value = new PropertyValue<T, R>(property, undefined, globalState);
     }
 
     transitioned(parameters: TransitionParameters, prior: TransitioningPropertyValue<T, R>): TransitioningPropertyValue<T, R> {
@@ -274,7 +274,7 @@ class TransitioningPropertyValue<T, R> {
  */
 export class Transitioning<Props extends Record<string, Property<unknown, unknown>>> {
     _properties: Properties<Props>;
-    _values: {[K in keyof Props]: TransitioningPropertyValue<unknown, unknown>};
+    _values: Record<string, TransitioningPropertyValue<unknown, unknown>>;
 
     constructor(properties: Properties<Props>) {
         this._properties = properties;
@@ -286,7 +286,7 @@ export class Transitioning<Props extends Record<string, Property<unknown, unknow
         canonical?: CanonicalTileID,
         availableImages?: Array<string>
     ): PossiblyEvaluated<Props, any> {
-        const result = new PossiblyEvaluated(this._properties);
+        const result: PossiblyEvaluated<Props, Record<string, unknown>> = new PossiblyEvaluated(this._properties);
         for (const property in this._values) {
             result._values[property] = this._values[property].possiblyEvaluate(parameters, canonical, availableImages);
         }
@@ -354,7 +354,7 @@ export class Layout<Props extends Record<string, Property<unknown, unknown>>> {
         canonical?: CanonicalTileID,
         availableImages?: Array<string>
     ): PossiblyEvaluated<Props, any> {
-        const result = new PossiblyEvaluated(this._properties);
+        const result: PossiblyEvaluated<Props, Record<string, unknown>> = new PossiblyEvaluated(this._properties);
         for (const property of Object.keys(this._values)) {
             result._values[property] = this._values[property].possiblyEvaluate(parameters, canonical, availableImages);
         }
