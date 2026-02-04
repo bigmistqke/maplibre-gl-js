@@ -1,4 +1,4 @@
-import {assertedNotNullish, isNullish} from './util';
+import {assertedNotNullish, assertNotNullish, isNullish} from './util';
 
 // Note: all "sizes" are measured in bytes
 
@@ -119,9 +119,7 @@ abstract class StructArray {
      * deserialization.
      */
     static serialize(array: StructArray, transferables?: Array<Transferable>): SerializedStructArray {
-        if(isNullish(array.arrayBuffer)){
-            throw new Error('Expected array.arrayBuffer to be defined');
-        }
+        assertNotNullish(array.arrayBuffer, 'Expected array.arrayBuffer to be defined');
 
         array._trim();
 

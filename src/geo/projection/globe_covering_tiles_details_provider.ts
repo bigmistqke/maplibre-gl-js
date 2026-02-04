@@ -9,7 +9,7 @@ import type {CoveringTilesDetailsProvider} from './covering_tiles_details_provid
 import {OverscaledTileID} from '../../source/tile_id';
 import {earthRadius} from '../lng_lat';
 import {ConvexVolume} from '../../util/primitives/convex_volume';
-import {threePlaneIntersection} from '../../util/util';
+import {assertedNotNullish, threePlaneIntersection} from '../../util/util';
 
 /**
  * Computes distance of a point to a tile in an arbitrary axis.
@@ -251,36 +251,36 @@ export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsPr
             const planeEast = [...axisEast, 0] as vec4;
             const planeWest = [...axisWest, 0] as vec4;
 
-            const points: vec3[] = [];
+            const points: (vec3)[] = [];
 
             // North points
             if (tileID.y === 0) {
                 // If the tile borders a pole, then
                 points.push(
-                    threePlaneIntersection(planeWest, planeEast, planeUp),
-                    threePlaneIntersection(planeWest, planeEast, planeDown),
+                    assertedNotNullish(threePlaneIntersection(planeWest, planeEast, planeUp)),
+                    assertedNotNullish(threePlaneIntersection(planeWest, planeEast, planeDown)),
                 );
             } else {
                 points.push(
-                    threePlaneIntersection(planeNorth, planeEast, planeUp),
-                    threePlaneIntersection(planeNorth, planeEast, planeDown),
-                    threePlaneIntersection(planeNorth, planeWest, planeUp),
-                    threePlaneIntersection(planeNorth, planeWest, planeDown)
+                    assertedNotNullish(threePlaneIntersection(planeNorth, planeEast, planeUp)),
+                    assertedNotNullish(threePlaneIntersection(planeNorth, planeEast, planeDown)),
+                    assertedNotNullish(threePlaneIntersection(planeNorth, planeWest, planeUp)),
+                    assertedNotNullish(threePlaneIntersection(planeNorth, planeWest, planeDown)),
                 );
             }
 
             // South points
             if (tileID.y === (1 << tileID.z) - 1) {
                 points.push(
-                    threePlaneIntersection(planeWest, planeEast, planeUp),
-                    threePlaneIntersection(planeWest, planeEast, planeDown),
+                    assertedNotNullish(threePlaneIntersection(planeWest, planeEast, planeUp)),
+                    assertedNotNullish(threePlaneIntersection(planeWest, planeEast, planeDown)),
                 );
             } else {
                 points.push(
-                    threePlaneIntersection(planeSouth, planeEast, planeUp),
-                    threePlaneIntersection(planeSouth, planeEast, planeDown),
-                    threePlaneIntersection(planeSouth, planeWest, planeUp),
-                    threePlaneIntersection(planeSouth, planeWest, planeDown)
+                    assertedNotNullish(threePlaneIntersection(planeSouth, planeEast, planeUp)),
+                    assertedNotNullish(threePlaneIntersection(planeSouth, planeEast, planeDown)),
+                    assertedNotNullish(threePlaneIntersection(planeSouth, planeWest, planeUp)),
+                    assertedNotNullish(threePlaneIntersection(planeSouth, planeWest, planeDown)),
                 );
             }
 

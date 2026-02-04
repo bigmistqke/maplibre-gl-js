@@ -16,7 +16,7 @@ OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 */
-import { assertedNotNullish } from "../util/util";
+import {assertedNotNullish} from '../util/util';
 
 type IntersectionTest = (x1: number, y1: number,x2: number, y2: number) => boolean;
 type Cells = Array<Int32Array<ArrayBuffer> | Array<number> | null>;
@@ -85,20 +85,15 @@ export class TransferableGridIndex {
         this.max = extent + p;
     }
 
-    // TODO: TypeScript strict mode - keys/bboxes are typed as number[] | Int32Array but push() only exists on arrays.
     // The design assumes insert() is replaced with _insertReadonly() when initialized from ArrayBuffer.
     // Consider refactoring to use separate mutable/immutable classes or proper type narrowing.
     insert(key: number, x1: number, y1: number, x2: number, y2: number) {
         this._forEachCell(x1, y1, x2, y2, this._insertCell, this.uid++, undefined, undefined);
-        // @ts-expect-error - see TODO above
+        // NOTE: TypeScript strict mode - keys/bboxes are typed as number[] | Int32Array but push() only exists on arrays.
         this.keys.push(key);
-        // @ts-expect-error - see TODO above
         this.bboxes.push(x1);
-        // @ts-expect-error - see TODO above
         this.bboxes.push(y1);
-        // @ts-expect-error - see TODO above
         this.bboxes.push(x2);
-        // @ts-expect-error - see TODO above
         this.bboxes.push(y2);
     }
 

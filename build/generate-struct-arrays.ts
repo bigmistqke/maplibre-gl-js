@@ -354,6 +354,7 @@ function emitStructArray(locals) {
         output.push(
             `/** @internal */
 class ${structTypeClass} extends Struct {
+    size = ${size};
     _structArray!: ${structArrayClass};`);
 
         for (const {name, member, component} of components) {
@@ -380,8 +381,6 @@ class ${structTypeClass} extends Struct {
 
         output.push(
             `}
-
-${structTypeClass}.prototype.size = ${size};
 
 export type ${structTypeClass.replace('Struct', '')} = ${structTypeClass};
 `);
