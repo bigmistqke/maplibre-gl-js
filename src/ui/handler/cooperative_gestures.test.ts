@@ -68,7 +68,7 @@ describe('CoopGesturesHandler', () => {
         timeControlNow.mockReturnValue(now);
 
         const map = createMap(true);
-        map.cooperativeGestures.disable();
+        map.cooperativeGestures?.disable();
         map._renderTaskQueue.run();
 
         const startZoom = map.getZoom();
@@ -119,7 +119,9 @@ describe('CoopGesturesHandler', () => {
         const map = createMap(true);
 
         // pretend we're on a Mac, where the ctrlKey isn't the bypassKey
-        map.cooperativeGestures._bypassKey = 'metaKey';
+        if (map.cooperativeGestures) {
+            map.cooperativeGestures._bypassKey = 'metaKey';
+        }
         map._renderTaskQueue.run();
 
         const startZoom = map.getZoom();
@@ -154,7 +156,7 @@ describe('CoopGesturesHandler', () => {
         const cooperativegestureprevented = vi.fn();
         map.on('cooperativegestureprevented', cooperativegestureprevented);
 
-        map.scrollZoom.disable();
+        map.scrollZoom?.disable();
         map._renderTaskQueue.run();
 
         // simulate a single 'wheel' event
@@ -215,7 +217,7 @@ describe('CoopGesturesHandler', () => {
         const cooperativegestureprevented = vi.fn();
         map.on('cooperativegestureprevented', cooperativegestureprevented);
 
-        map.cooperativeGestures.disable();
+        map.cooperativeGestures?.disable();
         const target = map.getCanvasContainer();
         const startCenter = map.getCenter();
         map._renderTaskQueue.run();
@@ -320,7 +322,7 @@ describe('CoopGesturesHandler', () => {
         expect(midZoom - startZoom).toBeCloseTo(0.0285, 3);
 
         // Enable cooperative gestures
-        map.cooperativeGestures.enable();
+        map.cooperativeGestures?.enable();
 
         // This 'wheel' event should not zoom
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -simulate.magicWheelZoomDelta});

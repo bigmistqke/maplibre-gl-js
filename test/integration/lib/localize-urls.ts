@@ -62,8 +62,11 @@ function localizeMapboxTilesetURL(url: string, port: number) {
 function localizeSourceURLs(source: any, port: number) {
     if (source.tiles) {
         for (const tile in source.tiles) {
-            source.tiles[tile] = localizeMapboxTilesURL(source.tiles[tile], port);
-            source.tiles[tile] = localizeURL(source.tiles[tile], port);
+            const tileUrl = source.tiles[tile];
+            if (typeof tileUrl === 'string') {
+                source.tiles[tile] = localizeMapboxTilesURL(tileUrl, port);
+                source.tiles[tile] = localizeURL(source.tiles[tile], port);
+            }
         }
     }
 

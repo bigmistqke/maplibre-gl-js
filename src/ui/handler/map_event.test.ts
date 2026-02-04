@@ -53,7 +53,7 @@ describe('map events', () => {
     test('MapEvent handler fires touchmove even while drag handler is active', () => {
         const map = createMap();
         const target = map.getCanvas();
-        map.dragPan.enable();
+        map.dragPan?.enable();
 
         const touchstart = vi.fn();
         const touchmove = vi.fn();
@@ -96,7 +96,7 @@ describe('map events', () => {
     test('MapEvent handler fires contextmenu on MacOS/Linux, but only at mouseup', () => {
         const map = createMap();
         const target = map.getCanvas();
-        map.dragPan.enable();
+        map.dragPan?.enable();
 
         const contextmenu = vi.fn();
 
@@ -112,7 +112,7 @@ describe('map events', () => {
     test('MapEvent handler does not fire contextmenu on MacOS/Linux, when moved', () => {
         const map = createMap();
         const target = map.getCanvas();
-        map.dragPan.enable();
+        map.dragPan?.enable();
 
         const contextmenu = vi.fn();
 
@@ -128,7 +128,7 @@ describe('map events', () => {
     test('MapEvent handler fires contextmenu on Windows', () => {
         const map = createMap();
         const target = map.getCanvas();
-        map.dragPan.enable();
+        map.dragPan?.enable();
 
         const contextmenu = vi.fn();
 
@@ -144,7 +144,7 @@ describe('map events', () => {
     test('MapEvent handler does not fire contextmenu on Windows, when moved', () => {
         const map = createMap();
         const target = map.getCanvas();
-        map.dragPan.enable();
+        map.dragPan?.enable();
 
         const contextmenu = vi.fn();
 

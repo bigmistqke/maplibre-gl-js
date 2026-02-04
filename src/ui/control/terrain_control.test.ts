@@ -24,7 +24,7 @@ function createMap() {
     });
 }
 
-let map;
+let map: ReturnType<typeof createMap>;
 
 beforeEach(() => {
     beforeMapTest();
@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    map.remove();
+    map?.remove();
 });
 
 describe('TerrainControl', () => {

@@ -32,7 +32,7 @@ describe('Vertex to viewport projection', () => {
             // Only relevant in "behind the camera" case, can't happen with null projection matrix
             tileAnchorPoint: new Point(0, 0),
             pitchWithMap: true,
-            unwrappedTileID: null,
+            unwrappedTileID: undefined,
             transform,
             width: 1,
             height: 1,
@@ -76,7 +76,7 @@ describe('Find offset line intersections', () => {
         tileAnchorPoint: new Point(0, 0),
         transform,
         pitchWithMap: true,
-        unwrappedTileID: null,
+        unwrappedTileID: undefined,
         width: 1,
         height: 1,
         translation: [0, 0]
@@ -217,9 +217,9 @@ describe('Find offset line intersections', () => {
         transform.setRoll(45);
 
         expectToBeCloseToArray(Array.from(getGlCoordMatrix(false, false, transform, 2)),
-            Array.from(transform.pixelsToClipSpaceMatrix), 9);
+            Array.from(transform.pixelsToClipSpaceMatrix ?? []), 9);
         expectToBeCloseToArray(Array.from(getGlCoordMatrix(false, true, transform, 2)),
-            Array.from(transform.pixelsToClipSpaceMatrix), 9);
+            Array.from(transform.pixelsToClipSpaceMatrix ?? []), 9);
         expectToBeCloseToArray(Array.from(getGlCoordMatrix(true, false, transform, 2)),
             [-0.33820396661758423, 1.9711971282958984, 0, 0, -1.9711971282958984, 0.33820396661758423, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], 9);
         expectToBeCloseToArray(Array.from(getGlCoordMatrix(true, true, transform, 2)),

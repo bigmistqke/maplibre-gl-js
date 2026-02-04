@@ -31,11 +31,11 @@ describe('ScaleControl', () => {
         const selector = '.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale';
         map.addControl(scale);
 
-        let contents = map.getContainer().querySelector(selector).innerHTML;
+        let contents = map.getContainer().querySelector(selector)?.innerHTML;
         expect(contents).toMatch(/km/);
 
         scale.setUnit('imperial');
-        contents = map.getContainer().querySelector(selector).innerHTML;
+        contents = map.getContainer().querySelector(selector)?.innerHTML;
         expect(contents).toMatch(/mi/);
     });
 

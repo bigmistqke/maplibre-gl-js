@@ -29,7 +29,7 @@ describe('placement', () => {
                 'symbol-placement': 'line'
             },
         }, {});
-        layer.recalculate({zoom: 22, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 22, zoomHistory: {}} as EvaluationParameters, [] as any);
         const tileId = new OverscaledTileID(22, 0, 12, 2447, 1666);
         const bucketInstanceId = 1;
         placement.retainedQueryData[bucketInstanceId] = new RetainedQueryData(

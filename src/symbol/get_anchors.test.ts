@@ -6,12 +6,12 @@ import {type PositionedIcon, type Shaping} from './shaping';
 const TILE_EXTENT = 4096;
 
 describe('getAnchors', () => {
-    const nonContinuedLine = [];
+    const nonContinuedLine: Point[] = [];
     for (let i = 1; i < 11; i++) {
         nonContinuedLine.push(new Point(1, i));
     }
 
-    const continuedLine = [];
+    const continuedLine: Point[] = [];
     for (let j = 0; j < 10; j++) {
         continuedLine.push(new Point(1, j));
     }

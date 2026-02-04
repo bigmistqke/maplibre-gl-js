@@ -341,7 +341,7 @@ describe('SourceCache.removeTile', () => {
         sourceCache._source.loadTile = async () => {
             sourceCache._removeTile(tileID.key);
         };
-        sourceCache.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as unknown as Record<string, unknown>;
+        sourceCache.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as any as Map;
 
         sourceCache._addTile(tileID);
     });

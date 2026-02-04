@@ -2,20 +2,21 @@ import {describe, beforeEach, afterEach, test, expect, vi, it} from 'vitest';
 import {fakeServer, type FakeServer} from 'nise';
 import {RasterDEMTileSource} from './raster_dem_tile_source';
 import {OverscaledTileID} from './tile_id';
-import {RequestManager} from '../util/request_manager';
+import {RequestManager, type RequestTransformFunction} from '../util/request_manager';
 import {type Tile} from './tile';
 import {waitForEvent, waitForMetadataEvent} from '../util/test/util';
 import type {MapSourceDataEvent} from '../ui/events';
 import {type Dispatcher} from '../util/dispatcher';
+import type {Map} from '../ui/map';
 
-function createSource(options: Record<string, unknown>, transformCallback?: (url: string, resourceType: string) => {url: string}) {
+function createSource(options: Record<string, unknown>, transformCallback?: RequestTransformFunction) {
     const source = new RasterDEMTileSource('id', options as any, {send() {}} as unknown as Dispatcher, (options as any).eventedParent);
     source.onAdd({
         transform: {angle: 0, pitch: 0, showCollisionBoxes: false},
         _getMapId: () => 1,
         _requestManager: new RequestManager(transformCallback),
         getPixelRatio() { return 1; }
-    } as unknown as {transform: {angle: number; pitch: number; showCollisionBoxes: boolean}; _getMapId(): number; _requestManager: RequestManager; getPixelRatio(): number});
+    } as any as Map);
 
     source.on('error', (e) => {
         throw e.error;
@@ -171,7 +172,7 @@ describe('RasterDEMTileSource', () => {
             [200, {'Content-Type': 'image/png', 'Content-Length': 1, 'Cache-Control': 'max-age=100'}, '0']
         );
         const source = createSource({url: '/source.json'});
-        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as unknown as Record<string, unknown>;
+        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
         source.map!._refreshExpiredTiles = true;
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
@@ -202,7 +203,7 @@ describe('RasterDEMTileSource', () => {
             [200, {'Content-Type': 'image/png', 'Content-Length': 1, 'Expires': 'Wed, 21 Oct 2015 07:28:00 GMT'}, '0']
         );
         const source = createSource({url: '/source.json'});
-        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as unknown as Record<string, unknown>;
+        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
         source.map!._refreshExpiredTiles = true;
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
@@ -233,7 +234,7 @@ describe('RasterDEMTileSource', () => {
             [200, {'Content-Type': 'image/png', 'Content-Length': 1, 'Cache-Control': '', 'Expires': 'Wed, 21 Oct 2015 07:28:00 GMT'}, '0']
         );
         const source = createSource({url: '/source.json'});
-        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as unknown as Record<string, unknown>;
+        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
         source.map!._refreshExpiredTiles = true;
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');

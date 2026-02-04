@@ -12,7 +12,7 @@ export function createSymbolBucket(layerId: string, font: string, text: string, 
         layout: {'text-font': [font], 'text-field': text},
         filter: featureFilter(undefined)
     } as any as LayerSpecification, {});
-    layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+    layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
     return new SymbolBucket({
         overscaling: 1,
@@ -29,7 +29,7 @@ export function createSymbolIconBucket(layerId: string, iconProperty: string, co
         layout: {'icon-image': ['get', iconProperty]},
         filter: featureFilter(undefined)
     } as any as LayerSpecification, {});
-    layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+    layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
     return new SymbolBucket({
         overscaling: 1,

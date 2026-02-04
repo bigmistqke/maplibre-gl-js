@@ -68,8 +68,12 @@ describe('hash', () => {
 
         // map is created with `interactive: false`
         // so explicitly enable rotation for this test
-        map.dragRotate.enable();
-        map.touchZoomRotate.enable();
+        if (map.dragRotate) {
+            map.dragRotate.enable();
+        }
+        if (map.touchZoomRotate) {
+            map.touchZoomRotate.enable();
+        }
 
         window.location.hash = '#5/1.00/0.50/30/60';
 
@@ -83,8 +87,12 @@ describe('hash', () => {
 
         // disable rotation to test that updating
         // the hash's bearing won't change the map
-        map.dragRotate.disable();
-        map.touchZoomRotate.disable();
+        if (map.dragRotate) {
+            map.dragRotate.disable();
+        }
+        if (map.touchZoomRotate) {
+            map.touchZoomRotate.disable();
+        }
 
         window.location.hash = '#5/1.00/0.50/-45/60';
 

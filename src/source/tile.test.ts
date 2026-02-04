@@ -32,7 +32,7 @@ describe('querySourceFeatures', () => {
         const geojsonWrapper = new GeoJSONWrapper(features);
         geojsonWrapper.name = '_geojsonTileLayer';
         tile.loadVectorData(
-            createVectorData({rawTileData: fromVectorTileJs({layers: {'_geojsonTileLayer': geojsonWrapper}})}),
+            createVectorData({rawTileData: fromVectorTileJs({layers: {'_geojsonTileLayer': geojsonWrapper}}) as any}),
             createPainter()
         );
 
@@ -40,7 +40,7 @@ describe('querySourceFeatures', () => {
             let result: GeoJSONFeature[] = [];
             tile.querySourceFeatures(result);
             expect(result).toHaveLength(1);
-            expect(result[0].geometry.coordinates[0]).toEqual([-90, 0]);
+            expect((result[0].geometry as any).coordinates[0]).toEqual([-90, 0]);
             result = [];
             tile.querySourceFeatures(result, {} as unknown as QuerySourceFeatureOptionsStrict); // Test mock: empty object conforms to the optional-fields-only type
             expect(result).toHaveLength(1);
@@ -290,17 +290,22 @@ describe('rtl text detection', () => {
 
 });
 
-function createRawTileData() {
-    return fs.readFileSync(path.join(__dirname, '../../test/unit/assets/mbsv5-6-18-23.vector.pbf'));
+function createRawTileData(): ArrayBuffer {
+    return fs.readFileSync(path.join(__dirname, '../../test/unit/assets/mbsv5-6-18-23.vector.pbf')).buffer as ArrayBuffer;
 }
 
-function createVectorData(options?: Partial<WorkerTileResult>) {
+function createVectorData(options?: Partial<WorkerTileResult>): WorkerTileResult {
     const collisionBoxArray = new CollisionBoxArray();
-    return extend({
-        collisionBoxArray: deserialize(serialize(collisionBoxArray)),
-        featureIndex: deserialize(serialize(new FeatureIndex(new OverscaledTileID(1, 0, 1, 1, 1)))),
+    const result = extend({
+        collisionBoxArray: deserialize(serialize(collisionBoxArray)) as any,
+        featureIndex: deserialize(serialize(new FeatureIndex(new OverscaledTileID(1, 0, 1, 1, 1)))) as any,
         buckets: []
-    }, options);
+    }, options) as any;
+    // Handle rawTileData as ArrayBufferLike
+    if (result.rawTileData && result.rawTileData.buffer && result.rawTileData.byteLength !== undefined) {
+        result.rawTileData = result.rawTileData.buffer || result.rawTileData;
+    }
+    return result as WorkerTileResult;
 }
 
 function createPainter(styleStub = {}) {

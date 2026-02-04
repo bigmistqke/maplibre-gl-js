@@ -489,9 +489,9 @@ describe('StyleLayer.globalState', () => {
             }
         } as LayerSpecification, {radius: 15, color: '#FF0000'}) as CircleStyleLayer;
 
-        layer.recalculate({zoom: 0} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0} as EvaluationParameters, []);
 
-        expect(layer.paint.get('circle-color').evaluate(undefined, {})).toEqual(new Color(1, 0, 0, 1));
-        expect(layer.paint.get('circle-radius').evaluate(undefined, {})).toBe(15);
+        expect(assertedNotNullish(layer.paint).get('circle-color').evaluate(undefined as any, {})).toEqual(new Color(1, 0, 0, 1));
+        expect(assertedNotNullish(layer.paint).get('circle-radius').evaluate(undefined as any, {})).toBe(15);
     });
 });

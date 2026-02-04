@@ -43,8 +43,8 @@ describe('BoxZoomHandler', () => {
     test('avoids conflicts with DragPanHandler when disabled and reenabled (#2237)', () => {
         const map = createMap(undefined);
 
-        map.boxZoom.disable();
-        map.boxZoom.enable();
+        map.boxZoom?.disable();
+        map.boxZoom?.enable();
 
         const boxzoomstart = vi.fn();
         const boxzoomend   = vi.fn();

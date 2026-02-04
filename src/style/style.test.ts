@@ -3291,7 +3291,7 @@ describe('Style.serialize', () => {
         style.loadJSON(styleJson);
 
         await style.once('style.load');
-        expect(style.serialize().sky).toBe(sky);
+        expect(assertedNotNullish(style.serialize()).sky).toBe(sky);
     });
 
     test('include sky property when sky is set', async () => {
@@ -3304,9 +3304,9 @@ describe('Style.serialize', () => {
         await style.once('style.load');
         style.setSky(sky);
 
-        expect(style.serialize().sky).toBeDefined();
-        expect(style.serialize().sky).toBe(sky);
-        expect(style.serialize().sky).toStrictEqual(sky);
+        expect(assertedNotNullish(style.serialize()).sky).toBeDefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBe(sky);
+        expect(assertedNotNullish(style.serialize()).sky).toStrictEqual(sky);
     });
 
     test('do not include sky property when map does not have sky', async () => {
@@ -3314,7 +3314,7 @@ describe('Style.serialize', () => {
         style.loadJSON(createStyleJSON());
 
         await style.once('style.load');
-        expect(style.serialize().sky).toBeUndefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBeUndefined();
     });
 
     test('sky should be undefined when map does not have sky', async () => {
@@ -3336,11 +3336,11 @@ describe('Style.serialize', () => {
 
         await style.once('style.load');
         style.setSky(undefined);
-        expect(style.serialize().sky).toBeUndefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBeUndefined();
         style.setSky(sky);
-        expect(style.serialize().sky).toBeDefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBeDefined();
         style.setSky(undefined);
-        expect(style.serialize().sky).toBeUndefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBeUndefined();
     });
 
     test('do not include sky property after removing sky from the map', async () => {
@@ -3354,7 +3354,7 @@ describe('Style.serialize', () => {
 
         await style.once('style.load');
         style.setSky(undefined);
-        expect(style.serialize().sky).toBeUndefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBeUndefined();
     });
 
     test('include sky property when setting it after map loads', async () => {
@@ -3366,7 +3366,7 @@ describe('Style.serialize', () => {
             'horizon-fog-blend': 0.5,
             'fog-color': '#fff'
         });
-        expect(style.serialize().sky).toBeDefined();
+        expect(assertedNotNullish(style.serialize()).sky).toBeDefined();
     });
 
     test('update sky properties after setting the sky on initial load', async () => {
@@ -3381,8 +3381,8 @@ describe('Style.serialize', () => {
             'fog-color': '#00FF00'
         });
         style.update({transition: {duration: 0, delay: 0}} as EvaluationParameters);
-        expect(assertedNotNullish(assertedNotNullish(style.sky).properties.get('fog-color')).g).toBe(1);
-        expect(assertedNotNullish(assertedNotNullish(style.sky).properties.get('fog-color')).r).toBe(0);
+        expect(assertedNotNullish(assertedNotNullish(assertedNotNullish(style.sky).properties).get('fog-color')).g).toBe(1);
+        expect(assertedNotNullish(assertedNotNullish(assertedNotNullish(style.sky).properties).get('fog-color')).r).toBe(0);
     });
 
     test('Style.getDashes returns line atlas entries for dash patterns', async () => {

@@ -64,7 +64,7 @@ describe('TileCache', () => {
         cache.add(idB, tileB, 0);
         cache.getAndRemove(idB);
         // removing clears the expiry timeout
-        cache.add(idB, null);
+        cache.add(idB, null as unknown as Tile);
 
         cache.add(idA, tileA);
         cache.add(idA, tileA2, 0); // expires immediately and `onRemove` is called.

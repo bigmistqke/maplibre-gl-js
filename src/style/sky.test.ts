@@ -10,7 +10,7 @@ test('Sky with defaults', () => {
     const sky = new Sky({});
     sky.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters);
 
-    expect(sky.properties.get('atmosphere-blend')).toEqual(spec['atmosphere-blend'].default);
+    expect(sky.properties?.get('atmosphere-blend')).toEqual(spec['atmosphere-blend'].default);
 });
 
 test('Sky with options', () => {
@@ -19,7 +19,7 @@ test('Sky with options', () => {
     });
     sky.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters);
 
-    expect(sky.properties.get('atmosphere-blend')).toBe(0.4);
+    expect(sky.properties?.get('atmosphere-blend')).toBe(0.4);
 });
 
 test('Sky with interpolate function', () => {
@@ -35,7 +35,7 @@ test('Sky with interpolate function', () => {
     } as SkySpecification);
     sky.recalculate({zoom: 6, zoomHistory: {}} as EvaluationParameters);
 
-    expect(sky.properties.get('atmosphere-blend')).toBe(0.5);
+    expect(sky.properties?.get('atmosphere-blend')).toBe(0.5);
 });
 
 test('Sky.getSky', () => {
@@ -56,7 +56,7 @@ describe('Sky.setSky', () => {
             }
         } as any as TransitionParameters);
         sky.recalculate({zoom: 16, zoomHistory: {}, now: 1500} as EvaluationParameters);
-        expect(sky.properties.get('atmosphere-blend')).toBe(0.9);
+        expect(sky.properties?.get('atmosphere-blend')).toBe(0.9);
     });
 
     test('validates by default', () => {
@@ -81,6 +81,6 @@ describe('Sky.setSky', () => {
 
         expect(skySpy).toHaveBeenCalledTimes(1);
         expect(skySpy.mock.calls[0][2]).toEqual({validate: false});
-        expect(sky.properties.get('atmosphere-blend')).toBe(-1);
+        expect(sky.properties?.get('atmosphere-blend')).toBe(-1);
     });
 });

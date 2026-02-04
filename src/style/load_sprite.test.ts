@@ -49,11 +49,12 @@ describe('loadSprite', () => {
             try {
                 const img = await createImageBitmap(new ImageData(1024, 824));
                 return img;
-            } catch (e) {
-                throw new Error(`Could not load image because of ${e.message}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
+            } catch (e: unknown) {
+                const errorMessage = e instanceof Error ? e.message : String(e);
+                throw new Error(`Could not load image because of ${errorMessage}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
             }
         });
-        global.fetch = null;
+        global.fetch = undefined as any; // Test mock
         server = fakeServer.create();
     });
 
@@ -82,7 +83,7 @@ describe('loadSprite', () => {
 
         Object.values(result['default']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         expect(server.requests[0].url).toBe('http://localhost:9966/test/unit/assets/sprite1.json');
@@ -118,12 +119,12 @@ describe('loadSprite', () => {
 
         Object.values(result['sprite1']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         Object.values(result['sprite2']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         expect(server.requests[0].url).toBe('http://localhost:9966/test/unit/assets/sprite1.json');
@@ -193,7 +194,7 @@ describe('loadSprite', () => {
 
         Object.values(result['default']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         expect(server.requests[0].url).toBe('http://localhost:9966/test/unit/assets/sprite1@2x.json');

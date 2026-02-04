@@ -136,7 +136,7 @@ describe('clipLines', () => {
             new Point(131.2356763, 0.956732)
         ];
 
-        expect(clipLineTest([line])[1]).toEqual(line[0][1]);
+        expect(clipLineTest([line])[1]).toEqual(line[0].y);
     });
 
     test('Clipped points are rounded to the nearest integer', () => {

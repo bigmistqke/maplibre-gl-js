@@ -20,7 +20,7 @@ describe('ColorReliefStyleLayer', () => {
         const layer = createStyleLayer(layerSpec, {});
         expect(layer).toBeInstanceOf(ColorReliefStyleLayer);
         const colorReliefStyleLayer = layer as ColorReliefStyleLayer;
-        expect(colorReliefStyleLayer.paint.get('color-relief-opacity')).toEqual(1);
+        expect(colorReliefStyleLayer.paint?.get('color-relief-opacity')).toEqual(1);
         const colorRamp = colorReliefStyleLayer._createColorRamp(256);
         expect(colorRamp.elevationStops).toEqual([0,1]);
         expect(colorRamp.colorStops).toEqual([Color.transparent,Color.transparent]);
@@ -47,7 +47,7 @@ describe('ColorReliefStyleLayer', () => {
         expect(colorRamp.colorStops).toEqual([Color.black,Color.white]);
 
         colorReliefStyleLayer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
-        expect(colorReliefStyleLayer.paint.get('color-relief-opacity')).toEqual(0.5);
+        expect(colorReliefStyleLayer.paint?.get('color-relief-opacity')).toEqual(0.5);
     });
 
     test('single color', () => {
