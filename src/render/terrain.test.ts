@@ -11,15 +11,17 @@ import {Tile} from '../source/tile';
 import {type Painter} from './painter';
 import {mat4} from 'gl-matrix';
 import {LngLat} from '../geo/lng_lat';
-import {MAX_TILE_ZOOM, MIN_TILE_ZOOM} from '../util/util';
+import {assertedNotNullish, MAX_TILE_ZOOM, MIN_TILE_ZOOM} from '../util/util';
 
 describe('Terrain', () => {
     let gl: WebGLRenderingContext;
 
     beforeEach(() => {
-        gl = document.createElement('canvas').getContext('webgl');
+        gl = assertedNotNullish(document.createElement('canvas').getContext('webgl'));
         vi.spyOn(gl, 'checkFramebufferStatus').mockReturnValue(gl.FRAMEBUFFER_COMPLETE);
-        vi.spyOn(gl, 'readPixels').mockImplementation((_1, _2, _3, _4, _5, _6, rgba) => {
+        vi.spyOn(gl, 'readPixels').mockImplementation((_1, _2, _3, _4, _5, _6, pixels) => {
+            // readPixels passes a Uint8Array in practice
+            const rgba = assertedNotNullish(pixels) as Uint8Array;
             rgba[0] = 0;
             rgba[1] = 0;
             rgba[2] = 255;
@@ -42,7 +44,7 @@ describe('Terrain', () => {
             maybeDrawDepthAndCoords: vi.fn(),
         } as any as Painter;
         const sourceCache = {_source: {tileSize: 512}} as SourceCache;
-        const getTileByID = (tileID) : Tile => {
+        const getTileByID = (tileID: string) : Tile => {
             if (tileID !== 'abcd') {
                 return null as any as Tile;
             }
@@ -78,7 +80,7 @@ describe('Terrain', () => {
         } as any as Painter;
         const sourceCache = {_source: {tileSize: 512}} as SourceCache;
         const terrain = new Terrain(painter, sourceCache, {} as any as TerrainSpecification);
-        const tileIdsToWraps = {a: -1, b: 0, c: 1, d: 2};
+        const tileIdsToWraps: Record<string, number> = {a: -1, b: 0, c: 1, d: 2};
         terrain.sourceCache.getTileByID = (id) => {
             return {
                 tileID: {
@@ -89,7 +91,9 @@ describe('Terrain', () => {
         };
         terrain.getElevation = () => 0;
         terrain.coordsIndex = Object.keys(tileIdsToWraps);
-        vi.spyOn(gl, 'readPixels').mockImplementation((x, _2, _3, _4, _5, _6, rgba) => {
+        vi.spyOn(gl, 'readPixels').mockImplementation((x, _2, _3, _4, _5, _6, pixels) => {
+            // readPixels passes a Uint8Array in practice
+            const rgba = assertedNotNullish(pixels) as Uint8Array;
             rgba[0] = 0;
             rgba[1] = 0;
             rgba[2] = 0;
@@ -105,7 +109,7 @@ describe('Terrain', () => {
             expect.assertions(2);
             const pointX = 0;
             const terrain = setupMercatorOverflow();
-            const coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            const coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
 
             expect(coordinate.x).toBe(-1);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
@@ -118,7 +122,7 @@ describe('Terrain', () => {
             expect.assertions(2);
             const pointX = 3;
             const terrain = setupMercatorOverflow();
-            const coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            const coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
 
             expect(coordinate.x).toBe(2);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
@@ -130,12 +134,12 @@ describe('Terrain', () => {
             const terrain = setupMercatorOverflow(2);
 
             let pointX = 0;
-            let coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            let coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
             expect(coordinate.x).toBe(-1);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
 
             pointX = 3;
-            coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
             expect(coordinate.x).toBe(2);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
         });
@@ -229,12 +233,12 @@ describe('Terrain', () => {
     });
 
     test('create mesh with border', () => {
-        let actualIndexArray;
-        let actualVertexArray;
+        let actualIndexArray: number[] | undefined;
+        let actualVertexArray: number[] | undefined;
         const painter = {
             context: {
-                createIndexBuffer: array => { actualIndexArray = Array.from(array.uint16); },
-                createVertexBuffer: array => { actualVertexArray = Array.from(array.int16); }
+                createIndexBuffer: (array: {uint16: Uint16Array}) => { actualIndexArray = Array.from(array.uint16); },
+                createVertexBuffer: (array: {int16: Int16Array}) => { actualVertexArray = Array.from(array.int16); }
             },
             width: 1,
             height: 1,
@@ -261,7 +265,7 @@ describe('Terrain', () => {
     });
 
     test('interpolation works', () => {
-        const mockTerrain = {
+        const mockTerrain: Pick<Terrain, 'getDEMElevation' | 'getTerrainData'> = {
             getDEMElevation: Terrain.prototype.getDEMElevation,
             getTerrainData() {
                 return {
@@ -279,13 +283,14 @@ describe('Terrain', () => {
                 };
             }
         };
-        expect(mockTerrain.getDEMElevation(null, 0, 0)).toBeCloseTo(0);
-        expect(mockTerrain.getDEMElevation(null, 1, 1)).toBeCloseTo(110);
-        expect(mockTerrain.getDEMElevation(null, 0, 0.5)).toBeCloseTo(5);
-        expect(mockTerrain.getDEMElevation(null, 1, 0.5)).toBeCloseTo(105);
-        expect(mockTerrain.getDEMElevation(null, 0.5, 0)).toBeCloseTo(50);
-        expect(mockTerrain.getDEMElevation(null, 0.5, 1)).toBeCloseTo(60);
-        expect(mockTerrain.getDEMElevation(null, 0.4, 0.2)).toBeCloseTo(42);
+        const dummyTileID = new OverscaledTileID(0, 0, 0, 0, 0);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 0, 0)).toBeCloseTo(0);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 1, 1)).toBeCloseTo(110);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 0, 0.5)).toBeCloseTo(5);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 1, 0.5)).toBeCloseTo(105);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 0.5, 0)).toBeCloseTo(50);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 0.5, 1)).toBeCloseTo(60);
+        expect(mockTerrain.getDEMElevation(dummyTileID, 0.4, 0.2)).toBeCloseTo(42);
     });
 
     test('getElevationForLngLatZoom with lng less than -180 wraps correctly', () => {

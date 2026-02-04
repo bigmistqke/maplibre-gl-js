@@ -10,10 +10,11 @@ import {type BucketFeature, type BucketParameters} from '../bucket';
 import {SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
 import {type CreateBucketParameters, createPopulateOptions, getFeaturesFromLayer, loadVectorTile} from '../../../test/unit/lib/tile';
 import {type VectorTileLayer} from '@mapbox/vector-tile';
+import {CanonicalTileID} from '../../source/tile_id';
 
 const {noSubdivision} = SubdivisionGranularitySetting;
 
-function createLine(numPoints) {
+function createLine(numPoints: number) {
     const points = [];
     for (let i = 0; i < numPoints; i++) {
         points.push(new Point(i / numPoints, i / numPoints));
@@ -21,7 +22,7 @@ function createLine(numPoints) {
     return points;
 }
 
-function createLineBucket({id, layout, paint, globalState, availableImages}: CreateBucketParameters): LineBucket {
+function createLineBucket({id, layout, paint, globalState = {}, availableImages = []}: CreateBucketParameters): LineBucket {
     const layer = new LineStyleLayer({
         id,
         type: 'line',
@@ -29,7 +30,7 @@ function createLineBucket({id, layout, paint, globalState, availableImages}: Cre
         paint
     } as LayerSpecification, globalState);
     layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters,
-        availableImages as Array<string>);
+        availableImages);
 
     return new LineBucket({layers: [layer]} as BucketParameters<LineStyleLayer>);
 }
@@ -58,62 +59,62 @@ describe('LineBucket', () => {
 
             bucket.addLine([
                 new Point(0, 0)
-            ], line, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], line, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0)
-            ], polygon, undefined, undefined, undefined, undefined, undefined, noSubdivision);
-
-            bucket.addLine([
-                new Point(0, 0),
-                new Point(0, 0)
-            ], line, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], polygon, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
                 new Point(0, 0)
-            ], polygon, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], line, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
-                new Point(10, 10),
                 new Point(0, 0)
-            ], line, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], polygon, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
                 new Point(10, 10),
                 new Point(0, 0)
-            ], polygon, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], line, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
                 new Point(10, 10),
-                new Point(10, 20)
-            ], line, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+                new Point(0, 0)
+            ], polygon, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
                 new Point(10, 10),
                 new Point(10, 20)
-            ], polygon, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], line, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
+
+            bucket.addLine([
+                new Point(0, 0),
+                new Point(10, 10),
+                new Point(10, 20)
+            ], polygon, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
                 new Point(10, 10),
                 new Point(10, 20),
                 new Point(0, 0)
-            ], line, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], line, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             bucket.addLine([
                 new Point(0, 0),
                 new Point(10, 10),
                 new Point(10, 20),
                 new Point(0, 0)
-            ], polygon, undefined, undefined, undefined, undefined, undefined, noSubdivision);
+            ], polygon, 'miter', 'butt', 2, 1.05, undefined, noSubdivision);
 
             const feature = sourceLayer.feature(0);
-            bucket.addFeature(feature as any, feature.loadGeometry(), undefined, undefined, undefined, undefined, noSubdivision);
+            bucket.addFeature(feature as any, feature.loadGeometry(), 0, new CanonicalTileID(0, 0, 0), {}, undefined, noSubdivision);
         }).not.toThrow();
     });
 
@@ -130,10 +131,10 @@ describe('LineBucket', () => {
 
         // first add an initial, small feature to make sure the next one starts at
         // a non-zero offset
-        bucket.addFeature({} as BucketFeature, [createLine(10)], undefined, undefined, undefined, undefined, noSubdivision);
+        bucket.addFeature({} as BucketFeature, [createLine(10)], 0, new CanonicalTileID(0, 0, 0), {}, undefined, noSubdivision);
 
         // add a feature that will break across the group boundary
-        bucket.addFeature({} as BucketFeature, [createLine(128)], undefined, undefined, undefined, undefined, noSubdivision);
+        bucket.addFeature({} as BucketFeature, [createLine(128)], 0, new CanonicalTileID(0, 0, 0), {}, undefined, noSubdivision);
 
         // Each polygon must fit entirely within a segment, so we expect the
         // first segment to include the first feature and the first polygon
@@ -159,14 +160,14 @@ describe('LineBucket', () => {
     });
 
     test('LineBucket line-pattern with global-state', () => {
-        const availableImages = [];
+        const availableImages: string[] = [];
         const bucket = createLineBucket({id: 'test',
             paint: {'line-pattern': ['coalesce', ['get', 'pattern'], ['global-state', 'pattern']]},
             globalState: {pattern: 'test-pattern'},
             availableImages
         });
 
-        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), undefined);
+        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), new CanonicalTileID(0, 0, 0));
 
         expect(bucket.patternFeatures.length).toBeGreaterThan(0);
         expect(bucket.patternFeatures[0].patterns).toEqual({
@@ -181,7 +182,7 @@ describe('LineBucket', () => {
             availableImages: []
         });
 
-        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions([]), undefined);
+        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions([]), new CanonicalTileID(0, 0, 0));
 
         expect(bucket.patternFeatures.length).toBeGreaterThan(0);
         expect(bucket.patternFeatures[0].dashes).toEqual({

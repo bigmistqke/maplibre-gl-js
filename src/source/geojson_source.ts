@@ -131,7 +131,7 @@ export class GeoJSONSource extends Evented implements Source {
     _removed: boolean;
 
     /** @internal */
-    constructor(id: string, options: GeoJSONSourceOptions, dispatcher: Dispatcher, eventedParent: Evented) {
+    constructor(id: string, options: GeoJSONSourceOptions, dispatcher: Dispatcher, eventedParent: Evented | undefined) {
         super();
 
         this.id = id;

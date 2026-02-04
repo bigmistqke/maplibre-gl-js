@@ -8,11 +8,12 @@ import {type WorkerSource, type WorkerTileParameters, type WorkerTileResult} fro
 import {rtlWorkerPlugin} from './rtl_text_plugin_worker';
 import {type ActorTarget, type IActor} from '../util/actor';
 import {MessageType} from '../util/actor_messages';
+import {assertedNotNullish} from '../util/util';
 
 class WorkerSourceMock implements WorkerSource {
-    availableImages: string[];
+    availableImages: string[] = [];
     constructor(private actor: IActor) {}
-    loadTile(_: WorkerTileParameters): Promise<WorkerTileResult> {
+    loadTile(_: WorkerTileParameters): Promise<WorkerTileResult | null> {
         return this.actor.sendAsync({type: MessageType.loadTile, data: {} as any}, new AbortController());
     }
     reloadTile(_: WorkerTileParameters): Promise<WorkerTileResult> {
@@ -36,7 +37,8 @@ describe('Worker RTLTextPlugin', () => {
             importScripts() {}
         } as any;
         worker = new Worker(_self);
-        global.fetch = null;
+        // Intentionally nullifying fetch to use fake server in tests
+        global.fetch = null as unknown as typeof global.fetch;
     });
 
     test('should call setMethods in plugin', () => {
@@ -50,7 +52,7 @@ describe('Worker RTLTextPlugin', () => {
     test('should call syncState when rtl message is received', async () => {
         const syncStateSpy = vi.spyOn(rtlWorkerPlugin, 'syncState').mockImplementation((_, __) => Promise.resolve({} as any));
 
-        await worker.actor.messageHandlers[MessageType.syncRTLPluginState]('', {} as any) as any;
+        await assertedNotNullish(worker.actor.messageHandlers[MessageType.syncRTLPluginState])('', {} as any) as any;
 
         expect(syncStateSpy).toHaveBeenCalled();
     });
@@ -65,12 +67,13 @@ describe('Worker generic testing', () => {
             addEventListener() {}
         } as any;
         worker = new Worker(_self);
-        global.fetch = null;
+        // Intentionally nullifying fetch to use fake server in tests
+        global.fetch = null as unknown as typeof global.fetch;
     });
 
     test('should validate handlers execution in worker for load tile', async () => {
         const server = fakeServer.create();
-        const messagePromise = worker.actor.messageHandlers[MessageType.loadTile]('0', {
+        const messagePromise = assertedNotNullish(worker.actor.messageHandlers[MessageType.loadTile])('0', {
             type: 'vector',
             source: 'source',
             uid: '0',
@@ -83,11 +86,11 @@ describe('Worker generic testing', () => {
     });
 
     test('isolates different instances\' data', () => {
-        worker.actor.messageHandlers[MessageType.setLayers]('0', [
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.setLayers])('0', [
             {id: 'one', type: 'circle'} as LayerSpecification
         ]);
 
-        worker.actor.messageHandlers[MessageType.setLayers]('1', [
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.setLayers])('1', [
             {id: 'one', type: 'circle'} as LayerSpecification,
             {id: 'two', type: 'circle'} as LayerSpecification
         ]);
@@ -107,7 +110,7 @@ describe('Worker generic testing', () => {
             _self.registerWorkerSource(externalSourceName, WorkerSourceMock);
         }).toThrow(`Worker source with name "${externalSourceName}" already registered.`);
 
-        worker.actor.messageHandlers[MessageType.loadTile]('999', {type: externalSourceName} as WorkerTileParameters);
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.loadTile])('999', {type: externalSourceName} as WorkerTileParameters);
 
         expect(sendAsyncSpy).toHaveBeenCalled();
         expect(sendAsyncSpy.mock.calls[0][0].type).toBe(MessageType.loadTile);
@@ -116,13 +119,13 @@ describe('Worker generic testing', () => {
     });
 
     test('Referrer is set', () => {
-        worker.actor.messageHandlers[MessageType.setReferrer]('fakeId', 'myMap');
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.setReferrer])('fakeId', 'myMap');
         expect(worker.referrer).toBe('myMap');
     });
 
     test('calls callback on error', async () => {
         const server = fakeServer.create();
-        const messagePromise = worker.actor.messageHandlers[MessageType.importScript]('0', '/error');
+        const messagePromise = assertedNotNullish(worker.actor.messageHandlers[MessageType.importScript])('0', '/error');
         server.respond();
         await expect(messagePromise).rejects.toBeDefined();
         server.restore();
@@ -130,20 +133,20 @@ describe('Worker generic testing', () => {
 
     test('set images', () => {
         expect(worker.availableImages['0']).toBeUndefined();
-        worker.actor.messageHandlers[MessageType.setImages]('0', ['availableImages']);
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.setImages])('0', ['availableImages']);
         expect(worker.availableImages['0']).toEqual(['availableImages']);
     });
 
     test('clears resources when map is removed', () => {
-        worker.actor.messageHandlers[MessageType.setLayers]('0', []);
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.setLayers])('0', []);
         expect(worker.layerIndexes['0']).toBeDefined();
-        worker.actor.messageHandlers[MessageType.removeMap]('0', undefined);
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.removeMap])('0', undefined);
         expect(worker.layerIndexes['0']).toBeUndefined();
     });
 
     test('propagates global state', () => {
         const globalState = {key: 'value'};
-        worker.actor.messageHandlers[MessageType.updateGlobalState]('0', globalState);
+        assertedNotNullish(worker.actor.messageHandlers[MessageType.updateGlobalState])('0', globalState);
         expect(worker.globalStates.get('0')).not.toBe(globalState);
         expect(worker.globalStates.get('0')).toEqual(globalState);
     });

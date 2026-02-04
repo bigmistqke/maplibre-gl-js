@@ -5,7 +5,7 @@ import simulate from '../../../test/unit/lib/simulate_interaction';
 import * as timeControl from '../../util/time_control';
 import {beforeMapTest} from '../../util/test/util';
 
-let map;
+let map: Map;
 
 function createMap() {
     return new Map({style: '', container: DOM.create('div', '', window.document.body)});

@@ -7,13 +7,12 @@ import {CanonicalTileID, OverscaledTileID} from './tile_id';
 import {LngLat} from '../geo/lng_lat';
 import Point from '@mapbox/point-geometry';
 import {Event, ErrorEvent, Evented} from '../util/evented';
-import {extend} from '../util/util';
+import {assertedNotNullish, extend} from '../util/util';
 import {type Dispatcher} from '../util/dispatcher';
 import {TileBounds} from './tile_bounds';
 import {sleep, waitForEvent, beforeMapTest, createMap as globalCreateMap} from '../util/test/util';
 
 import {type Map} from '../ui/map';
-import {type TileCache} from './tile_cache';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
 import {GlobeTransform} from '../geo/projection/globe_transform';
 import {coveringTiles} from '../geo/projection/covering_tiles';
@@ -22,10 +21,10 @@ class SourceMock extends Evented implements Source {
     id: string;
     minzoom: number;
     maxzoom: number;
-    hasTile: (tileID: OverscaledTileID) => boolean;
+    hasTile!: (tileID: OverscaledTileID) => boolean;
     sourceOptions: any;
-    type: string;
-    tileSize: number;
+    type!: string;
+    tileSize!: number;
 
     constructor(id: string, sourceOptions: any, _dispatcher: Dispatcher, eventedParent: Evented) {
         super();
@@ -80,26 +79,15 @@ function createSource(id: string, sourceOptions: any, _dispatcher: any, eventedP
 
 addSourceType('mock-source-type', createSource as any);
 
-function createSourceCache(options?, used?) {
+function createSourceCache(options?: Record<string, any>, used?: boolean) {
     const sc = new SourceCache('id', extend({
         tileSize: 512,
         minzoom: 0,
         maxzoom: 14,
         type: 'mock-source-type'
-    }, options), {} as Dispatcher);
-    const scWithTestLogic = extend(sc, {
-        used: typeof used === 'boolean' ? used : true,
-        addTile(tileID: OverscaledTileID): Tile {
-            return this._addTile(tileID);
-        },
-        getCache(): TileCache {
-            return this._cache;
-        },
-        getTiles(): { [_: string]: Tile } {
-            return this._tiles;
-        }
-    });
-    return scWithTestLogic;
+    }, options), {} as Dispatcher); // as Dispatcher: test mock, no real dispatcher needed
+    sc.used = typeof used === 'boolean' ? used : true;
+    return sc;
 }
 
 type MapOptions = {
@@ -129,7 +117,7 @@ describe('SourceCache.addTile', () => {
         const spy = vi.fn();
         sourceCache._source.loadTile = spy;
         
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         sourceCache._addTile(tileID);
         expect(spy).toHaveBeenCalledTimes(1);
         expect(spy.mock.calls[0][0].tileID).toEqual(tileID);
@@ -140,7 +128,7 @@ describe('SourceCache.addTile', () => {
         const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
         const sourceCache = createSourceCache({});
         const dataLoadingPromise = sourceCache.once('dataloading');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         sourceCache._addTile(tileID);
         const data = await dataLoadingPromise;
         expect(data.tile.tileID).toEqual(tileID);
@@ -157,7 +145,7 @@ describe('SourceCache.addTile', () => {
             updateFeaturesSpy = vi.spyOn(tile, 'setFeatureState');
             tile.state = 'loaded';
         };
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         sourceCache._addTile(tileID);
         await dataPromise;
         expect(updateFeaturesSpy).toHaveBeenCalledTimes(1);
@@ -409,7 +397,7 @@ describe('SourceCache / Source lifecycle', () => {
         const sourceCache = createSourceCache({noLoad: true});
         const spy = vi.fn();
         sourceCache.on('data', spy);
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await sleep(1);
         expect(spy).not.toHaveBeenCalled();
     });
@@ -417,14 +405,14 @@ describe('SourceCache / Source lifecycle', () => {
     test('forward load event', async () => {
         const sourceCache = createSourceCache({});
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await expect(dataPromise).resolves.toBeDefined();
     });
 
     test('forward change event', async () => {
         const sourceCache = createSourceCache();
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         sourceCache.getSource().fire(new Event('data'));
         await expect(dataPromise).resolves.toBeDefined();
     });
@@ -432,7 +420,7 @@ describe('SourceCache / Source lifecycle', () => {
     test('forward error event', async () => {
         const sourceCache = createSourceCache({error: 'Error loading source'});
         const errorPromise = sourceCache.once('error');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         const err = await errorPromise;
         expect(err.error).toBe('Error loading source');
     });
@@ -440,13 +428,13 @@ describe('SourceCache / Source lifecycle', () => {
     test('suppress 404 errors', () => {
         const sourceCache = createSourceCache({status: 404, message: 'Not found'});
         sourceCache.on('error', () => { throw new Error('test failed: error event fired'); });
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
     });
 
     test('loaded() true after source error', async () => {
         const sourceCache = createSourceCache({error: 'Error loading source'});
         const errorPromise = sourceCache.once('error');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await errorPromise;
         expect(sourceCache.loaded()).toBeTruthy();
     });
@@ -466,7 +454,7 @@ describe('SourceCache / Source lifecycle', () => {
         });
         const errorPromise = sourceCache.once('error');
 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await errorPromise;
         expect(sourceCache.loaded()).toBeTruthy();
     });
@@ -474,7 +462,7 @@ describe('SourceCache / Source lifecycle', () => {
     test('loaded() false after source begins loading following error', async () => {
         const sourceCache = createSourceCache({error: 'Error loading source'});
         const errorPromise = sourceCache.once('error');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await errorPromise;
         const dataLoadingProimse = sourceCache.once('dataloading');
         sourceCache.getSource().fire(new Event('dataloading'));
@@ -491,7 +479,7 @@ describe('SourceCache / Source lifecycle', () => {
             }
         });
         const errorPromise = sourceCache.once('error');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await errorPromise;
         expect(sourceCache.loaded()).toBeFalsy();
     });
@@ -517,7 +505,7 @@ describe('SourceCache / Source lifecycle', () => {
             }
         });
 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
     });
 
     test('does not reload errored tiles', () => {
@@ -539,7 +527,7 @@ describe('SourceCache / Source lifecycle', () => {
                 sourceCache.getSource().fire(new Event('data', {dataType: 'source', sourceDataType: 'content'}));
             }
         });
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         // we expect the source cache to have five tiles, but only to have reloaded one
         expect(Object.keys(sourceCache._tiles)).toHaveLength(5);
         expect(reloadTileSpy).toHaveBeenCalledTimes(1);
@@ -565,7 +553,7 @@ describe('SourceCache / Source lifecycle', () => {
                 sourceCache.getSource().fire(new Event('data', {dataType: 'source', sourceDataType: 'content', sourceDataChanged: true}));
             }
         });
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         // We expect the source cache to have five tiles, and for all of them
         // to be reloaded
         expect(Object.keys(sourceCache._tiles)).toHaveLength(5);
@@ -584,7 +572,7 @@ describe('SourceCache.update', () => {
         const sourceCache = createSourceCache({}, false);
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getIds()).toEqual([]);
@@ -597,7 +585,7 @@ describe('SourceCache.update', () => {
 
         const sourceCache = createSourceCache({});
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getIds()).toEqual([new OverscaledTileID(0, 0, 0, 0, 0).key]);
@@ -615,7 +603,7 @@ describe('SourceCache.update', () => {
 
         const addSpy = vi.spyOn(sourceCache, '_addTile');
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
 
         // on update at zoom 1 there should be 4 ideal tiles added through _addTiles
@@ -640,7 +628,7 @@ describe('SourceCache.update', () => {
         const spy = vi.spyOn(sourceCache, '_updateFadingTiles');
         sourceCache._loadTile = async () => {};
 
-        const fakeTile = new Tile(new OverscaledTileID(3, 0, 3, 1, 2), undefined);
+        const fakeTile = new Tile(new OverscaledTileID(3, 0, 3, 1, 2), 0);
         (fakeTile as any).texture = {bind: () => {}, size: [256, 256]};
         fakeTile.state = 'loaded';
         sourceCache._tiles[fakeTile.tileID.key] = fakeTile;
@@ -662,7 +650,7 @@ describe('SourceCache.update', () => {
         });
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
                 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getIds().sort()).toEqual([
@@ -682,7 +670,7 @@ describe('SourceCache.update', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getIds()).toEqual([new OverscaledTileID(0, 0, 0, 0, 0).key]);
@@ -711,7 +699,7 @@ describe('SourceCache.update', () => {
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getIds()).toEqual([new OverscaledTileID(0, 0, 0, 0, 0).key]);
@@ -740,7 +728,7 @@ describe('SourceCache.update', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getIds()).toEqual([new OverscaledTileID(0, 1, 0, 0, 0).key]);
@@ -790,7 +778,7 @@ describe('SourceCache.update', () => {
                 ]);
             }
         });
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
     });
 
     test('retains overscaled loaded children', async () => {
@@ -807,7 +795,7 @@ describe('SourceCache.update', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(sourceCache.getRenderableIds()).toEqual([
@@ -836,7 +824,7 @@ describe('SourceCache.update', () => {
 
         const sourceCache = createSourceCache({});
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         transform.setCenter(new LngLat(360, 0));
         const tileID = new OverscaledTileID(0, 1, 0, 0, 0);
@@ -868,7 +856,7 @@ describe('SourceCache.update', () => {
             }
         });
         sourceCache.setRasterFadeDuration(300);
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -906,7 +894,7 @@ describe('SourceCache.update', () => {
             }
         });
         sourceCache.setRasterFadeDuration(300);
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -944,7 +932,7 @@ describe('SourceCache.update', () => {
             }
         });
         sourceCache.setRasterFadeDuration(300);
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -990,7 +978,7 @@ describe('SourceCache.update', () => {
             }
         });
         sourceCache.setRasterFadeDuration(300);
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -1044,7 +1032,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(3, 0, 3, 1, 2);
-        sourceCache._tiles[idealTile.key] = new Tile(idealTile, undefined);
+        sourceCache._tiles[idealTile.key] = new Tile(idealTile, 0);
         sourceCache._tiles[idealTile.key].state = 'errored';
 
         const loadedTiles = [
@@ -1063,7 +1051,7 @@ describe('SourceCache._updateRetainedTiles', () => {
             new OverscaledTileID(1, 0, 1, 0, 0)
         ];
         for (const t of loadedTiles) {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         }
 
@@ -1086,7 +1074,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(3, 0, 3, 1, 2);
-        sourceCache._tiles[idealTile.key] = new Tile(idealTile, undefined);
+        sourceCache._tiles[idealTile.key] = new Tile(idealTile, 0);
         sourceCache._tiles[idealTile.key].state = 'errored';
 
         const secondGeneration = idealTile
@@ -1095,7 +1083,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         expect(secondGeneration.length).toEqual(16);
 
         for (const id of secondGeneration) {
-            sourceCache._tiles[id.key] = new Tile(id, undefined);
+            sourceCache._tiles[id.key] = new Tile(id, 0);
             sourceCache._tiles[id.key].state = 'loaded';
         }
         const expectedTiles = [...secondGeneration, idealTile];
@@ -1129,7 +1117,7 @@ describe('SourceCache._updateRetainedTiles', () => {
 
             const idealChildIDs = idealTileIDs.flatMap(id => id.children(sourceCache._source.maxzoom));
             for (const idealID of idealChildIDs) {
-                const tile = new Tile(idealID, undefined);
+                const tile = new Tile(idealID, 0);
                 tile.state = 'loaded';  //all children are loaded to be retained for missing ideal tiles
                 sourceCache._tiles[idealID.key] = tile;
             }
@@ -1164,7 +1152,7 @@ describe('SourceCache._updateRetainedTiles', () => {
             new OverscaledTileID(5, 0, 5, 8, 8),  //discard
         ];
         for (const child of children) {
-            const tile = new Tile(child, undefined);
+            const tile = new Tile(child, 0);
             tile.state = 'loaded';
             sourceCache._tiles[child.key] = tile;
         }
@@ -1187,7 +1175,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(3, 0, 3, 1, 2);
-        sourceCache._tiles[idealTile.key] = new Tile(idealTile, undefined);
+        sourceCache._tiles[idealTile.key] = new Tile(idealTile, 0);
         sourceCache._tiles[idealTile.key].state = 'errored';
 
         const loadedChildren = [
@@ -1195,7 +1183,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         ];
 
         for (const t of loadedChildren) {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         }
 
@@ -1272,10 +1260,10 @@ describe('SourceCache._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(2, 0, 2, 0, 0);
-        sourceCache._tiles[idealTile.key] = new Tile(idealTile, undefined);
+        sourceCache._tiles[idealTile.key] = new Tile(idealTile, 0);
         sourceCache._tiles[idealTile.key].state = 'errored';
 
-        sourceCache._tiles[new OverscaledTileID(1, 0, 1, 1, 0).key] = new Tile(new OverscaledTileID(1, 0, 1, 1, 0), undefined);
+        sourceCache._tiles[new OverscaledTileID(1, 0, 1, 1, 0).key] = new Tile(new OverscaledTileID(1, 0, 1, 1, 0), 0);
         sourceCache._tiles[new OverscaledTileID(1, 0, 1, 1, 0).key].state = 'loaded';
 
         const addTileSpy = vi.spyOn(sourceCache, '_addTile');
@@ -1304,9 +1292,9 @@ describe('SourceCache._updateRetainedTiles', () => {
         };
         const idealTile = new OverscaledTileID(1, 0, 1, 0, 1);
         const parentTile = new OverscaledTileID(0, 0, 0, 0, 0);
-        sourceCache._tiles[idealTile.key] = new Tile(idealTile, undefined);
+        sourceCache._tiles[idealTile.key] = new Tile(idealTile, 0);
         sourceCache._tiles[idealTile.key].state = 'loading';
-        sourceCache._tiles[parentTile.key] = new Tile(parentTile, undefined);
+        sourceCache._tiles[parentTile.key] = new Tile(parentTile, 0);
         sourceCache._tiles[parentTile.key].state = 'loaded';
 
         const addTileSpy = vi.spyOn(sourceCache, '_addTile');
@@ -1349,7 +1337,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         const idealTile = new OverscaledTileID(2, 0, 2, 1, 1);
         const loadedTiles = [new OverscaledTileID(3, 0, 3, 2, 2), new OverscaledTileID(3, 0, 3, 3, 2), new OverscaledTileID(3, 0, 3, 2, 3), new OverscaledTileID(3, 0, 3, 3, 3)];
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1368,7 +1356,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         const idealTile = new OverscaledTileID(1, 0, 1, 0, 0);
         const loadedTiles = [new OverscaledTileID(0, 0, 0, 0, 0), new OverscaledTileID(2, 0, 2, 0, 0)];
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1412,7 +1400,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         const idealTile = new OverscaledTileID(2, 0, 2, 0, 0);
         const loadedTiles = [new OverscaledTileID(1, 0, 1, 0, 0)];
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1443,7 +1431,7 @@ describe('SourceCache._updateRetainedTiles', () => {
             new OverscaledTileID(0, 0, 0, 0, 0)   // parent
         ];
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1480,7 +1468,7 @@ describe('SourceCache._updateRetainedTiles', () => {
 
         const loadedTiles = [new OverscaledTileID(4, 0, 4, 0, 0)];
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1562,7 +1550,7 @@ describe('SourceCache._updateRetainedTiles', () => {
 
         const loadedTiles = idealTiles;
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1599,7 +1587,7 @@ describe('SourceCache._updateRetainedTiles', () => {
 
         const loadedTiles = idealTiles;
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1621,7 +1609,7 @@ describe('SourceCache._updateRetainedTiles', () => {
         };
         const loadedTiles = [new OverscaledTileID(7, 0, 7, 0, 0), new OverscaledTileID(7, 0, 7, 1, 0)];
         loadedTiles.forEach(t => {
-            sourceCache._tiles[t.key] = new Tile(t, undefined);
+            sourceCache._tiles[t.key] = new Tile(t, 0);
             sourceCache._tiles[t.key].state = 'loaded';
         });
 
@@ -1654,7 +1642,7 @@ describe('SourceCache.clearTiles', () => {
             expect(tile.tileID).toEqual(coord);
             unload++;
         };
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
 
         sourceCache._addTile(coord);
         sourceCache.clearTiles();
@@ -1671,7 +1659,7 @@ describe('SourceCache.tilesIn', () => {
         tr.resize(512, 512);
         const sourceCache = createSourceCache({noLoad: true});
         sourceCache.transform = tr;
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         expect(sourceCache.tilesIn([
             new Point(0, 0),
             new Point(512, 256)
@@ -1697,7 +1685,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
 
@@ -1773,7 +1761,7 @@ describe('SourceCache.tilesIn', () => {
 
             }
         });
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
     });
 
     test('overscaled tiles', async () => {
@@ -1788,7 +1776,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         const transform = new MercatorTransform();
         transform.resize(512, 512);
@@ -1808,7 +1796,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
 
         sourceCache.update(transform);
@@ -1861,7 +1849,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
 
         sourceCache.update(transform);
@@ -1917,7 +1905,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
 
         sourceCache.update(transform);
@@ -1973,7 +1961,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
 
         sourceCache.update(transform);
@@ -2026,7 +2014,7 @@ describe('SourceCache.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
 
         sourceCache.update(transform);
@@ -2082,7 +2070,7 @@ describe('SourceCache.tilesIn', () => {
         };
     
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
     
         sourceCache.update(transform);
@@ -2135,7 +2123,7 @@ describe('source cache loaded', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         const tr = new MercatorTransform();
         tr.resize(512, 512);
@@ -2155,7 +2143,7 @@ describe('source cache loaded', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         const tr = new MercatorTransform();
         tr.resize(512, 512);
@@ -2175,7 +2163,7 @@ describe('source cache loaded', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         expect(sourceCache.loaded()).toBeTruthy();
     });
@@ -2189,7 +2177,7 @@ describe('source cache loaded', () => {
         sourceCache.usedForTerrain = false;
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         expect(sourceCache.loaded()).toBeTruthy();
     });
@@ -2202,7 +2190,7 @@ describe('source cache loaded', () => {
         };
 
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         expect(sourceCache.loaded()).toBeFalsy();
     });
@@ -2230,7 +2218,7 @@ describe('source cache loaded', () => {
         const spy = vi.fn();
         sourceCache.on('data', spy);
 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         sourceCache.update(tr);
 
         await sourceLoadedPromise;
@@ -2271,7 +2259,7 @@ describe('source cache loaded', () => {
             }
         });
 
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         const tr = new MercatorTransform();
         tr.setZoom(10);
         tr.resize(512, 512);
@@ -2306,7 +2294,7 @@ describe('source cache get ids', () => {
 describe('SourceCache.reload', () => {
     test('before loaded', () => {
         const sourceCache = createSourceCache({noLoad: true});
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
 
         expect(() => {
             sourceCache.reload();
@@ -2369,7 +2357,7 @@ describe('SourceCache.onRemove', () => {
         const sourceCache = createSourceCache();
         vi.spyOn(sourceCache, 'clearTiles');
 
-        sourceCache.onRemove(undefined);
+        sourceCache.onRemove(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined
 
         expect(sourceCache.clearTiles).toHaveBeenCalled();
     });
@@ -2380,7 +2368,7 @@ describe('SourceCache.onRemove', () => {
             onRemove: sourceOnRemove
         });
 
-        sourceCache.onRemove(undefined);
+        sourceCache.onRemove(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined
 
         expect(sourceOnRemove).toHaveBeenCalled();
     });
@@ -2397,7 +2385,7 @@ describe('SourceCache.usedForTerrain', () => {
         sourceCache.tileSize = 1024;
         expect(sourceCache.usedForTerrain).toBeTruthy();
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(Object.values(sourceCache._tiles).map(t => t.tileID.key)).toEqual(
@@ -2414,7 +2402,7 @@ describe('SourceCache.usedForTerrain', () => {
         sourceCache.usedForTerrain = true;
         sourceCache.tileSize = 1024;
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(Object.values(sourceCache._tiles).map(t => t.tileID.key)).toEqual(
@@ -2431,7 +2419,7 @@ describe('SourceCache.usedForTerrain', () => {
         sourceCache.usedForTerrain = true;
         sourceCache.tileSize = 1024;
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(Object.values(sourceCache._tiles).map(t => t.tileID.key)).toEqual(
@@ -2448,7 +2436,7 @@ describe('SourceCache.usedForTerrain', () => {
         sourceCache.usedForTerrain = true;
         sourceCache.tileSize = 1024;
         const dataPromise = waitForEvent(sourceCache, 'data', e => e.sourceDataType === 'metadata');
-        sourceCache.onAdd(undefined);
+        sourceCache.onAdd(undefined as unknown as Map); // as unknown as Map: test intentionally passes undefined since onAdd uses optional chaining
         await dataPromise;
         sourceCache.update(transform);
         expect(Object.values(sourceCache._tiles).map(t => t.tileID.key)).toEqual(

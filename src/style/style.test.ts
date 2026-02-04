@@ -2,7 +2,7 @@ import {describe, beforeEach, afterEach, test, expect, vi, type MockInstance} fr
 import {Style} from './style';
 import {SourceCache} from '../source/source_cache';
 import {StyleLayer} from './style_layer';
-import {extend} from '../util/util';
+import {assertedNotNullish, extend} from '../util/util';
 import {Event} from '../util/evented';
 import {RGBAImage} from '../util/image';
 import {rtlMainThreadPluginFactory} from '../source/rtl_text_plugin_main_thread';
@@ -23,7 +23,7 @@ import {type PossiblyEvaluated} from './properties';
 import {type SymbolLayoutProps, type SymbolLayoutPropsPossiblyEvaluated} from './style_layer/symbol_style_layer_properties.g';
 import {type CirclePaintProps, type CirclePaintPropsPossiblyEvaluated} from './style_layer/circle_style_layer_properties.g';
 
-function createStyleJSON(properties?): StyleSpecification {
+function createStyleJSON(properties?: Partial<StyleSpecification>): StyleSpecification {
     return extend({
         'version': 8,
         'sources': {},
@@ -63,7 +63,8 @@ let server: FakeServer;
 let mockConsoleError: MockInstance;
 
 beforeEach(() => {
-    global.fetch = null;
+    // Intentionally set to null for test setup - fetch won't be called
+    global.fetch = null as unknown as typeof global.fetch;
     server = fakeServer.create();
     mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => { });
 });
@@ -280,8 +281,9 @@ describe('Style.loadJSON', () => {
         const response = await style.imageManager.getImages(['image1']);
         const image = response['image1'];
         expect(image.data).toBeInstanceOf(RGBAImage);
-        expect(image.data.width).toBe(1);
-        expect(image.data.height).toBe(1);
+        const imageData = assertedNotNullish(image.data);
+        expect(imageData.width).toBe(1);
+        expect(imageData.height).toBe(1);
         expect(image.pixelRatio).toBe(1);
     });
 
@@ -365,7 +367,8 @@ describe('Style.loadJSON', () => {
         style.removeSource('-source-id-');
 
         const source = createSource();
-        source['vector_layers'] = [{id: 'green'}];
+        // vector_layers is not in SourceSpecification but is set at runtime by tile servers
+        (source as Record<string, unknown>)['vector_layers'] = [{id: 'green'}];
         style.addSource('-source-id-', source);
         style.addLayer({
             'id': '-layer-id-',
@@ -457,20 +460,21 @@ describe('Style.loadJSON', () => {
                 ...nextStyle,
                 sources: {
                     ...nextStyle.sources,
-                    base: prevStyle.sources.base
+                    base: assertedNotNullish(prevStyle).sources.base
                 },
                 layers: [
                     ...nextStyle.layers,
-                    prevStyle.layers[0]
+                    assertedNotNullish(prevStyle).layers[0]
                 ]
             })
         }, previousStyle);
 
         await style.once('style.load');
 
-        expect('base' in style.stylesheet.sources).toBeTruthy();
-        expect(style.stylesheet.layers[0].id).toBe(previousStyle.layers[0].id);
-        expect(style.stylesheet.layers).toHaveLength(1);
+        const stylesheet = assertedNotNullish(style.stylesheet);
+        expect('base' in stylesheet.sources).toBeTruthy();
+        expect(stylesheet.layers[0].id).toBe(previousStyle.layers[0].id);
+        expect(stylesheet.layers).toHaveLength(1);
     });
 
     test('propagates global state object to layers', async () => {
@@ -498,7 +502,7 @@ describe('Style.loadJSON', () => {
         // was used when evaluating the layer
         const globalState = {size: {default: 12}};
         style.setGlobalState(globalState);
-        const layer = style.getLayer('layer-id');
+        const layer = assertedNotNullish(style.getLayer('layer-id'));
         layer.recalculate({} as EvaluationParameters, []);
         const layout = layer.layout as PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>;
         expect(layout.get('text-size').evaluate({} as Feature, {})).toBe(12);
@@ -529,7 +533,7 @@ describe('Style.loadJSON', () => {
         // was used when evaluating the layer
         const globalState = {color: {default: 'red'}, radius: {default: 12}};
         style.setGlobalState(globalState);
-        const layer = style.getLayer('layer-id');
+        const layer = assertedNotNullish(style.getLayer('layer-id'));
         layer.recalculate({} as EvaluationParameters, []);
         const paint = layer.paint as PossiblyEvaluated<CirclePaintProps, CirclePaintPropsPossiblyEvaluated>;
         expect(paint.get('circle-color').evaluate({} as Feature, {})).toEqual(new Color(1, 0, 0, 1));
@@ -572,8 +576,8 @@ describe('Style._load', () => {
 
     test('layers are broadcasted to worker', () => {
         const style = new Style(getStubMap());
-        let dispatchType: MessageType;
-        let dispatchData;
+        let dispatchType: MessageType | undefined;
+        let dispatchData: unknown;
         const styleSpec = createStyleJSON({
             layers: [{
                 id: 'background',
@@ -594,7 +598,7 @@ describe('Style._load', () => {
         expect(dispatchType).toBe(MessageType.setLayers);
 
         expect(dispatchData).toHaveLength(1);
-        expect(dispatchData[0].id).toBe('background');
+        expect((dispatchData as Array<{id: string}>)[0].id).toBe('background');
 
         // cleanup
         _broadcastSpyOn.mockRestore();
@@ -649,7 +653,7 @@ describe('Style._load', () => {
         });
 
         style._load(styleSpec, {validate: false});
-        expect(style.projection.name).toBe('mercator');
+        expect(assertedNotNullish(style.projection).name).toBe('mercator');
         expect(style.serialize().projection).toBeUndefined();
     });
 });
@@ -718,7 +722,7 @@ describe('Style.update', () => {
 
         expect(spy).toHaveBeenCalled();
         expect(spy.mock.calls[0][0]).toBe(MessageType.updateLayers);
-        expect(spy.mock.calls[0][1]['layers'].map((layer) => { return layer.id; })).toEqual(['first', 'third']);
+        expect(spy.mock.calls[0][1]['layers'].map((layer: {id: string}) => { return layer.id; })).toEqual(['first', 'third']);
         expect(spy.mock.calls[0][1]['removedIds']).toEqual(['second']);
     });
 });
@@ -805,7 +809,7 @@ describe('Style.setState', () => {
         spys.push(vi.spyOn(style, 'setGlobalState').mockImplementation((() => {}) as any));
 
         const newStyle = JSON.parse(JSON.stringify(styleJson)) as StyleSpecification;
-        newStyle.state.accentColor.default = 'red';
+        assertedNotNullish(newStyle.state).accentColor.default = 'red';
         newStyle.layers[0].paint = {'text-color': '#7F7F7F',};
         newStyle.layers[0].layout = {'text-size': 16,};
         newStyle.layers[0].minzoom = 2;
@@ -988,19 +992,20 @@ describe('Style.setState', () => {
                 ...nextStyle,
                 sources: {
                     ...nextStyle.sources,
-                    base: prevStyle.sources.base
+                    base: assertedNotNullish(prevStyle).sources.base
                 },
                 layers: [
                     ...nextStyle.layers,
-                    prevStyle.layers[0]
+                    assertedNotNullish(prevStyle).layers[0]
                 ]
             })
         });
 
         expect(didChange).toBeTruthy();
-        expect('base' in style.stylesheet.sources).toBeTruthy();
-        expect(style.stylesheet.layers[0].id).toBe(initialState.layers[0].id);
-        expect(style.stylesheet.layers).toHaveLength(1);
+        const stylesheet = assertedNotNullish(style.stylesheet);
+        expect('base' in stylesheet.sources).toBeTruthy();
+        expect(stylesheet.layers[0].id).toBe(initialState.layers[0].id);
+        expect(stylesheet.layers).toHaveLength(1);
     });
 
     test('Style.setState skips validateStyle when validate false', async () => {

@@ -16,12 +16,12 @@ import {sleep, waitForEvent} from '../util/test/util';
 import {type MapSourceDataEvent} from '../ui/events';
 import {type GeoJSONSourceDiff} from './geojson_source_diff';
 
-const wrapDispatcher = (dispatcher) => {
+const wrapDispatcher = (dispatcher: Partial<Actor>): Dispatcher => {
     return {
         getActor() {
-            return dispatcher as Actor;
+            return dispatcher as Actor; // partial mock for testing
         }
-    } as Dispatcher;
+    } as Dispatcher; // test stub only implements getActor
 };
 
 const mockDispatcher = wrapDispatcher({
@@ -65,7 +65,7 @@ const hawkHill = {
 describe('GeoJSONSource.constructor', () => {
     const mapStub = {
         _requestManager: {
-            transformRequest: (url) => { return {url}; }
+            transformRequest: (url: string) => { return {url}; }
         }
     } as any;
     test('warn if maxzoom <= clusterMaxZoom', () => {
@@ -93,11 +93,11 @@ describe('GeoJSONSource.constructor', () => {
 });
 
 describe('GeoJSONSource.setData', () => {
-    function createSource(opts?) {
+    function createSource(opts?: Partial<GeoJSONSourceOptions>) {
         opts = opts || {};
         opts = extend(opts, {data: {}});
-        return new GeoJSONSource('id', opts, wrapDispatcher({
-            sendAsync(_message) {
+        return new GeoJSONSource('id', opts as GeoJSONSourceOptions, wrapDispatcher({
+            sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({}), 0);
                 });
@@ -128,8 +128,8 @@ describe('GeoJSONSource.setData', () => {
     });
 
     test('fires "dataabort" event', async () => {
-        const source = new GeoJSONSource('id', {data: {}} as any, wrapDispatcher({
-            sendAsync(_message) {
+        const source = new GeoJSONSource('id', {data: {}} as GeoJSONSourceOptions, wrapDispatcher({
+            sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({abandoned: true}), 0);
                 });
@@ -144,7 +144,7 @@ describe('GeoJSONSource.setData', () => {
         const source = createSource({collectResourceTiming: true});
         source.map = {
             _requestManager: {
-                transformRequest: (url) => { return {url}; }
+                transformRequest: (url: string) => { return {url}; }
             } as any as RequestManager
         } as any;
         const spy = vi.fn();
@@ -190,7 +190,7 @@ describe('GeoJSONSource.setData', () => {
     });
 
     test('marks source as loaded before firing "dataabort" event', async () => {
-        const source = new GeoJSONSource('id', {} as any, wrapDispatcher({
+        const source = new GeoJSONSource('id', {} as GeoJSONSourceOptions, wrapDispatcher({
             sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({abandoned: true}), 0);
@@ -276,7 +276,7 @@ describe('GeoJSONSource.update', () => {
     test('forwards Supercluster options with worker request', () => {
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.loadData);
                 expect(message.data.superclusterOptions).toEqual({
                     maxZoom: 12,
@@ -307,7 +307,7 @@ describe('GeoJSONSource.update', () => {
         // test setCluster function on GeoJSONSource
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.loadData);
                 expect(message.data.cluster).toBe(true);
                 expect(message.data.superclusterOptions.radius).toBe(80 * EXTENT / source.tileSize);
@@ -333,7 +333,7 @@ describe('GeoJSONSource.update', () => {
         const spy = vi.fn();
         vi.spyOn(console, 'warn').mockImplementation(() => {});
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.loadData);
                 expect(message.data.superclusterOptions).toEqual({
                     maxZoom: 12,
@@ -364,7 +364,7 @@ describe('GeoJSONSource.update', () => {
     test('transforms url before making request', () => {
         const mapStub = {
             _requestManager: {
-                transformRequest: (url) => { return {url}; }
+                transformRequest: (url: string) => { return {url}; }
             }
         } as any;
         const transformSpy = vi.spyOn(mapStub._requestManager, 'transformRequest');
@@ -394,7 +394,7 @@ describe('GeoJSONSource.update', () => {
     test('fires metadata data event even when initial request is aborted', async () => {
         let requestCount = 0;
         const mockDispatcher = wrapDispatcher({
-            sendAsync(_message) {
+            sendAsync(_message: ActorMessage<MessageType>) {
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({abandoned: requestCount++ === 0}));
                 });
@@ -413,7 +413,7 @@ describe('GeoJSONSource.update', () => {
 
     test('fires "error"', async () => {
         const mockDispatcher = wrapDispatcher({
-            sendAsync(_message) {
+            sendAsync(_message: ActorMessage<MessageType>) {
                 return Promise.reject('error');
             }
         });
@@ -431,7 +431,7 @@ describe('GeoJSONSource.update', () => {
     test('sends loadData request to dispatcher after data update', async () => {
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 if (message.type === MessageType.loadData) {
                     spy();
                 }
@@ -470,12 +470,12 @@ describe('GeoJSONSource.update', () => {
 describe('GeoJSONSource.getData', () => {
     const mapStub = {
         _requestManager: {
-            transformRequest: (url) => { return {url}; }
+            transformRequest: (url: string) => { return {url}; }
         }
     } as any;
     test('sends a message with a correct type to the worker and forwards the data provided returned by it', async () => {
         const source = new GeoJSONSource('id', {data: hawkHill} as GeoJSONSourceOptions, wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.getData);
                 return Promise.resolve({});
             }
@@ -492,7 +492,7 @@ describe('GeoJSONSource.updateData', () => {
     test('queues a second call to updateData', async () => {
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 spy(message);
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({}), 0);
@@ -534,7 +534,7 @@ describe('GeoJSONSource.updateData', () => {
     test('combines multiple diffs when data is loading', async () => {
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 spy(message);
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({}), 0);
@@ -578,7 +578,7 @@ describe('GeoJSONSource.updateData', () => {
     test('is overwritten by a subsequent call to setData when data is loading', async () => {
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 spy(message);
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({}), 0);
@@ -616,7 +616,7 @@ describe('GeoJSONSource.updateData', () => {
     test('is queued after setData when data is loading', async () => {
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 spy(message);
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({}), 0);
@@ -657,13 +657,13 @@ describe('GeoJSONSource.updateData', () => {
 describe('GeoJSONSource.getBounds', () => {
     const mapStub = {
         _requestManager: {
-            transformRequest: (url) => { return {url}; }
+            transformRequest: (url: string) => { return {url}; }
         }
     } as any;
 
     test('get bounds from empty geometry', async () => {
         const source = new GeoJSONSource('id', {data: hawkHill} as GeoJSONSourceOptions, wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.getData);
                 return Promise.resolve({
                     type: 'LineString',
@@ -678,7 +678,7 @@ describe('GeoJSONSource.getBounds', () => {
 
     test('get bounds from geomerty collection', async () => {
         const source = new GeoJSONSource('id', {data: hawkHill} as GeoJSONSourceOptions, wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.getData);
                 return Promise.resolve({
                     type: 'GeometryCollection',
@@ -702,7 +702,7 @@ describe('GeoJSONSource.getBounds', () => {
 
     test('get bounds from feature', async () => {
         const source = new GeoJSONSource('id', {data: hawkHill} as GeoJSONSourceOptions, wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.getData);
                 return Promise.resolve({
                     type: 'Feature',
@@ -726,7 +726,7 @@ describe('GeoJSONSource.getBounds', () => {
 
     test('get bounds from feature collection', async () => {
         const source = new GeoJSONSource('id', {data: hawkHill} as GeoJSONSourceOptions, wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 expect(message.type).toBe(MessageType.getData);
                 return Promise.resolve({
                     type: 'FeatureCollection',
@@ -764,7 +764,7 @@ describe('GeoJSONSource.getBounds', () => {
 describe('GeoJSONSource.serialize', () => {
     const mapStub = {
         _requestManager: {
-            transformRequest: (url) => { return {url}; }
+            transformRequest: (url: string) => { return {url}; }
         }
     } as any;
     test('serialize source with inline data', () => {
@@ -813,7 +813,7 @@ describe('GeoJSONSource.load', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const spy = vi.fn();
         const mockDispatcher = wrapDispatcher({
-            sendAsync(message) {
+            sendAsync(message: ActorMessage<MessageType>) {
                 spy(message);
                 return new Promise((resolve) => {
                     setTimeout(() => resolve({}), 0);

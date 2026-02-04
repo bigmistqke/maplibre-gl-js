@@ -12,8 +12,9 @@ import {type Map} from '../ui/map';
 import {type WorkerTileParameters} from './worker_source';
 import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings';
 import {type ActorMessage, MessageType} from '../util/actor_messages';
+import {assertNotNullish} from '../util/util';
 
-function createSource(options, transformCallback?, clearTiles = () => {}) {
+function createSource(options: any, transformCallback?: any, clearTiles: () => void = () => {}) {
     const source = new VectorTileSource('id', options, getMockDispatcher(), options.eventedParent);
     source.onAdd({
         transform: {showCollisionBoxes: false},
@@ -39,7 +40,7 @@ function createSource(options, transformCallback?, clearTiles = () => {}) {
 describe('VectorTileSource', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        global.fetch = null as any; // Test mock
         server = fakeServer.create();
     });
 
@@ -148,7 +149,7 @@ describe('VectorTileSource', () => {
         });
     });
 
-    function testScheme(scheme, expectedURL) {
+    function testScheme(scheme: string, expectedURL: string) {
         test(`scheme "${scheme}"`, async () => {
             const source = createSource({
                 minzoom: 1,
@@ -158,7 +159,7 @@ describe('VectorTileSource', () => {
                 scheme
             });
 
-            let receivedMessage: ActorMessage<MessageType> = null;
+            let receivedMessage: ActorMessage<MessageType> | null = null;
 
             source.dispatcher = getWrapDispatcher()({
                 sendAsync(message) {
@@ -173,6 +174,7 @@ describe('VectorTileSource', () => {
                 tileID: new OverscaledTileID(10, 0, 10, 5, 5)
             } as any as Tile);
 
+            assertNotNullish(receivedMessage);
             expect(receivedMessage.type).toBe(MessageType.loadTile);
             expect(expectedURL).toBe((receivedMessage.data as WorkerTileParameters).request.url);
         });
@@ -185,6 +187,7 @@ describe('VectorTileSource', () => {
         server.respondWith('/source.json', JSON.stringify(fixturesSource));
 
         const source = createSource({url: '/source.json'});
+        assertNotNullish(source.map);
         const transformSpy = vi.spyOn(source.map._requestManager, 'transformRequest');
         const promise = waitForMetadataEvent(source);
         server.respond();
@@ -275,7 +278,7 @@ describe('VectorTileSource', () => {
         const source = createSource({
             tiles: ['http://example.com/{z}/{x}/{y}.png']
         });
-        const events = [];
+        const events: (MessageType | string)[] = [];
         source.dispatcher = getWrapDispatcher()({
             sendAsync(message) {
                 events.push(message.type);
@@ -325,6 +328,7 @@ describe('VectorTileSource', () => {
         });
 
         await waitForMetadataEvent(source);
+        assertNotNullish(source.tileBounds);
         expect(source.tileBounds.bounds).toEqual({_sw: {lng: -47, lat: -7}, _ne: {lng: -45, lat: 90}});
     });
 
@@ -351,7 +355,7 @@ describe('VectorTileSource', () => {
             tiles: ['http://example.com/{z}/{x}/{y}.png'],
             collectResourceTiming: true
         });
-        let receivedMessage = null;
+        let receivedMessage: ActorMessage<MessageType> | null = null;
         source.dispatcher = getWrapDispatcher()({
             sendAsync(message) {
                 receivedMessage = message;
@@ -372,12 +376,14 @@ describe('VectorTileSource', () => {
         } as any as Tile;
         await source.loadTile(tile);
 
+        assertNotNullish(receivedMessage);
         expect((receivedMessage.data as WorkerTileParameters).request.collectResourceTiming).toBeTruthy();
     });
 
     test('cancels TileJSON request if removed', () => {
         const source = createSource({url: '/source.json'});
         source.onRemove();
+        assertNotNullish(server.lastRequest);
         expect((server.lastRequest as any).aborted).toBe(true);
     });
 

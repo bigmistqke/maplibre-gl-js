@@ -1,14 +1,16 @@
 import {describe, beforeEach, afterEach, test, expect, vi, it} from 'vitest';
 import {RasterTileSource} from './raster_tile_source';
 import {OverscaledTileID} from './tile_id';
-import {RequestManager} from '../util/request_manager';
+import {RequestManager, type RequestTransformFunction} from '../util/request_manager';
 import {type Dispatcher} from '../util/dispatcher';
 import {fakeServer, type FakeServer} from 'nise';
 import {type Tile} from './tile';
 import {stubAjaxGetImage, waitForEvent} from '../util/test/util';
 import {type MapSourceDataEvent} from '../ui/events';
+import {assertedNotNullish} from '../util/util';
+import type {RasterSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 
-function createSource(options, transformCallback?) {
+function createSource(options: Partial<RasterSourceSpecification> & Record<string, unknown>, transformCallback?: RequestTransformFunction) {
     const source = new RasterTileSource('id', options, {send() {}} as any as Dispatcher, options.eventedParent);
     source.onAdd({
         transform: {angle: 0, pitch: 0, showCollisionBoxes: false},
@@ -25,7 +27,7 @@ function createSource(options, transformCallback?) {
 describe('RasterTileSource', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        global.fetch = null as unknown as typeof global.fetch; // test setup: force null to simulate missing fetch
         server = fakeServer.create();
     });
 
@@ -89,7 +91,7 @@ describe('RasterTileSource', () => {
 
         await waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
 
-        expect(source.tileBounds.bounds).toEqual({_sw: {lng: -47, lat: -7}, _ne: {lng: -45, lat: 90}});
+        expect(assertedNotNullish(source.tileBounds).bounds).toEqual({_sw: {lng: -47, lat: -7}, _ne: {lng: -45, lat: 90}});
     });
 
     test('respects TileJSON.bounds when loaded from TileJSON', async () => {
@@ -119,7 +121,7 @@ describe('RasterTileSource', () => {
             bounds: [-47, -7, -45, -5]
         }));
         const source = createSource({url: '/source.json'});
-        const transformSpy = vi.spyOn(source.map._requestManager, 'transformRequest');
+        const transformSpy = vi.spyOn(assertedNotNullish(source.map)._requestManager, 'transformRequest');
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
         server.respond();
         await promise;
@@ -145,8 +147,8 @@ describe('RasterTileSource', () => {
             bounds: [-47, -7, -45, -5]
         }));
         const source = createSource({url: '/source.json'});
-        source.map.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
-        source.map._refreshExpiredTiles = false;
+        assertedNotNullish(source.map).painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
+        assertedNotNullish(source.map)._refreshExpiredTiles = false;
 
         const imageConstructorSpy = vi.spyOn(global, 'Image');
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');

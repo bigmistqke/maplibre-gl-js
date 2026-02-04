@@ -2,12 +2,14 @@ import {describe, beforeEach, afterEach, test, expect, vi} from 'vitest';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {createMap as globalCreateMap, beforeMapTest} from '../../util/test/util';
 import {NavigationControl} from './navigation_control';
+import {Map} from '../map';
+import {assertedNotNullish} from '../../util/util';
 
 function createMap() {
     return globalCreateMap();
 }
 
-let map;
+let map: Map;
 
 beforeEach(() => {
     beforeMapTest();
@@ -61,7 +63,7 @@ describe('NavigationControl', () => {
             showCompass: true
         }));
         const spyReset = vi.spyOn(map, 'resetNorthPitch');
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
 
         simulate.click(navButton);
         map._renderTaskQueue.run();
@@ -80,11 +82,11 @@ describe('NavigationControl', () => {
         const spySetPitch = vi.spyOn(map, 'setPitch');
         const spySetBearing = vi.spyOn(map, 'setBearing');
 
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
-        const navRect = navButton.getClientRects();
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
+        const navRect = navButton.getClientRects()[0];
 
-        const buttonX = (navRect.x ?? 0) + (navRect.width ?? 0) / 2;
-        const buttonY = (navRect.y ?? 0) + (navRect.height ?? 0) / 2 - 1;
+        const buttonX = (navRect?.x ?? 0) + (navRect?.width ?? 0) / 2;
+        const buttonY = (navRect?.y ?? 0) + (navRect?.height ?? 0) / 2 - 1;
 
         simulate.mousedown(navButton, {buttons: 1, button: 0, clientX: buttonX, clientY: buttonY});
         simulate.mousemove(window, {buttons: 1, button: 0, clientX: buttonX - 50, clientY: buttonY});
@@ -108,11 +110,11 @@ describe('NavigationControl', () => {
         const spySetPitch = vi.spyOn(map, 'setPitch');
         const spySetBearing = vi.spyOn(map, 'setBearing');
 
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
-        const navRect = navButton.getClientRects();
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
+        const navRect = navButton.getClientRects()[0];
 
-        const buttonX = (navRect.x ?? 0) + (navRect.width ?? 0) / 2;
-        const buttonY = (navRect.y ?? 0) + (navRect.height ?? 0) / 2;
+        const buttonX = (navRect?.x ?? 0) + (navRect?.width ?? 0) / 2;
+        const buttonY = (navRect?.y ?? 0) + (navRect?.height ?? 0) / 2;
 
         simulate.mousedown(navButton, {buttons: 1, button: 0, clientX: buttonX, clientY: buttonY});
         simulate.mousemove(window, {buttons: 1, button: 0, clientX: buttonX, clientY: buttonY - 50});
@@ -136,11 +138,11 @@ describe('NavigationControl', () => {
         const spySetPitch = vi.spyOn(map, 'setPitch');
         const spySetBearing = vi.spyOn(map, 'setBearing');
 
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
-        const navRect = navButton.getClientRects();
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
+        const navRect = navButton.getClientRects()[0];
 
-        const buttonX = (navRect.x ?? 0) + (navRect.width ?? 0) / 2;
-        const buttonY = (navRect.y ?? 0) + (navRect.height ?? 0) / 2;
+        const buttonX = (navRect?.x ?? 0) + (navRect?.width ?? 0) / 2;
+        const buttonY = (navRect?.y ?? 0) + (navRect?.height ?? 0) / 2;
 
         simulate.mousedown(navButton, {buttons: 1, button: 0, clientX: buttonX, clientY: buttonY});
         simulate.mousemove(window, {buttons: 1, button: 0, clientX: buttonX - 50, clientY: buttonY - 50});
@@ -164,11 +166,11 @@ describe('NavigationControl', () => {
         const spySetPitch = vi.spyOn(map, 'setPitch');
         const spySetBearing = vi.spyOn(map, 'setBearing');
 
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
-        const navRect = navButton.getClientRects();
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
+        const navRect = navButton.getClientRects()[0];
 
-        const buttonX = (navRect.x ?? 0) + (navRect.width ?? 0) / 2;
-        const buttonY = (navRect.y ?? 0) + (navRect.height ?? 0) / 2 - 1;
+        const buttonX = (navRect?.x ?? 0) + (navRect?.width ?? 0) / 2;
+        const buttonY = (navRect?.y ?? 0) + (navRect?.height ?? 0) / 2 - 1;
 
         simulate.touchstart(navButton, {touches: [{clientX: buttonX, clientY: buttonY}], targetTouches: [{clientX: buttonX, clientY: buttonY}]});
         simulate.touchmove(window, {touches: [{clientX: buttonX - 50, clientY: buttonY}], targetTouches: [{clientX: buttonX - 50, clientY: buttonY}]});
@@ -192,11 +194,11 @@ describe('NavigationControl', () => {
         const spySetPitch = vi.spyOn(map, 'setPitch');
         const spySetBearing = vi.spyOn(map, 'setBearing');
 
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
-        const navRect = navButton.getClientRects();
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
+        const navRect = navButton.getClientRects()[0];
 
-        const buttonX = (navRect.x ?? 0) + (navRect.width ?? 0) / 2;
-        const buttonY = (navRect.y ?? 0) + (navRect.height ?? 0) / 2;
+        const buttonX = (navRect?.x ?? 0) + (navRect?.width ?? 0) / 2;
+        const buttonY = (navRect?.y ?? 0) + (navRect?.height ?? 0) / 2;
 
         simulate.touchstart(navButton, {touches: [{clientX: buttonX, clientY: buttonY}], targetTouches: [{clientX: buttonX, clientY: buttonY}]});
         simulate.touchmove(window, {touches: [{clientX: buttonX, clientY: buttonY - 50}], targetTouches: [{clientX: buttonX, clientY: buttonY - 50}]});
@@ -220,11 +222,11 @@ describe('NavigationControl', () => {
         const spySetPitch = vi.spyOn(map, 'setPitch');
         const spySetBearing = vi.spyOn(map, 'setBearing');
 
-        const navButton = map.getContainer().querySelector('.maplibregl-ctrl-compass');
-        const navRect = navButton.getClientRects();
+        const navButton = assertedNotNullish(map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-compass'));
+        const navRect = navButton.getClientRects()[0];
 
-        const buttonX = (navRect.x ?? 0) + (navRect.width ?? 0) / 2;
-        const buttonY = (navRect.y ?? 0) + (navRect.height ?? 0) / 2;
+        const buttonX = (navRect?.x ?? 0) + (navRect?.width ?? 0) / 2;
+        const buttonY = (navRect?.y ?? 0) + (navRect?.height ?? 0) / 2;
 
         simulate.touchstart(navButton, {touches: [{clientX: buttonX, clientY: buttonY}], targetTouches: [{clientX: buttonX, clientY: buttonY}]});
         simulate.touchmove(window, {touches: [{clientX: buttonX - 50, clientY: buttonY - 50}], targetTouches: [{clientX: buttonX - 50, clientY: buttonY - 50}]});

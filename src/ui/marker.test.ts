@@ -1,12 +1,14 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {createMap as globalCreateMap, beforeMapTest, sleep, createTerrain} from '../util/test/util';
 import {Marker} from './marker';
-import {Popup} from './popup';
+import {Popup, type Offset} from './popup';
 import {LngLat} from '../geo/lng_lat';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
 import Point from '@mapbox/point-geometry';
 import simulate from '../../test/unit/lib/simulate_interaction';
 import type {defaultLocale} from './default_locale';
+import type {PositionAnchor} from './anchor';
+import {assertedNotNullish} from '../util/util';
 
 type MapOptions = {
     locale?: Partial<typeof defaultLocale>;
@@ -54,21 +56,21 @@ describe('marker', () => {
 
         // initial dimensions of svg element
         expect(
-            defaultMarker.getElement().children[0].getAttribute('height').includes('41')
+            assertedNotNullish(defaultMarker.getElement().children[0].getAttribute('height')).includes('41')
         ).toBeTruthy();
-        expect(defaultMarker.getElement().children[0].getAttribute('width').includes('27')).toBeTruthy();
+        expect(assertedNotNullish(defaultMarker.getElement().children[0].getAttribute('width')).includes('27')).toBeTruthy();
 
         // (41 * 0.8) = 32.8, (27 * 0.8) = 21.6
         expect(
-            smallerMarker.getElement().children[0].getAttribute('height').includes('32.8')
+            assertedNotNullish(smallerMarker.getElement().children[0].getAttribute('height')).includes('32.8')
         ).toBeTruthy();
         expect(
-            smallerMarker.getElement().children[0].getAttribute('width').includes('21.6')
+            assertedNotNullish(smallerMarker.getElement().children[0].getAttribute('width')).includes('21.6')
         ).toBeTruthy();
 
         // (41 * 2) = 82, (27 * 2) = 54
-        expect(largerMarker.getElement().children[0].getAttribute('height').includes('82')).toBeTruthy();
-        expect(largerMarker.getElement().children[0].getAttribute('width').includes('54')).toBeTruthy();
+        expect(assertedNotNullish(largerMarker.getElement().children[0].getAttribute('height')).includes('82')).toBeTruthy();
+        expect(assertedNotNullish(largerMarker.getElement().children[0].getAttribute('width')).includes('54')).toBeTruthy();
 
     });
 
@@ -188,7 +190,7 @@ describe('marker', () => {
         await sleep(100);
         marker.togglePopup();
 
-        expect(marker.getPopup().isOpen()).toBeTruthy();
+        expect(assertedNotNullish(marker.getPopup()).isOpen()).toBeTruthy();
 
         map.remove();
     });
@@ -202,7 +204,7 @@ describe('marker', () => {
             .togglePopup()
             .togglePopup();
 
-        expect(!marker.getPopup().isOpen()).toBeTruthy();
+        expect(!assertedNotNullish(marker.getPopup()).isOpen()).toBeTruthy();
 
         map.remove();
     });
@@ -217,12 +219,12 @@ describe('marker', () => {
         await sleep(100);
 
         // popup not initially open
-        expect(marker.getPopup().isOpen()).toBeFalsy();
+        expect(assertedNotNullish(marker.getPopup()).isOpen()).toBeFalsy();
 
         simulate.keypress(marker.getElement(), {code: 'Enter'});
 
         // popup open after Enter keypress
-        expect(marker.getPopup().isOpen()).toBeTruthy();
+        expect(assertedNotNullish(marker.getPopup()).isOpen()).toBeTruthy();
 
         map.remove();
     });
@@ -237,12 +239,12 @@ describe('marker', () => {
         await sleep(100);
 
         // popup not initially open
-        expect(marker.getPopup().isOpen()).toBeFalsy();
+        expect(assertedNotNullish(marker.getPopup()).isOpen()).toBeFalsy();
 
         simulate.keypress(marker.getElement(), {code: 'Space'});
 
         // popup open after Enter keypress
-        expect(marker.getPopup().isOpen()).toBeTruthy();
+        expect(assertedNotNullish(marker.getPopup()).isOpen()).toBeTruthy();
 
         map.remove();
     });
@@ -329,18 +331,22 @@ describe('marker', () => {
             .setPopup(new Popup().setText('Test'))
             .addTo(map);
 
-        expect(marker.getPopup().options.offset['bottom'][1] < 0).toBeTruthy();
-        expect(marker.getPopup().options.offset['top'][1] === 0).toBeTruthy();
-        expect(marker.getPopup().options.offset['left'][0] > 0).toBeTruthy();
-        expect(marker.getPopup().options.offset['right'][0] < 0).toBeTruthy();
+        const popup = assertedNotNullish(marker.getPopup());
+        // Marker always sets offset as a record keyed by PositionAnchor
+        const offset = assertedNotNullish(popup.options.offset) as {[_ in PositionAnchor]: PointLike};
 
-        expect(marker.getPopup().options.offset['bottom-left'][0] > 0).toBeTruthy();
-        expect(marker.getPopup().options.offset['bottom-left'][1] < 0).toBeTruthy();
-        expect(marker.getPopup().options.offset['bottom-right'][0] < 0).toBeTruthy();
-        expect(marker.getPopup().options.offset['bottom-right'][1] < 0).toBeTruthy();
+        expect((offset['bottom'] as [number, number])[1] < 0).toBeTruthy();
+        expect((offset['top'] as [number, number])[1] === 0).toBeTruthy();
+        expect((offset['left'] as [number, number])[0] > 0).toBeTruthy();
+        expect((offset['right'] as [number, number])[0] < 0).toBeTruthy();
 
-        expect(marker.getPopup().options.offset['top-left']).toEqual([0, 0]);
-        expect(marker.getPopup().options.offset['top-right']).toEqual([0, 0]);
+        expect((offset['bottom-left'] as [number, number])[0] > 0).toBeTruthy();
+        expect((offset['bottom-left'] as [number, number])[1] < 0).toBeTruthy();
+        expect((offset['bottom-right'] as [number, number])[0] < 0).toBeTruthy();
+        expect((offset['bottom-right'] as [number, number])[1] < 0).toBeTruthy();
+
+        expect(offset['top-left']).toEqual([0, 0]);
+        expect(offset['top-right']).toEqual([0, 0]);
 
         map.remove();
     });

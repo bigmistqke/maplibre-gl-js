@@ -1,8 +1,8 @@
 import {describe, test, expect} from 'vitest';
 import {createStyleLayer} from './create_style_layer';
 import {FillStyleLayer} from './style_layer/fill_style_layer';
-import {extend} from '../util/util';
-import {Color, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import {assertedNotNullish, extend} from '../util/util';
+import {Color, type Feature, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {type EvaluationParameters} from './evaluation_parameters';
 import {type TransitionParameters} from './properties';
 import {type BackgroundStyleLayer} from './style_layer/background_style_layer';
@@ -55,11 +55,11 @@ describe('StyleLayer.setPaintProperty', () => {
 
         layer.setPaintProperty('background-color', null);
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(layer.paint.get('background-color')).toEqual(new Color(0, 0, 0, 1));
+        expect(assertedNotNullish(layer.paint).get('background-color')).toEqual(new Color(0, 0, 0, 1));
         expect(layer.getPaintProperty('background-color')).toBeUndefined();
-        expect(layer.paint.get('background-opacity')).toBe(1);
+        expect(assertedNotNullish(layer.paint).get('background-opacity')).toBe(1);
         expect(layer.getPaintProperty('background-opacity')).toBe(1);
     });
 
@@ -135,13 +135,13 @@ describe('StyleLayer.setPaintProperty', () => {
 
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
-        expect(layer.paint.get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(1, 0, 0, 1)});
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
+        expect(assertedNotNullish(layer.paint).get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(1, 0, 0, 1)});
 
         layer.setPaintProperty('fill-outline-color', undefined);
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
-        expect(layer.paint.get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(0, 0, 1, 1)});
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
+        expect(assertedNotNullish(layer.paint).get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(0, 0, 1, 1)});
 
     });
 
@@ -159,19 +159,19 @@ describe('StyleLayer.setPaintProperty', () => {
         // to re-set it, StyleTransition.calculate() attempts interpolation
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
         layer.setPaintProperty('fill-outline-color', undefined);
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
         // re-set fill-outline-color and get its value, triggering the attempt
         // to interpolate between undefined and #f00
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        layer.paint.get('fill-outline-color');
+        assertedNotNullish(layer.paint).get('fill-outline-color');
 
     });
 
@@ -236,9 +236,9 @@ describe('StyleLayer.setLayoutProperty', () => {
         } as LayerSpecification, {}) as SymbolStyleLayer;
 
         layer.setLayoutProperty('text-transform', null);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(layer.layout.get('text-transform').value).toEqual({kind: 'constant', value: 'none'});
+        expect(assertedNotNullish(layer.layout).get('text-transform').value).toEqual({kind: 'constant', value: 'none'});
         expect(layer.getLayoutProperty('text-transform')).toBeUndefined();
     });
 });

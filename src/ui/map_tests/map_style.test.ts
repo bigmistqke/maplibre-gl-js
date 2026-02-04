@@ -3,17 +3,17 @@ import {Map, type MapOptions} from '../map';
 import {createMap, beforeMapTest, createStyle, createStyleSource, sleep} from '../../util/test/util';
 import {Event as EventedEvent} from '../../util/evented';
 import {fixedLngLat, fixedNum} from '../../../test/unit/lib/fixed';
-import {extend} from '../../util/util';
+import {assertedNotNullish, extend} from '../../util/util';
 import {fakeServer, type FakeServer} from 'nise';
 import {Style} from '../../style/style';
-import {type GeoJSONSourceSpecification, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import {type GeoJSONSourceSpecification, type LayerSpecification, type StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {LngLatBounds} from '../../geo/lng_lat_bounds';
 
 let server: FakeServer;
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as typeof global.fetch;
     server = fakeServer.create();
 });
 
@@ -35,16 +35,16 @@ describe('setStyle', () => {
         const map = createMap();
         await map.once('load');
 
-        const events = [];
-        function recordEvent(event) { events.push(event.type); }
+        const events: string[] = [];
+        function recordEvent(event: {type: string}) { events.push(event.type); }
 
         map.on('error', recordEvent);
         map.on('data', recordEvent);
         map.on('dataloading', recordEvent);
 
-        map.style.fire(new EventedEvent('error'));
-        map.style.fire(new EventedEvent('data'));
-        map.style.fire(new EventedEvent('dataloading'));
+        assertedNotNullish(map.style).fire(new EventedEvent('error'));
+        assertedNotNullish(map.style).fire(new EventedEvent('data'));
+        assertedNotNullish(map.style).fire(new EventedEvent('dataloading'));
 
         expect(events).toEqual([
             'error',
@@ -57,8 +57,8 @@ describe('setStyle', () => {
         const map = createMap();
         await map.once('load');
 
-        const events = [];
-        function recordEvent(event) { events.push(event.type); }
+        const events: string[] = [];
+        function recordEvent(event: {type: string}) { events.push(event.type); }
 
         map.on('styledata', recordEvent);
         map.on('styledataloading', recordEvent);
@@ -67,12 +67,13 @@ describe('setStyle', () => {
         map.on('tiledata', recordEvent);
         map.on('tiledataloading', recordEvent);
 
-        map.style.fire(new EventedEvent('data', {dataType: 'style'}));
-        map.style.fire(new EventedEvent('dataloading', {dataType: 'style'}));
-        map.style.fire(new EventedEvent('data', {dataType: 'source'}));
-        map.style.fire(new EventedEvent('dataloading', {dataType: 'source'}));
-        map.style.fire(new EventedEvent('data', {dataType: 'tile'}));
-        map.style.fire(new EventedEvent('dataloading', {dataType: 'tile'}));
+        const style = assertedNotNullish(map.style);
+        style.fire(new EventedEvent('data', {dataType: 'style'}));
+        style.fire(new EventedEvent('dataloading', {dataType: 'style'}));
+        style.fire(new EventedEvent('data', {dataType: 'source'}));
+        style.fire(new EventedEvent('dataloading', {dataType: 'source'}));
+        style.fire(new EventedEvent('data', {dataType: 'tile'}));
+        style.fire(new EventedEvent('dataloading', {dataType: 'tile'}));
 
         expect(events).toEqual([
             'styledata',
@@ -104,8 +105,10 @@ describe('setStyle', () => {
         map.setStyle(blueStyle);
         await map.once('style.load');
         map.setStyle(redStyle);
-        const serializedStyle =  map.style.serialize();
-        expect(serializedStyle.layers[0].paint['background-color']).toBe('red');
+        const serializedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
+        const firstLayer = assertedNotNullish(serializedStyle.layers[0]);
+        // Type cast needed: paint type is a discriminated union and TS can't narrow via index access
+        expect((firstLayer.paint as Record<string, unknown>)['background-color']).toBe('red');
         spy.mockRestore();
     });
 
@@ -150,17 +153,18 @@ describe('setStyle', () => {
 
     test('passing null removes style', () => {
         const map = createMap();
-        const style = map.style;
+        const style = assertedNotNullish(map.style);
         expect(style).toBeTruthy();
-        vi.spyOn(style, '_remove');
+        vi.spyOn(style, '_remove' as keyof Style);
         map.setStyle(null);
         expect(style._remove).toHaveBeenCalledTimes(1);
     });
 
     test('passing null releases the worker', () => {
         const map = createMap();
-        const spyWorkerPoolAcquire = vi.spyOn(map.style.dispatcher.workerPool, 'acquire');
-        const spyWorkerPoolRelease = vi.spyOn(map.style.dispatcher.workerPool, 'release');
+        const style = assertedNotNullish(map.style);
+        const spyWorkerPoolAcquire = vi.spyOn(style.dispatcher.workerPool, 'acquire');
+        const spyWorkerPoolRelease = vi.spyOn(style.dispatcher.workerPool, 'release');
 
         map.setStyle({version: 8, sources: {}, layers: []}, {diff: false});
         expect(spyWorkerPoolAcquire).toHaveBeenCalledTimes(1);
@@ -206,19 +210,19 @@ describe('setStyle', () => {
                 ...nextStyle,
                 sources: {
                     ...nextStyle.sources,
-                    maplibre: prevStyle.sources.maplibre
+                    maplibre: assertedNotNullish(prevStyle).sources.maplibre
                 },
                 layers: [
                     ...nextStyle.layers,
-                    prevStyle.layers[0]
+                    assertedNotNullish(prevStyle).layers[0]
                 ]
             })
         });
 
         await map.once('style.load');
-        const loadedStyle = map.style.serialize();
+        const loadedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
         expect('maplibre' in loadedStyle.sources).toBeTruthy();
-        expect(loadedStyle.layers[0].id).toBe(style.layers[0].id);
+        expect(assertedNotNullish(loadedStyle.layers[0]).id).toBe(style.layers[0].id);
         expect(loadedStyle.layers).toHaveLength(1);
     });
 
@@ -254,18 +258,18 @@ describe('setStyle', () => {
                 ...nextStyle,
                 sources: {
                     ...nextStyle.sources,
-                    maplibre: prevStyle.sources.maplibre
+                    maplibre: assertedNotNullish(prevStyle).sources.maplibre
                 },
                 layers: [
                     ...nextStyle.layers,
-                    prevStyle.layers[0]
+                    assertedNotNullish(prevStyle).layers[0]
                 ]
             })
         });
 
-        const loadedStyle = map.style.serialize();
+        const loadedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
         expect('maplibre' in loadedStyle.sources).toBeTruthy();
-        expect(loadedStyle.layers[0].id).toBe(style.layers[0].id);
+        expect(assertedNotNullish(loadedStyle.layers[0]).id).toBe(style.layers[0].id);
         expect(loadedStyle.layers).toHaveLength(1);
     });
 
@@ -297,9 +301,9 @@ describe('setStyle', () => {
         });
 
         await map.once('style.load');
-        const loadedStyle = map.style.serialize();
+        const loadedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
         expect('maplibre' in loadedStyle.sources).toBeTruthy();
-        expect(loadedStyle.layers[0].id).toBe('layerId0');
+        expect(assertedNotNullish(loadedStyle.layers[0]).id).toBe('layerId0');
     });
 
     test('map load should be fired when transformStyle is used on setStyle after the map is initialised without a style', async () => {
@@ -316,11 +320,11 @@ describe('setStyle', () => {
     });
 
     test('Override default style validation', () => {
-        let validationOption = true;
-        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson, options) => {
+        let validationOption: boolean | undefined = true;
+        vi.spyOn(Style.prototype, 'loadJSON').mockImplementationOnce((styleJson: StyleSpecification, options: {validate?: boolean}) => {
             validationOption = options.validate;
         });
-        const map = createMap({style: null});
+        const map = createMap({style: undefined});
         map.setStyle({version: 8, sources: {}, layers: []}, {validate: false});
 
         expect(validationOption).toBeFalsy();
@@ -358,7 +362,7 @@ describe('getStyle', () => {
         const map = createMap({style});
 
         await map.once('load');
-        const newStyle = map.getStyle();
+        const newStyle = assertedNotNullish(map.getStyle());
         newStyle.layers[0].paint = {'background-color': 'red'};
 
         // map.getStyle() should still equal the original style since
@@ -453,7 +457,7 @@ describe('getStyle', () => {
     test('creates a new Style if diff fails', () => {
         const style = createStyle();
         const map = createMap({style});
-        vi.spyOn(map.style, 'setState').mockImplementation(() => {
+        vi.spyOn(assertedNotNullish(map.style), 'setState' as keyof Style).mockImplementation(() => {
             throw new Error('Dummy error');
         });
         vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -466,7 +470,7 @@ describe('getStyle', () => {
     test('creates a new Style if diff option is false', () => {
         const style = createStyle();
         const map = createMap({style});
-        const spy = vi.spyOn(map.style, 'setState');
+        const spy = vi.spyOn(assertedNotNullish(map.style), 'setState' as keyof Style);
 
         const previousStyle = map.style;
         map.setStyle(style, {diff: false});
@@ -478,7 +482,7 @@ describe('getStyle', () => {
         test('calls style setSky when set', () => {
             const map = createMap();
             const spy = vi.fn();
-            map.style.setSky = spy;
+            assertedNotNullish(map.style).setSky = spy;
             map.setSky({'horizon-fog-blend': 0.5});
 
             expect(spy).toHaveBeenCalled();
@@ -496,7 +500,7 @@ describe('getStyle', () => {
         test('calls style setLight when set', () => {
             const map = createMap();
             const spy = vi.fn();
-            map.style.setLight = spy;
+            assertedNotNullish(map.style).setLight = spy;
             map.setLight({anchor: 'viewport'});
 
             expect(spy).toHaveBeenCalled();
@@ -507,7 +511,7 @@ describe('getStyle', () => {
         test('calls style getLight when invoked', () => {
             const map = createMap();
             const spy = vi.fn();
-            map.style.getLight = spy;
+            assertedNotNullish(map.style).getLight = spy;
             map.getLight();
 
             expect(spy).toHaveBeenCalled();

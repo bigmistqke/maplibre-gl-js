@@ -3,14 +3,16 @@ import {parseGlyphPbf} from '../style/parse_glyph_pbf';
 import {GlyphManager} from './glyph_manager';
 import fs from 'fs';
 import {type RequestManager} from '../util/request_manager';
+import type {StyleGlyph} from '../style/style_glyph';
+import {assertedNotNullish} from '../util/util';
 
 describe('GlyphManager', () => {
-    const GLYPHS = {};
+    const GLYPHS: {[id: number]: StyleGlyph | null} = {};
     for (const glyph of parseGlyphPbf(fs.readFileSync('./test/unit/assets/0-255.pbf'))) {
         GLYPHS[glyph.id] = glyph;
     }
 
-    const identityTransform = ((url) => ({url})) as any as RequestManager;
+    const identityTransform = ((url: string) => ({url})) as any as RequestManager; // cast required: test stub for RequestManager
 
     const createLoadGlyphRangeStub = () => {
         return vi.spyOn(GlyphManager, 'loadGlyphRange').mockImplementation((stack, range, urlTemplate, transform) => {
@@ -37,7 +39,7 @@ describe('GlyphManager', () => {
         const manager = createGlyphManager();
 
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [55]});
-        expect(returnedGlyphs['Arial Unicode MS']['55'].metrics.advance).toBe(12);
+        expect(assertedNotNullish(returnedGlyphs['Arial Unicode MS']['55']).metrics.advance).toBe(12);
     });
 
     test('GlyphManager doesn\'t request twice 0-255 PBF if a glyph is missing', async () => {
@@ -69,7 +71,7 @@ describe('GlyphManager', () => {
 
     test('GlyphManager does not cache CJK chars that should be rendered locally', async () => {
         vi.spyOn(GlyphManager, 'loadGlyphRange').mockImplementation((_stack, range, _urlTemplate, _transform) => {
-            const overlappingGlyphs = {};
+            const overlappingGlyphs: {[id: number]: StyleGlyph | null} = {};
             const start = range * 256;
             const end = start + 256;
             for (let i = start, j = 0; i < end; i++, j++) {

@@ -7,10 +7,14 @@ import {fixedLngLat} from '../../../test/unit/lib/fixed';
 import {type RequestTransformFunction, ResourceType} from '../../util/request_manager';
 import {type MapSourceDataEvent} from '../events';
 import {MessageType} from '../../util/actor_messages';
+import {assertedNotNullish} from '../../util/util';
+import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {IControl} from '../control/control';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 describe('Map', () => {
