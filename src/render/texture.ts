@@ -1,6 +1,6 @@
 import type {Context} from '../gl/context';
 import type {RGBAImage, AlphaImage} from '../util/image';
-import {isImageBitmap} from '../util/util';
+import {premultiplyAlpha} from '../util/image';
 
 export type TextureFormat = WebGLRenderingContextBase['RGBA'] | WebGLRenderingContextBase['ALPHA'];
 export type TextureFilter = WebGLRenderingContextBase['LINEAR'] | WebGLRenderingContextBase['LINEAR_MIPMAP_NEAREST'] | WebGLRenderingContextBase['NEAREST'];
@@ -14,6 +14,10 @@ type EmptyImage = {
 
 type DataTextureImage = RGBAImage | AlphaImage | EmptyImage;
 export type TextureImage = TexImageSource | DataTextureImage;
+
+function hasDataProperty(image: TextureImage): image is DataTextureImage {
+    return 'data' in image;
+}
 
 /**
  * @internal
@@ -59,23 +63,27 @@ export class Texture {
 
         context.pixelStoreUnpackFlipY.set(false);
         context.pixelStoreUnpack.set(1);
-        context.pixelStoreUnpackPremultiplyAlpha.set(this.format === gl.RGBA && (!options || options.premultiply !== false));
+
+        const wantPremultiply = this.format === gl.RGBA && (!options || options.premultiply !== false);
 
         if (resize) {
             this.size = [width, height];
-
-            if (image instanceof HTMLImageElement || image instanceof HTMLCanvasElement || image instanceof HTMLVideoElement || image instanceof ImageData || isImageBitmap(image)) {
-                gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, image);
+            if (hasDataProperty(image)) {
+                // #2030: raw data is premultiplied in JS
+                context.pixelStoreUnpackPremultiplyAlpha.set(false);
+                this._uploadRawData(image, wantPremultiply, width, height, gl);
             } else {
-                gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, (image as DataTextureImage).data);
+                context.pixelStoreUnpackPremultiplyAlpha.set(wantPremultiply);
+                this._uploadDomImage(image, gl);
             }
-
         } else {
             const {x, y} = position || {x: 0, y: 0};
-            if (image instanceof HTMLImageElement || image instanceof HTMLCanvasElement || image instanceof HTMLVideoElement || image instanceof ImageData || isImageBitmap(image)) {
-                gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            if (hasDataProperty(image)) {
+                context.pixelStoreUnpackPremultiplyAlpha.set(false);
+                this._updateRawData(image, wantPremultiply, x, y, width, height, gl);
             } else {
-                gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, (image as DataTextureImage).data);
+                context.pixelStoreUnpackPremultiplyAlpha.set(wantPremultiply);
+                this._updateDomImage(image, x, y, gl);
             }
         }
 
@@ -86,6 +94,26 @@ export class Texture {
         context.pixelStoreUnpackFlipY.setDefault();
         context.pixelStoreUnpack.setDefault();
         context.pixelStoreUnpackPremultiplyAlpha.setDefault();
+    }
+
+    private _uploadDomImage(image: TexImageSource, gl: WebGLRenderingContext | WebGL2RenderingContext) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, image);
+    }
+
+    private _uploadRawData(image: DataTextureImage, wantPremultiply: boolean, width: number, height: number, gl: WebGLRenderingContext | WebGL2RenderingContext) {
+        let {data} = image;
+        if (wantPremultiply && data) data = premultiplyAlpha(data);
+        gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, data);
+    }
+
+    private _updateDomImage(image: TexImageSource, x: number, y: number, gl: WebGLRenderingContext | WebGL2RenderingContext) {
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    }
+
+    private _updateRawData(image: DataTextureImage, wantPremultiply: boolean, x: number, y: number, width: number, height: number, gl: WebGLRenderingContext | WebGL2RenderingContext) {
+        let {data} = image;
+        if (wantPremultiply && data) data = premultiplyAlpha(data);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
 
     bind(filter: TextureFilter, wrap: TextureWrap, minFilter?: TextureFilter | null) {
