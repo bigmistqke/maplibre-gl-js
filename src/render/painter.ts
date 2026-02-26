@@ -22,7 +22,6 @@ import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
 import {drawDepth, drawCoords} from './draw_terrain';
 import {type OverscaledTileID} from '../tile/tile_id';
-import {drawSky, drawAtmosphere} from './draw_sky';
 import {Mesh} from './mesh';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection';
 
@@ -534,8 +533,10 @@ export class Painter {
         this.context.clear({color: options.showOverdrawInspector ? Color.black : Color.transparent, depth: 1});
         this.clearStencil();
 
-        // draw sky first to not overwrite symbols
-        if (this.style.sky) drawSky(this, this.style.sky);
+        // Execute beforeLayers render hooks (e.g., sky)
+        for (const hook of this.style._featureRegistry.getRenderHooks('beforeLayers')) {
+            hook.render(this, this.style);
+        }
 
         this._showOverdrawInspector = options.showOverdrawInspector;
         this.depthRangeFor3D = [0, 1 - ((style._order.length + 2) * this.numSublayers * this.depthEpsilon)];
@@ -585,9 +586,9 @@ export class Painter {
             this.renderLayer(this, tileManager, layer, coords, renderOptions);
         }
 
-        // Render atmosphere, only for Globe projection
-        if (renderOptions.isRenderingGlobe) {
-            drawAtmosphere(this, this.style.sky, this.style.light);
+        // Execute afterTranslucent render hooks (e.g., atmosphere)
+        for (const hook of this.style._featureRegistry.getRenderHooks('afterTranslucent')) {
+            hook.render(this, this.style);
         }
 
         if (this.options.showTileBoundaries) {
@@ -703,11 +704,26 @@ export class Painter {
         const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
 
         if (!this.cache[key]) {
+            // Try feature registry first, fall back to core shaders
+            const registry = this.style._featureRegistry;
+            let shaderSource;
+            let uniforms;
+
+            if (registry.hasProgram(name)) {
+                const programDef = registry.getProgram(name);
+                shaderSource = programDef.shaderSource;
+                uniforms = programDef.uniforms;
+            } else {
+                // Core programs: clippingMask, debug, depth, terrain*, projectionErrorMeasurement
+                shaderSource = shaders[name];
+                uniforms = programUniforms[name];
+            }
+
             this.cache[key] = new Program(
                 this.context,
-                shaders[name],
+                shaderSource,
                 programConfiguration,
-                programUniforms[name],
+                uniforms,
                 this._showOverdrawInspector,
                 useTerrain,
                 projectionPrelude,

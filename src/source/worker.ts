@@ -1,12 +1,12 @@
 import {Actor, type ActorTarget, type IActor} from '../util/actor';
 import {StyleLayerIndex} from '../style/style_layer_index';
-import {VectorTileWorkerSource} from './vector_tile_worker_source';
 import {RasterDEMTileWorkerSource} from './raster_dem_tile_worker_source';
 import {rtlWorkerPlugin, type RTLTextPlugin} from './rtl_text_plugin_worker';
 import {GeoJSONWorkerSource, type LoadGeoJSONParameters} from './geojson_worker_source';
 import {isWorker} from '../util/util';
 import {addProtocol, removeProtocol} from './protocol_crud';
 import {type PluginState} from './rtl_text_plugin_status';
+import {getWorkerRegistry} from '../core/create_worker';
 import type {
     WorkerSource,
     WorkerSourceConstructor,
@@ -253,17 +253,28 @@ export default class Worker {
                     return this.actor.sendAsync(message, abortController);
                 }
             };
-            switch (sourceType) {
-                case 'vector':
-                    this.workerSources[mapId][sourceType][sourceName] = new VectorTileWorkerSource(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
-                    break;
-                case 'geojson':
-                    this.workerSources[mapId][sourceType][sourceName] = new GeoJSONWorkerSource(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
-                    break;
-                default:
-                    this.workerSources[mapId][sourceType][sourceName] = new (this.externalWorkerSourceTypes[sourceType])(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
-                    break;
+
+            // Use registry for worker source resolution
+            let WorkerSourceClass: WorkerSourceConstructor;
+            try {
+                const registry = getWorkerRegistry();
+                if (registry.hasWorkerSource(sourceType)) {
+                    WorkerSourceClass = registry.getWorkerSource(sourceType).WorkerSource;
+                } else if (this.externalWorkerSourceTypes[sourceType]) {
+                    WorkerSourceClass = this.externalWorkerSourceTypes[sourceType];
+                } else {
+                    throw new Error(`Worker source "${sourceType}" not registered.`);
+                }
+            } catch {
+                // Fallback to external worker source types if registry is not initialized
+                if (this.externalWorkerSourceTypes[sourceType]) {
+                    WorkerSourceClass = this.externalWorkerSourceTypes[sourceType];
+                } else {
+                    throw new Error(`Worker source "${sourceType}" not registered.`);
+                }
             }
+
+            this.workerSources[mapId][sourceType][sourceName] = new WorkerSourceClass(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
         }
 
         return this.workerSources[mapId][sourceType][sourceName];

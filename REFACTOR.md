@@ -958,6 +958,17 @@ const draw = (painter, tileManager, layer, coords) => {
 
 2. **Terrain as a feature**: Terrain is deeply integrated with Painter (render-to-texture, depth buffer, coordinate offsets in every draw call). Making it a clean sub-feature of `elevation` requires extracting a terrain interface that Painter checks for. Already partially null-guarded.
 
+3. **Worker registry isolation**: The current implementation uses a global worker registry (`getWorkerRegistry()`). This works because:
+   - The Worker is a singleton per web worker (`self.worker`)
+   - Workers are pooled globally (`globalWorkerPool`)
+   - Worker sources are keyed by `mapId/sourceType/sourceName`
+   - In practice, all maps on a page typically use the same features
+   - Tree-shaking happens at build time anyway
+
+   However, this assumes all `Map` instances use the same feature set. If a consumer wanted two maps with different feature sets (e.g., one raster-only, one with vectors), the current architecture doesn't support that — the worker would have whichever features were registered first/last.
+
+   A cleaner approach would be to store registries per `mapId` in the worker and have each map send its feature configuration during initialization. This adds complexity but provides true isolation. For now, we document the constraint: **all maps on a page must use the same feature set.**
+
 3. **`patterns` as shared sub-feature**: `fill(patterns)`, `line(patterns)`, `background(patterns)`, `fillExtrusion(patterns)` — `patterns` provides the ImageManager service (shared, de-duped). Each layer provides its own pattern-specific programs and shaders. The `patterns` sub-feature imported from `maplibre-mini/fill` would include fill-pattern programs; from `maplibre-mini/line` would include line-pattern programs.
 
 4. **Labels decomposition (future)**: Currently `labels` is a single feature. A future refactor could split SymbolBucket into separate text-only and icon-only modes, allowing `labels(text)` to skip all icon code paths. This requires SymbolBucket refactoring.
@@ -1014,18 +1025,20 @@ const draw = (painter, tileManager, layer, coords) => {
 
 ### What's not done yet
 
-1. **`useProgram` not wired through registry.** `painter.useProgram()` still reads from hardcoded `shaders[name]` and `programUniforms[name]`. Should use `registry.getProgram(name)` so unused shaders get tree-shaken.
+1. ~~**`useProgram` not wired through registry.**~~ ✅ DONE. `painter.useProgram()` now uses `registry.hasProgram(name)` and `registry.getProgram(name)` to get shader source and uniforms from features. Core shaders (clippingMask, debug, depth, terrain*) fall back to the static `shaders` object.
 
-2. **Source features not extracted.** vectorTiles, geojson, elevation (raster-dem), image, video, canvas don't have feature files yet. The raster feature registers `raster` as a source type, but standalone source features (for use with vector layers) don't exist yet.
+2. ~~**Source features not extracted.**~~ ✅ DONE. `vectorTiles()`, `geojson()`, `elevation()` features created. Raster feature extended with `image`, `video`, `canvas` sub-features.
 
-3. **Worker not wired.** `createWorker` is a placeholder. The worker needs the registry for bucket creation (`config.layers[type].Bucket`), worker source resolution, and tile processor pipeline.
+3. ~~**Worker not wired.**~~ ✅ PARTIALLY DONE. `createWorker()` now creates a global registry. Worker's `_getWorkerSource()` uses `getWorkerRegistry()` for source resolution. However, uses global state (see Open Question #3).
 
 4. **Services still hardcoded in Style.** ImageManager, GlyphManager, LineAtlas, CrossTileSymbolIndex are eagerly created in `Style` constructor. They should be lazy via `MapContext.ensure()` and provided by features.
 
-5. **`Bucket` not used.** Feature definitions have a `Bucket?` field but nothing reads it yet. The worker will need it for `WorkerTile.parse()`.
+5. ~~**`Bucket` not used.**~~ ✅ DONE. All layer features with buckets now include `Bucket` in their layer definition (fill, line, circle, symbol, heatmap, fill_extrusion). `FeatureRegistry.getBucket()` method added.
 
 6. **Sub-feature splitting not started.** All features include all their programs (e.g., fill includes fillPattern programs). The `merge()` pattern supports sub-features but no feature uses it yet.
 
-7. **Sky is programs-only.** `drawSky` and `drawAtmosphere` are called directly in `painter.render()` outside the layer loop, not through `renderLayer`. Making sky a proper feature would require a hook into the render pipeline.
+7. ~~**Sky is programs-only.**~~ ✅ DONE. Sky feature now includes `renderHooks` with `beforeLayers` and `afterTranslucent` phases. `Painter.render()` uses `registry.getRenderHooks(phase)` instead of hardcoded `drawSky`/`drawAtmosphere` calls.
 
 8. **Terrain deeply integrated.** `drawDepth`, `drawCoords`, `drawTerrain` are called at specific points in the render pipeline and interact with the depth buffer. Not easily featurized without a render pipeline abstraction.
+
+9. ~~**Shaders not in features.**~~ ✅ DONE. All 11 feature files now import their shaders and use `prepare()` to create `shaderSource` in program definitions. `prepare()` exported from `shaders.ts`.

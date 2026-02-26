@@ -1,6 +1,11 @@
 import {BackgroundStyleLayer} from '../style/style_layer/background_style_layer';
 import {drawBackground} from '../render/draw_background';
 import {backgroundUniforms, backgroundPatternUniforms} from '../render/program/background_program';
+import {prepare} from '../shaders/shaders';
+import backgroundFrag from '../shaders/background.fragment.glsl.g';
+import backgroundVert from '../shaders/background.vertex.glsl.g';
+import backgroundPatternFrag from '../shaders/background_pattern.fragment.glsl.g';
+import backgroundPatternVert from '../shaders/background_pattern.vertex.glsl.g';
 import type {Feature} from '../core/feature';
 import {merge} from '../core/feature';
 
@@ -12,8 +17,8 @@ const backgroundBase: Feature = {
         }
     },
     programs: {
-        background: {uniforms: backgroundUniforms},
-        backgroundPattern: {uniforms: backgroundPatternUniforms},
+        background: {uniforms: backgroundUniforms, shaderSource: prepare(backgroundFrag, backgroundVert)},
+        backgroundPattern: {uniforms: backgroundPatternUniforms, shaderSource: prepare(backgroundPatternFrag, backgroundPatternVert)},
     },
 };
 

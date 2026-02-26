@@ -6,6 +6,8 @@ import type {OverscaledTileID} from '../tile/tile_id';
 import type {Context} from '../gl/context';
 import type {UniformLocations} from '../render/uniform_binding';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {PreparedShader} from '../shaders/shaders';
+import type {Style} from '../style/style';
 
 export type DrawFunction = (painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) => void;
 
@@ -21,6 +23,14 @@ export interface SourceDefinition {
 
 export interface ProgramDefinition {
     uniforms: (context: Context, locations: UniformLocations) => any;
+    shaderSource: PreparedShader;
+}
+
+export type RenderPhase = 'beforeLayers' | 'afterLayers' | 'afterTranslucent';
+
+export interface RenderHook {
+    phase: RenderPhase;
+    render: (painter: Painter, style: Style) => void;
 }
 
 export interface WorkerSourceDefinition {
@@ -37,6 +47,7 @@ export interface Feature {
     programs?: Record<string, ProgramDefinition>;
     workerSources?: Record<string, WorkerSourceDefinition>;
     tileProcessors?: TileProcessorDefinition[];
+    renderHooks?: RenderHook[];
 }
 
 /**
@@ -81,6 +92,7 @@ export class FeatureRegistry {
     private _programs: Record<string, ProgramDefinition>;
     private _workerSources: Record<string, WorkerSourceDefinition>;
     private _tileProcessors: TileProcessorDefinition[];
+    private _renderHooks: RenderHook[];
 
     constructor(features: Feature[]) {
         this._sources = {};
@@ -88,6 +100,7 @@ export class FeatureRegistry {
         this._programs = {};
         this._workerSources = {};
         this._tileProcessors = [];
+        this._renderHooks = [];
 
         for (const feature of features) {
             if (feature.sources) Object.assign(this._sources, feature.sources);
@@ -98,6 +111,9 @@ export class FeatureRegistry {
                 for (const proc of feature.tileProcessors) {
                     if (!this._tileProcessors.includes(proc)) this._tileProcessors.push(proc);
                 }
+            }
+            if (feature.renderHooks) {
+                this._renderHooks.push(...feature.renderHooks);
             }
         }
     }
@@ -118,6 +134,28 @@ export class FeatureRegistry {
         const def = this._programs[name];
         if (!def) throw new Error(`Program "${name}" is not registered by any feature.`);
         return def;
+    }
+
+    hasProgram(name: string): boolean {
+        return name in this._programs;
+    }
+
+    getWorkerSource(type: string): WorkerSourceDefinition {
+        const def = this._workerSources[type];
+        if (!def) throw new Error(hintMessage('Worker source', type));
+        return def;
+    }
+
+    hasWorkerSource(type: string): boolean {
+        return type in this._workerSources;
+    }
+
+    getBucket(layerType: string): any | undefined {
+        return this._layers[layerType]?.Bucket;
+    }
+
+    getRenderHooks(phase: RenderPhase): RenderHook[] {
+        return this._renderHooks.filter(h => h.phase === phase);
     }
 
     get tileProcessors(): TileProcessorDefinition[] {
@@ -153,6 +191,10 @@ export function merge(...features: Feature[]): Feature {
             for (const proc of feature.tileProcessors) {
                 if (!merged.tileProcessors.includes(proc)) merged.tileProcessors.push(proc);
             }
+        }
+        if (feature.renderHooks) {
+            merged.renderHooks = merged.renderHooks || [];
+            merged.renderHooks.push(...feature.renderHooks);
         }
     }
 
