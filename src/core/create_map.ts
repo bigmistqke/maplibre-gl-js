@@ -1,20 +1,20 @@
 import {Map, type MapOptions} from '../ui/map';
-import {type Feature, mergeFeatures} from './feature';
+import {type Feature, FeatureRegistry} from './feature';
 
-export type CreateMapOptions = Omit<MapOptions, '_featureConfig'> & {
+export type CreateMapOptions = Omit<MapOptions, '_featureRegistry'> & {
     use: Feature[];
 };
 
 /**
  * Create a Map with pluggable features.
- * Merges all features and passes the merged config to the Map constructor.
+ * Merges all features into a FeatureRegistry and passes it to the Map constructor.
  */
 export function createMap(options: CreateMapOptions): Map {
     const {use, ...mapOptions} = options;
-    const featureConfig = mergeFeatures(use);
+    const registry = new FeatureRegistry(use);
 
     return new Map({
         ...mapOptions,
-        _featureConfig: featureConfig,
+        _featureRegistry: registry,
     });
 }

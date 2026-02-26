@@ -72,7 +72,7 @@ import {
 import {type Projection} from '../geo/projection/projection';
 import {createProjectionFromName} from '../geo/projection/projection_factory';
 import type {OverscaledTileID} from '../tile/tile_id';
-import {type MergedFeatureConfig, getLayerDefinition} from '../core/feature';
+import type {FeatureRegistry} from '../core/feature';
 
 const empty = emptyStyle() as StyleSpecification;
 /**
@@ -207,7 +207,7 @@ export class Style extends Evented {
     map: Map;
     stylesheet: StyleSpecification;
     dispatcher: Dispatcher;
-    _featureConfig: MergedFeatureConfig;
+    _featureRegistry: FeatureRegistry;
     imageManager: ImageManager;
     glyphManager: GlyphManager;
     lineAtlas: LineAtlas;
@@ -246,7 +246,7 @@ export class Style extends Evented {
         super();
 
         this.map = map;
-        this._featureConfig = map._featureConfig;
+        this._featureRegistry = map._featureRegistry;
         this.dispatcher = new Dispatcher(getGlobalWorkerPool(), map._getMapId());
         this.dispatcher.registerMessageHandler(MessageType.getGlyphs, (mapId, params) => {
             return this.getGlyphs(mapId, params);
@@ -524,7 +524,7 @@ export class Style extends Evented {
         if (layer.type === 'custom') {
             return createStyleLayer(layer, this._globalState);
         }
-        const def = getLayerDefinition(this._featureConfig, layer.type);
+        const def = this._featureRegistry.getLayer(layer.type);
         return new def.StyleLayer(layer, this._globalState);
     }
 
@@ -1025,7 +1025,7 @@ export class Style extends Evented {
         const shouldValidate = builtIns.indexOf(source.type) >= 0;
         if (shouldValidate && this._validate(validateStyle.source, `sources.${id}`, source, null, options)) return;
         if (this.map && this.map._collectResourceTiming) (source as any).collectResourceTiming = true;
-        const tileManager = this.tileManagers[id] = new TileManager(id, source, this.dispatcher, this._featureConfig);
+        const tileManager = this.tileManagers[id] = new TileManager(id, source, this.dispatcher, this._featureRegistry);
         tileManager.style = this;
         tileManager.setEventedParent(this, () => ({
             isSourceLoaded: tileManager.loaded(),

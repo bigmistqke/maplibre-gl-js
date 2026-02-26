@@ -63,44 +63,66 @@ const featureHints: Record<string, string> = {
     canvas: 'raster(canvas)',
 };
 
-export interface MergedFeatureConfig {
-    sources: Record<string, SourceDefinition>;
-    layers: Record<string, LayerDefinition>;
-    programs: Record<string, ProgramDefinition>;
-    workerSources: Record<string, WorkerSourceDefinition>;
-    tileProcessors: TileProcessorDefinition[];
+function hintMessage(kind: string, type: string): string {
+    const hint = featureHints[type];
+    if (hint) {
+        return `${kind} "${type}" is not available. Add ${hint} to createMap({ use: [${hint}, ...] }).`;
+    }
+    return `${kind} "${type}" is not available. Add the corresponding feature to createMap({ use: [...] }).`;
 }
 
 /**
- * Get a layer definition from the config, throwing a helpful error if not found.
+ * FeatureRegistry is the single access point for all feature-provided definitions.
+ * All lookups go through typed getters that produce helpful error messages.
  */
-export function getLayerDefinition(config: MergedFeatureConfig, type: string): LayerDefinition {
-    const def = config.layers[type];
-    if (!def) {
-        const hint = featureHints[type];
-        throw new Error(
-            hint
-                ? `Layer type "${type}" is not available. Add ${hint} to createMap({ use: [${hint}, ...] }).`
-                : `Layer type "${type}" is not available. Add the corresponding feature to createMap({ use: [...] }).`
-        );
-    }
-    return def;
-}
+export class FeatureRegistry {
+    private _sources: Record<string, SourceDefinition>;
+    private _layers: Record<string, LayerDefinition>;
+    private _programs: Record<string, ProgramDefinition>;
+    private _workerSources: Record<string, WorkerSourceDefinition>;
+    private _tileProcessors: TileProcessorDefinition[];
 
-/**
- * Get a source definition from the config, throwing a helpful error if not found.
- */
-export function getSourceDefinition(config: MergedFeatureConfig, type: string): SourceDefinition {
-    const def = config.sources[type];
-    if (!def) {
-        const hint = featureHints[type];
-        throw new Error(
-            hint
-                ? `Source type "${type}" is not available. Add ${hint} to createMap({ use: [${hint}, ...] }).`
-                : `Source type "${type}" is not available. Add the corresponding feature to createMap({ use: [...] }).`
-        );
+    constructor(features: Feature[]) {
+        this._sources = {};
+        this._layers = {};
+        this._programs = {};
+        this._workerSources = {};
+        this._tileProcessors = [];
+
+        for (const feature of features) {
+            if (feature.sources) Object.assign(this._sources, feature.sources);
+            if (feature.layers) Object.assign(this._layers, feature.layers);
+            if (feature.programs) Object.assign(this._programs, feature.programs);
+            if (feature.workerSources) Object.assign(this._workerSources, feature.workerSources);
+            if (feature.tileProcessors) {
+                for (const proc of feature.tileProcessors) {
+                    if (!this._tileProcessors.includes(proc)) this._tileProcessors.push(proc);
+                }
+            }
+        }
     }
-    return def;
+
+    getLayer(type: string): LayerDefinition {
+        const def = this._layers[type];
+        if (!def) throw new Error(hintMessage('Layer type', type));
+        return def;
+    }
+
+    getSource(type: string): SourceDefinition {
+        const def = this._sources[type];
+        if (!def) throw new Error(hintMessage('Source type', type));
+        return def;
+    }
+
+    getProgram(name: string): ProgramDefinition {
+        const def = this._programs[name];
+        if (!def) throw new Error(`Program "${name}" is not registered by any feature.`);
+        return def;
+    }
+
+    get tileProcessors(): TileProcessorDefinition[] {
+        return this._tileProcessors;
+    }
 }
 
 /**
@@ -128,33 +150,6 @@ export function merge(...features: Feature[]): Feature {
         }
         if (feature.tileProcessors) {
             merged.tileProcessors = merged.tileProcessors || [];
-            for (const proc of feature.tileProcessors) {
-                if (!merged.tileProcessors.includes(proc)) merged.tileProcessors.push(proc);
-            }
-        }
-    }
-
-    return merged;
-}
-
-/**
- * Merge an array of features into a MergedFeatureConfig.
- */
-export function mergeFeatures(features: Feature[]): MergedFeatureConfig {
-    const merged: MergedFeatureConfig = {
-        sources: {},
-        layers: {},
-        programs: {},
-        workerSources: {},
-        tileProcessors: [],
-    };
-
-    for (const feature of features) {
-        if (feature.sources) Object.assign(merged.sources, feature.sources);
-        if (feature.layers) Object.assign(merged.layers, feature.layers);
-        if (feature.programs) Object.assign(merged.programs, feature.programs);
-        if (feature.workerSources) Object.assign(merged.workerSources, feature.workerSources);
-        if (feature.tileProcessors) {
             for (const proc of feature.tileProcessors) {
                 if (!merged.tileProcessors.includes(proc)) merged.tileProcessors.push(proc);
             }

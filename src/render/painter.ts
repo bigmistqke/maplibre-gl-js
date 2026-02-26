@@ -645,11 +645,8 @@ export class Painter {
             return;
         }
 
-        // All registered layers dispatch through the feature config
-        const def = this.style._featureConfig.layers[layer.type];
-        if (def?.draw) {
-            def.draw(painter, tileManager, layer, coords, renderOptions);
-        }
+        // All registered layers dispatch through the feature registry
+        this.style._featureRegistry.getLayer(layer.type).draw(painter, tileManager, layer, coords, renderOptions);
     }
 
     saveTileTexture(texture: Texture) {

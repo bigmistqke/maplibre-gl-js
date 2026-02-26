@@ -2,7 +2,7 @@ import {type GeoJSONSourceShouldReloadTileOptions} from '../source/geojson_sourc
 import {type Dispatcher} from '../util/dispatcher';
 
 import type {SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
-import {type MergedFeatureConfig, getSourceDefinition} from '../core/feature';
+import type {FeatureRegistry} from '../core/feature';
 import type {Event, Evented} from '../util/evented';
 import type {Map} from '../ui/map';
 import type {Tile} from '../tile/tile';
@@ -140,9 +140,8 @@ export type SourceClass = {
  * @param dispatcher - A {@link Dispatcher} instance, which can be used to send messages to the workers.
  * @returns a newly created source
  */
-export const create = (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented, featureConfig: MergedFeatureConfig): Source => {
-    const def = getSourceDefinition(featureConfig, specification.type);
-    const source = new def.Source(id, specification, dispatcher, eventedParent);
+export const create = (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented, featureRegistry: FeatureRegistry): Source => {
+    const source = new (featureRegistry.getSource(specification.type).Source)(id, specification, dispatcher, eventedParent);
 
     if (source.id !== id) {
         throw new Error(`Expected Source id to be ${id} instead of ${source.id}`);
