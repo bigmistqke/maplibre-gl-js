@@ -18,7 +18,6 @@ import {ColorMode} from '../gl/color_mode';
 import {CullFaceMode} from '../gl/cull_face_mode';
 import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
-import {drawSymbols} from './draw_symbol';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
 import {drawDepth, drawCoords} from './draw_terrain';
@@ -41,7 +40,6 @@ import type {ResolvedImage} from '@maplibre/maplibre-gl-style-spec';
 import type {RenderToTexture} from './render_to_texture';
 import type {ProjectionData} from '../geo/projection/projection_data';
 import {coveringTiles} from '../geo/projection/covering_tiles';
-import {isSymbolStyleLayer} from '../style/style_layer/symbol_style_layer';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
@@ -641,19 +639,13 @@ export class Painter {
         if (layer.type !== 'background' && layer.type !== 'custom' && !(coords || []).length) return;
         this.id = layer.id;
 
-        // Symbol layers need special handling for variableOffsets
-        if (isSymbolStyleLayer(layer)) {
-            drawSymbols(painter, tileManager, layer, coords, this.style.placement.variableOffsets, renderOptions);
-            return;
-        }
-
-        // Custom layers have a different signature
+        // Custom layers are user-provided, not from the feature config
         if (isCustomStyleLayer(layer)) {
             drawCustom(painter, tileManager, layer, renderOptions);
             return;
         }
 
-        // All other layers dispatch through the feature config
+        // All registered layers dispatch through the feature config
         const def = this.style._featureConfig.layers[layer.type];
         if (def?.draw) {
             def.draw(painter, tileManager, layer, coords, renderOptions);
