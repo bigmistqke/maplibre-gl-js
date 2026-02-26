@@ -19,15 +19,6 @@ import {CullFaceMode} from '../gl/cull_face_mode';
 import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {drawSymbols} from './draw_symbol';
-import {drawCircles} from './draw_circle';
-import {drawHeatmap} from './draw_heatmap';
-import {drawLine} from './draw_line';
-import {drawFill} from './draw_fill';
-import {drawFillExtrusion} from './draw_fill_extrusion';
-import {drawHillshade} from './draw_hillshade';
-import {drawColorRelief} from './draw_color_relief';
-import {drawRaster} from './draw_raster';
-import {drawBackground} from './draw_background';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
 import {drawDepth, drawCoords} from './draw_terrain';
@@ -51,15 +42,6 @@ import type {RenderToTexture} from './render_to_texture';
 import type {ProjectionData} from '../geo/projection/projection_data';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 import {isSymbolStyleLayer} from '../style/style_layer/symbol_style_layer';
-import {isCircleStyleLayer} from '../style/style_layer/circle_style_layer';
-import {isHeatmapStyleLayer} from '../style/style_layer/heatmap_style_layer';
-import {isLineStyleLayer} from '../style/style_layer/line_style_layer';
-import {isFillStyleLayer} from '../style/style_layer/fill_style_layer';
-import {isFillExtrusionStyleLayer} from '../style/style_layer/fill_extrusion_style_layer';
-import {isHillshadeStyleLayer} from '../style/style_layer/hillshade_style_layer';
-import {isColorReliefStyleLayer} from '../style/style_layer/color_relief_style_layer';
-import {isRasterStyleLayer} from '../style/style_layer/raster_style_layer';
-import {isBackgroundStyleLayer} from '../style/style_layer/background_style_layer';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
@@ -659,28 +641,22 @@ export class Painter {
         if (layer.type !== 'background' && layer.type !== 'custom' && !(coords || []).length) return;
         this.id = layer.id;
 
+        // Symbol layers need special handling for variableOffsets
         if (isSymbolStyleLayer(layer)) {
             drawSymbols(painter, tileManager, layer, coords, this.style.placement.variableOffsets, renderOptions);
-        } else if (isCircleStyleLayer(layer)) {
-            drawCircles(painter, tileManager, layer, coords, renderOptions);
-        } else if (isHeatmapStyleLayer(layer)) {
-            drawHeatmap(painter, tileManager, layer, coords, renderOptions);
-        } else if (isLineStyleLayer(layer)) {
-            drawLine(painter, tileManager, layer, coords, renderOptions);
-        } else if (isFillStyleLayer(layer)) {
-            drawFill(painter, tileManager, layer, coords, renderOptions);
-        } else if (isFillExtrusionStyleLayer(layer)) {
-            drawFillExtrusion(painter, tileManager, layer, coords, renderOptions);
-        } else if (isHillshadeStyleLayer(layer)) {
-            drawHillshade(painter, tileManager, layer, coords, renderOptions);
-        } else if (isColorReliefStyleLayer(layer)) {
-            drawColorRelief(painter, tileManager, layer, coords, renderOptions);
-        } else if (isRasterStyleLayer(layer)) {
-            drawRaster(painter, tileManager, layer, coords, renderOptions);
-        } else if (isBackgroundStyleLayer(layer)) {
-            drawBackground(painter, tileManager, layer, coords, renderOptions);
-        } else if (isCustomStyleLayer(layer)) {
+            return;
+        }
+
+        // Custom layers have a different signature
+        if (isCustomStyleLayer(layer)) {
             drawCustom(painter, tileManager, layer, renderOptions);
+            return;
+        }
+
+        // All other layers dispatch through the feature config
+        const def = this.style._featureConfig.layers[layer.type];
+        if (def?.draw) {
+            def.draw(painter, tileManager, layer, coords, renderOptions);
         }
     }
 

@@ -1,4 +1,5 @@
 import {create as createSource} from '../source/source';
+import type {MergedFeatureConfig} from '../core/feature';
 
 import {Tile} from './tile';
 import {ErrorEvent, Event, Evented} from '../util/evented';
@@ -93,7 +94,7 @@ export class TileManager extends Evented {
     static maxUnderzooming: number = 10;
     static maxOverzooming: number = 3;
 
-    constructor(id: string, options: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher) {
+    constructor(id: string, options: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, featureConfig: MergedFeatureConfig) {
         super();
         this.id = id;
         this.dispatcher = dispatcher;
@@ -109,7 +110,7 @@ export class TileManager extends Evented {
             this._sourceErrored = this._source.loaded();
         });
 
-        this._source = createSource(id, options, dispatcher, this);
+        this._source = createSource(id, options, dispatcher, this, featureConfig);
 
         this._inViewTiles = new InViewTiles();
         this._outOfViewCache = new TileCache(0, (tile) => this._unloadTile(tile));

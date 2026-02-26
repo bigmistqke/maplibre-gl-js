@@ -1,21 +1,14 @@
-import {VectorTileSource} from '../source/vector_tile_source';
-import {RasterTileSource} from '../source/raster_tile_source';
-import {RasterDEMTileSource} from '../source/raster_dem_tile_source';
-import {GeoJSONSource, type GeoJSONSourceShouldReloadTileOptions} from '../source/geojson_source';
-import {VideoSource} from '../source/video_source';
-import {ImageSource} from '../source/image_source';
-import {CanvasSource} from '../source/canvas_source';
+import {type GeoJSONSourceShouldReloadTileOptions} from '../source/geojson_source';
 import {type Dispatcher} from '../util/dispatcher';
 
 import type {SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import {type MergedFeatureConfig, getSourceDefinition} from '../core/feature';
 import type {Event, Evented} from '../util/evented';
 import type {Map} from '../ui/map';
 import type {Tile} from '../tile/tile';
 import type {OverscaledTileID, CanonicalTileID} from '../tile/tile_id';
 import type {CanvasSourceSpecification} from '../source/canvas_source';
 import {type CalculateTileZoomFunction} from '../geo/projection/covering_tiles';
-
-const registeredSources = {} as {[key:string]: SourceClass};
 
 /**
  * The `Source` interface must be implemented by each source type, including "core" types (`vector`, `raster`,
@@ -147,51 +140,13 @@ export type SourceClass = {
  * @param dispatcher - A {@link Dispatcher} instance, which can be used to send messages to the workers.
  * @returns a newly created source
  */
-export const create = (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented): Source => {
-
-    const Class = getSourceType(specification.type);
-    const source = new Class(id, specification, dispatcher, eventedParent);
+export const create = (id: string, specification: SourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented, featureConfig: MergedFeatureConfig): Source => {
+    const def = getSourceDefinition(featureConfig, specification.type);
+    const source = new def.Source(id, specification, dispatcher, eventedParent);
 
     if (source.id !== id) {
         throw new Error(`Expected Source id to be ${id} instead of ${source.id}`);
     }
 
     return source;
-};
-
-const getSourceType = (name: string): SourceClass => {
-    switch (name) {
-        case 'geojson':
-            return GeoJSONSource;
-        case 'image':
-            return ImageSource;
-        case 'raster':
-            return RasterTileSource;
-        case 'raster-dem':
-            return RasterDEMTileSource;
-        case 'vector':
-            return VectorTileSource;
-        case 'video':
-            return VideoSource;
-        case 'canvas':
-            return CanvasSource;
-    }
-    return registeredSources[name];
-};
-
-const setSourceType = (name: string, type: SourceClass) => {
-    registeredSources[name] = type;
-};
-
-/**
- * Adds a custom source type, making it available for use with {@link Map.addSource}.
- * @param name - The name of the source type; source definition objects use this name in the `{type: ...}` field.
- * @param SourceType - A {@link SourceClass} - which is a constructor for the `Source` interface.
- * @returns a promise that is resolved when the source type is ready or rejected with an error.
- */
-export const addSourceType = async (name: string, SourceType: SourceClass): Promise<void> => {
-    if (getSourceType(name)) {
-        throw new Error(`A source type called "${name}" already exists.`);
-    }
-    setSourceType(name, SourceType);
 };

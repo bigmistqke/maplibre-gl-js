@@ -69,6 +69,7 @@ import type {ControlPosition, IControl} from './control/control';
 import type {QueryRenderedFeaturesOptions, QuerySourceFeatureOptions} from '../source/query_features';
 import type {ITransform, TransformConstrainFunction} from '../geo/transform_interface';
 import type {ICameraHelper} from '../geo/projection/camera_helper';
+import type {MergedFeatureConfig} from '../core/feature';
 
 const version = packageJSON.version;
 
@@ -403,6 +404,11 @@ export type MapOptions = {
      *   to bearing change regardless of cursor position.
      */
     aroundCenter?: boolean;
+    /**
+     * @internal
+     * Merged feature configuration from createMap({ use: [...] }).
+     */
+    _featureConfig: MergedFeatureConfig;
 };
 
 export type AddImageOptions = {
@@ -675,6 +681,8 @@ export class Map extends Camera {
      */
     transformConstrain: TransformConstrainFunction | null;
 
+    _featureConfig: MergedFeatureConfig;
+
     constructor(options: MapOptions) {
         PerformanceUtils.mark(PerformanceMarkers.create);
 
@@ -728,6 +736,7 @@ export class Map extends Camera {
             zoomSnap: resolvedOptions.zoomSnap
         });
 
+        this._featureConfig = options._featureConfig;
         this._interactive = resolvedOptions.interactive;
         this._maxTileCacheSize = resolvedOptions.maxTileCacheSize;
         this._maxTileCacheZoomLevels = resolvedOptions.maxTileCacheZoomLevels;

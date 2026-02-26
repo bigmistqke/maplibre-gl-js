@@ -72,6 +72,7 @@ import {
 import {type Projection} from '../geo/projection/projection';
 import {createProjectionFromName} from '../geo/projection/projection_factory';
 import type {OverscaledTileID} from '../tile/tile_id';
+import {type MergedFeatureConfig, getLayerDefinition} from '../core/feature';
 
 const empty = emptyStyle() as StyleSpecification;
 /**
@@ -206,6 +207,7 @@ export class Style extends Evented {
     map: Map;
     stylesheet: StyleSpecification;
     dispatcher: Dispatcher;
+    _featureConfig: MergedFeatureConfig;
     imageManager: ImageManager;
     glyphManager: GlyphManager;
     lineAtlas: LineAtlas;
@@ -244,6 +246,7 @@ export class Style extends Evented {
         super();
 
         this.map = map;
+        this._featureConfig = map._featureConfig;
         this.dispatcher = new Dispatcher(getGlobalWorkerPool(), map._getMapId());
         this.dispatcher.registerMessageHandler(MessageType.getGlyphs, (mapId, params) => {
             return this.getGlyphs(mapId, params);
@@ -506,7 +509,7 @@ export class Style extends Evented {
         // reset serialization field, to be populated only when needed
         this._serializedLayers = null;
         for (const layer of dereferencedLayers) {
-            const styledLayer = createStyleLayer(layer, this._globalState);
+            const styledLayer = this._createStyleLayer(layer);
             styledLayer.setEventedParent(this, {layer: {id: layer.id}});
             this._layers[layer.id] = styledLayer;
 
@@ -515,6 +518,14 @@ export class Style extends Evented {
                 this.tileManagers[styledLayer.source].setRasterFadeDuration(rasterFadeDuration);
             }
         }
+    }
+
+    _createStyleLayer(layer: LayerSpecification | CustomLayerInterface): StyleLayer {
+        if (layer.type === 'custom') {
+            return createStyleLayer(layer, this._globalState);
+        }
+        const def = getLayerDefinition(this._featureConfig, layer.type);
+        return new def.StyleLayer(layer, this._globalState);
     }
 
     _loadSprite(sprite: SpriteSpecification, isUpdate: boolean = false, completion: (err: Error) => void = undefined) {
@@ -1014,7 +1025,7 @@ export class Style extends Evented {
         const shouldValidate = builtIns.indexOf(source.type) >= 0;
         if (shouldValidate && this._validate(validateStyle.source, `sources.${id}`, source, null, options)) return;
         if (this.map && this.map._collectResourceTiming) (source as any).collectResourceTiming = true;
-        const tileManager = this.tileManagers[id] = new TileManager(id, source, this.dispatcher);
+        const tileManager = this.tileManagers[id] = new TileManager(id, source, this.dispatcher, this._featureConfig);
         tileManager.style = this;
         tileManager.setEventedParent(this, () => ({
             isSourceLoaded: tileManager.loaded(),
@@ -1094,12 +1105,12 @@ export class Style extends Evented {
             return;
         }
 
-        let layer: ReturnType<typeof createStyleLayer>;
+        let layer: StyleLayer;
         if (layerObject.type === 'custom') {
 
             if (emitValidationErrors(this, validateCustomStyleLayer(layerObject))) return;
 
-            layer = createStyleLayer(layerObject, this._globalState);
+            layer = this._createStyleLayer(layerObject);
 
         } else {
             if ('source' in layerObject && typeof layerObject.source === 'object') {
@@ -1112,7 +1123,7 @@ export class Style extends Evented {
             if (this._validate(validateStyle.layer,
                 `layers.${id}`, layerObject, {arrayIndex: -1}, options)) return;
 
-            layer = createStyleLayer(layerObject as LayerSpecification | CustomLayerInterface, this._globalState);
+            layer = this._createStyleLayer(layerObject as LayerSpecification | CustomLayerInterface);
             this._validateLayer(layer);
 
             layer.setEventedParent(this, {layer: {id}});
