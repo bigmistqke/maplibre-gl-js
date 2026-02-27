@@ -31,7 +31,7 @@ const lineBase: Feature = {
         lineSDF: {uniforms: lineSDFUniforms, shaderSource: prepare(lineSDFFrag, lineSDFVert)},
         lineGradientSDF: {uniforms: lineGradientSDFUniforms, shaderSource: prepare(lineGradientSDFFrag, lineGradientSDFVert)},
     },
-    managers: {ImageManager, LineAtlas},
+    singletons: {ImageManager, LineAtlas},
 };
 
 export function line(...capabilities: Feature[]): Feature {

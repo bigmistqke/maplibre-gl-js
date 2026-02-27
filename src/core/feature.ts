@@ -97,14 +97,14 @@ export interface WorkerSourceMap {
 }
 export type WorkerSourceName = keyof WorkerSourceMap;
 
-/** Manager name to class type mapping */
-export interface ManagerMap {
+/** Singleton name to class type mapping (one instance per map) */
+export interface SingletonMap {
     ImageManager: typeof ImageManager;
     GlyphManager: typeof GlyphManager;
     LineAtlas: typeof LineAtlas;
     CrossTileSymbolIndex: typeof CrossTileSymbolIndex;
 }
-export type ManagerName = keyof ManagerMap;
+export type SingletonName = keyof SingletonMap;
 
 export interface Feature {
     sources?: {[K in SourceName]?: SourceMap[K]};
@@ -113,7 +113,7 @@ export interface Feature {
     workerSources?: {[K in WorkerSourceName]?: WorkerSourceMap[K]};
     tileProcessors?: TileProcessorDefinition[];
     renderHooks?: RenderHook[];
-    managers?: {[K in ManagerName]?: ManagerMap[K]};
+    singletons?: {[K in SingletonName]?: SingletonMap[K]};
 }
 
 /**
@@ -159,7 +159,7 @@ export class FeatureRegistry {
     private _workerSources: {[K in WorkerSourceName]?: WorkerSourceMap[K]};
     private _tileProcessors: TileProcessorDefinition[];
     private _renderHooks: RenderHook[];
-    private _managers: {[K in ManagerName]?: ManagerMap[K]};
+    private _singletons: {[K in SingletonName]?: SingletonMap[K]};
 
     constructor(features: Feature[]) {
         this._sources = {};
@@ -168,7 +168,7 @@ export class FeatureRegistry {
         this._workerSources = {};
         this._tileProcessors = [];
         this._renderHooks = [];
-        this._managers = {};
+        this._singletons = {};
 
         for (const feature of features) {
             if (feature.sources) Object.assign(this._sources, feature.sources);
@@ -183,8 +183,8 @@ export class FeatureRegistry {
             if (feature.renderHooks) {
                 this._renderHooks.push(...feature.renderHooks);
             }
-            if (feature.managers) {
-                Object.assign(this._managers, feature.managers);
+            if (feature.singletons) {
+                Object.assign(this._singletons, feature.singletons);
             }
         }
     }
@@ -233,8 +233,8 @@ export class FeatureRegistry {
         return this._tileProcessors;
     }
 
-    getManager<K extends ManagerName>(name: K): ManagerMap[K] | undefined {
-        return this._managers[name] as ManagerMap[K] | undefined;
+    getSingleton<K extends SingletonName>(name: K): SingletonMap[K] | undefined {
+        return this._singletons[name] as SingletonMap[K] | undefined;
     }
 }
 
@@ -271,9 +271,9 @@ export function merge(...features: Feature[]): Feature {
             merged.renderHooks = merged.renderHooks || [];
             merged.renderHooks.push(...feature.renderHooks);
         }
-        if (feature.managers) {
-            merged.managers = merged.managers || {};
-            Object.assign(merged.managers, feature.managers);
+        if (feature.singletons) {
+            merged.singletons = merged.singletons || {};
+            Object.assign(merged.singletons, feature.singletons);
         }
     }
 

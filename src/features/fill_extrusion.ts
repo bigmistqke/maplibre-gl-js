@@ -22,7 +22,7 @@ const fillExtrusionBase: Feature = {
         fillExtrusion: {uniforms: fillExtrusionUniforms, shaderSource: prepare(fillExtrusionFrag, fillExtrusionVert)},
         fillExtrusionPattern: {uniforms: fillExtrusionPatternUniforms, shaderSource: prepare(fillExtrusionPatternFrag, fillExtrusionPatternVert)},
     },
-    managers: {ImageManager},
+    singletons: {ImageManager},
 };
 
 export function fillExtrusion(...capabilities: Feature[]): Feature {

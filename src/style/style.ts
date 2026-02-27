@@ -259,22 +259,22 @@ export class Style extends Evented {
         });
 
         // Create manager instances from features
-        const ImageManagerClass = this._featureRegistry.getManager('ImageManager');
+        const ImageManagerClass = this._featureRegistry.getSingleton('ImageManager');
         if (ImageManagerClass) {
             this.imageManager = new ImageManagerClass();
             this.imageManager.setEventedParent(this);
         }
-        const GlyphManagerClass = this._featureRegistry.getManager('GlyphManager');
+        const GlyphManagerClass = this._featureRegistry.getSingleton('GlyphManager');
         if (GlyphManagerClass) {
             const glyphLang = this.map._container?.lang ||
                 (typeof document !== 'undefined' && document.documentElement?.lang) || undefined;
             this.glyphManager = new GlyphManagerClass(this.map._requestManager, this.map._localIdeographFontFamily, glyphLang);
         }
-        const LineAtlasClass = this._featureRegistry.getManager('LineAtlas');
+        const LineAtlasClass = this._featureRegistry.getSingleton('LineAtlas');
         if (LineAtlasClass) {
             this.lineAtlas = new LineAtlasClass(256, 512);
         }
-        const CrossTileSymbolIndexClass = this._featureRegistry.getManager('CrossTileSymbolIndex');
+        const CrossTileSymbolIndexClass = this._featureRegistry.getSingleton('CrossTileSymbolIndex');
         if (CrossTileSymbolIndexClass) {
             this.crossTileSymbolIndex = new CrossTileSymbolIndexClass();
         }

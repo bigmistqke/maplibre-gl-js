@@ -993,11 +993,11 @@ const draw = (painter, tileManager, layer, coords) => {
 8. **Shared instances (ImageManager, GlyphManager, LineAtlas) as feature dependencies**: ✅ IMPLEMENTED. Features declare manager classes they need, FeatureRegistry provides them to Style for instantiation.
 
    ```typescript
-   // Feature declares managers it needs
-   import {ImageManager, GlyphManager} from '../core/feature';
+   // Feature declares singletons it needs (one instance per map)
+   import {ImageManager, GlyphManager, CrossTileSymbolIndex} from '../core/feature';
 
    export const symbolBase: Feature = {
-       managers: {ImageManager, GlyphManager},
+       singletons: {ImageManager, GlyphManager, CrossTileSymbolIndex},
        programs: { ... }
    };
    ```
@@ -1005,7 +1005,7 @@ const draw = (painter, tileManager, layer, coords) => {
    Style gets classes from registry and creates instances:
    ```typescript
    // Style constructor - gets class from registry, creates if provided
-   const ImageManagerClass = this._featureRegistry.getManager('ImageManager');
+   const ImageManagerClass = this._featureRegistry.getSingleton('ImageManager');
    if (ImageManagerClass) {
        this.imageManager = new ImageManagerClass();
        this.imageManager.setEventedParent(this);
@@ -1019,19 +1019,20 @@ const draw = (painter, tileManager, layer, coords) => {
 
    Type-safe registry with inference:
    ```typescript
-   interface ManagerMap {
+   interface SingletonMap {
        ImageManager: typeof ImageManager;
        GlyphManager: typeof GlyphManager;
        LineAtlas: typeof LineAtlas;
+       CrossTileSymbolIndex: typeof CrossTileSymbolIndex;
    }
 
-   getManager<K extends ManagerName>(name: K): ManagerMap[K] | undefined
+   getSingleton<K extends SingletonName>(name: K): SingletonMap[K] | undefined
    ```
 
    Benefits:
    - Features are declarative — they provide the class itself
-   - Style doesn't import manager classes directly — gets them from registry (tree-shaking friendly)
-   - Type-safe — `getManager('ImageManager')` returns `typeof ImageManager | undefined`
+   - Style doesn't import singleton classes directly — gets them from registry (tree-shaking friendly)
+   - Type-safe — `getSingleton('ImageManager')` returns `typeof ImageManager | undefined`
    - Instantiation logic stays in Style where it already lives, just made conditional
 
    **Future consideration**: Currently instances live on Style (`style.imageManager`, etc.) for backward compatibility. A cleaner design would have FeatureRegistry be the sole owner of feature-provided instances, making Style's core smaller and all feature-specific state accessed uniformly via the registry.
@@ -1094,7 +1095,7 @@ const draw = (painter, tileManager, layer, coords) => {
 
 3. ~~**Worker not wired.**~~ ✅ PARTIALLY DONE. `createWorker()` now creates a global registry. Worker's `_getWorkerSource()` uses `getWorkerRegistry()` for source resolution. However, uses global state (see Open Question #3).
 
-4. **Services still hardcoded in Style.** ✅ PARTIALLY DONE. ImageManager, GlyphManager, LineAtlas now conditional via `managers` API. CrossTileSymbolIndex still hardcoded.
+4. **Services still hardcoded in Style.** ✅ DONE. ImageManager, GlyphManager, LineAtlas, CrossTileSymbolIndex now conditional via `singletons` API.
 
    **Dead code cleanup:** `Painter.crossTileSymbolIndex` was dead code since Dec 2017 (commit `4cf7a48` "port CrossTileSymbolIndex changes back from -native"). The original usage in `source_cache.js` (`tile.added(painter.crossTileSymbolIndex)`) was removed when logic moved to Style, but nobody removed the field from Painter. Only `Style.crossTileSymbolIndex` is actually used. Removed the dead Painter field.
 

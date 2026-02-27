@@ -36,7 +36,7 @@ const symbolBase: Feature = {
         collisionBox: {uniforms: collisionUniforms, shaderSource: prepare(collisionBoxFrag, collisionBoxVert)},
         collisionCircle: {uniforms: collisionCircleUniforms, shaderSource: prepare(collisionCircleFrag, collisionCircleVert)},
     },
-    managers: {ImageManager, GlyphManager, CrossTileSymbolIndex},
+    singletons: {ImageManager, GlyphManager, CrossTileSymbolIndex},
 };
 
 export function labels(...capabilities: Feature[]): Feature {

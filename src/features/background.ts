@@ -20,7 +20,7 @@ const backgroundBase: Feature = {
         background: {uniforms: backgroundUniforms, shaderSource: prepare(backgroundFrag, backgroundVert)},
         backgroundPattern: {uniforms: backgroundPatternUniforms, shaderSource: prepare(backgroundPatternFrag, backgroundPatternVert)},
     },
-    managers: {ImageManager},
+    singletons: {ImageManager},
 };
 
 export function background(...capabilities: Feature[]): Feature {

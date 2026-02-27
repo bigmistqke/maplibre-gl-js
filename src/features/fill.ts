@@ -28,7 +28,7 @@ const fillBase: Feature = {
         fillPattern: {uniforms: fillPatternUniforms, shaderSource: prepare(fillPatternFrag, fillPatternVert)},
         fillOutlinePattern: {uniforms: fillOutlinePatternUniforms, shaderSource: prepare(fillOutlinePatternFrag, fillOutlinePatternVert)},
     },
-    managers: {ImageManager},
+    singletons: {ImageManager},
 };
 
 export function fill(...capabilities: Feature[]): Feature {
