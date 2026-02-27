@@ -1105,6 +1105,44 @@ const draw = (painter, tileManager, layer, coords) => {
 
 7. ~~**Sky is programs-only.**~~ ✅ DONE. Sky feature now includes `renderHooks` with `beforeLayers` and `afterTranslucent` phases. `Painter.render()` uses `registry.getRenderHooks(phase)` instead of hardcoded `drawSky`/`drawAtmosphere` calls.
 
-8. **Terrain deeply integrated.** `drawDepth`, `drawCoords`, `drawTerrain` are called at specific points in the render pipeline and interact with the depth buffer. Not easily featurized without a render pipeline abstraction.
+8. **Terrain deeply integrated.** Terrain is a cross-cutting concern that modifies behavior across the entire rendering system. Not easily featurized.
+
+   **Why terrain is different from other features:**
+
+   Unlike layer features (fill, line, symbol) which are self-contained vertical slices, terrain reaches horizontally across many systems:
+
+   ```
+   ┌─────────────────────────────────────────────────────────────┐
+   │  draw_fill.ts, draw_line.ts, draw_symbol.ts, etc.           │
+   │  └─> all check: if (map.terrain) { terrainData = ... }      │
+   │  └─> pass terrainData to every shader program               │
+   ├─────────────────────────────────────────────────────────────┤
+   │  painter.ts                                                  │
+   │  └─> useProgram() adds '/terrain' to shader variant key     │
+   │  └─> maybeDrawDepthAndCoords() renders depth/coords FBOs    │
+   │  └─> terrainFacilitator tracks when to re-render            │
+   ├─────────────────────────────────────────────────────────────┤
+   │  map.ts                                                      │
+   │  └─> map.terrain property stores Terrain instance           │
+   │  └─> setTerrain() creates Terrain + RenderToTexture         │
+   ├─────────────────────────────────────────────────────────────┤
+   │  RenderToTexture                                             │
+   │  └─> changes how all layers are composited                  │
+   └─────────────────────────────────────────────────────────────┘
+   ```
+
+   **Specific integration points:**
+   - Every draw function checks `map.terrain` and passes `terrainData` to shaders
+   - `useProgram()` creates terrain shader variants (`fill` vs `fill/terrain`)
+   - Depth/coords framebuffers must render before layer rendering
+   - `RenderToTexture` wraps the entire layer rendering pipeline
+   - TileManager has `usedForTerrain` flag affecting tile loading
+
+   **Possible future approaches (not implemented):**
+   - Terrain data provider interface abstracting how draw functions get elevation
+   - Shader variant system where features register their variants
+   - Render pipeline abstraction with explicit phases
+
+   For now, terrain remains part of core rather than a pluggable feature.
 
 9. ~~**Shaders not in features.**~~ ✅ DONE. All 11 feature files now import their shaders and use `prepare()` to create `shaderSource` in program definitions. `prepare()` exported from `shaders.ts`.
