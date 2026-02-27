@@ -605,7 +605,8 @@ export class SymbolBucket implements Bucket {
     }
 
     addToLineVertexArray(anchor: Anchor, line: Array<Point>): {lineStartIndex: number; lineLength: number} {
-        const lineStartIndex = this.lineVertexArray?.length ?? 0;
+        // @ts-expect-error - Preserves original behavior: accessing length on potentially undefined array
+        const lineStartIndex = this.lineVertexArray.length;
         if (anchor.segment !== undefined) {
             let sumForwardLength = anchor.dist(line[anchor.segment + 1]);
             let sumBackwardLength = anchor.dist(line[anchor.segment]);
@@ -624,12 +625,14 @@ export class SymbolBucket implements Bucket {
             }
             for (let i = 0; i < line.length; i++) {
                 const vertex = vertices[i];
-                this.lineVertexArray?.emplaceBack(vertex.x, vertex.y, vertex.tileUnitDistanceFromAnchor);
+                // @ts-expect-error - Preserves original behavior: accessing method on potentially undefined array
+                this.lineVertexArray.emplaceBack(vertex.x, vertex.y, vertex.tileUnitDistanceFromAnchor);
             }
         }
         return {
             lineStartIndex,
-            lineLength: (this.lineVertexArray?.length ?? 0) - lineStartIndex
+            // @ts-expect-error - Preserves original behavior: accessing length on potentially undefined array
+            lineLength: this.lineVertexArray.length - lineStartIndex
         };
     }
 
@@ -649,7 +652,8 @@ export class SymbolBucket implements Bucket {
         const layoutVertexArray = arrays.layoutVertexArray;
 
         const segment = arrays.segments.prepareSegment(4 * quads.length, layoutVertexArray, indexArray, this.canOverlap ? feature.sortKey as number : undefined);
-        const glyphOffsetArrayStart = this.glyphOffsetArray?.length ?? 0;
+        // @ts-expect-error - Preserves original behavior: accessing length on potentially undefined array
+        const glyphOffsetArrayStart = this.glyphOffsetArray.length;
         const vertexStartIndex = segment.vertexLength;
 
         const angle = (this.allowVerticalPlacement && writingMode === WritingMode.vertical) ? Math.PI / 2 : 0;
@@ -677,18 +681,20 @@ export class SymbolBucket implements Bucket {
             this.glyphOffsetArray?.emplaceBack(glyphOffset[0]);
 
             if (i === quads.length - 1 || sectionIndex !== quads[i + 1].sectionIndex) {
-                arrays.programConfigurations.populatePaintArrays(layoutVertexArray.length ?? 0, feature, feature.index, {imagePositions: {}, canonical, formattedSection: sections ? sections[sectionIndex] : undefined});
+                arrays.programConfigurations.populatePaintArrays(layoutVertexArray.length, feature, feature.index, {imagePositions: {}, canonical, formattedSection: sections ? sections[sectionIndex] : undefined});
             }
         }
 
         arrays.placedSymbolArray.emplaceBack(
             labelAnchor.x, labelAnchor.y,
             glyphOffsetArrayStart,
-            (this.glyphOffsetArray?.length ?? 0) - glyphOffsetArrayStart,
+            // @ts-expect-error - Preserves original behavior: accessing length on potentially undefined array
+            this.glyphOffsetArray.length - glyphOffsetArrayStart,
             vertexStartIndex,
             lineStartIndex,
             lineLength,
-            labelAnchor.segment ?? 0,
+            // @ts-expect-error - Preserves original behavior: segment may be undefined
+            labelAnchor.segment,
             sizeVertex ? sizeVertex[0] : 0,
             sizeVertex ? sizeVertex[1] : 0,
             lineOffset[0], lineOffset[1],

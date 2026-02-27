@@ -174,10 +174,10 @@ export class FillExtrusionBucket implements Bucket {
         for (const polygon of classifyRings(geometry, EARCUT_MAX_RINGS)) {
             // Compute polygon centroid to calculate elevation in GPU
             const centroid: CentroidAccumulator = {x: 0, y: 0, sampleCount: 0};
-            const oldVertexCount = this.layoutVertexArray.length ?? 0;
+            const oldVertexCount = this.layoutVertexArray.length;
             this.processPolygon(centroid, canonical, feature, polygon, subdivisionGranularity);
 
-            const addedVertices = (this.layoutVertexArray.length ?? 0) - oldVertexCount;
+            const addedVertices = this.layoutVertexArray.length - oldVertexCount;
 
             const centroidX = Math.floor(centroid.x / centroid.sampleCount);
             const centroidY = Math.floor(centroid.y / centroid.sampleCount);
@@ -190,7 +190,7 @@ export class FillExtrusionBucket implements Bucket {
             }
         }
 
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length ?? 0, feature, index, {imagePositions, canonical});
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, {imagePositions, canonical});
     }
 
     private processPolygon(

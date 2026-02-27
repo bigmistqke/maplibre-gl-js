@@ -181,8 +181,9 @@ export class LineBucket implements Bucket {
         }
 
         if (sortFeaturesByKey) {
+            // @ts-expect-error - Preserves original behavior: undefined - undefined = NaN
             bucketFeatures.sort((a, b) => {
-                return (a.sortKey ?? 0) - (b.sortKey ?? 0);
+                return a.sortKey - b.sortKey;
             });
         }
 
@@ -270,7 +271,7 @@ export class LineBucket implements Bucket {
             this.addLine(line, feature, join, cap, miterLimit, roundLimit, canonical, subdivisionGranularity);
         }
 
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length ?? 0, feature, index, {imagePositions, dashPositions, canonical});
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, {imagePositions, dashPositions, canonical});
     }
 
     addLine(vertices: Array<Point>, feature: BucketFeature, join: string, cap: string, miterLimit: number, roundLimit: number, canonical: CanonicalTileID | undefined, subdivisionGranularity: SubdivisionGranularitySetting) {

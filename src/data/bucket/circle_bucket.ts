@@ -130,7 +130,8 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
         }
 
         if (sortFeaturesByKey) {
-            bucketFeatures.sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0));
+            // @ts-expect-error - Preserves original behavior: undefined - undefined = NaN
+            bucketFeatures.sort((a, b) => a.sortKey - b.sortKey);
         }
 
         for (const bucketFeature of bucketFeatures) {
@@ -234,7 +235,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
             }
         }
 
-        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length ?? 0, feature, index, {imagePositions: {}, canonical});
+        this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, {imagePositions: {}, canonical});
     }
 }
 
