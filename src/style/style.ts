@@ -26,7 +26,7 @@ import {rtlMainThreadPluginFactory} from '../source/rtl_text_plugin_main_thread'
 import {RTLPluginLoadedEventName} from '../source/rtl_text_plugin_status';
 import {PauseablePlacement} from './pauseable_placement';
 import {ZoomHistory} from './zoom_history';
-import {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
+import type {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 import {validateCustomStyleLayer} from './style_layer/custom_style_layer';
 import type {MapGeoJSONFeature} from '../util/vectortile_to_geojson';
 import type Point from '@mapbox/point-geometry';
@@ -237,7 +237,7 @@ export class Style extends Evented {
     // image ids of all images loaded (sprite + user)
     _availableImages: Array<string>;
     _globalState: Record<string, any>;
-    crossTileSymbolIndex: CrossTileSymbolIndex;
+    crossTileSymbolIndex?: CrossTileSymbolIndex;
     pauseablePlacement: PauseablePlacement;
     placement: Placement;
     z: number;
@@ -274,8 +274,10 @@ export class Style extends Evented {
         if (LineAtlasClass) {
             this.lineAtlas = new LineAtlasClass(256, 512);
         }
-
-        this.crossTileSymbolIndex = new CrossTileSymbolIndex();
+        const CrossTileSymbolIndexClass = this._featureRegistry.getManager('CrossTileSymbolIndex');
+        if (CrossTileSymbolIndexClass) {
+            this.crossTileSymbolIndex = new CrossTileSymbolIndexClass();
+        }
 
         this._setInitialValues();
 
@@ -332,7 +334,9 @@ export class Style extends Evented {
         this._glyphsDidChange = false;
         this._updatedPaintProps = {};
         this._layerOrderChanged = false;
-        this.crossTileSymbolIndex = new (this.crossTileSymbolIndex?.constructor || Object)();
+        if (this.crossTileSymbolIndex) {
+            this.crossTileSymbolIndex = new (this.crossTileSymbolIndex.constructor as any)();
+        }
         this.pauseablePlacement = undefined;
         this.placement = undefined;
         this.z = 0;
@@ -1847,10 +1851,10 @@ export class Style extends Evented {
                     .sort((a, b) => (b.tileID.overscaledZ - a.tileID.overscaledZ) || (a.tileID.isLessThan(b.tileID) ? -1 : 1));
             }
 
-            const layerBucketsChanged = this.crossTileSymbolIndex.addLayer(styleLayer, layerTiles[styleLayer.source], transform.center.lng);
+            const layerBucketsChanged = this.crossTileSymbolIndex?.addLayer(styleLayer, layerTiles[styleLayer.source], transform.center.lng);
             symbolBucketsChanged = symbolBucketsChanged || layerBucketsChanged;
         }
-        this.crossTileSymbolIndex.pruneUnusedLayers(this._order);
+        this.crossTileSymbolIndex?.pruneUnusedLayers(this._order);
 
         // Anything that changes our "in progress" layer and tile indices requires us
         // to start over. When we start over, we do a full placement instead of incremental

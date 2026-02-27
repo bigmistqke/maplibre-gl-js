@@ -1094,7 +1094,9 @@ const draw = (painter, tileManager, layer, coords) => {
 
 3. ~~**Worker not wired.**~~ ✅ PARTIALLY DONE. `createWorker()` now creates a global registry. Worker's `_getWorkerSource()` uses `getWorkerRegistry()` for source resolution. However, uses global state (see Open Question #3).
 
-4. **Services still hardcoded in Style.** ImageManager, GlyphManager, LineAtlas, CrossTileSymbolIndex are eagerly created in `Style` constructor. They should be lazy via `MapContext.ensure()` and provided by features.
+4. **Services still hardcoded in Style.** ✅ PARTIALLY DONE. ImageManager, GlyphManager, LineAtlas now conditional via `managers` API. CrossTileSymbolIndex still hardcoded.
+
+   **Dead code cleanup:** `Painter.crossTileSymbolIndex` was dead code since Dec 2017 (commit `4cf7a48` "port CrossTileSymbolIndex changes back from -native"). The original usage in `source_cache.js` (`tile.added(painter.crossTileSymbolIndex)`) was removed when logic moved to Style, but nobody removed the field from Painter. Only `Style.crossTileSymbolIndex` is actually used. Removed the dead Painter field.
 
 5. ~~**`Bucket` not used.**~~ ✅ DONE. All layer features with buckets now include `Bucket` in their layer definition (fill, line, circle, symbol, heatmap, fill_extrusion). `FeatureRegistry.getBucket()` method added.
 

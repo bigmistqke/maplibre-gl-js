@@ -354,7 +354,7 @@ describe('TileManager.removeTile', () => {
         tileManager._source.loadTile = async () => {
             tileManager._removeTile(tileID.key);
         };
-        tileManager.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as any;
+        tileManager.map = {painter: {tileExtentVAO: {}}} as any;
 
         tileManager._addTile(tileID);
     });

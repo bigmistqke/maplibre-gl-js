@@ -11,9 +11,10 @@ import type {Style} from '../style/style';
 import {ImageManager} from '../render/image_manager';
 import {GlyphManager} from '../render/glyph_manager';
 import {LineAtlas} from '../render/line_atlas';
+import {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 
 // Re-export for features to use as keys
-export {ImageManager, GlyphManager, LineAtlas};
+export {ImageManager, GlyphManager, LineAtlas, CrossTileSymbolIndex};
 
 // ============================================================================
 // Definition types
@@ -101,6 +102,7 @@ export interface ManagerMap {
     ImageManager: typeof ImageManager;
     GlyphManager: typeof GlyphManager;
     LineAtlas: typeof LineAtlas;
+    CrossTileSymbolIndex: typeof CrossTileSymbolIndex;
 }
 export type ManagerName = keyof ManagerMap;
 

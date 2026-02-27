@@ -7,7 +7,6 @@ import {RasterBoundsArray, PosArray, TriangleIndexArray, LineStripIndexArray} fr
 import rasterBoundsAttributes from '../data/raster_bounds_attributes';
 import posAttributes from '../data/pos_attributes';
 import {type ProgramConfiguration} from '../data/program_configuration';
-import {CrossTileSymbolIndex} from '../symbol/cross_tile_symbol_index';
 import {shaders} from '../shaders/shaders';
 import {Program} from './program';
 import {programUniforms} from './program/program_uniforms';
@@ -106,7 +105,6 @@ export class Painter {
     id: string;
     _showOverdrawInspector: boolean;
     cache: {[_: string]: Program<any>};
-    crossTileSymbolIndex: CrossTileSymbolIndex;
     symbolFadeChange: number;
     debugOverlayTexture: Texture;
     debugOverlayCanvas: HTMLCanvasElement;
@@ -127,8 +125,6 @@ export class Painter {
         // This is implemented using the WebGL depth buffer.
         this.numSublayers = TileManager.maxOverzooming + TileManager.maxUnderzooming + 1;
         this.depthEpsilon = 1 / Math.pow(2, 16);
-
-        this.crossTileSymbolIndex = new CrossTileSymbolIndex();
     }
 
     /*

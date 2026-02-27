@@ -15,7 +15,7 @@ import collisionBoxVert from '../shaders/collision_box.vertex.glsl.g';
 import collisionCircleFrag from '../shaders/collision_circle.fragment.glsl.g';
 import collisionCircleVert from '../shaders/collision_circle.vertex.glsl.g';
 import type {Feature, DrawFunction} from '../core/feature';
-import {merge, ImageManager, GlyphManager} from '../core/feature';
+import {merge, ImageManager, GlyphManager, CrossTileSymbolIndex} from '../core/feature';
 
 const draw: DrawFunction = (painter, tileManager, layer, coords, renderOptions) => {
     drawSymbols(painter, tileManager, layer as SymbolStyleLayer, coords, painter.style.placement.variableOffsets, renderOptions);
@@ -36,7 +36,7 @@ const symbolBase: Feature = {
         collisionBox: {uniforms: collisionUniforms, shaderSource: prepare(collisionBoxFrag, collisionBoxVert)},
         collisionCircle: {uniforms: collisionCircleUniforms, shaderSource: prepare(collisionCircleFrag, collisionCircleVert)},
     },
-    managers: {ImageManager, GlyphManager},
+    managers: {ImageManager, GlyphManager, CrossTileSymbolIndex},
 };
 
 export function labels(...capabilities: Feature[]): Feature {
