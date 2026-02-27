@@ -969,11 +969,74 @@ const draw = (painter, tileManager, layer, coords) => {
 
    A cleaner approach would be to store registries per `mapId` in the worker and have each map send its feature configuration during initialization. This adds complexity but provides true isolation. For now, we document the constraint: **all maps on a page must use the same feature set.**
 
-3. **`patterns` as shared sub-feature**: `fill(patterns)`, `line(patterns)`, `background(patterns)`, `fillExtrusion(patterns)` — `patterns` provides the ImageManager service (shared, de-duped). Each layer provides its own pattern-specific programs and shaders. The `patterns` sub-feature imported from `maplibre-mini/fill` would include fill-pattern programs; from `maplibre-mini/line` would include line-pattern programs.
+4. **`patterns` as shared sub-feature**: `fill(patterns)`, `line(patterns)`, `background(patterns)`, `fillExtrusion(patterns)` — `patterns` provides the ImageManager service (shared, de-duped). Each layer provides its own pattern-specific programs and shaders. The `patterns` sub-feature imported from `maplibre-mini/fill` would include fill-pattern programs; from `maplibre-mini/line` would include line-pattern programs.
 
-4. **Labels decomposition (future)**: Currently `labels` is a single feature. A future refactor could split SymbolBucket into separate text-only and icon-only modes, allowing `labels(text)` to skip all icon code paths. This requires SymbolBucket refactoring.
+5. **Labels decomposition (future)**: Currently `labels` is a single feature. A future refactor could split SymbolBucket into separate text-only and icon-only modes, allowing `labels(text)` to skip all icon code paths. This requires SymbolBucket refactoring.
 
-5. **No-bundler usage**: The `features.ts + main.ts + worker.ts` pattern works great with modern bundlers (Vite, Rollup, Webpack). For consumers without a bundler (CDN script tags), we'd need a pre-built `maplibre-mini.js` that includes all features (equivalent to the `all` preset).
+6. **No-bundler usage**: The `features.ts + main.ts + worker.ts` pattern works great with modern bundlers (Vite, Rollup, Webpack). For consumers without a bundler (CDN script tags), we'd need a pre-built `maplibre-mini.js` that includes all features (equivalent to the `all` preset).
+
+7. **API methods depend on features — typing strategy needed**: Many public API methods on `Map` and `Style` depend on specific features being registered:
+
+   - `map.addImage()`, `map.removeImage()`, `map.getImage()`, `map.listImages()` → require ImageManager (provided by patterns sub-features, labels with icons)
+   - `map.setGlyphs()` → requires GlyphManager (provided by labels with text)
+   - Line dash rendering → requires LineAtlas (provided by line with dashes)
+   - `map.queryRenderedFeatures()` for specific layer types → requires those layer features
+
+   Options for typing:
+   - **Runtime errors**: Methods throw if required feature not registered. Simple but no compile-time safety.
+   - **Conditional types**: `createMap<F extends Feature[]>()` returns a `Map` type with only the methods available for those features. Complex generics.
+   - **Separate APIs**: Image methods live on an `ImageManager` accessed via `map.images.add()`. Only available if feature registered. Explicit but API change.
+   - **Assertion helpers**: `map.requireImages().addImage()` — user explicitly asserts the feature is present.
+
+   Need to map out all feature-dependent APIs and choose a strategy. For MVP, runtime errors with helpful messages may be sufficient.
+
+8. **Shared instances (ImageManager, GlyphManager, LineAtlas) as feature dependencies**: ✅ IMPLEMENTED. Features declare manager classes they need, FeatureRegistry provides them to Style for instantiation.
+
+   ```typescript
+   // Feature declares managers it needs
+   import {ImageManager, GlyphManager} from '../core/feature';
+
+   export const symbolBase: Feature = {
+       managers: {ImageManager, GlyphManager},
+       programs: { ... }
+   };
+   ```
+
+   Style gets classes from registry and creates instances:
+   ```typescript
+   // Style constructor - gets class from registry, creates if provided
+   const ImageManagerClass = this._featureRegistry.getManager('ImageManager');
+   if (ImageManagerClass) {
+       this.imageManager = new ImageManagerClass();
+       this.imageManager.setEventedParent(this);
+   }
+   ```
+
+   Painter retrieves from style:
+   ```typescript
+   this.imageManager = style.imageManager;
+   ```
+
+   Type-safe registry with inference:
+   ```typescript
+   interface ManagerMap {
+       ImageManager: typeof ImageManager;
+       GlyphManager: typeof GlyphManager;
+       LineAtlas: typeof LineAtlas;
+   }
+
+   getManager<K extends ManagerName>(name: K): ManagerMap[K] | undefined
+   ```
+
+   Benefits:
+   - Features are declarative — they provide the class itself
+   - Style doesn't import manager classes directly — gets them from registry (tree-shaking friendly)
+   - Type-safe — `getManager('ImageManager')` returns `typeof ImageManager | undefined`
+   - Instantiation logic stays in Style where it already lives, just made conditional
+
+   **Future consideration**: Currently instances live on Style (`style.imageManager`, etc.) for backward compatibility. A cleaner design would have FeatureRegistry be the sole owner of feature-provided instances, making Style's core smaller and all feature-specific state accessed uniformly via the registry.
+
+   The typing question (#7) determines whether missing dependencies are a compile-time or runtime concern.
 
 ---
 

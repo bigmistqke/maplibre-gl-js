@@ -14,7 +14,7 @@ import lineSDFVert from '../shaders/line_sdf.vertex.glsl.g';
 import lineGradientSDFFrag from '../shaders/line_gradient_sdf.fragment.glsl.g';
 import lineGradientSDFVert from '../shaders/line_gradient_sdf.vertex.glsl.g';
 import type {Feature} from '../core/feature';
-import {merge} from '../core/feature';
+import {merge, ImageManager, LineAtlas} from '../core/feature';
 
 const lineBase: Feature = {
     layers: {
@@ -31,6 +31,7 @@ const lineBase: Feature = {
         lineSDF: {uniforms: lineSDFUniforms, shaderSource: prepare(lineSDFFrag, lineSDFVert)},
         lineGradientSDF: {uniforms: lineGradientSDFUniforms, shaderSource: prepare(lineGradientSDFFrag, lineGradientSDFVert)},
     },
+    managers: {ImageManager, LineAtlas},
 };
 
 export function line(...capabilities: Feature[]): Feature {

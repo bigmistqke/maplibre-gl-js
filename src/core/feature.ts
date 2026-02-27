@@ -8,6 +8,16 @@ import type {UniformLocations} from '../render/uniform_binding';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {PreparedShader} from '../shaders/shaders';
 import type {Style} from '../style/style';
+import {ImageManager} from '../render/image_manager';
+import {GlyphManager} from '../render/glyph_manager';
+import {LineAtlas} from '../render/line_atlas';
+
+// Re-export for features to use as keys
+export {ImageManager, GlyphManager, LineAtlas};
+
+// ============================================================================
+// Definition types
+// ============================================================================
 
 export type DrawFunction = (painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) => void;
 
@@ -41,13 +51,67 @@ export interface TileProcessorDefinition {
     process: (workerTile: any, buckets: any, actor: any) => Promise<any>;
 }
 
+// ============================================================================
+// Registry type maps - maps string keys to their return types
+// ============================================================================
+
+/** Layer type name to definition mapping */
+export interface LayerMap {
+    background: LayerDefinition;
+    fill: LayerDefinition;
+    line: LayerDefinition;
+    circle: LayerDefinition;
+    symbol: LayerDefinition;
+    raster: LayerDefinition;
+    heatmap: LayerDefinition;
+    'fill-extrusion': LayerDefinition;
+    hillshade: LayerDefinition;
+    'color-relief': LayerDefinition;
+}
+export type LayerName = keyof LayerMap;
+
+/** Source type name to definition mapping */
+export interface SourceMap {
+    vector: SourceDefinition;
+    geojson: SourceDefinition;
+    raster: SourceDefinition;
+    'raster-dem': SourceDefinition;
+    image: SourceDefinition;
+    video: SourceDefinition;
+    canvas: SourceDefinition;
+}
+export type SourceName = keyof SourceMap;
+
+/** Program name to definition mapping */
+export interface ProgramMap {
+    [name: string]: ProgramDefinition;
+}
+export type ProgramName = string;
+
+/** Worker source type name to definition mapping */
+export interface WorkerSourceMap {
+    vector: WorkerSourceDefinition;
+    geojson: WorkerSourceDefinition;
+    'raster-dem': WorkerSourceDefinition;
+}
+export type WorkerSourceName = keyof WorkerSourceMap;
+
+/** Manager name to class type mapping */
+export interface ManagerMap {
+    ImageManager: typeof ImageManager;
+    GlyphManager: typeof GlyphManager;
+    LineAtlas: typeof LineAtlas;
+}
+export type ManagerName = keyof ManagerMap;
+
 export interface Feature {
-    sources?: Record<string, SourceDefinition>;
-    layers?: Record<string, LayerDefinition>;
-    programs?: Record<string, ProgramDefinition>;
-    workerSources?: Record<string, WorkerSourceDefinition>;
+    sources?: {[K in SourceName]?: SourceMap[K]};
+    layers?: {[K in LayerName]?: LayerMap[K]};
+    programs?: {[name: string]: ProgramDefinition};
+    workerSources?: {[K in WorkerSourceName]?: WorkerSourceMap[K]};
     tileProcessors?: TileProcessorDefinition[];
     renderHooks?: RenderHook[];
+    managers?: {[K in ManagerName]?: ManagerMap[K]};
 }
 
 /**
@@ -87,12 +151,13 @@ function hintMessage(kind: string, type: string): string {
  * All lookups go through typed getters that produce helpful error messages.
  */
 export class FeatureRegistry {
-    private _sources: Record<string, SourceDefinition>;
-    private _layers: Record<string, LayerDefinition>;
-    private _programs: Record<string, ProgramDefinition>;
-    private _workerSources: Record<string, WorkerSourceDefinition>;
+    private _sources: {[K in SourceName]?: SourceMap[K]};
+    private _layers: {[K in LayerName]?: LayerMap[K]};
+    private _programs: {[name: string]: ProgramDefinition};
+    private _workerSources: {[K in WorkerSourceName]?: WorkerSourceMap[K]};
     private _tileProcessors: TileProcessorDefinition[];
     private _renderHooks: RenderHook[];
+    private _managers: {[K in ManagerName]?: ManagerMap[K]};
 
     constructor(features: Feature[]) {
         this._sources = {};
@@ -101,6 +166,7 @@ export class FeatureRegistry {
         this._workerSources = {};
         this._tileProcessors = [];
         this._renderHooks = [];
+        this._managers = {};
 
         for (const feature of features) {
             if (feature.sources) Object.assign(this._sources, feature.sources);
@@ -115,42 +181,45 @@ export class FeatureRegistry {
             if (feature.renderHooks) {
                 this._renderHooks.push(...feature.renderHooks);
             }
+            if (feature.managers) {
+                Object.assign(this._managers, feature.managers);
+            }
         }
     }
 
-    getLayer(type: string): LayerDefinition {
+    getLayer<K extends LayerName>(type: K): LayerMap[K] {
         const def = this._layers[type];
         if (!def) throw new Error(hintMessage('Layer type', type));
-        return def;
+        return def as LayerMap[K];
     }
 
-    getSource(type: string): SourceDefinition {
+    getSource<K extends SourceName>(type: K): SourceMap[K] {
         const def = this._sources[type];
         if (!def) throw new Error(hintMessage('Source type', type));
-        return def;
+        return def as SourceMap[K];
     }
 
-    getProgram(name: string): ProgramDefinition {
+    getProgram(name: ProgramName): ProgramDefinition {
         const def = this._programs[name];
         if (!def) throw new Error(`Program "${name}" is not registered by any feature.`);
         return def;
     }
 
-    hasProgram(name: string): boolean {
+    hasProgram(name: ProgramName): boolean {
         return name in this._programs;
     }
 
-    getWorkerSource(type: string): WorkerSourceDefinition {
+    getWorkerSource<K extends WorkerSourceName>(type: K): WorkerSourceMap[K] {
         const def = this._workerSources[type];
         if (!def) throw new Error(hintMessage('Worker source', type));
-        return def;
+        return def as WorkerSourceMap[K];
     }
 
     hasWorkerSource(type: string): boolean {
         return type in this._workerSources;
     }
 
-    getBucket(layerType: string): any | undefined {
+    getBucket<K extends LayerName>(layerType: K): LayerMap[K]['Bucket'] | undefined {
         return this._layers[layerType]?.Bucket;
     }
 
@@ -160,6 +229,10 @@ export class FeatureRegistry {
 
     get tileProcessors(): TileProcessorDefinition[] {
         return this._tileProcessors;
+    }
+
+    getManager<K extends ManagerName>(name: K): ManagerMap[K] | undefined {
+        return this._managers[name] as ManagerMap[K] | undefined;
     }
 }
 
@@ -195,6 +268,10 @@ export function merge(...features: Feature[]): Feature {
         if (feature.renderHooks) {
             merged.renderHooks = merged.renderHooks || [];
             merged.renderHooks.push(...feature.renderHooks);
+        }
+        if (feature.managers) {
+            merged.managers = merged.managers || {};
+            Object.assign(merged.managers, feature.managers);
         }
     }
 

@@ -40,6 +40,7 @@ import type {RenderToTexture} from './render_to_texture';
 import type {ProjectionData} from '../geo/projection/projection_data';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
+import type {LayerName} from '../core/feature';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
 
@@ -93,9 +94,9 @@ export class Painter {
     stencilClearMode: StencilMode;
     style: Style;
     options: PainterOptions;
-    lineAtlas: LineAtlas;
-    imageManager: ImageManager;
-    glyphManager: GlyphManager;
+    lineAtlas?: LineAtlas;
+    imageManager?: ImageManager;
+    glyphManager?: GlyphManager;
     depthRangeFor3D: DepthRangeType;
     opaquePassCutoff: number;
     renderPass: RenderPass;
@@ -459,13 +460,16 @@ export class Painter {
         this.style = style;
         this.options = options;
 
+        // Get instances from style (may be undefined if not required by features)
         this.lineAtlas = style.lineAtlas;
         this.imageManager = style.imageManager;
         this.glyphManager = style.glyphManager;
 
         this.symbolFadeChange = style.placement.symbolFadeChange(now());
 
-        this.imageManager.beginFrame();
+        if (this.imageManager) {
+            this.imageManager.beginFrame();
+        }
 
         const layerIds = this.style._order;
         const tileManagers = this.style.tileManagers;
@@ -647,7 +651,7 @@ export class Painter {
         }
 
         // All registered layers dispatch through the feature registry
-        this.style._featureRegistry.getLayer(layer.type).draw(painter, tileManager, layer, coords, renderOptions);
+        this.style._featureRegistry.getLayer(layer.type as LayerName).draw(painter, tileManager, layer, coords, renderOptions);
     }
 
     saveTileTexture(texture: Texture) {

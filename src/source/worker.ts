@@ -7,6 +7,7 @@ import {isWorker} from '../util/util';
 import {addProtocol, removeProtocol} from './protocol_crud';
 import {type PluginState} from './rtl_text_plugin_status';
 import {getWorkerRegistry} from '../core/create_worker';
+import type {WorkerSourceName} from '../core/feature';
 import type {
     WorkerSource,
     WorkerSourceConstructor,
@@ -259,7 +260,7 @@ export default class Worker {
             try {
                 const registry = getWorkerRegistry();
                 if (registry.hasWorkerSource(sourceType)) {
-                    WorkerSourceClass = registry.getWorkerSource(sourceType).WorkerSource;
+                    WorkerSourceClass = registry.getWorkerSource(sourceType as WorkerSourceName).WorkerSource;
                 } else if (this.externalWorkerSourceTypes[sourceType]) {
                     WorkerSourceClass = this.externalWorkerSourceTypes[sourceType];
                 } else {

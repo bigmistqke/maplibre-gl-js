@@ -12,7 +12,7 @@ import fillPatternVert from '../shaders/fill_pattern.vertex.glsl.g';
 import fillOutlinePatternFrag from '../shaders/fill_outline_pattern.fragment.glsl.g';
 import fillOutlinePatternVert from '../shaders/fill_outline_pattern.vertex.glsl.g';
 import type {Feature} from '../core/feature';
-import {merge} from '../core/feature';
+import {merge, ImageManager} from '../core/feature';
 
 const fillBase: Feature = {
     layers: {
@@ -28,6 +28,7 @@ const fillBase: Feature = {
         fillPattern: {uniforms: fillPatternUniforms, shaderSource: prepare(fillPatternFrag, fillPatternVert)},
         fillOutlinePattern: {uniforms: fillOutlinePatternUniforms, shaderSource: prepare(fillOutlinePatternFrag, fillOutlinePatternVert)},
     },
+    managers: {ImageManager},
 };
 
 export function fill(...capabilities: Feature[]): Feature {

@@ -208,9 +208,9 @@ export class Style extends Evented {
     stylesheet: StyleSpecification;
     dispatcher: Dispatcher;
     _featureRegistry: FeatureRegistry;
-    imageManager: ImageManager;
-    glyphManager: GlyphManager;
-    lineAtlas: LineAtlas;
+    imageManager?: ImageManager;
+    glyphManager?: GlyphManager;
+    lineAtlas?: LineAtlas;
     light: Light;
     projection: Projection | undefined;
     sky: Sky;
@@ -257,11 +257,24 @@ export class Style extends Evented {
         this.dispatcher.registerMessageHandler(MessageType.getDashes, (mapId, params) => {
             return this.getDashes(mapId, params);
         });
-        this.imageManager = new ImageManager();
-        this.imageManager.setEventedParent(this);
-        const glyphLang = map._container?.lang || (typeof document !== 'undefined' && document.documentElement?.lang) || undefined;
-        this.glyphManager = new GlyphManager(map._requestManager, options.localIdeographFontFamily, glyphLang);
-        this.lineAtlas = new LineAtlas(256, 512);
+
+        // Create manager instances from features
+        const ImageManagerClass = this._featureRegistry.getManager('ImageManager');
+        if (ImageManagerClass) {
+            this.imageManager = new ImageManagerClass();
+            this.imageManager.setEventedParent(this);
+        }
+        const GlyphManagerClass = this._featureRegistry.getManager('GlyphManager');
+        if (GlyphManagerClass) {
+            const glyphLang = this.map._container?.lang ||
+                (typeof document !== 'undefined' && document.documentElement?.lang) || undefined;
+            this.glyphManager = new GlyphManagerClass(this.map._requestManager, this.map._localIdeographFontFamily, glyphLang);
+        }
+        const LineAtlasClass = this._featureRegistry.getManager('LineAtlas');
+        if (LineAtlasClass) {
+            this.lineAtlas = new LineAtlasClass(256, 512);
+        }
+
         this.crossTileSymbolIndex = new CrossTileSymbolIndex();
 
         this._setInitialValues();

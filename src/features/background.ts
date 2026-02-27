@@ -7,7 +7,7 @@ import backgroundVert from '../shaders/background.vertex.glsl.g';
 import backgroundPatternFrag from '../shaders/background_pattern.fragment.glsl.g';
 import backgroundPatternVert from '../shaders/background_pattern.vertex.glsl.g';
 import type {Feature} from '../core/feature';
-import {merge} from '../core/feature';
+import {merge, ImageManager} from '../core/feature';
 
 const backgroundBase: Feature = {
     layers: {
@@ -20,6 +20,7 @@ const backgroundBase: Feature = {
         background: {uniforms: backgroundUniforms, shaderSource: prepare(backgroundFrag, backgroundVert)},
         backgroundPattern: {uniforms: backgroundPatternUniforms, shaderSource: prepare(backgroundPatternFrag, backgroundPatternVert)},
     },
+    managers: {ImageManager},
 };
 
 export function background(...capabilities: Feature[]): Feature {

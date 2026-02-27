@@ -8,7 +8,7 @@ import fillExtrusionVert from '../shaders/fill_extrusion.vertex.glsl.g';
 import fillExtrusionPatternFrag from '../shaders/fill_extrusion_pattern.fragment.glsl.g';
 import fillExtrusionPatternVert from '../shaders/fill_extrusion_pattern.vertex.glsl.g';
 import type {Feature} from '../core/feature';
-import {merge} from '../core/feature';
+import {merge, ImageManager} from '../core/feature';
 
 const fillExtrusionBase: Feature = {
     layers: {
@@ -22,6 +22,7 @@ const fillExtrusionBase: Feature = {
         fillExtrusion: {uniforms: fillExtrusionUniforms, shaderSource: prepare(fillExtrusionFrag, fillExtrusionVert)},
         fillExtrusionPattern: {uniforms: fillExtrusionPatternUniforms, shaderSource: prepare(fillExtrusionPatternFrag, fillExtrusionPatternVert)},
     },
+    managers: {ImageManager},
 };
 
 export function fillExtrusion(...capabilities: Feature[]): Feature {
