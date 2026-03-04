@@ -1105,45 +1105,14 @@ const draw = (painter, tileManager, layer, coords) => {
 
 7. ~~**Sky is programs-only.**~~ ✅ DONE. Sky feature now includes `renderHooks` with `beforeLayers` and `afterTranslucent` phases. `Painter.render()` uses `registry.getRenderHooks(phase)` instead of hardcoded `drawSky`/`drawAtmosphere` calls.
 
-8. **Terrain deeply integrated.** Terrain is a cross-cutting concern that modifies behavior across the entire rendering system. Not easily featurized.
+8. **Terrain partially decoupled via Surface abstraction.** ✅ PARTIALLY DONE. The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files: all draw functions, painter, camera, map, transforms, handler manager, placement, tile manager, and covering tiles now use `Surface` uniformly. See `SURFACE.md` for full migration details.
 
-   **Why terrain is different from other features:**
-
-   Unlike layer features (fill, line, symbol) which are self-contained vertical slices, terrain reaches horizontally across many systems:
-
-   ```
-   ┌─────────────────────────────────────────────────────────────┐
-   │  draw_fill.ts, draw_line.ts, draw_symbol.ts, etc.           │
-   │  └─> all check: if (map.terrain) { terrainData = ... }      │
-   │  └─> pass terrainData to every shader program               │
-   ├─────────────────────────────────────────────────────────────┤
-   │  painter.ts                                                  │
-   │  └─> useProgram() adds '/terrain' to shader variant key     │
-   │  └─> maybeDrawDepthAndCoords() renders depth/coords FBOs    │
-   │  └─> terrainFacilitator tracks when to re-render            │
-   ├─────────────────────────────────────────────────────────────┤
-   │  map.ts                                                      │
-   │  └─> map.terrain property stores Terrain instance           │
-   │  └─> setTerrain() creates Terrain + RenderToTexture         │
-   ├─────────────────────────────────────────────────────────────┤
-   │  RenderToTexture                                             │
-   │  └─> changes how all layers are composited                  │
-   └─────────────────────────────────────────────────────────────┘
-   ```
-
-   **Specific integration points:**
-   - Every draw function checks `map.terrain` and passes `terrainData` to shaders
-   - `useProgram()` creates terrain shader variants (`fill` vs `fill/terrain`)
-   - Depth/coords framebuffers must render before layer rendering
-   - `RenderToTexture` wraps the entire layer rendering pipeline
-   - TileManager has `usedForTerrain` flag affecting tile loading
-
-   **Possible future approaches (not implemented):**
-   - Terrain data provider interface abstracting how draw functions get elevation
-   - Shader variant system where features register their variants
-   - Render pipeline abstraction with explicit phases
-
-   For now, terrain remains part of core rather than a pluggable feature.
+   **What's left for full terrain featurization:**
+   - `useProgram()` still hardcodes `/terrain` shader variant suffix — needs ShaderExtension system
+   - `RenderToTexture` still directly references `Terrain` — needs RenderPipeline abstraction
+   - `maybeDrawDepthAndCoords()` in painter still uses `this.style.map.terrain` for FBO management
+   - `usedForTerrain` flag in TileManager still mutated by TerrainTileManager
+   - Terrain-specific files (`terrain.ts`, `draw_terrain.ts`, `terrain_tile_manager.ts`, `render_to_texture.ts`) remain as-is
 
 9. ~~**Shaders not in features.**~~ ✅ DONE. All 11 feature files now import their shaders and use `prepare()` to create `shaderSource` in program definitions. `prepare()` exported from `shaders.ts`.
 
@@ -1728,7 +1697,7 @@ The pattern scales because the abstraction is correct.
 
 ### 1. Tree-Shakeable Sub-Features
 
-Sub-features like `patterns`, `dashes`, `gradients`, `text`, `icons`, and `collision` are not yet separate exports. Currently each feature factory bundles all shader variants and unconditionally registers singletons. For example, `fill()` always includes pattern shaders and registers `ImageManager`, even if the consumer never uses fill-pattern. These need to be split into optional `Feature` objects passed to the factory (e.g. `fill(patterns)`).
+✅ **Architecture DONE.** All feature factories accept `(...capabilities: Feature[])` via the `merge()` pattern (e.g. `fill(patterns)`). However, no features are actually split yet — each base feature still bundles all shader variants and singletons. The plumbing is ready; the actual splitting work (extracting `patterns`, `dashes`, `gradients`, `text`, `icons`, `collision` into separate `Feature` objects) hasn't been done.
 
 ### 2. MapContext / createDraw Factory Pattern
 
@@ -1740,134 +1709,24 @@ Sub-features like `patterns`, `dashes`, `gradients`, `text`, `icons`, and `colli
 
 ### 4. Terrain Featurization via the Surface Abstraction
 
-Terrain is entirely unfeaturized — ~80 files contain `if (map.terrain)` checks. The core problem is that terrain's complexity **leaks** into every draw function, the painter, the transform, and the camera. The fix is **polymorphism over conditionals**: a unified `Surface` interface that both flat and terrain worlds implement.
+✅ **Phase 1 DONE — Surface interface implemented.** The polymorphic `Surface` interface eliminates `if (terrain)` conditionals across ~35 files. See `SURFACE.md` for full migration details.
 
-#### The Surface Interface
+**What's implemented:**
+- `Surface` interface in `src/core/surface.ts` with `FlatSurface` (zero-cost default) and `TerrainSurface` (wraps `Terrain`)
+- `map.surface: Surface` always exists — `FlatSurface` by default, `TerrainSurface` when terrain enabled
+- All draw functions use `painter.surface.getBindings(coord)` instead of `painter.style.map.terrain?.getTerrainData(coord)`
+- Camera, transforms, handler manager, placement, tile manager, covering tiles all use `Surface` uniformly
+- No `Terrain` imports remain outside terrain-specific files
 
-The map always has a `Surface` — a description of the world's geometry. Without terrain the world is flat. With terrain it's a 3D DEM mesh. The rest of the codebase talks to `Surface` and never branches on which one it is.
+**Phase 2 — remaining terrain decoupling (not started):**
 
-```typescript
-interface Surface {
-    // Elevation — always callable, flat returns 0
-    getElevation(lnglat: LngLat): number;
-    getElevationForTile(tileID: OverscaledTileID, x: number, y: number): number;
-    getMinMaxElevation(tileID: OverscaledTileID): {min: number; max: number};
+These are the deeper abstractions needed to make terrain a fully pluggable Feature:
 
-    // Coordinate picking — flat uses matrix math, terrain reads FBO
-    screenToCoordinate(point: Point): MercatorCoordinate;
-    depthAtPoint(point: Point): number;
+- **ShaderExtension system**: `useProgram()` still hardcodes `/terrain` variant suffix. Needs a declarative extension model where terrain registers `{key: 'terrain', defines: ['TERRAIN3D']}` and `useProgram()` composes extensions generically.
+- **RenderPipeline abstraction**: `RenderToTexture` still directly references `Terrain`. Needs `DirectPipeline` vs `DrapePipeline` behind an interface so Painter is strategy-agnostic.
+- **DrawContext**: Replace per-function terrain parameter threading with an ambient context that accumulates bindings from all active capabilities.
 
-    // Rendering strategy — flat draws directly, terrain drapes via RTT
-    pipeline: RenderPipeline;
-
-    // Shader modifications — flat returns nothing, terrain adds TERRAIN3D
-    shaderExtension?: ShaderExtension;
-
-    // Per-tile GPU bindings — flat returns {}, terrain returns DEM textures+uniforms
-    getBindings(tileID: OverscaledTileID): GPUBindings;
-}
-```
-
-#### Two Implementations
-
-```typescript
-class FlatSurface implements Surface {
-    getElevation() { return 0; }
-    getElevationForTile() { return 0; }
-    getMinMaxElevation() { return {min: 0, max: 0}; }
-    screenToCoordinate(p) { /* standard matrix inverse — already exists */ }
-    depthAtPoint() { return 1; }
-    pipeline = new DirectPipeline();
-    shaderExtension = undefined;
-    getBindings() { return {}; }
-}
-
-class TerrainSurface implements Surface {
-    getElevation(lnglat) { /* DEM bilinear lookup × exaggeration */ }
-    getMinMaxElevation(tileID) { /* DEM min/max for frustum culling */ }
-    screenToCoordinate(p) { /* coords FBO readback */ }
-    depthAtPoint(p) { /* depth FBO readback */ }
-    pipeline = new DrapePipeline(this);
-    shaderExtension = terrainShaderExtension;  // #define TERRAIN3D + uniforms
-    getBindings(tileID) { /* DEM texture + depth texture + 6 uniforms */ }
-}
-```
-
-#### What This Eliminates
-
-Every `if (terrain)` check disappears because both sides of the branch live behind the same interface:
-
-**Draw functions — no branching (16 files simplified):**
-```typescript
-// Before:
-const terrainData = painter.style.map.terrain?.getTerrainData(coord);
-program.draw({...uniforms, terrainData});
-
-// After:
-const bindings = painter.surface.getBindings(coord);
-program.draw({...uniforms, ...bindings});  // bindings is {} when flat
-```
-
-**Painter — no RTT awareness:**
-```typescript
-// Before:
-if (this.renderToTexture && this.renderToTexture.renderLayer(layer)) continue;
-
-// After:
-this.surface.pipeline.render(context, layers);  // DirectPipeline or DrapePipeline
-```
-
-**Camera — no terrain check:**
-```typescript
-// Before:
-const elevation = this.terrain ? this.terrain.getElevationForLngLat(lnglat) : 0;
-
-// After:
-const elevation = this.surface.getElevation(lnglat);  // 0 when flat
-```
-
-**Transform — no optional parameter:**
-```typescript
-// Before:
-screenPointToMercatorCoordinate(p: Point, terrain?: Terrain)
-
-// After:
-screenPointToMercatorCoordinate(p: Point)  // uses this.surface internally
-```
-
-**Shader system — no hardcoded `/terrain` key:**
-```typescript
-// Before:
-const key = name + (useTerrain ? '/terrain' : '');
-
-// After:
-const extensions = [surface.shaderExtension, ...others].filter(Boolean);
-const key = name + extensions.map(e => '/' + e.key).join('');
-```
-
-#### Layer-Specific Terrain Behavior
-
-Two shaders have terrain-specific vertex logic beyond the prelude:
-
-- **fill_extrusion**: `a_centroid` attribute + `get_elevation(a_centroid)` to lift buildings onto terrain
-- **line**: `v_gamma_scale = 1.0` to skip perspective AA correction on terrain mesh
-
-These are accepted as layer-terrain coupling rather than over-engineering a shader injection system for just 2 cases. The `fill_extrusion` and `line` features include both code paths and rely on the `TERRAIN3D` define from the surface's ShaderExtension.
-
-#### Where Things Live
-
-```
-map.surface: Surface                // always exists, default FlatSurface
-    ├── .pipeline: RenderPipeline   // DirectPipeline or DrapePipeline
-    ├── .shaderExtension?           // undefined or {key:'terrain', defines:['TERRAIN3D']}
-    ├── .getElevation()             // 0 or DEM lookup
-    ├── .getBindings()              // {} or {textures, uniforms}
-    └── .screenToCoordinate()       // matrix math or FBO readback
-```
-
-Terrain becomes a Feature that swaps `map.surface` from `FlatSurface` to `TerrainSurface`. The rest of the codebase only imports and uses the `Surface` interface. `FlatSurface` is zero-cost — all methods are trivial.
-
-See `DECOUPLING_STRATEGIES.md` for additional detail on `RenderPipeline`, `ShaderExtension`, and `DrawContext` abstractions that compose within this model.
+See sections 12-13 of this doc and `DECOUPLING_STRATEGIES.md` for the full capability-based architecture design.
 
 ### 5. Remove `create_style_layer.ts` Monolithic Switch
 

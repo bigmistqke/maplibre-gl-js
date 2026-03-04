@@ -83,7 +83,7 @@ function drawTerrain(painter: Painter, terrain: Terrain, tiles: Array<Tile>, ren
 
     for (const tile of tiles) {
         const mesh = terrain.getTerrainMesh(tile.tileID);
-        const texture = painter.renderToTexture.getTexture(tile);
+        const texture = painter.surface.renderToTexture.getTexture(tile);
         const terrainData = terrain.getTerrainData(tile.tileID);
         context.activeTexture.set(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture.texture);

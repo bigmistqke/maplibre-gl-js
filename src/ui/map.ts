@@ -2269,10 +2269,9 @@ export class Map extends Camera {
         if (!options) {
             // remove terrain
             if (this.terrain) this.terrain.tileManager.destruct();
+            if (this.surface.renderToTexture) this.surface.renderToTexture.destruct();
             this.terrain = null;
             this.surface = FLAT_SURFACE;
-            if (this.painter.renderToTexture) this.painter.renderToTexture.destruct();
-            this.painter.renderToTexture = null;
             this.transform.setMinElevationForCurrentTile(0);
             if (this._centerClampedToGround) {
                 this.transform.setElevation(0);
@@ -2294,8 +2293,9 @@ export class Map extends Camera {
                 }
             }
             this.terrain = new Terrain(this.painter, tileManager, options);
-            this.surface = new TerrainSurface(this.terrain);
-            this.painter.renderToTexture = new RenderToTexture(this.painter, this.terrain);
+            const terrainSurface = new TerrainSurface(this.terrain);
+            terrainSurface.renderToTexture = new RenderToTexture(this.painter, this.terrain);
+            this.surface = terrainSurface;
             this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
             this.transform.setElevation(this.terrain.getElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
             this._terrainDataCallback = e => {
@@ -3599,8 +3599,8 @@ export class Map extends Camera {
 
         // update terrain stuff
         this.surface.update(this.transform);
-        if (this.terrain) {
-            this.terrain.tileManager.update(this.transform, this.terrain);
+        if (this.surface.terrain) {
+            this.surface.terrain.tileManager.update(this.transform, this.surface.terrain);
         }
         this.transform.setMinElevationForCurrentTile(this.surface.getMinElevationForZoom(this.transform.center, this.transform.tileZoom));
         if (!this._elevationFreeze && this._centerClampedToGround) {

@@ -2,11 +2,13 @@
 
 ## What's Done
 
-### New files created
+### Phase 1: Core Surface abstraction
+
+#### New files created
 - `src/core/surface.ts` — `Surface` interface, `FlatSurface` class, `FLAT_SURFACE` singleton
 - `src/render/terrain_surface.ts` — `TerrainSurface` class wrapping existing `Terrain`
 
-### Files fully migrated to Surface
+#### Files fully migrated to Surface
 - `src/ui/camera.ts` — `surface: Surface = FLAT_SURFACE` field added; all `this.terrain.*` elevation calls → `this.surface.*`; `queryTerrainElevation` uses surface
 - `src/ui/map.ts` — `setTerrain()` sets `this.surface`; `_render()` elevation branch unified; `project()`/`unproject()` pass surface; `calculateCameraOptionsFromTo` uses surface
 - `src/render/painter.ts` — `surface` field set in `render()`; `useProgram()` uses `surface.hasTerrain`; `_renderTileMasks`/`_renderTilesDepthBuffer` use `surface.getBindings()`; globe depth check uses `surface.hasTerrain`
@@ -20,7 +22,7 @@
 - `src/style/pauseable_placement.ts` — constructor takes `surface: Surface`
 - `src/style/style.ts` — placement receives `this.map.surface`; query elevation uses `surface.getElevationForTile`; `_updateSources` passes `this.map.surface`
 
-### Draw functions migrated (all use `painter.surface.getBindings(coord)`)
+#### Draw functions migrated (all use `painter.surface.getBindings(coord)`)
 - `draw_fill.ts`, `draw_circle.ts`, `draw_line.ts`, `draw_debug.ts`
 - `draw_hillshade.ts`, `draw_color_relief.ts`, `draw_collision_debug.ts` (2 sites)
 - `draw_background.ts` (getBindings + `coveringTiles` call both use `painter.surface`)
@@ -29,32 +31,47 @@
 - `draw_fill_extrusion.ts` (getBindings + centroid buffer check migrated)
 - `draw_symbol.ts` (getBindings + both `getElevation` callbacks migrated to `surface.getElevationForTile`)
 
-### Covering tiles fully migrated to Surface
+#### Covering tiles fully migrated to Surface
 - `src/geo/projection/covering_tiles.ts` — `CoveringTilesOptionsInternal.terrain: Terrain` → `.surface: Surface`
 - `src/geo/projection/mercator_covering_tiles_details_provider.ts` — uses `options.surface.getMinMaxElevation()` returning `{min, max}`
 - `src/geo/projection/globe_covering_tiles_details_provider.ts` — same
 - `src/util/primitives/bounding_volume_cache.ts` — cache key uses `options.surface?.hasTerrain`
 - `src/tile/tile_manager.ts` — `terrain: Terrain` → `surface: Surface`; `update()` takes `Surface?`; `coveringTiles` and `screenPointToMercatorCoordinate` pass surface; raster fade check uses `surface?.hasTerrain`
 
-### Test files migrated
+#### Test files migrated (Phase 1)
 - `src/ui/handler_manager.test.ts` — `terrain` → `surface` with Surface mocks
 - `src/geo/projection/mercator_transform.test.ts` — Terrain mock → Surface mock
 
-### Terrain-internal files updated to use TerrainSurface wrapper
+#### Terrain-internal files updated to use TerrainSurface wrapper
 - `src/render/terrain.ts` — `getElevationForLngLat` creates `TerrainSurface(this)` for `coveringTiles` call
 - `src/tile/terrain_tile_manager.ts` — `update()` creates `TerrainSurface(terrain)` for both `tileManager.update()` and `coveringTiles` calls
 
+### Phase 2: Deeper decoupling
+
+#### Surface interface extended
+- `src/core/surface.ts` — added `renderToTexture: RenderToTexture | null` and `terrain: Terrain | null` to interface; `FlatSurface` returns `null` for both
+- `src/render/terrain_surface.ts` — added `renderToTexture` field (set by `map.setTerrain()`); added `terrain` getter exposing underlying `Terrain`
+
+#### marker.ts and popup.ts migrated
+- `src/ui/marker.ts` — `_updateOpacity()`: `map.terrain` → `map.surface`, `terrain.depthAtPoint()` → `surface.depthAtPoint()`, `terrain.getElevationForLngLat()` → `surface.getElevation()`; `_update()`: `map.terrain` → `map.surface.hasTerrain`
+- `src/ui/popup.ts` — `_update()`: `map.terrain` → `map.surface.hasTerrain`
+
+#### RTT ownership moved to Surface
+- `src/render/painter.ts` — removed `renderToTexture` field; all `this.renderToTexture` → `this.surface.renderToTexture`; `maybeDrawDepthAndCoords()` uses `this.surface.terrain` instead of `this.style.map.terrain`
+- `src/render/draw_terrain.ts` — `painter.renderToTexture` → `painter.surface.renderToTexture`
+- `src/ui/map.ts` — `setTerrain()` sets RTT on `TerrainSurface` instead of painter; teardown clears via `surface.renderToTexture`; `_render()` terrain tile update uses `surface.terrain`
+
+#### Test files migrated (Phase 2)
+- `src/render/render_to_texture.test.ts` — `painter.renderToTexture = rtt` → creates `TerrainSurface` and sets `painter.surface`
+
 ## Deliberately left using `Terrain` directly (by design, not in scope)
-- `src/render/painter.ts` `maybeDrawDepthAndCoords()` — terrain-specific FBO management
-- `src/ui/map.ts` `_terrainDataCallback` — terrain-specific RTT lifecycle
+- `src/ui/map.ts` `setTerrain()` / `getTerrain()` / `_terrainDataCallback` — terrain lifecycle management
 - `src/render/terrain.ts` — the Terrain class itself
-- `src/render/draw_terrain.ts` — takes Terrain directly
+- `src/render/draw_terrain.ts` — takes Terrain directly for draw calls
 - `src/tile/terrain_tile_manager.ts` — manages terrain tiles (wraps Terrain → Surface at boundaries)
-- `src/render/render_to_texture.ts` — RTT system
-- `src/ui/marker.ts` — uses `terrain.depthAtPoint()` (could migrate later)
-- `src/ui/popup.ts` — checks `map.terrain`
+- `src/render/render_to_texture.ts` — RTT system internals
 - `src/ui/control/terrain_control.ts` — terrain toggle UI
 - `src/source/image_source.ts` — `terrainTileRanges`
 
 ## Status
-All Surface-related type errors are resolved. Remaining type errors in the codebase are from the feature registry refactoring (TileManager constructor arity, MapOptions `_featureRegistry` required), not from Surface.
+All Surface-related type errors are resolved. `style.map.terrain` no longer appears in source code (only in design docs). `painter.renderToTexture` is eliminated — RTT is owned by Surface. Remaining type errors in the codebase are from the feature registry refactoring (TileManager constructor arity, MapOptions `_featureRegistry` required), not from Surface.

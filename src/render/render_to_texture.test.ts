@@ -17,6 +17,7 @@ import {type RasterStyleLayer} from '../style/style_layer/raster_style_layer';
 import {type HillshadeStyleLayer} from '../style/style_layer/hillshade_style_layer';
 import {type BackgroundStyleLayer} from '../style/style_layer/background_style_layer';
 import {DepthMode} from '../gl/depth_mode';
+import {TerrainSurface} from './terrain_surface';
 
 describe('render to texture', () => {
     const gl = document.createElement('canvas').getContext('webgl');
@@ -108,7 +109,9 @@ describe('render to texture', () => {
 
     const rtt = new RenderToTexture(painter, terrain);
     rtt.prepareForRender(style, 0);
-    painter.renderToTexture = rtt;
+    const terrainSurface = new TerrainSurface(terrain);
+    terrainSurface.renderToTexture = rtt;
+    painter.surface = terrainSurface;
 
     test('check state', () => {
         expect(rtt._renderableTiles.map(t => t.tileID.key)).toStrictEqual(['923']);

@@ -35,7 +35,6 @@ import type {VertexBuffer} from '../gl/vertex_buffer';
 import type {IndexBuffer} from '../gl/index_buffer';
 import type {DepthRangeType, DepthMaskType, DepthFuncType} from '../gl/types';
 import type {ResolvedImage} from '@maplibre/maplibre-gl-style-spec';
-import type {RenderToTexture} from './render_to_texture';
 import type {ProjectionData} from '../geo/projection/projection_data';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
@@ -66,7 +65,6 @@ export type RenderOptions = {
 export class Painter {
     context: Context;
     transform: IReadonlyTransform;
-    renderToTexture: RenderToTexture;
     _tileTextures: {
         [_: number]: Array<Texture>;
     };
@@ -500,8 +498,8 @@ export class Painter {
 
         this.maybeDrawDepthAndCoords(false);
 
-        if (this.renderToTexture) {
-            this.renderToTexture.prepareForRender(this.style, this.transform.zoom);
+        if (this.surface.renderToTexture) {
+            this.surface.renderToTexture.prepareForRender(this.style, this.transform.zoom);
             // this is disabled, because render-to-texture is rendering all layers from bottom to top.
             this.opaquePassCutoff = 0;
         }
@@ -546,7 +544,7 @@ export class Painter {
 
         // Opaque pass ===============================================
         // Draw opaque layers top-to-bottom first.
-        if (!this.renderToTexture) {
+        if (!this.surface.renderToTexture) {
             this.renderPass = 'opaque';
 
             for (this.currentLayer = layerIds.length - 1; this.currentLayer >= 0; this.currentLayer--) {
@@ -569,7 +567,7 @@ export class Painter {
             const layer = this.style._layers[layerIds[this.currentLayer]];
             const tileManager = tileManagers[layer.source];
 
-            if (this.renderToTexture && this.renderToTexture.renderLayer(layer, renderOptions)) continue;
+            if (this.surface.renderToTexture && this.surface.renderToTexture.renderLayer(layer, renderOptions)) continue;
 
             if (!this.opaquePassEnabledForLayer() && !globeDepthRendered) {
                 globeDepthRendered = true;
@@ -585,7 +583,7 @@ export class Painter {
             // separate clipping masks
             const coords = (layer.type === 'symbol' ? coordsDescendingSymbol : coordsDescending)[layer.source];
 
-            this._renderTileClippingMasks(layer, coordsAscending[layer.source], !!this.renderToTexture);
+            this._renderTileClippingMasks(layer, coordsAscending[layer.source], !!this.surface.renderToTexture);
             this.renderLayer(this, tileManager, layer, coords, renderOptions);
         }
 
@@ -616,7 +614,8 @@ export class Painter {
      * to accurate (that is, the camera has not moved much since it was updated last).
      */
     maybeDrawDepthAndCoords(requireExact: boolean) {
-        if (!this.style || !this.style.map || !this.style.map.terrain) {
+        const terrain = this.surface.terrain;
+        if (!terrain) {
             return;
         }
         const prevMatrix = this.terrainFacilitator.matrix;
@@ -625,7 +624,7 @@ export class Painter {
         // Update coords/depth-framebuffer on camera movement, or tile reloading
         let doUpdate = this.terrainFacilitator.dirty;
         doUpdate ||= requireExact ? !mat4.exactEquals(prevMatrix, currMatrix) : !mat4.equals(prevMatrix, currMatrix);
-        doUpdate ||= this.style.map.terrain.tileManager.anyTilesAfterTime(this.terrainFacilitator.renderTime);
+        doUpdate ||= terrain.tileManager.anyTilesAfterTime(this.terrainFacilitator.renderTime);
 
         if (!doUpdate) {
             return;
@@ -634,8 +633,8 @@ export class Painter {
         mat4.copy(prevMatrix, currMatrix);
         this.terrainFacilitator.renderTime = Date.now();
         this.terrainFacilitator.dirty = false;
-        drawDepth(this, this.style.map.terrain);
-        drawCoords(this, this.style.map.terrain);
+        drawDepth(this, terrain);
+        drawCoords(this, terrain);
     }
 
     renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {

@@ -1,5 +1,6 @@
 import type {Surface} from '../core/surface';
 import type {Terrain, TerrainData} from './terrain';
+import type {RenderToTexture} from './render_to_texture';
 import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
@@ -12,12 +13,15 @@ import type Point from '@mapbox/point-geometry';
  */
 export class TerrainSurface implements Surface {
     readonly hasTerrain = true;
+    renderToTexture: RenderToTexture | null = null;
     private _terrain: Terrain;
     private _transform: IReadonlyTransform;
 
     constructor(terrain: Terrain) {
         this._terrain = terrain;
     }
+
+    get terrain(): Terrain { return this._terrain; }
 
     update(transform: IReadonlyTransform): void {
         this._transform = transform;

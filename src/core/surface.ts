@@ -1,7 +1,8 @@
 import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
-import type {TerrainData} from '../render/terrain';
+import type {TerrainData, Terrain} from '../render/terrain';
+import type {RenderToTexture} from '../render/render_to_texture';
 import type {IReadonlyTransform} from '../geo/transform_interface';
 import type Point from '@mapbox/point-geometry';
 
@@ -42,6 +43,12 @@ export interface Surface {
     /** Per-tile GPU bindings (DEM textures + uniforms) for shader draw calls. */
     getBindings(tileID: OverscaledTileID): TerrainData | null;
 
+    /** Render-to-texture manager for terrain rendering, or null for flat. */
+    readonly renderToTexture: RenderToTexture | null;
+
+    /** Direct access to the underlying Terrain object (for FBO management). Null for flat. */
+    readonly terrain: Terrain | null;
+
     /** Called once per frame to cache the current transform. */
     update(transform: IReadonlyTransform): void;
 }
@@ -52,6 +59,8 @@ export interface Surface {
  */
 export class FlatSurface implements Surface {
     readonly hasTerrain = false;
+    readonly renderToTexture: RenderToTexture | null = null;
+    readonly terrain: Terrain | null = null;
 
     getElevation(_lnglat: LngLat): number { return 0; }
     getElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }

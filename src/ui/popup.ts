@@ -644,7 +644,7 @@ export class Popup extends Evented {
         if (this._trackPointer && !cursor) return;
 
         const pos = this._flatPos = this._pos = this._trackPointer && cursor ? cursor : this._map.project(this._lngLat);
-        if (this._map.terrain) {
+        if (this._map.surface.hasTerrain) {
             // flat position is saved because smartWrap needs non-elevated points
             this._flatPos = this._trackPointer && cursor ? cursor : this._map.transform.locationToScreenPoint(this._lngLat);
         }
