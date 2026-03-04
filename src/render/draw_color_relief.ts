@@ -94,7 +94,7 @@ function renderColorRelief(
 
         const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, true, 'raster');
 
-        const terrainData = painter.style.map.terrain?.getTerrainData(coord);
+        const terrainData = painter.surface.getBindings(coord);
 
         const projectionData = transform.getProjectionData({
             overscaledTileID: coord,

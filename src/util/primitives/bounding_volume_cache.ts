@@ -34,7 +34,7 @@ export class BoundingVolumeCache<T extends IBoundingVolume> {
      * @param tileID - Tile x, y and z for zoom.
      */
     getTileBoundingVolume(tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal): T {
-        const key = `${tileID.z}_${tileID.x}_${tileID.y}_${options?.terrain ? 't' : ''}`;
+        const key = `${tileID.z}_${tileID.x}_${tileID.y}_${options?.surface?.hasTerrain ? 't' : ''}`;
         const cached = this._cache.get(key);
         if (cached) {
             return cached;

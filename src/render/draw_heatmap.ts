@@ -26,7 +26,7 @@ export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: H
     const context = painter.context;
     const {isRenderingToTexture, isRenderingGlobe} = renderOptions;
 
-    if (painter.style.map.terrain) {
+    if (painter.surface.hasTerrain) {
         for (const coord of tileIDs) {
             const tile = tileManager.getTile(coord);
             // Skip tiles that have uncovered parents to avoid flickering; we don't need
@@ -148,7 +148,7 @@ function prepareHeatmapTerrain(painter: Painter, tile: Tile, layer: HeatmapStyle
 
     const projectionData = painter.transform.getProjectionData({overscaledTileID: tile.tileID, applyGlobeMatrix: true, applyTerrainMatrix: true});
 
-    const terrainData = painter.style.map.terrain.getTerrainData(coord);
+    const terrainData = painter.surface.getBindings(coord);
     program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled,
         heatmapUniformValues(tile, painter.transform.zoom, layer.paint.get('heatmap-intensity'), 1.0), terrainData, projectionData,
         layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer,

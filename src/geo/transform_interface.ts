@@ -5,7 +5,7 @@ import type Point from '@mapbox/point-geometry';
 import type {mat4, mat2, vec3, vec4} from 'gl-matrix';
 import type {UnwrappedTileID, OverscaledTileID, CanonicalTileID} from '../tile/tile_id';
 import type {PaddingOptions} from './edge_insets';
-import type {Terrain} from '../render/terrain';
+import type {Surface} from '../core/surface';
 import type {PointProjection} from '../symbol/projection';
 import type {ProjectionData, ProjectionDataParams} from './projection/projection_data';
 import type {CoveringTilesDetailsProvider} from './projection/covering_tiles_details_provider';
@@ -198,7 +198,7 @@ interface ITransformMutators {
      * After panning finished, call this method to recalculate the zoom level and center point for the current camera-height in current terrain.
      * @param terrain - the terrain
      */
-    recalculateZoomAndCenter(terrain?: Terrain): void;
+    recalculateZoomAndCenter(surface?: Surface): void;
 
     /**
      * Set's the transform's center so that the given point on screen is at the given world coordinates.
@@ -321,7 +321,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param terrain - optional terrain
      * @returns screen point
      */
-    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain): Point;
+    locationToScreenPoint(lnglat: LngLat, surface?: Surface): Point;
 
     /**
      * @internal
@@ -330,7 +330,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param terrain - optional terrain
      * @returns lnglat location
      */
-    screenPointToLocation(p: Point, terrain?: Terrain): LngLat;
+    screenPointToLocation(p: Point, surface?: Surface): LngLat;
 
     /**
      * @internal
@@ -339,7 +339,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param terrain - optional terrain
      * @returns lnglat
      */
-    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain): MercatorCoordinate;
+    screenPointToMercatorCoordinate(p: Point, surface?: Surface): MercatorCoordinate;
 
     /**
      * @internal
@@ -362,7 +362,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param p - The point's coordinates.
      * @param terrain - Optional terrain.
      */
-    isPointOnMapSurface(p: Point, terrain?: Terrain): boolean;
+    isPointOnMapSurface(p: Point, surface?: Surface): boolean;
 
     /**
      * @internal

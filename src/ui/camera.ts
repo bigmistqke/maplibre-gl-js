@@ -8,6 +8,7 @@ import Point from '@mapbox/point-geometry';
 import {Event, Evented} from '../util/evented';
 import {MercatorCoordinate} from '../geo/mercator_coordinate';
 
+import {type Surface, FLAT_SURFACE} from '../core/surface';
 import type {Terrain} from '../render/terrain';
 import type {ITransform} from '../geo/transform_interface';
 import type {LngLatLike} from '../geo/lng_lat';
@@ -257,6 +258,7 @@ export abstract class Camera extends Evented {
     transform: ITransform;
     cameraHelper: ICameraHelper;
     terrain: Terrain;
+    surface: Surface = FLAT_SURFACE;
     handlers: HandlerManager;
 
     _moving: boolean;
@@ -1164,19 +1166,19 @@ export abstract class Camera extends Evented {
         this._easeId = options.easeId;
         this._prepareEase(eventData, options.noMoveStart, currently);
 
-        if (this.terrain) {
+        if (this.surface.hasTerrain) {
             this._prepareElevation(easeHandler.elevationCenter);
         }
 
         this._ease((k) => {
             easeHandler.easeFunc(k);
 
-            if (this.terrain && !options.freezeElevation) this._updateElevation(k);
+            if (this.surface.hasTerrain && !options.freezeElevation) this._updateElevation(k);
             this._applyUpdatedTransform(tr);
             this._fireMoveEvents(eventData);
 
         }, (interruptingEaseId?: string) => {
-            if (this.terrain && options.freezeElevation) this._finalizeElevation();
+            if (this.surface.hasTerrain && options.freezeElevation) this._finalizeElevation();
             this._afterEase(eventData, interruptingEaseId);
         }, options as any);
 
@@ -1206,7 +1208,7 @@ export abstract class Camera extends Evented {
     _prepareElevation(center: LngLat) {
         this._elevationCenter = center;
         this._elevationStart = this.transform.elevation;
-        this._elevationTarget = this.terrain.getElevationForLngLatZoom(center, this.transform.tileZoom);
+        this._elevationTarget = this.surface.getElevationForZoom(center, this.transform.tileZoom);
         this._elevationFreeze = true;
     }
 
@@ -1216,8 +1218,8 @@ export abstract class Camera extends Evented {
             this._prepareElevation(this.transform.center);
         }
 
-        this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this._elevationCenter, this.transform.tileZoom));
-        const elevation = this.terrain.getElevationForLngLatZoom(this._elevationCenter, this.transform.tileZoom);
+        this.transform.setMinElevationForCurrentTile(this.surface.getMinElevationForZoom(this._elevationCenter, this.transform.tileZoom));
+        const elevation = this.surface.getElevationForZoom(this._elevationCenter, this.transform.tileZoom);
         // target terrain updated during flight, slowly move camera to new height
         if (k < 1 && elevation !== this._elevationTarget) {
             const pitch1 = this._elevationTarget - this._elevationStart;
@@ -1231,7 +1233,7 @@ export abstract class Camera extends Evented {
     _finalizeElevation() {
         this._elevationFreeze = false;
         if (this.getCenterClampedToGround()) {
-            this.transform.recalculateZoomAndCenter(this.terrain);
+            this.transform.recalculateZoomAndCenter(this.surface);
         }
     }
 
@@ -1245,7 +1247,7 @@ export abstract class Camera extends Evented {
      * @returns Transform to apply changes to
      */
     _getTransformForUpdate(): ITransform {
-        if (!this.transformCameraUpdate && !this.terrain) return this.transform;
+        if (!this.transformCameraUpdate && !this.surface.hasTerrain) return this.transform;
 
         if (!this._requestedCameraState) {
             this._requestedCameraState = this.transform.clone();
@@ -1265,12 +1267,12 @@ export abstract class Camera extends Evented {
      * @param tr - The transform to check.
      */
     _elevateCameraIfInsideTerrain(tr: ITransform) : { pitch?: number; zoom?: number } {
-        if (!this.terrain && tr.elevation >= 0 && tr.pitch <= 90) {
+        if (!this.surface.hasTerrain && tr.elevation >= 0 && tr.pitch <= 90) {
             return {};
         }
         const cameraLngLat = tr.getCameraLngLat();
         const cameraAltitude = tr.getCameraAltitude();
-        const minAltitude = this.terrain ? this.terrain.getElevationForLngLatZoom(cameraLngLat, tr.zoom) : 0;
+        const minAltitude = this.surface.getElevationForZoom(cameraLngLat, tr.zoom);
         if (cameraAltitude < minAltitude) {
             const newCamera = this.calculateCameraOptionsFromTo(
                 cameraLngLat, minAltitude, tr.center, tr.elevation);
@@ -1539,7 +1541,7 @@ export abstract class Camera extends Evented {
         this._padding = !tr.isPaddingEqual(padding as PaddingOptions);
 
         this._prepareEase(eventData, false);
-        if (this.terrain) this._prepareElevation(flyToHandler.targetCenter);
+        if (this.surface.hasTerrain) this._prepareElevation(flyToHandler.targetCenter);
 
         this._ease((k) => {
             // s: The distance traveled along the flight path, measured in ρ-screenfulls.
@@ -1564,11 +1566,11 @@ export abstract class Camera extends Evented {
 
             flyToHandler.easeFunc(k, scale, centerFactor, pointAtOffset);
 
-            if (this.terrain && !options.freezeElevation) this._updateElevation(k);
+            if (this.surface.hasTerrain && !options.freezeElevation) this._updateElevation(k);
             this._applyUpdatedTransform(tr);
             this._fireMoveEvents(eventData);
         }, () => {
-            if (this.terrain && options.freezeElevation) this._finalizeElevation();
+            if (this.surface.hasTerrain && options.freezeElevation) this._finalizeElevation();
             this._afterEase(eventData);
         }, options);
 
@@ -1657,9 +1659,9 @@ export abstract class Camera extends Evented {
      * @returns elevation in meters
      */
     queryTerrainElevation(lngLatLike: LngLatLike): number | null {
-        if (!this.terrain) {
+        if (!this.surface.hasTerrain) {
             return null;
         }
-        return this.terrain.getElevationForLngLat(LngLat.convert(lngLatLike), this.transform);
+        return this.surface.getElevation(LngLat.convert(lngLatLike));
     }
 }

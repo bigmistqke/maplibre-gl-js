@@ -27,7 +27,9 @@ import {PerformanceMarkers, PerformanceUtils} from '../util/performance';
 import {type Source} from '../source/source';
 import {type StyleLayer} from '../style/style_layer';
 import {Terrain} from '../render/terrain';
+import {TerrainSurface} from '../render/terrain_surface';
 import {RenderToTexture} from '../render/render_to_texture';
+import {FLAT_SURFACE} from '../core/surface';
 import {config} from '../util/config';
 import {defaultLocale} from './default_locale';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
@@ -980,8 +982,8 @@ export class Map extends Camera {
     }
 
     calculateCameraOptionsFromTo(from: LngLat, altitudeFrom: number, to: LngLat, altitudeTo?: number): CameraOptions {
-        if (altitudeTo == null && this.terrain) {
-            altitudeTo = this.terrain.getElevationForLngLat(to, this.transform);
+        if (altitudeTo == null && this.surface.hasTerrain) {
+            altitudeTo = this.surface.getElevation(to);
         }
         return super.calculateCameraOptionsFromTo(from, altitudeFrom, to, altitudeTo);
     }
@@ -1424,7 +1426,7 @@ export class Map extends Camera {
      * ```
      */
     project(lnglat: LngLatLike): Point {
-        return this.transform.locationToScreenPoint(LngLat.convert(lnglat), this.style && this.terrain);
+        return this.transform.locationToScreenPoint(LngLat.convert(lnglat), this.style && this.surface);
     }
 
     /**
@@ -1442,7 +1444,7 @@ export class Map extends Camera {
      * ```
      */
     unproject(point: PointLike): LngLat {
-        return this.transform.screenPointToLocation(Point.convert(point), this.terrain);
+        return this.transform.screenPointToLocation(Point.convert(point), this.surface);
     }
 
     /**
@@ -2268,6 +2270,7 @@ export class Map extends Camera {
             // remove terrain
             if (this.terrain) this.terrain.tileManager.destruct();
             this.terrain = null;
+            this.surface = FLAT_SURFACE;
             if (this.painter.renderToTexture) this.painter.renderToTexture.destruct();
             this.painter.renderToTexture = null;
             this.transform.setMinElevationForCurrentTile(0);
@@ -2291,6 +2294,7 @@ export class Map extends Camera {
                 }
             }
             this.terrain = new Terrain(this.painter, tileManager, options);
+            this.surface = new TerrainSurface(this.terrain);
             this.painter.renderToTexture = new RenderToTexture(this.painter, this.terrain);
             this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
             this.transform.setElevation(this.terrain.getElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
@@ -3594,17 +3598,13 @@ export class Map extends Camera {
         }
 
         // update terrain stuff
+        this.surface.update(this.transform);
         if (this.terrain) {
             this.terrain.tileManager.update(this.transform, this.terrain);
-            this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
-            if (!this._elevationFreeze && this._centerClampedToGround) {
-                this.transform.setElevation(this.terrain.getElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
-            }
-        } else {
-            this.transform.setMinElevationForCurrentTile(0);
-            if (this._centerClampedToGround) {
-                this.transform.setElevation(0);
-            }
+        }
+        this.transform.setMinElevationForCurrentTile(this.surface.getMinElevationForZoom(this.transform.center, this.transform.tileZoom));
+        if (!this._elevationFreeze && this._centerClampedToGround) {
+            this.transform.setElevation(this.surface.getElevationForZoom(this.transform.center, this.transform.tileZoom));
         }
 
         this._placementDirty = this.style && this.style._updatePlacement(this.transform, this.showCollisionBoxes, fadeDuration, this._crossSourceCollisions, globeRenderingChanged);

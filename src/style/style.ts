@@ -1641,9 +1641,9 @@ export class Style extends Evented {
                     queryGeometry,
                     paramsStrict,
                     transform,
-                    this.map.terrain ?
+                    this.map.surface.hasTerrain ?
                         (id: OverscaledTileID, x: number, y: number) =>
-                            this.map.terrain.getElevation(id, x, y) :
+                            this.map.surface.getElevationForTile(id, x, y) :
                         undefined)
             );
         }
@@ -1824,7 +1824,7 @@ export class Style extends Evented {
 
     _updateSources(transform: ITransform) {
         for (const id in this.tileManagers) {
-            this.tileManagers[id].update(transform, this.map.terrain);
+            this.tileManagers[id].update(transform, this.map.surface);
         }
     }
 
@@ -1865,7 +1865,7 @@ export class Style extends Evented {
         forceFullPlacement = forceFullPlacement || this._layerOrderChanged || fadeDuration === 0;
 
         if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(now(), transform.zoom))) {
-            this.pauseablePlacement = new PauseablePlacement(transform, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
+            this.pauseablePlacement = new PauseablePlacement(transform, this.map.surface, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
             this._layerOrderChanged = false;
         }
 

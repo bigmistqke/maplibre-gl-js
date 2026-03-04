@@ -3,7 +3,7 @@ import Point from '@mapbox/point-geometry';
 import {LngLat} from '../lng_lat';
 import {CanonicalTileID, UnwrappedTileID} from '../../tile/tile_id';
 import {fixedLngLat, fixedCoord} from '../../../test/unit/lib/fixed';
-import type {Terrain} from '../../render/terrain';
+import type {Surface} from '../../core/surface';
 import {MercatorTransform} from './mercator_transform';
 import {LngLatBounds} from '../lng_lat_bounds';
 import {getMercatorHorizon} from './mercator_utils';
@@ -377,10 +377,11 @@ describe('transform', () => {
     test('pointCoordinate with terrain when returning null should fall back to 2D', () => {
         const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
         transform.resize(500, 500);
-        const terrain = {
-            pointCoordinate: () => null
-        } as any as Terrain;
-        const coordinate = transform.screenPointToMercatorCoordinate(new Point(0, 0), terrain);
+        const surface = {
+            hasTerrain: true,
+            screenToCoordinate: () => null
+        } as any as Surface;
+        const coordinate = transform.screenPointToMercatorCoordinate(new Point(0, 0), surface);
 
         expect(coordinate).toBeDefined();
     });

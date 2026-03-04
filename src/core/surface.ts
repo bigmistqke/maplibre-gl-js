@@ -1,0 +1,69 @@
+import type {LngLat} from '../geo/lng_lat';
+import type {MercatorCoordinate} from '../geo/mercator_coordinate';
+import type {OverscaledTileID} from '../tile/tile_id';
+import type {TerrainData} from '../render/terrain';
+import type {IReadonlyTransform} from '../geo/transform_interface';
+import type Point from '@mapbox/point-geometry';
+
+/**
+ * A Surface describes the world's geometry. Without terrain the world is flat
+ * (FlatSurface). With terrain it's a 3D DEM mesh (TerrainSurface). The rest of
+ * the codebase talks to Surface uniformly and never branches on which
+ * implementation is active.
+ */
+export interface Surface {
+    /** Whether this surface provides 3D terrain elevation. */
+    readonly hasTerrain: boolean;
+
+    /** Elevation at a point, using the current zoom level. Returns 0 for flat. */
+    getElevation(lnglat: LngLat): number;
+
+    /** Elevation at a point for a specific zoom level. */
+    getElevationForZoom(lnglat: LngLat, zoom: number): number;
+
+    /** Minimum tile elevation at a point for a specific zoom (for camera clamping). */
+    getMinElevationForZoom(lnglat: LngLat, zoom: number): number;
+
+    /** Tile-space elevation (for symbol placement). */
+    getElevationForTile(tileID: OverscaledTileID, x: number, y: number, extent?: number): number;
+
+    /** Min/max elevation in a tile (for frustum culling). */
+    getMinMaxElevation(tileID: OverscaledTileID): {min: number; max: number};
+
+    /** Map a screen point to a world coordinate. Returns null if no hit. */
+    screenToCoordinate(point: Point): MercatorCoordinate | null;
+
+    /** Depth value at a screen point (for marker occlusion). */
+    depthAtPoint(point: Point): number;
+
+    /** Whether a screen point hits the surface (for gesture handling). */
+    isPointOnSurface(point: Point): boolean;
+
+    /** Per-tile GPU bindings (DEM textures + uniforms) for shader draw calls. */
+    getBindings(tileID: OverscaledTileID): TerrainData | null;
+
+    /** Called once per frame to cache the current transform. */
+    update(transform: IReadonlyTransform): void;
+}
+
+/**
+ * Zero-cost surface for a flat world. All elevation returns 0, all picking
+ * returns null, no GPU bindings.
+ */
+export class FlatSurface implements Surface {
+    readonly hasTerrain = false;
+
+    getElevation(_lnglat: LngLat): number { return 0; }
+    getElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }
+    getMinElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }
+    getElevationForTile(_tileID: OverscaledTileID, _x: number, _y: number, _extent?: number): number { return 0; }
+    getMinMaxElevation(_tileID: OverscaledTileID): {min: number; max: number} { return {min: 0, max: 0}; }
+    screenToCoordinate(_point: Point): MercatorCoordinate | null { return null; }
+    depthAtPoint(_point: Point): number { return 0; }
+    isPointOnSurface(_point: Point): boolean { return false; }
+    getBindings(_tileID: OverscaledTileID): TerrainData | null { return null; }
+    update(_transform: IReadonlyTransform): void {}
+}
+
+/** Singleton flat surface — avoids allocation. */
+export const FLAT_SURFACE: Surface = new FlatSurface();

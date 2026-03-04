@@ -10,7 +10,7 @@ import type Point from '@mapbox/point-geometry';
 import type {MercatorCoordinate} from '../mercator_coordinate';
 import type {LngLatBounds} from '../lng_lat_bounds';
 import type {Frustum} from '../../util/primitives/frustum';
-import type {Terrain} from '../../render/terrain';
+import type {Surface} from '../../core/surface';
 import type {PointProjection} from '../../symbol/projection';
 import type {IReadonlyTransform, ITransform, TransformConstrainFunction} from '../transform_interface';
 import type {TransformOptions} from '../transform_helper';
@@ -364,9 +364,9 @@ export class GlobeTransform implements ITransform {
         return this.currentTransform.getCoveringTilesDetailsProvider();
     }
 
-    recalculateZoomAndCenter(terrain?: Terrain): void {
-        this._mercatorTransform.recalculateZoomAndCenter(terrain);
-        this._verticalPerspectiveTransform.recalculateZoomAndCenter(terrain);
+    recalculateZoomAndCenter(surface?: Surface): void {
+        this._mercatorTransform.recalculateZoomAndCenter(surface);
+        this._verticalPerspectiveTransform.recalculateZoomAndCenter(surface);
     }
 
     maxPitchScaleFactor(): number {
@@ -426,20 +426,20 @@ export class GlobeTransform implements ITransform {
         return;
     }
 
-    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain): Point {
-        return this.currentTransform.locationToScreenPoint(lnglat, terrain);
+    locationToScreenPoint(lnglat: LngLat, surface?: Surface): Point {
+        return this.currentTransform.locationToScreenPoint(lnglat, surface);
     }
 
-    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain): MercatorCoordinate {
-        return this.currentTransform.screenPointToMercatorCoordinate(p, terrain);
+    screenPointToMercatorCoordinate(p: Point, surface?: Surface): MercatorCoordinate {
+        return this.currentTransform.screenPointToMercatorCoordinate(p, surface);
     }
 
-    screenPointToLocation(p: Point, terrain?: Terrain): LngLat {
-        return this.currentTransform.screenPointToLocation(p, terrain);
+    screenPointToLocation(p: Point, surface?: Surface): LngLat {
+        return this.currentTransform.screenPointToLocation(p, surface);
     }
 
-    isPointOnMapSurface(p: Point, terrain?: Terrain): boolean {
-        return this.currentTransform.isPointOnMapSurface(p, terrain);
+    isPointOnMapSurface(p: Point, surface?: Surface): boolean {
+        return this.currentTransform.isPointOnMapSurface(p, surface);
     }
 
     /**

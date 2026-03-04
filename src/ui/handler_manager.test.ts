@@ -5,7 +5,8 @@ import type {HandlerManager, MapControlsScenarioOptions, EventInProgress, Events
 import type {Map} from './map';
 import {LngLat} from '../geo/lng_lat';
 import type {ICameraHelper, MapControlsDeltas} from '../geo/projection/camera_helper';
-import type {Terrain} from '../render/terrain';
+import type {Surface} from '../core/surface';
+import {FLAT_SURFACE} from '../core/surface';
 import type {ITransform} from '../geo/transform_interface';
 import {Event as MapEvent} from '../util/evented';
 import {beforeMapTest, createMap} from '../util/test/util';
@@ -53,7 +54,7 @@ describe('HandlerManager terrain scenarios', () => {
             drag: createEventInProgress('drag'),
         };
         const options: MapControlsScenarioOptions = {
-            terrain: null,
+            surface: FLAT_SURFACE,
             tr: transform as unknown as ITransform,
             deltasForHelper: deltas,
             preZoomAroundLoc: new LngLat(0, 0),
@@ -89,7 +90,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            terrain: {} as Terrain,
+            surface: {hasTerrain: true} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(1, 1),
@@ -130,7 +131,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            terrain: {} as Terrain,
+            surface: {hasTerrain: true} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(0, 0),
@@ -180,7 +181,7 @@ describe('HandlerManager terrain scenarios', () => {
             around: new Point(0, 0),
         };
         const options: MapControlsScenarioOptions = {
-            terrain: {} as Terrain,
+            surface: {hasTerrain: true} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: deltas,
             preZoomAroundLoc: new LngLat(0, 0),
@@ -217,7 +218,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: setCenterMock,
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            terrain: {} as Terrain,
+            surface: {hasTerrain: true} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(4, 6),
@@ -261,7 +262,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            terrain: {} as Terrain,
+            surface: {hasTerrain: true} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(0, 0),

@@ -40,6 +40,7 @@ import type {ProjectionData} from '../geo/projection/projection_data';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer';
 import type {LayerName} from '../core/feature';
+import {type Surface, FLAT_SURFACE} from '../core/surface';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
 
@@ -112,6 +113,7 @@ export class Painter {
     // of the terrain-facilitators. e.g. depth & coords framebuffers
     // every time the camera-matrix changes the terrain-facilitators will be redrawn.
     terrainFacilitator: {dirty: boolean; matrix: mat4; renderTime: number};
+    surface: Surface = FLAT_SURFACE;
 
     constructor(gl: WebGLRenderingContext | WebGL2RenderingContext, transform: IReadonlyTransform) {
         this.context = new Context(gl);
@@ -287,7 +289,7 @@ export class Painter {
         // tiles are usually supplied in ascending order of z, then y, then x
         for (const tileID of tileIDs) {
             const stencilRef = tileStencilRefs[tileID.key];
-            const terrainData = this.style.map.terrain && this.style.map.terrain.getTerrainData(tileID);
+            const terrainData = this.surface.getBindings(tileID);
 
             const mesh = projection.getMeshFromTileID(this.context, tileID.canonical, useBorders, true, 'stencil');
 
@@ -318,7 +320,7 @@ export class Painter {
 
         // tiles are usually supplied in ascending order of z, then y, then x
         for (const tileID of tileIDs) {
-            const terrainData = this.style.map.terrain && this.style.map.terrain.getTerrainData(tileID);
+            const terrainData = this.surface.getBindings(tileID);
             const mesh = projection.getMeshFromTileID(this.context, tileID.canonical, true, true, 'raster');
 
             const projectionData = transform.getProjectionData({overscaledTileID: tileID, applyGlobeMatrix: true, applyTerrainMatrix: true});
@@ -455,6 +457,7 @@ export class Painter {
     render(style: Style, options: PainterOptions) {
         this.style = style;
         this.options = options;
+        this.surface = style.map.surface;
 
         // Get instances from style (may be undefined if not required by features)
         this.lineAtlas = style.lineAtlas;
@@ -572,7 +575,7 @@ export class Painter {
                 globeDepthRendered = true;
                 // Render the globe sphere into the depth buffer - but only if globe is enabled and terrain is disabled.
                 // There should be no need for explicitly writing tile depths when terrain is enabled.
-                if (renderOptions.isRenderingGlobe && !this.style.map.terrain) {
+                if (renderOptions.isRenderingGlobe && !this.surface.hasTerrain) {
                     this._renderTilesDepthBuffer();
                 }
             }
@@ -688,7 +691,7 @@ export class Painter {
      */
     useProgram(name: string, programConfiguration?: ProgramConfiguration | null, forceSimpleProjection: boolean = false, defines: Array<string> = []): Program<any> {
         this.cache = this.cache || {};
-        const useTerrain = !!this.style.map.terrain;
+        const useTerrain = this.surface.hasTerrain;
 
         const projection = this.style.projection;
 

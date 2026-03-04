@@ -7,6 +7,7 @@ import type {ITransform} from '../geo/transform_interface';
 import type {TileManager} from './tile_manager';
 import type {Source} from '../source/source';
 import {type Terrain} from '../render/terrain';
+import {TerrainSurface} from '../render/terrain_surface';
 import {now} from '../util/time_control';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 import {createMat4f64} from '../util/util';
@@ -89,8 +90,9 @@ export class TerrainTileManager extends Evented {
      * @param terrain - the terrain
      */
     update(transform: ITransform, terrain: Terrain): void {
+        const surface = new TerrainSurface(terrain);
         // load raster-dem tiles for the current scene.
-        this.tileManager.update(transform, terrain);
+        this.tileManager.update(transform, surface);
         // create internal render-to-texture tiles for the current scene.
         this._renderableTilesKeys = [];
         const keys = {};
@@ -99,7 +101,7 @@ export class TerrainTileManager extends Evented {
             minzoom: this.minzoom,
             maxzoom: this.maxzoom,
             reparseOverscaled: false,
-            terrain,
+            surface,
             calculateTileZoom: this.tileManager._source.calculateTileZoom
         })) {
             keys[tileID.key] = true;

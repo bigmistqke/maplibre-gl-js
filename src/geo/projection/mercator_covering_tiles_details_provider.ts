@@ -28,11 +28,11 @@ export class MercatorCoveringTilesDetailsProvider implements CoveringTilesDetail
     getTileBoundingVolume(tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal): Aabb {
         let minElevation = 0;
         let maxElevation = 0;
-        if (options?.terrain) {
+        if (options?.surface) {
             const overscaledTileID = new OverscaledTileID(tileID.z, wrap, tileID.z, tileID.x, tileID.y);
-            const minMax = options.terrain.getMinMaxElevation(overscaledTileID);
-            minElevation = minMax.minElevation ?? Math.min(0, elevation);
-            maxElevation = minMax.maxElevation ?? Math.max(0, elevation);
+            const minMax = options.surface.getMinMaxElevation(overscaledTileID);
+            minElevation = minMax.min ?? Math.min(0, elevation);
+            maxElevation = minMax.max ?? Math.max(0, elevation);
         }
         const numTiles = 1 << tileID.z;
         return new Aabb([wrap + tileID.x / numTiles, tileID.y / numTiles, minElevation],
@@ -42,7 +42,7 @@ export class MercatorCoveringTilesDetailsProvider implements CoveringTilesDetail
     allowVariableZoom(transform: IReadonlyTransform, options: CoveringTilesOptionsInternal): boolean {
         const zfov = transform.fov * (Math.abs(Math.cos(transform.rollInRadians)) * transform.height + Math.abs(Math.sin(transform.rollInRadians)) * transform.width) / transform.height;
         const maxConstantZoomPitch = clamp(78.5 - zfov / 2, 0.0, 60.0);
-        return (!!options.terrain || transform.pitch > maxConstantZoomPitch);
+        return (!!options.surface?.hasTerrain || transform.pitch > maxConstantZoomPitch);
     }
 
     allowWorldCopies(): boolean {

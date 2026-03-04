@@ -136,7 +136,7 @@ function updateVariableAnchors(coords: Array<OverscaledTileID>,
     translateAnchor: 'map' | 'viewport',
     variableOffsets: {[_ in CrossTileID]: VariableOffset}) {
     const transform = painter.transform;
-    const terrain = painter.style.map.terrain;
+    const surface = painter.surface;
     const rotateWithMap = rotationAlignment === 'map';
     const pitchWithMap = pitchAlignment === 'map';
 
@@ -154,7 +154,7 @@ function updateVariableAnchors(coords: Array<OverscaledTileID>,
 
         if (size) {
             const tileScale = Math.pow(2, transform.zoom - tile.tileID.overscaledZ);
-            const getElevation = terrain ? (x: number, y: number) => terrain.getElevation(coord, x, y) : null;
+            const getElevation = surface.hasTerrain ? (x: number, y: number) => surface.getElevationForTile(coord, x, y) : null;
             const translation = translatePosition(transform, tile, translate, translateAnchor);
             updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets,
                 transform, pitchedLabelPlaneMatrix, tileScale, size, updateTextFitIcon, translation, coord.toUnwrapped(), getElevation);
@@ -346,7 +346,7 @@ function drawLayerSymbols(
 
         const program = painter.useProgram(getSymbolProgramName(isSDF, isText, bucket), programConfiguration);
         const size = evaluateSizeForZoom(sizeData, transform.zoom);
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const terrainData = painter.surface.getBindings(coord);
 
         let texSize: [number, number];
         let texSizeIcon: [number, number] = [0, 0];
@@ -389,7 +389,7 @@ function drawLayerSymbols(
             bucket.hasIconData();
 
         if (alongLine) {
-            const getElevation = painter.style.map.terrain ? (x: number, y: number) => painter.style.map.terrain.getElevation(coord, x, y) : null;
+            const getElevation = painter.surface.hasTerrain ? (x: number, y: number) => painter.surface.getElevationForTile(coord, x, y) : null;
             const rotateToLine = layer.layout.get('text-rotation-alignment') === 'map';
             updateLineLabels(bucket, painter, isText, pitchedLabelPlaneMatrix, pitchedLabelPlaneMatrixInverse, pitchWithMap, keepUpright, rotateToLine, coord.toUnwrapped(), transform.width, transform.height, translation, getElevation);
         }

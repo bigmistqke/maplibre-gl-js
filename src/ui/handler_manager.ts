@@ -23,7 +23,7 @@ import Point from '@mapbox/point-geometry';
 import {type MapControlsDeltas} from '../geo/projection/camera_helper';
 import type {LngLat} from '../geo/lng_lat';
 import type {ITransform} from '../geo/transform_interface';
-import type {Terrain} from '../render/terrain';
+import type {Surface} from '../core/surface';
 
 const isMoving = (p: EventsInProgress) => p.zoom || p.drag || p.roll || p.pitch || p.rotate;
 
@@ -128,7 +128,7 @@ export type EventsInProgress = {
 };
 
 export type MapControlsScenarioOptions = {
-    terrain?: Terrain | null;
+    surface: Surface;
     tr: ITransform;
     deltasForHelper: MapControlsDeltas;
     preZoomAroundLoc: LngLat;
@@ -525,9 +525,9 @@ export class HandlerManager {
         deactivatedHandlers: {[handlerName: string]: Event}) {
         const map = this._map;
         const tr = map._getTransformForUpdate();
-        const terrain = map.terrain;
+        const surface = map.surface;
 
-        if (!hasChange(combinedResult) && !(terrain && this._terrainMovement)) {
+        if (!hasChange(combinedResult) && !(surface.hasTerrain && this._terrainMovement)) {
             return this._fireEvents(combinedEventsInProgress, deactivatedHandlers, true);
         }
 
@@ -542,7 +542,7 @@ export class HandlerManager {
 
         around = around || map.transform.centerPoint;
 
-        if (terrain && !tr.isPointOnMapSurface(around)) {
+        if (surface.hasTerrain && !tr.isPointOnMapSurface(around, surface)) {
             around = tr.centerPoint;
         }
 
@@ -566,7 +566,7 @@ export class HandlerManager {
             tr.screenPointToLocation(panDelta ? around.sub(panDelta) : around);
 
         this._handleMapControls({
-            terrain,
+            surface,
             tr,
             deltasForHelper,
             preZoomAroundLoc,
@@ -583,7 +583,7 @@ export class HandlerManager {
     }
 
     _handleMapControls({
-        terrain,
+        surface,
         tr,
         deltasForHelper,
         preZoomAroundLoc,
@@ -594,7 +594,7 @@ export class HandlerManager {
 
         cameraHelper.handleMapControlsRollPitchBearingZoom(deltasForHelper, tr);
 
-        if (!terrain) {
+        if (!surface.hasTerrain) {
             cameraHelper.handleMapControlsPan(deltasForHelper, tr, preZoomAroundLoc);
             return;
         }
@@ -679,7 +679,7 @@ export class HandlerManager {
             this._terrainMovement = false;
             const tr = this._map._getTransformForUpdate();
             if (this._map.getCenterClampedToGround()) {
-                tr.recalculateZoomAndCenter(this._map.terrain);
+                tr.recalculateZoomAndCenter(this._map.surface);
             }
             this._map._applyUpdatedTransform(tr);
         }

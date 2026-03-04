@@ -15,6 +15,7 @@ import {Mesh} from './mesh';
 import {isInBoundsForZoomLngLat} from '../util/world_bounds';
 import {NORTH_POLE_Y, SOUTH_POLE_Y} from './subdivision';
 import {coveringTiles} from '../geo/projection/covering_tiles';
+import {TerrainSurface} from './terrain_surface';
 import type Point from '@mapbox/point-geometry';
 import type {Tile} from '../tile/tile';
 import type {Framebuffer} from '../gl/framebuffer';
@@ -199,7 +200,7 @@ export class Terrain {
      * @returns the elevation
      */
     getElevationForLngLat(lnglat: LngLat, transform: IReadonlyTransform) {
-        const terrainCoveringTiles = coveringTiles(transform, {maxzoom: this.tileManager.maxzoom, minzoom: this.tileManager.minzoom, tileSize: 512, terrain: this});
+        const terrainCoveringTiles = coveringTiles(transform, {maxzoom: this.tileManager.maxzoom, minzoom: this.tileManager.minzoom, tileSize: 512, surface: new TerrainSurface(this)});
         let zoom = 0;
         for (const tile of terrainCoveringTiles) {
             if (tile.canonical.z > zoom) {

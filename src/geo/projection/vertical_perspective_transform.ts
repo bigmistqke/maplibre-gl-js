@@ -11,7 +11,7 @@ import {angularCoordinatesToSurfaceVector, clampToSphere, getGlobeRadiusPixels, 
 import {GlobeCoveringTilesDetailsProvider} from './globe_covering_tiles_details_provider';
 import {Frustum} from '../../util/primitives/frustum';
 
-import type {Terrain} from '../../render/terrain';
+import type {Surface} from '../../core/surface';
 import type {PointProjection} from '../../symbol/projection';
 import type {IReadonlyTransform, ITransform, TransformConstrainFunction} from '../transform_interface';
 import type {TransformOptions} from '../transform_helper';
@@ -531,8 +531,8 @@ export class VerticalPerspectiveTransform implements ITransform {
         return this._coveringTilesDetailsProvider;
     }
 
-    recalculateZoomAndCenter(terrain?: Terrain): void {
-        if (terrain) {
+    recalculateZoomAndCenter(surface?: Surface): void {
+        if (surface?.hasTerrain) {
             warnOnce('terrain is not fully supported on vertical perspective projection.');
         }
         this._helper.recalculateZoomAndCenter(0);
@@ -765,11 +765,11 @@ export class VerticalPerspectiveTransform implements ITransform {
         this.setZoom(this.zoom + getZoomAdjustment(oldLat, this.center.lat));
     }
 
-    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain): Point {
+    locationToScreenPoint(lnglat: LngLat, surface?: Surface): Point {
         const pos = angularCoordinatesToSurfaceVector(lnglat);
 
-        if (terrain) {
-            const elevation = terrain.getElevationForLngLatZoom(lnglat, this._helper._tileZoom);
+        if (surface?.hasTerrain) {
+            const elevation = surface.getElevationForZoom(lnglat, this._helper._tileZoom);
             vec3.scale(pos, pos, 1.0 + elevation / earthRadius);
         }
 
@@ -791,11 +791,11 @@ export class VerticalPerspectiveTransform implements ITransform {
         );
     }
 
-    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain): MercatorCoordinate {
-        if (terrain) {
+    screenPointToMercatorCoordinate(p: Point, surface?: Surface): MercatorCoordinate {
+        if (surface) {
             // Mercator has terrain handling implemented properly and since terrain
             // simply draws tile coordinates into a special framebuffer, this works well even for globe.
-            const coordinate = terrain.pointCoordinate(p);
+            const coordinate = surface.screenToCoordinate(p);
             if (coordinate) {
                 return coordinate;
             }
@@ -803,11 +803,11 @@ export class VerticalPerspectiveTransform implements ITransform {
         return MercatorCoordinate.fromLngLat(this.unprojectScreenPoint(p));
     }
 
-    screenPointToLocation(p: Point, terrain?: Terrain): LngLat {
-        return this.screenPointToMercatorCoordinate(p, terrain)?.toLngLat();
+    screenPointToLocation(p: Point, surface?: Surface): LngLat {
+        return this.screenPointToMercatorCoordinate(p, surface)?.toLngLat();
     }
 
-    isPointOnMapSurface(p: Point, _terrain?: Terrain): boolean {
+    isPointOnMapSurface(p: Point, _surface?: Surface): boolean {
         const rayOrigin = this._cameraPosition;
         const rayDirection = this.getRayDirectionFromPixel(p);
 

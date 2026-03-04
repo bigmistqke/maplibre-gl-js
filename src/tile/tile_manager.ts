@@ -28,7 +28,7 @@ import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
 import type {TileState} from './tile';
 import type {ICanonicalTileID, SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {MapSourceDataEvent} from '../ui/events';
-import type {Terrain} from '../render/terrain';
+import type {Surface} from '../core/surface';
 import type {CanvasSourceSpecification} from '../source/canvas_source';
 
 type TileResult = {
@@ -81,7 +81,7 @@ export class TileManager extends Evented {
     _paused: boolean;
     _shouldReloadOnResume: boolean;
     transform: ITransform;
-    terrain: Terrain;
+    surface: Surface;
     used: boolean;
     usedForTerrain: boolean;
     tileSize: number;
@@ -182,7 +182,7 @@ export class TileManager extends Evented {
         this._paused = false;
         this._shouldReloadOnResume = false;
         if (shouldReload) this.reload();
-        if (this.transform) this.update(this.transform, this.terrain);
+        if (this.transform) this.update(this.transform, this.surface);
     }
 
     async _loadTile(tile: Tile, id: string, state: TileState): Promise<void> {
@@ -195,7 +195,7 @@ export class TileManager extends Evented {
                 this._source.fire(new ErrorEvent(err, {tile}));
             } else {
                 // continue to try loading parent/children tiles if a tile doesn't exist (404)
-                this.update(this.transform, this.terrain);
+                this.update(this.transform, this.surface);
             }
         }
     }
@@ -484,12 +484,12 @@ export class TileManager extends Evented {
      * Removes tiles that are outside the viewport and adds new tiles that
      * are inside the viewport.
      */
-    update(transform: ITransform, terrain?: Terrain) {
+    update(transform: ITransform, surface?: Surface) {
         if (!this._sourceLoaded || this._paused) {
             return;
         }
         this.transform = transform;
-        this.terrain = terrain;
+        this.surface = surface;
 
         this.updateCacheSize(transform);
         this.handleWrapJump(this.transform.center.lng);
@@ -510,7 +510,7 @@ export class TileManager extends Evented {
                     : this._source.maxzoom,
                 roundZoom: this.usedForTerrain ? false : this._source.roundZoom,
                 reparseOverscaled: this._source.reparseOverscaled,
-                terrain,
+                surface,
                 calculateTileZoom: this._source.calculateTileZoom,
             });
 
@@ -540,7 +540,7 @@ export class TileManager extends Evented {
 
         // enable fading for raster source except when using terrain which doesn't currently support fading
         const isRaster = isRasterType(this._source.type);
-        if (isRaster && this._rasterFadeDuration > 0 && !terrain) {
+        if (isRaster && this._rasterFadeDuration > 0 && !surface?.hasTerrain) {
             updateFadingTiles(this._inViewTiles, idealTileIDs, retain, this._maxFadingAncestorLevels, this._source.minzoom, this._source.maxzoom, this._rasterFadeDuration);
         }
 
@@ -805,7 +805,7 @@ export class TileManager extends Evented {
 
         this.reload(e.sourceDataChanged, e.shouldReloadTileOptions);
         if (this.transform) {
-            this.update(this.transform, this.terrain);
+            this.update(this.transform, this.surface);
         }
         this._didEmitContent = true;
     }
@@ -841,7 +841,7 @@ export class TileManager extends Evented {
             transform.getCameraQueryGeometry(pointQueryGeometry) :
             pointQueryGeometry;
 
-        const project = (point: Point) => transform.screenPointToMercatorCoordinate(point, this.terrain);
+        const project = (point: Point) => transform.screenPointToMercatorCoordinate(point, this.surface);
         const queryGeometry = this.transformBbox(pointQueryGeometry, project, !allowWorldCopies);
         const cameraQueryGeometry = this.transformBbox(cameraPointQueryGeometry, project, !allowWorldCopies);
 

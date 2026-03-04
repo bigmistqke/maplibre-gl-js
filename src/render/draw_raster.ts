@@ -97,7 +97,7 @@ function drawTiles(
     const rasterOpacity = layer.paint.get('raster-opacity');
     const rasterResampling = layer.paint.get('raster-resampling');
     const fadeDuration = layer.paint.get('raster-fade-duration');
-    const isTerrain = !!painter.style.map.terrain;
+    const isTerrain = painter.surface.hasTerrain;
 
     // Draw all tiles
     for (const coord of coords) {
@@ -131,7 +131,7 @@ function drawTiles(
                 context.extTextureFilterAnisotropicMax);
         }
 
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const terrainData = painter.surface.getBindings(coord);
         const projectionData = transform.getProjectionData({overscaledTileID: coord, aligned: align, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
         const uniformValues = rasterUniformValues(parentTopLeft, parentScaleBy, fadeValues.fadeMix, layer, corners);
 

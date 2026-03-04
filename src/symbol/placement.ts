@@ -19,7 +19,7 @@ import type {SymbolBucket, CollisionArrays, SingleCollisionBox, SymbolBuffers} f
 import type {CollisionBoxArray, CollisionVertexArray, SymbolInstance, TextAnchorOffset} from '../data/array_types.g';
 import type {FeatureIndex} from '../data/feature_index';
 import type {OverscaledTileID, UnwrappedTileID} from '../tile/tile_id';
-import {type Terrain} from '../render/terrain';
+import {type Surface} from '../core/surface';
 import {translatePosition, warnOnce} from '../util/util';
 import {type TextAnchor, TextAnchorEnum} from '../style/style_layer/variable_text_anchor';
 
@@ -177,7 +177,7 @@ export type CrossTileID = string | number;
 
 export class Placement {
     transform: IReadonlyTransform;
-    terrain: Terrain;
+    surface: Surface;
     collisionIndex: CollisionIndex;
     placements: {
         [_ in CrossTileID]: JointPlacement;
@@ -210,9 +210,9 @@ export class Placement {
         icon: number[];
     }>>;
 
-    constructor(transform: ITransform, terrain: Terrain, fadeDuration: number, crossSourceCollisions: boolean, prevPlacement?: Placement) {
+    constructor(transform: ITransform, surface: Surface, fadeDuration: number, crossSourceCollisions: boolean, prevPlacement?: Placement) {
         this.transform = transform.clone();
-        this.terrain = terrain;
+        this.surface = surface;
         this.collisionIndex = new CollisionIndex(this.transform);
         this.placements = {};
         this.opacities = {};
@@ -237,8 +237,8 @@ export class Placement {
     }
 
     private _getTerrainElevationFunc(tileID: OverscaledTileID) {
-        const terrain = this.terrain;
-        return terrain ? (x: number, y: number) => terrain.getElevation(tileID, x, y) : null;
+        const surface = this.surface;
+        return surface.hasTerrain ? (x: number, y: number) => surface.getElevationForTile(tileID, x, y) : null;
     }
 
     getBucketParts(results: Array<BucketPart>, styleLayer: StyleLayer, tile: Tile, sortAcrossTiles: boolean) {

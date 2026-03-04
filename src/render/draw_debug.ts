@@ -75,7 +75,7 @@ function drawDebugTile(painter: Painter, tileManager: TileManager, coord: Oversc
     const stencilMode = StencilMode.disabled;
     const colorMode = painter.colorModeForRenderPass();
     const id = '$debug';
-    const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+    const terrainData = painter.surface.getBindings(coord);
 
     context.activeTexture.set(gl.TEXTURE0);
 
