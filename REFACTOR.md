@@ -1171,7 +1171,7 @@ const draw = (painter, tileManager, layer, coords) => {
 8. **Terrain decoupled via Surface abstraction.** ✅ DONE (Phase 1 + 2). The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files. Surface also owns `renderToTexture` and exposes `terrain` for FBO management. No `style.map.terrain` or `painter.renderToTexture` references remain in core. See `SURFACE.md` for full migration details.
 
    **What's left for full terrain featurization (Surface as render strategy):**
-   - Surface should own the **render strategy** — `prepareFrame()`, `renderLayer()`, `finalizeFrame()` — so the renderer is strategy-agnostic (no `if (this.surface.renderToTexture)` in painter)
+   - ~~Surface should own the **render strategy**~~ ✅ Done — `prepareFrame()`, `renderLayer()`, `skipOpaquePass` on Surface. Painter delegates polymorphically
    - ~~`useProgram()` still hardcodes `/terrain` shader variant suffix~~ ✅ Done — ShaderExtension system
    - ~~`usedForTerrain` flag in TileManager still mutated by TerrainTileManager~~ ✅ Done — TileDataLayer declarations
    - `map.setTerrain()` / `map.getTerrain()` are terrain-specific API on the Map convenience layer — terrain lifecycle should be owned by the terrain feature, not Map
@@ -1511,9 +1511,9 @@ This capability system could also handle:
 
 ### Implementation Path
 
-1. **Define capability interfaces** — ElevationProvider, RenderStrategy, etc.
-2. **Add Capabilities to FeatureRegistry** — Merge capabilities from features
-3. **Create DirectRenderStrategy** — Extract current rendering logic
+1. ~~**Define capability interfaces**~~ ✅ Done — Surface, ShaderExtension, TileDataLayer
+2. ~~**Add Capabilities to FeatureRegistry**~~ ✅ Done — Surface on map, extensions on surface, data layers on tile manager
+3. ~~**Create DirectRenderStrategy**~~ ✅ Done — FlatSurface is the direct strategy, TerrainSurface is RTT strategy
 4. **Implement DrawContext** — Replace parameter passing
 5. ~~**Refactor useProgram()** — Use ShaderExtension system~~ ✅ Done
 6. ~~**Refactor TileManager** — Use TileDataLayer for behavior~~ ✅ Done
@@ -1608,7 +1608,7 @@ Type inference happens only at the `createMap` boundary. Internally, everything 
 | `if (map.terrain)` in draw files | Surface abstraction (Phase 1+2) | ✅ Done |
 | `painter.renderToTexture` | Moved to `surface.renderToTexture` | ✅ Done |
 | `style.map.terrain` in painter | Moved to `surface.terrain` | ✅ Done |
-| RTT logic in `painter.render()` | Surface render strategy (`prepareFrame`/`renderLayer`/`finalizeFrame`) | Not started |
+| RTT logic in `painter.render()` | Surface render strategy (`prepareFrame`/`renderLayer`/`skipOpaquePass`) | ✅ Done (polymorphic dispatch) |
 | `/terrain` suffix in `useProgram()` | ShaderExtension system | ✅ Done |
 | `usedForTerrain` flag mutation | TileDataLayer declarations | ✅ Done |
 | `map.setTerrain()` / `map.getTerrain()` | Terrain feature owns lifecycle, Surface typed at boundary | Not started |
@@ -1654,11 +1654,11 @@ The pattern scales because the abstraction is correct — each concern plugs int
 - No `style.map.terrain` or `painter.renderToTexture` references remain in core
 - Marker and popup use `surface.depthAtPoint()`, `surface.getElevation()`, `surface.hasTerrain`
 
-**Phase 3 — Surface as render strategy (partially done):**
+**Phase 3 — Surface as render strategy (✅ done):**
 
 - ✅ **ShaderExtension system**: `ShaderExtension` interface in `src/core/shader_extension.ts`. Surface exposes `shaderExtensions` array. `useProgram()` composes extensions generically — no hardcoded `/terrain` suffix. `TerrainSurface` provides `{key: 'terrain', defines: ['#define TERRAIN3D;']}`. See section 12.
 - ✅ **TileDataLayer**: `TileDataLayer` interface on `TileManager`. `TerrainTileManager` adds/removes a `TileDataLayer` descriptor instead of mutating `usedForTerrain` and `tileSize`. `TileManager` queries `tileDataLayers` array generically for tile size, round zoom, and parent tile loading. No mutation.
-- **Render strategy on Surface (not started)**: Add `prepareFrame()`, `renderLayer()`, `finalizeFrame()` to Surface. Move RTT logic out of `painter.render()` into `TerrainSurface`. See section 12.
+- ✅ **Render strategy on Surface**: `prepareFrame()`, `renderLayer()`, `skipOpaquePass` already on Surface. Painter delegates polymorphically — no terrain-specific imports or concrete type checks. RTT logic is fully encapsulated in `TerrainSurface`/`RenderToTexture`.
 - **Terrain lifecycle out of Map (not started)**: `map.setTerrain()` / `map.getTerrain()` should be owned by the terrain feature, exposed through the surface type.
 
 See sections 12-13 of this doc for the full architecture.
@@ -1674,3 +1674,10 @@ See sections 12-13 of this doc for the full architecture.
 ### 7. Public API Exports
 
 `src/index.ts` does not export `createMap`, `createWorker`, or any feature factories. The modular API exists only in `src/core/` and `src/features/` but is not surfaced through the main package entry point. A public API needs to be defined — either through `src/index.ts` or a separate entry point like `maplibre-gl/features`.
+
+### 8. Fix Broken Tests
+
+111 of 199 test files are failing. Many tests construct `Map`, `Style`, `TileManager`, or `Worker` directly without a `FeatureRegistry`, or rely on the old `createStyleLayer` switch, hardcoded source types, or other patterns that the refactor replaced. Tests need to be updated to:
+- Provide a `FeatureRegistry` (or a minimal mock) when constructing `Map`/`Style`/`TileManager`
+- Use `createMap()` instead of `new Map()` where appropriate
+- Remove reliance on `addSourceType` / `registeredSources` (replaced by registry)
