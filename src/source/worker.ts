@@ -1,8 +1,7 @@
 import {Actor, type ActorTarget, type IActor} from '../util/actor';
 import {StyleLayerIndex} from '../style/style_layer_index';
-import {RasterDEMTileWorkerSource} from './raster_dem_tile_worker_source';
 import {rtlWorkerPlugin, type RTLTextPlugin} from './rtl_text_plugin_worker';
-import {GeoJSONWorkerSource, type LoadGeoJSONParameters} from './geojson_worker_source';
+import type {GeoJSONWorkerSource, LoadGeoJSONParameters} from './geojson_worker_source';
 import {isWorker} from '../util/util';
 import {addProtocol, removeProtocol} from './protocol_crud';
 import {type PluginState} from './rtl_text_plugin_status';
@@ -16,6 +15,7 @@ import type {
     TileParameters
 } from '../source/worker_source';
 
+import type {DEMData} from '../data/dem_data';
 import type {WorkerGlobalScopeInterface} from '../util/web_worker';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {
@@ -25,6 +25,12 @@ import {
     type RemoveSourceParams,
     type UpdateLayersParameters
 } from '../util/actor_messages';
+
+/** Interface for DEM-specific worker sources (e.g. RasterDEMTileWorkerSource) */
+interface DEMWorkerSource {
+    loadTile(params: WorkerDEMTileParameters): Promise<DEMData | null>;
+    removeTile(params: TileParameters): void;
+}
 
 /**
  * The Worker class responsible for background thread related execution
@@ -56,7 +62,7 @@ export default class Worker {
      */
     demWorkerSources: {
         [_: string]: {
-            [_: string]: RasterDEMTileWorkerSource;
+            [_: string]: DEMWorkerSource;
         };
     };
     referrer: string;
@@ -255,24 +261,14 @@ export default class Worker {
                 }
             };
 
-            // Use registry for worker source resolution
             let WorkerSourceClass: WorkerSourceConstructor;
-            try {
-                const registry = getWorkerRegistry();
-                if (registry.hasWorkerSource(sourceType)) {
-                    WorkerSourceClass = registry.getWorkerSource(sourceType as WorkerSourceName).WorkerSource;
-                } else if (this.externalWorkerSourceTypes[sourceType]) {
-                    WorkerSourceClass = this.externalWorkerSourceTypes[sourceType];
-                } else {
-                    throw new Error(`Worker source "${sourceType}" not registered.`);
-                }
-            } catch {
-                // Fallback to external worker source types if registry is not initialized
-                if (this.externalWorkerSourceTypes[sourceType]) {
-                    WorkerSourceClass = this.externalWorkerSourceTypes[sourceType];
-                } else {
-                    throw new Error(`Worker source "${sourceType}" not registered.`);
-                }
+            const registry = getWorkerRegistry();
+            if (registry.hasWorkerSource(sourceType)) {
+                WorkerSourceClass = registry.getWorkerSource(sourceType as WorkerSourceName).WorkerSource;
+            } else if (this.externalWorkerSourceTypes[sourceType]) {
+                WorkerSourceClass = this.externalWorkerSourceTypes[sourceType];
+            } else {
+                throw new Error(`Worker source "${sourceType}" not registered.`);
             }
 
             this.workerSources[mapId][sourceType][sourceName] = new WorkerSourceClass(actor, this._getLayerIndex(mapId), this._getAvailableImages(mapId));
@@ -287,12 +283,14 @@ export default class Worker {
      * @param sourceType - the source type - 'raster-dem' for example
      * @returns a new instance or a cached one
      */
-    private _getDEMWorkerSource(mapId: string, sourceType: string) {
+    private _getDEMWorkerSource(mapId: string, sourceType: string): DEMWorkerSource {
         if (!this.demWorkerSources[mapId])
             this.demWorkerSources[mapId] = {};
 
         if (!this.demWorkerSources[mapId][sourceType]) {
-            this.demWorkerSources[mapId][sourceType] = new RasterDEMTileWorkerSource();
+            const registry = getWorkerRegistry();
+            const WorkerSourceClass = registry.getWorkerSource(sourceType as WorkerSourceName).WorkerSource;
+            this.demWorkerSources[mapId][sourceType] = new WorkerSourceClass(null, null, null) as unknown as DEMWorkerSource;
         }
 
         return this.demWorkerSources[mapId][sourceType];

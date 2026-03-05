@@ -8,6 +8,8 @@ import {type WorkerSource, type WorkerTileParameters, type WorkerTileResult} fro
 import {rtlWorkerPlugin} from './rtl_text_plugin_worker';
 import {type ActorTarget, type IActor} from '../util/actor';
 import {MessageType} from '../util/actor_messages';
+import {createWorker} from '../core/create_worker';
+import {vectorTiles} from '../features/vector_tiles';
 
 class WorkerSourceMock implements WorkerSource {
     availableImages: string[];
@@ -61,6 +63,7 @@ describe('Worker generic testing', () => {
     let _self: WorkerGlobalScopeInterface & ActorTarget;
 
     beforeEach(() => {
+        createWorker([vectorTiles()]);
         _self = {
             addEventListener() {}
         } as any;

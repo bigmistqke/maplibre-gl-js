@@ -11,7 +11,7 @@ export class RasterDEMTileWorkerSource {
     actor: Actor;
     loaded: {[_: string]: DEMData};
 
-    constructor() {
+    constructor(_actor?: any, _layerIndex?: any, _availableImages?: any) {
         this.loaded = {};
     }
 
