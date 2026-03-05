@@ -1106,7 +1106,7 @@ const draw = (painter, tileManager, layer, coords) => {
 
 ## 11. Implementation Status
 
-### What's done (Phase 1 + 2 + 3)
+### What's done (Phase 1 + 2 + 3 + partial Phase 4)
 
 **Core infrastructure:**
 - `src/core/feature.ts` — `Feature` interface, `merge()`, `FeatureRegistry` class
@@ -1156,7 +1156,7 @@ const draw = (painter, tileManager, layer, coords) => {
 
 2. ~~**Source features not extracted.**~~ ✅ DONE. `vectorTiles()`, `geojson()`, `elevation()` features created. Raster feature extended with `image`, `video`, `canvas` sub-features.
 
-3. ~~**Worker not wired.**~~ ✅ PARTIALLY DONE. `createWorker()` now creates a global registry. Worker's `_getWorkerSource()` uses `getWorkerRegistry()` for source resolution. However, uses global state (see Open Question #3).
+3. ~~**Worker not wired.**~~ ✅ DONE. `createWorker()` creates a global registry, bootstraps the Worker instance, and registers message handlers — all inside `createWorker()` (no side-effects at module scope). Worker source resolution goes through `FeatureRegistry` exclusively — hardcoded imports of `RasterDEMTileWorkerSource` and `GeoJSONWorkerSource` removed. Uses global state (see Open Question #3).
 
 4. **Services still hardcoded in Style.** ✅ DONE. ImageManager, GlyphManager, LineAtlas, CrossTileSymbolIndex now conditional via `singletons` API.
 
@@ -1172,8 +1172,8 @@ const draw = (painter, tileManager, layer, coords) => {
 
    **What's left for full terrain featurization (Surface as render strategy):**
    - Surface should own the **render strategy** — `prepareFrame()`, `renderLayer()`, `finalizeFrame()` — so the renderer is strategy-agnostic (no `if (this.surface.renderToTexture)` in painter)
-   - `useProgram()` still hardcodes `/terrain` shader variant suffix — needs ShaderExtension system
-   - `usedForTerrain` flag in TileManager still mutated by TerrainTileManager
+   - ~~`useProgram()` still hardcodes `/terrain` shader variant suffix~~ ✅ Done — ShaderExtension system
+   - ~~`usedForTerrain` flag in TileManager still mutated by TerrainTileManager~~ ✅ Done — TileDataLayer declarations
    - `map.setTerrain()` / `map.getTerrain()` are terrain-specific API on the Map convenience layer — terrain lifecycle should be owned by the terrain feature, not Map
    - Terrain-specific files (`terrain.ts`, `draw_terrain.ts`, `terrain_tile_manager.ts`, `render_to_texture.ts`) remain as-is
 
@@ -1515,8 +1515,8 @@ This capability system could also handle:
 2. **Add Capabilities to FeatureRegistry** — Merge capabilities from features
 3. **Create DirectRenderStrategy** — Extract current rendering logic
 4. **Implement DrawContext** — Replace parameter passing
-5. **Refactor useProgram()** — Use ShaderExtension system
-6. **Refactor TileManager** — Use TileDataLayer for behavior
+5. ~~**Refactor useProgram()** — Use ShaderExtension system~~ ✅ Done
+6. ~~**Refactor TileManager** — Use TileDataLayer for behavior~~ ✅ Done
 7. **Extract terrain to feature** — Implement all capabilities
 8. **Remove terrain checks from core** — Core becomes capability-agnostic
 
@@ -1609,8 +1609,8 @@ Type inference happens only at the `createMap` boundary. Internally, everything 
 | `painter.renderToTexture` | Moved to `surface.renderToTexture` | ✅ Done |
 | `style.map.terrain` in painter | Moved to `surface.terrain` | ✅ Done |
 | RTT logic in `painter.render()` | Surface render strategy (`prepareFrame`/`renderLayer`/`finalizeFrame`) | Not started |
-| `/terrain` suffix in `useProgram()` | ShaderExtension system | Not started |
-| `usedForTerrain` flag mutation | TileDataLayer declarations | Not started |
+| `/terrain` suffix in `useProgram()` | ShaderExtension system | ✅ Done |
+| `usedForTerrain` flag mutation | TileDataLayer declarations | ✅ Done |
 | `map.setTerrain()` / `map.getTerrain()` | Terrain feature owns lifecycle, Surface typed at boundary | Not started |
 
 ### Applicability to Other Cross-Cutting Concerns
@@ -1633,13 +1633,13 @@ The pattern scales because the abstraction is correct — each concern plugs int
 
 ✅ **Architecture DONE.** All feature factories accept `(...capabilities: Feature[])` via the `merge()` pattern (e.g. `fill(patterns)`). However, no features are actually split yet — each base feature still bundles all shader variants and singletons. The plumbing is ready; the actual splitting work (extracting `patterns`, `dashes`, `gradients`, `text`, `icons`, `collision` into separate `Feature` objects) hasn't been done.
 
-### 2. MapContext / createDraw Factory Pattern
+### ~~2. MapContext / createDraw Factory Pattern~~
 
-`MapContext` exists in `src/core/map_context.ts` with the `ensure()` upsert pattern, but nothing uses it. The design envisions `createDraw: (context: MapContext) => DrawFunction` in `LayerDefinition`, where draw functions capture dependencies via closure. Currently `LayerDefinition` has only a plain `draw` field. Adopting this pattern would allow draw functions to lazily resolve shared services without hardcoded imports.
+~~`MapContext` exists in `src/core/map_context.ts` with the `ensure()` upsert pattern, but nothing uses it.~~ ✅ RESOLVED — `MapContext` removed. The `singletons` API on `FeatureRegistry` superseded the upsert pattern. Features declare singleton classes they need (e.g. `{ImageManager, GlyphManager}`), and Style instantiates them conditionally from the registry. No lazy factory or closure-captured services needed.
 
-### 3. Tile Processors in Worker Pipeline
+### ~~3. Tile Processors in Worker Pipeline~~
 
-`tileProcessors` are defined in the `Feature` interface and merged by `FeatureRegistry`, but the worker tile parse pipeline in `src/source/worker_tile.ts` does not iterate `registry.tileProcessors`. It still has hardcoded image atlas and glyph atlas processing. The worker pipeline needs to be refactored to call registered tile processors instead.
+~~`tileProcessors` are defined in the `Feature` interface and merged by `FeatureRegistry`, but the worker tile parse pipeline does not iterate `registry.tileProcessors`.~~ ✅ DONE. Tile processors are threaded from the worker registry through `VectorTileWorkerSource` into `WorkerTile.parse()`. Processors receive a typed context (`TileProcessorContext`: tileID, buckets, actor, dependency options) and contribute to the parse result via a shared mutable object. No features declare processors yet — the extension point is wired and ready for use.
 
 ### 4. Terrain Featurization via the Surface Abstraction
 
@@ -1654,14 +1654,12 @@ The pattern scales because the abstraction is correct — each concern plugs int
 - No `style.map.terrain` or `painter.renderToTexture` references remain in core
 - Marker and popup use `surface.depthAtPoint()`, `surface.getElevation()`, `surface.hasTerrain`
 
-**Phase 3 — Surface as render strategy (not started):**
+**Phase 3 — Surface as render strategy (partially done):**
 
-The next step is to make Surface own the render loop, not just data:
-
-- **Render strategy on Surface**: Add `prepareFrame()`, `renderLayer()`, `finalizeFrame()` to Surface. Move RTT logic out of `painter.render()` into `TerrainSurface`. See section 12.
-- **ShaderExtension system**: `useProgram()` still hardcodes `/terrain` variant suffix. Needs declarative extensions.
-- **TileDataLayer**: Replace `usedForTerrain` mutation with declarative tile loading behavior.
-- **Terrain lifecycle out of Map**: `map.setTerrain()` / `map.getTerrain()` should be owned by the terrain feature, exposed through the surface type.
+- ✅ **ShaderExtension system**: `ShaderExtension` interface in `src/core/shader_extension.ts`. Surface exposes `shaderExtensions` array. `useProgram()` composes extensions generically — no hardcoded `/terrain` suffix. `TerrainSurface` provides `{key: 'terrain', defines: ['#define TERRAIN3D;']}`. See section 12.
+- ✅ **TileDataLayer**: `TileDataLayer` interface on `TileManager`. `TerrainTileManager` adds/removes a `TileDataLayer` descriptor instead of mutating `usedForTerrain` and `tileSize`. `TileManager` queries `tileDataLayers` array generically for tile size, round zoom, and parent tile loading. No mutation.
+- **Render strategy on Surface (not started)**: Add `prepareFrame()`, `renderLayer()`, `finalizeFrame()` to Surface. Move RTT logic out of `painter.render()` into `TerrainSurface`. See section 12.
+- **Terrain lifecycle out of Map (not started)**: `map.setTerrain()` / `map.getTerrain()` should be owned by the terrain feature, exposed through the surface type.
 
 See sections 12-13 of this doc for the full architecture.
 
@@ -1669,9 +1667,9 @@ See sections 12-13 of this doc for the full architecture.
 
 `src/style/create_style_layer.ts` still contains a large switch statement over all layer types. It is no longer the main dispatch path (that goes through `FeatureRegistry`), but it is still imported by tests and the custom layer fallback. Tests need to be migrated to use `FeatureRegistry` or mock it, and the custom layer path needs a registry-based solution.
 
-### 6. Remove Hardcoded Worker Source Imports
+### ~~6. Remove Hardcoded Worker Source Imports~~
 
-`src/source/worker.ts` still has hardcoded imports of `RasterDEMTileWorkerSource` and `GeoJSONWorkerSource` at the top, even though source resolution now goes through the worker registry. These legacy imports should be removed once all paths use `getWorkerRegistry()`.
+~~`src/source/worker.ts` still has hardcoded imports of `RasterDEMTileWorkerSource` and `GeoJSONWorkerSource`.~~ ✅ DONE. Worker source resolution now goes through `FeatureRegistry` exclusively. Hardcoded imports removed. Additionally, the `if (isWorker(self))` side-effect in `worker.ts` module scope was removed — Worker instantiation now happens inside `createWorker()`, ensuring the registry is initialized before the Worker is constructed.
 
 ### 7. Public API Exports
 
