@@ -4,17 +4,74 @@
 
 MapLibre GL JS is monolithic. Every source type, layer type, draw function, shader, and shared service (image atlas, glyph manager, collision system) is eagerly imported and initialized, regardless of whether the consumer uses it. The code is organized by technical concern (sources in `src/source/`, layers in `src/style/style_layer/`, draw functions in `src/render/`, shaders in `src/shaders/`) rather than by logical feature. A "fill layer" is actually a vertical slice across 6+ directories, but nothing in the architecture reflects this.
 
+Beyond the tree-shaking problem, `Map` is a monolith that accumulates all responsibilities: DOM, camera, style parsing, rendering, input handling, terrain lifecycle, public API. Cross-cutting concerns like terrain can't be cleanly featurized because `Map` owns their lifecycle and the renderer has no extension points for render strategies.
+
 ## Design Principles
 
-1. **One composition model.** There is a single primitive — the `Feature` — and a single composition mechanism: pass features to `createMap({ use: [...] })`. No side-effect imports, no global registries, no multiple registration APIs.
+1. **Three core primitives.** The rendering engine has three composable primitives: **Transform** (camera state), **Surface** (world geometry + render strategy), **Renderer** (executes frames). Everything else — Style, Map, handlers — is convenience built on top.
 2. **Features are vertical slices.** A feature bundles everything it needs: source, layer, bucket, draw function, programs, shaders, services. The consumer doesn't know or care about these internals.
-3. **Explicit opt-in, no implicit bundling.** `feature()` gives you the minimal core of that feature. Sub-features add capabilities. Nothing is imported unless the consumer asks for it. Tree-shaking works because unused exports aren't referenced.
-4. **Core is minimal.** Map, Camera, Transform, Projections, WebGL Context, Program infrastructure, Style parser skeleton, Tile management, Worker/Dispatcher. Nothing else.
-5. **Shared services are lazy and de-duped.** If multiple features need ImageManager, the first one to initialize creates it. Others reuse it.
+3. **Surface is the composition point for world geometry.** Surface describes both what the world looks like (elevation queries) and how to render onto it (render strategy). FlatSurface renders directly. TerrainSurface renders via RTT and drapes onto a mesh. The renderer asks the surface — no `if (terrain)` anywhere.
+4. **Explicit opt-in, no implicit bundling.** `feature()` gives you the minimal core of that feature. Sub-features add capabilities. Nothing is imported unless the consumer asks for it. Tree-shaking works because unused exports aren't referenced.
+5. **Style and Map are convenience layers.** Style reads JSON and produces layers + tile managers. Map adds DOM, input handlers, animation loop, public API. Neither is a core primitive — the engine works without them.
+6. **Shared services are lazy and de-duped.** If multiple features need ImageManager, the first one to initialize creates it. Others reuse it.
+7. **No generics leak internally.** Type inference for feature-provided APIs happens only at the `createMap` boundary. Internally, everything uses concrete types (`Surface`, `Map`, etc.).
 
 ---
 
 ## Architecture Overview
+
+### Core Engine (no Map, no Style)
+
+A frame requires three primitives:
+
+```
+Transform   →  camera state (center, zoom, bearing, pitch)
+Surface     →  world geometry + render strategy
+Renderer    →  executes a frame given transform, surface, and layers
+```
+
+```
+                ┌───────────┐
+                │ Transform │  camera state
+                └─────┬─────┘
+                      │
+                      ▼
+┌──────────┐    ┌───────────┐    ┌────────────────────┐
+│  Layers  │───▶│ Renderer  │◀───│      Surface        │
+│  + Tiles │    └───────────┘    │                    │
+└──────────┘                     │  FlatSurface:      │
+                                 │    elevation = 0   │
+                                 │    render = direct │
+                                 │                    │
+                                 │  TerrainSurface:   │
+                                 │    elevation = DEM │
+                                 │    render = RTT    │
+                                 └────────────────────┘
+```
+
+The renderer asks the surface how to render each layer:
+
+```ts
+surface.prepareFrame(renderer, transform)
+for (layer of layers) {
+    if (surface.renderLayer(layer)) continue  // surface handled it (e.g. RTT)
+    renderer.drawLayer(layer)                 // direct path
+}
+surface.finalizeFrame(renderer)              // e.g. drape mesh for terrain
+```
+
+No `if (terrain)` anywhere in core.
+
+### Convenience Layers
+
+```
+Style       →  reads JSON spec, creates layers + tile managers (convenience)
+Map         →  DOM container + input handlers + animation loop + public API (convenience)
+```
+
+Style and Map build on the core primitives. The engine works without them.
+
+### Feature Composition
 
 ```
                     ┌─────────────────────────────┐
@@ -29,6 +86,7 @@ MapLibre GL JS is monolithic. Every source type, layer type, draw function, shad
                     │    raster(),                 │
                     │    fill(patterns),           │
                     │    labels(text, collision),  │
+                    │    terrain(),                │
                     │  ]                           │
                     └──────────┬───────────────────┘
                                │
@@ -46,13 +104,13 @@ MapLibre GL JS is monolithic. Every source type, layer type, draw function, shad
     │                       │  │                        │
     │  Uses: draw funcs,    │  └───────────────────────┘
     │  programs, shaders,   │
-    │  services             │
+    │  surface, services    │
     └───────────────────────┘
 
     Tree-shaking at the FEATURE level:
-    If features.ts doesn't import labels,
-    the entire symbol subsystem is excluded
-    from BOTH bundles.
+    If features.ts doesn't import terrain(),
+    TerrainSurface, RTT, DEM source, depth FBOs
+    are all excluded from the bundle.
 ```
 
 ---
@@ -719,30 +777,35 @@ export const features = [vectorTiles(), fill(), labels(text), background()];
 
 ## 7. What Lives Where
 
-### Core (always bundled)
+### Core primitives (always bundled)
 
 ```
 src/core/
-  feature.ts                 — Feature type definition
-  merge.ts                   — mergeFeatures() function
+  feature.ts                 — Feature type definition + FeatureRegistry
+  surface.ts                 — Surface interface, FlatSurface, FLAT_SURFACE
   create_map.ts              — createMap() entry point
 
-src/ui/
-  map.ts                     — Map class (stripped: no handlers, no controls)
-  camera.ts                  — Camera base class
-
 src/geo/
+  transform_interface.ts     — Transform interface (uses Surface for elevation)
   projection/                — all projection code (mercator, globe, vertical-perspective)
   lng_lat.ts, edge_insets.ts, mercator_coordinate.ts, ...
 
 src/render/
-  painter.ts                 — Painter (reads merged config, no hardcoded imports)
+  painter.ts                 — Renderer (strategy-agnostic, delegates to surface)
   program.ts                 — Program class (creates programs from config definitions)
   context.ts                 — WebGL context wrapper
   mesh.ts, subdivision.ts    — geometry infrastructure
+```
+
+### Convenience layers (always bundled, but not core primitives)
+
+```
+src/ui/
+  map.ts                     — Map: DOM + handlers + animation loop + public API
+  camera.ts                  — Camera base class
 
 src/style/
-  style.ts                   — Style (reads merged config for layer/source creation)
+  style.ts                   — Style: JSON spec → layers + tile managers
   style_layer.ts             — StyleLayer base class
 
 src/tile/
@@ -1105,64 +1168,80 @@ const draw = (painter, tileManager, layer, coords) => {
 
 7. ~~**Sky is programs-only.**~~ ✅ DONE. Sky feature now includes `renderHooks` with `beforeLayers` and `afterTranslucent` phases. `Painter.render()` uses `registry.getRenderHooks(phase)` instead of hardcoded `drawSky`/`drawAtmosphere` calls.
 
-8. **Terrain partially decoupled via Surface abstraction.** ✅ PARTIALLY DONE. The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files: all draw functions, painter, camera, map, transforms, handler manager, placement, tile manager, and covering tiles now use `Surface` uniformly. See `SURFACE.md` for full migration details.
+8. **Terrain decoupled via Surface abstraction.** ✅ DONE (Phase 1 + 2). The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files. Surface also owns `renderToTexture` and exposes `terrain` for FBO management. No `style.map.terrain` or `painter.renderToTexture` references remain in core. See `SURFACE.md` for full migration details.
 
-   **What's left for full terrain featurization:**
+   **What's left for full terrain featurization (Surface as render strategy):**
+   - Surface should own the **render strategy** — `prepareFrame()`, `renderLayer()`, `finalizeFrame()` — so the renderer is strategy-agnostic (no `if (this.surface.renderToTexture)` in painter)
    - `useProgram()` still hardcodes `/terrain` shader variant suffix — needs ShaderExtension system
-   - `RenderToTexture` still directly references `Terrain` — needs RenderPipeline abstraction
-   - `maybeDrawDepthAndCoords()` in painter still uses `this.style.map.terrain` for FBO management
    - `usedForTerrain` flag in TileManager still mutated by TerrainTileManager
+   - `map.setTerrain()` / `map.getTerrain()` are terrain-specific API on the Map convenience layer — terrain lifecycle should be owned by the terrain feature, not Map
    - Terrain-specific files (`terrain.ts`, `draw_terrain.ts`, `terrain_tile_manager.ts`, `render_to_texture.ts`) remain as-is
 
 9. ~~**Shaders not in features.**~~ ✅ DONE. All 11 feature files now import their shaders and use `prepare()` to create `shaderSource` in program definitions. `prepare()` exported from `shaders.ts`.
 
 ---
 
-## 12. Future Architecture: Capability-Based Rendering
+## 12. Surface as Render Strategy
 
-This section documents research into how terrain (and other cross-cutting concerns) could be fully decoupled from core through a capability-based architecture.
+### The Key Insight
 
-### Current Terrain Coupling Analysis
+Surface isn't just "query elevation" — it's **"what is the world, and how do you render onto it."** This makes Surface the natural owner of the render strategy.
 
-Terrain integrates at 5 distinct coupling points:
+```typescript
+interface Surface {
+    // === Query side (consumers: camera, markers, placement) ===
+    readonly hasTerrain: boolean;
+    getElevation(lnglat: LngLat): number;
+    depthAtPoint(point: Point): number;
+    getBindings(tileID: OverscaledTileID): TerrainData | null;
+    // ... other elevation queries
 
-| Category | Coupling Type | Files Affected |
-|----------|---------------|----------------|
-| **Shader Variants** | `useProgram()` checks `map.terrain` to add `/terrain` suffix | painter.ts |
-| **TerrainData Binding** | `program.draw()` binds terrain textures/uniforms | program.ts + 16 draw files |
-| **TileManager Mutation** | `usedForTerrain` flag mutates loading behavior | tile_manager.ts, terrain_tile_manager.ts |
-| **RenderToTexture** | Direct reference to Terrain instance | render_to_texture.ts |
-| **Elevation Queries** | Symbol placement calls `terrain.getElevation()` | draw_symbol.ts |
-
-**Detailed integration points discovered:**
-
-```
-File                          Line(s)     Integration
-────────────────────────────────────────────────────────────────────────
-terrain.ts                    229         getTerrainData() - primary data provider
-terrain_tile_manager.ts       73-74       Mutates TileManager.usedForTerrain
-tile_manager.ts               156,499,506 Reads usedForTerrain flag
-painter.ts                    691-704     useProgram() adds /terrain suffix
-program.ts                    197-205     Binds terrain textures to units 2,3
-draw_*.ts (16 files)          various     Conditional terrain data retrieval
-mercator_transform.ts         735-736     terrainRttPosMatrix32f switching
-render_to_texture.ts          67,85,95    Direct Terrain reference
+    // === Render strategy (producer side: renderer) ===
+    prepareFrame(renderer: Renderer, transform: Transform): void;
+    renderLayer(layer: StyleLayer): boolean;  // true = "I handled it"
+    finalizeFrame(renderer: Renderer): void;
+}
 ```
 
-### Core Insight
+**FlatSurface:** All queries return 0/null. `prepareFrame`/`finalizeFrame` are no-ops. `renderLayer` always returns false (direct rendering).
 
-The current architecture treats terrain as a *thing* that exists or doesn't. The radical alternative: treat terrain's contributions as **capabilities** that any feature can provide.
+**TerrainSurface:** Queries delegate to DEM. `prepareFrame` sets up FBOs and RTT. `renderLayer` captures layers to texture. `finalizeFrame` drapes the mesh.
 
-### Proposed Capability System
+The renderer becomes simple:
+
+```typescript
+surface.prepareFrame(this, transform)
+for (layer of layers) {
+    if (surface.renderLayer(layer)) continue  // surface handled it (RTT)
+    this.drawLayer(layer)                     // direct path
+}
+surface.finalizeFrame(this)                  // e.g. drape terrain mesh
+```
+
+No `if (terrain)` anywhere. No render strategy as a separate concept — **Surface IS the strategy.**
+
+### What This Replaces
+
+Currently in `painter.ts`:
+```typescript
+// Before: terrain knowledge scattered through render loop
+if (this.renderToTexture) {
+    this.renderToTexture.prepareForRender(this.style, this.transform.zoom);
+}
+// ...
+if (this.renderToTexture && this.renderToTexture.renderLayer(layer)) continue;
+// ...
+this._renderTileClippingMasks(layer, coords, !!this.renderToTexture);
+```
+
+This is exactly what Surface's render strategy methods would handle — the knowledge of HOW to render moves from the renderer into the surface.
+
+### Remaining Capabilities (beyond Surface)
+
+Surface handles elevation and render strategy. Other cross-cutting concerns need their own extension points:
 
 ```typescript
 interface Capabilities {
-    // Elevation data for vertex displacement and queries
-    elevation?: ElevationProvider;
-
-    // Modifies how tiles are rendered (direct vs RTT)
-    renderStrategy?: RenderStrategy;
-
     // Shader modifications (defines, uniforms, textures)
     shaderExtensions?: ShaderExtension[];
 
@@ -1171,117 +1250,73 @@ interface Capabilities {
 }
 ```
 
-Features declare what capabilities they provide:
+### Capability: ShaderExtensions
+
+Instead of hardcoding `/terrain` suffix in `useProgram()`:
+
+```typescript
+interface ShaderExtension {
+    key: string;
+    defines: string[];
+    isActive(): boolean;
+}
+
+const terrainShaderExtension: ShaderExtension = {
+    key: 'terrain',
+    defines: ['TERRAIN3D'],
+    isActive: () => surface.hasTerrain,
+};
+```
+
+`useProgram()` becomes generic — it composes extensions from all active capabilities:
+
+```typescript
+useProgram(name: string) {
+    const extensions = this.capabilities.shaderExtensions
+        .filter(ext => ext.isActive());
+    const key = name + extensions.map(e => '/' + e.key).join('');
+    const defines = extensions.flatMap(e => e.defines);
+    return this.getOrCreateProgram(key, { defines });
+}
+```
+
+### Capability: TileDataLayers
+
+Instead of `usedForTerrain` flag mutation:
+
+```typescript
+interface TileDataLayer {
+    name: string;
+    tileSize?: number;
+    loadParentTiles?: boolean;
+}
+
+const demDataLayer: TileDataLayer = {
+    name: 'dem',
+    tileSize: 514,
+    loadParentTiles: true,
+};
+```
+
+TileManager derives behavior from registered layers — no mutation.
+
+### Terrain as Just Another Feature
 
 ```typescript
 export function terrain(): Feature {
     return {
+        sources: { 'raster-dem': RasterDEMSource },
+        programs: { terrain: { ... }, terrainDepth: { ... } },
+        surface: TerrainSurface,  // provides Surface implementation
         capabilities: {
-            elevation: new TerrainElevationProvider(),
-            renderStrategy: new DrapeRenderStrategy(),
             shaderExtensions: [terrainShaderExtension],
             tileDataLayers: [demDataLayer],
-        }
+        },
     };
 }
 ```
 
-### Capability 1: ElevationProvider
-
-Abstract elevation queries behind an interface:
-
-```typescript
-interface ElevationProvider {
-    // Query elevation at a point
-    getElevation(coord: OverscaledTileID, x: number, y: number): number;
-
-    // Get GPU bindings for a tile (textures, uniforms)
-    getBindings(coord: OverscaledTileID): GPUBindings | null;
-
-    // Ray intersection for click detection
-    raycast(ray: Ray): vec3 | null;
-}
-```
-
-Draw functions query capabilities instead of checking `map.terrain`:
-
-```typescript
-function drawSymbols(painter: Painter, ...) {
-    const elevation = painter.capabilities.elevation;
-
-    // If elevation exists, use it. If not, flat earth.
-    const getElevation = elevation
-        ? (x, y) => elevation.getElevation(coord, x, y)
-        : null;
-
-    // GPU bindings come from the provider
-    const bindings = elevation?.getBindings(coord);
-
-    program.draw(...bindingsFrom(bindings));
-}
-```
-
-**Key insight:** Draw functions don't know about Terrain. They know about ElevationProvider. Terrain implements it. So could a static heightfield. Or a procedural generator.
-
-### Capability 2: RenderStrategy
-
-Instead of hardcoding "if terrain, use RTT":
-
-```typescript
-interface RenderStrategy {
-    // Setup before rendering layers
-    beginFrame(painter: Painter): void;
-
-    // How to render a single layer
-    renderLayer(painter: Painter, layer: StyleLayer, tiles: Tile[]): void;
-
-    // Finalize after all layers
-    endFrame(painter: Painter): void;
-}
-
-// Default: direct rendering
-class DirectRenderStrategy implements RenderStrategy {
-    renderLayer(painter, layer, tiles) {
-        const draw = painter.registry.getLayer(layer.type).draw;
-        draw(painter, layer, tiles);
-    }
-}
-
-// Terrain: render-to-texture + drape
-class DrapeRenderStrategy implements RenderStrategy {
-    beginFrame(painter) {
-        this.setupRTTFramebuffers();
-        this.renderDepthAndCoords();
-    }
-
-    renderLayer(painter, layer, tiles) {
-        for (const tile of tiles) {
-            this.bindTileFramebuffer(tile);
-            draw(painter, layer, [tile]);
-        }
-    }
-
-    endFrame(painter) {
-        this.renderTerrainMesh();
-    }
-}
-```
-
-**Painter becomes strategy-agnostic:**
-
-```typescript
-class Painter {
-    render(style: Style, options: RenderOptions) {
-        const strategy = this.capabilities.renderStrategy ?? new DirectRenderStrategy();
-
-        strategy.beginFrame(this);
-        for (const layer of layers) {
-            strategy.renderLayer(this, layer, tiles);
-        }
-        strategy.endFrame(this);
-    }
-}
-```
+**Core becomes capability-agnostic.** Painter doesn't know about terrain, RTT, or depth FBOs. It just calls `surface.prepareFrame()` / `surface.renderLayer()` / `surface.finalizeFrame()`.
 
 ### Capability 3: ShaderExtensions
 
@@ -1487,209 +1522,108 @@ This capability system could also handle:
 
 ---
 
-## 13. Architectural Analysis: Why RenderPipeline is the Key Abstraction
+## 13. Core Decomposition: Transform, Surface, Renderer
 
-### Current Architecture: Violations
+### Why Map Must Be Decomposed
 
-| Problem | Principle Violated | Location |
-|---------|-------------------|----------|
-| `if (map.terrain)` in 16 draw files | Open/Closed — adding elevation source requires modifying all draw functions | draw_*.ts |
-| Direct `Terrain` reference | Dependency Inversion — depends on concrete class, not abstraction | render_to_texture.ts |
-| `usedForTerrain` flag mutation | Single Responsibility — TerrainTileManager reaches into TileManager internals | terrain_tile_manager.ts |
-| `/terrain` suffix hardcoded | Leaky Abstraction — Painter knows terrain's shader needs | painter.ts |
-| `terrainData` parameter everywhere | Missing Abstraction — scattered state instead of cohesive context | program.draw() |
+Map is a monolith that accumulates all responsibilities: DOM, camera, style parsing, rendering, input handling, terrain lifecycle, public API. Cross-cutting concerns like terrain can't be cleanly featurized because `Map` owns their lifecycle (`setTerrain()`, `getTerrain()`, `_terrainDataCallback`) and the renderer has no extension points.
 
-### The Key Insight: RenderPipeline as Primary Abstraction
+### The Three Primitives
 
-The rendering pipeline should be a first-class concept. Everything else follows from it.
+A frame requires exactly three things:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Painter                                  │
-│                                                                  │
-│   render(layers) {                                               │
-│       this.pipeline.render(this.context, layers);                │
-│   }                                                              │
-│                                                                  │
-│   // Painter doesn't know about terrain, RTT, or strategies      │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    RenderPipeline (interface)                    │
-├─────────────────────────────────────────────────────────────────┤
-│                              │                                   │
-│         ┌────────────────────┴────────────────────┐              │
-│         ▼                                         ▼              │
-│  DirectPipeline                           DrapePipeline          │
-│  (default)                                (terrain)              │
-│                                                                  │
-│  render(ctx, layers) {                   render(ctx, layers) {   │
-│    for (layer of layers)                   beginRTT();           │
-│      drawLayer(layer);                     for (layer)           │
-│  }                                           drawToTexture();    │
-│                                            endRTT();             │
-│                                            drapeOnMesh();        │
-│                                          }                       │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Primitive | Responsibility | Extension Points |
+|-----------|---------------|-----------------|
+| **Transform** | Camera state: center, zoom, bearing, pitch, projection | Elevation clamping (via Surface) |
+| **Surface** | World geometry + render strategy | FlatSurface, TerrainSurface, future OceanSurface... |
+| **Renderer** | Executes a frame: setup GPU, draw layers, present | Shader extensions, capabilities |
+
+These compose without knowing about each other's internals:
 
 ```typescript
-interface RenderPipeline {
-    render(context: RenderContext, layers: StyleLayer[]): void;
-}
+// The core render loop — no terrain, no style, no map
+renderer.render({
+    transform,
+    surface,
+    layers: [
+        { layer: fillLayer, tiles: [...] },
+        { layer: lineLayer, tiles: [...] },
+    ],
+})
 ```
 
-**Direct rendering** and **render-to-texture** are both implementations of this interface. Core doesn't know which one is active — it just calls `pipeline.render()`.
+### Surface as the Composition Point
 
-### Draw Functions: Pure and Unaware
+Surface is unique among the three primitives because it's the **only one that changes based on features**. Transform and Renderer are always present with the same interface. Surface is where features compose:
 
-Draw functions should be **pure renderers** — they don't know or care about terrain:
+```
+Feature includes terrain()  →  surface = TerrainSurface
+Feature includes ocean()    →  surface = OceanSurface  (hypothetical)
+No elevation feature        →  surface = FlatSurface
+```
+
+This means Surface is the natural place for:
+1. **Elevation queries** — consumers (camera, markers, placement) ask "what's the elevation here?"
+2. **Render strategy** — the renderer asks "how should I draw this layer?"
+3. **Feature-specific configuration** — the terrain feature exposes `set()`/`get()` on its surface
+
+### Convenience Layers
+
+**Style** reads a JSON spec and produces layers + tile managers. It's not a core primitive.
+
+**Map** composes everything and adds DOM, input handlers, animation loop, and public API. It's the user-facing convenience layer.
+
+```
+User code
+    ↓
+Map (convenience: DOM, handlers, animation, public API)
+    ↓
+Style (convenience: JSON spec → layers + tile managers)
+    ↓
+Transform + Surface + Renderer (core primitives)
+```
+
+### Feature-Provided Public API
+
+In the current architecture, `map.setTerrain()` is a terrain-specific method hardcoded on Map. Map imports Terrain, TerrainSurface, RenderToTexture — none of which tree-shake away.
+
+In the target architecture, the terrain **feature** owns its API. The surface type narrows based on which features are included:
 
 ```typescript
-// Clean: no terrain checks, no conditional binding
-function drawFill(context: DrawContext, layer: FillStyleLayer, tile: Tile) {
-    const program = context.useProgram('fill');
+// Without terrain feature:
+map.surface  // type: Surface
 
-    program.draw({
-        uniforms: fillUniformValues(layer, tile),
-        // context.bindings already contains elevation data if present
-        ...context.bindings,
-    });
-}
+// With terrain feature:
+map.surface  // type: Surface & TerrainConfig
+map.surface.set({ source: 'dem' })
+map.surface.get()  // => { source: 'dem' } | null
 ```
 
-The `DrawContext` carries all ambient state. Draw functions just render.
+Type inference happens only at the `createMap` boundary. Internally, everything uses concrete `Surface` — no generics leak.
 
-### Shader Variants: Declarative, Not Imperative
+### Remaining Coupling (to be resolved via Section 12)
 
-```typescript
-// Current (problematic): imperative checks
-useProgram(name) {
-    const useTerrain = !!this.style.map.terrain;  // knows about terrain
-    const useGlobe = this.style.projection === 'globe';  // knows about globe
-    const key = name + (useTerrain ? '/terrain' : '') + (useGlobe ? '/globe' : '');
-    ...
-}
+| Problem | Resolution | Status |
+|---------|-----------|--------|
+| `if (map.terrain)` in draw files | Surface abstraction (Phase 1+2) | ✅ Done |
+| `painter.renderToTexture` | Moved to `surface.renderToTexture` | ✅ Done |
+| `style.map.terrain` in painter | Moved to `surface.terrain` | ✅ Done |
+| RTT logic in `painter.render()` | Surface render strategy (`prepareFrame`/`renderLayer`/`finalizeFrame`) | Not started |
+| `/terrain` suffix in `useProgram()` | ShaderExtension system | Not started |
+| `usedForTerrain` flag mutation | TileDataLayer declarations | Not started |
+| `map.setTerrain()` / `map.getTerrain()` | Terrain feature owns lifecycle, Surface typed at boundary | Not started |
 
-// Clean: declarative extensions
-useProgram(name, context: DrawContext) {
-    // Extensions declare themselves, useProgram is generic
-    const key = name + context.shaderKey;  // e.g., "/terrain/globe"
-    const defines = context.shaderDefines;  // e.g., ['TERRAIN3D', 'GLOBE']
-    ...
-}
-```
+### Applicability to Other Cross-Cutting Concerns
 
-Shader variants become **data**, not **code paths**.
+| Concern | Core Primitive | How It Composes |
+|---------|---------------|-----------------|
+| **Terrain** | Surface | TerrainSurface with RTT render strategy |
+| **Globe** | Transform | Globe projection + ShaderExtension |
+| **Fog/atmosphere** | Renderer | ShaderExtension with fog uniforms |
+| **3D shadows** | Surface | Shadow pass in render strategy |
+| **Post-processing** | Renderer | Additional passes after layers |
 
-### Elevation: A Capability, Not a Class
-
-```typescript
-interface ElevationProvider {
-    getElevation(coord: OverscaledTileID, x: number, y: number): number;
-    getBindings(coord: OverscaledTileID): GPUBindings;
-}
-```
-
-Symbol placement asks for elevation through an interface. It doesn't know if it's terrain, a static heightfield, or procedural noise.
-
-### Tile Loading: Strategies, Not Mutation
-
-```typescript
-interface TileLoadingStrategy {
-    tileSize: number;
-    roundZoom: boolean;
-    loadParentTiles: boolean;
-}
-
-// TileManager receives strategy, doesn't get mutated
-class TileManager {
-    constructor(strategy: TileLoadingStrategy = defaultStrategy) {
-        this.strategy = strategy;
-    }
-}
-```
-
-No flags. No mutation. Behavior is injected.
-
-### Complete Clean Architecture
-
-```typescript
-// Feature declares what it provides
-export function terrain(): Feature {
-    const elevation = new TerrainElevationProvider();
-
-    return {
-        sources: { 'raster-dem': RasterDEMSource },
-
-        programs: {
-            terrain: { ... },
-            terrainDepth: { ... },
-        },
-
-        capabilities: {
-            elevation,
-
-            pipeline: new DrapePipeline(elevation),
-
-            shaderExtension: {
-                key: 'terrain',
-                defines: ['TERRAIN3D'],
-                getBindings: (coord) => elevation.getBindings(coord),
-            },
-
-            tileStrategy: {
-                tileSize: 514,
-                roundZoom: true,
-                loadParentTiles: true,
-            },
-        },
-    };
-}
-```
-
-**Core becomes capability-agnostic:**
-
-```typescript
-class Painter {
-    constructor(registry: FeatureRegistry) {
-        // Pipeline comes from capabilities, or default
-        this.pipeline = registry.capabilities.pipeline ?? new DirectPipeline();
-    }
-
-    render(layers: StyleLayer[]) {
-        const context = this.createDrawContext();
-        this.pipeline.render(context, layers);
-    }
-}
-```
-
-### Why This Is The Cleanest Architecture
-
-| Principle | How It's Achieved |
-|-----------|-------------------|
-| **Dependency Inversion** | Core depends on `RenderPipeline`, `ElevationProvider` interfaces |
-| **Open/Closed** | New pipelines/elevations don't modify core |
-| **Single Responsibility** | Painter renders. Pipeline decides how. Elevation provides data. |
-| **Composability** | Capabilities merge from features |
-| **Clarity** | Each piece has one job, interfaces make contracts explicit |
-
-**The key insight:** RenderPipeline is the primary abstraction. Once you have that, everything else slots into place. DrawContext carries ambient state. ShaderExtensions compose. Elevation is just data.
-
-### Implications for Other Cross-Cutting Concerns
-
-This architecture naturally handles other cross-cutting concerns:
-
-| Concern | Capability Used |
-|---------|-----------------|
-| **Globe projection** | RenderPipeline (globe has different rendering) + ShaderExtension |
-| **Fog/atmosphere** | ShaderExtension with fog uniforms |
-| **Shadow mapping** | RenderPipeline with shadow pass before main pass |
-| **Post-processing** | RenderPipeline with additional passes after layers |
-| **Occlusion culling** | RenderPipeline with depth pre-pass |
-
-The pattern scales because the abstraction is correct.
+The pattern scales because the abstraction is correct — each concern plugs into the right primitive.
 
 ---
 
@@ -1709,24 +1643,27 @@ The pattern scales because the abstraction is correct.
 
 ### 4. Terrain Featurization via the Surface Abstraction
 
-✅ **Phase 1 DONE — Surface interface implemented.** The polymorphic `Surface` interface eliminates `if (terrain)` conditionals across ~35 files. See `SURFACE.md` for full migration details.
+✅ **Phase 1+2 DONE — Surface interface + deeper decoupling.** The polymorphic `Surface` interface eliminates `if (terrain)` conditionals across ~35 files. RTT and terrain access moved to Surface. See `SURFACE.md` for full migration details.
 
 **What's implemented:**
 - `Surface` interface in `src/core/surface.ts` with `FlatSurface` (zero-cost default) and `TerrainSurface` (wraps `Terrain`)
 - `map.surface: Surface` always exists — `FlatSurface` by default, `TerrainSurface` when terrain enabled
 - All draw functions use `painter.surface.getBindings(coord)` instead of `painter.style.map.terrain?.getTerrainData(coord)`
 - Camera, transforms, handler manager, placement, tile manager, covering tiles all use `Surface` uniformly
-- No `Terrain` imports remain outside terrain-specific files
+- `renderToTexture` and `terrain` accessor owned by Surface, not Painter
+- No `style.map.terrain` or `painter.renderToTexture` references remain in core
+- Marker and popup use `surface.depthAtPoint()`, `surface.getElevation()`, `surface.hasTerrain`
 
-**Phase 2 — remaining terrain decoupling (not started):**
+**Phase 3 — Surface as render strategy (not started):**
 
-These are the deeper abstractions needed to make terrain a fully pluggable Feature:
+The next step is to make Surface own the render loop, not just data:
 
-- **ShaderExtension system**: `useProgram()` still hardcodes `/terrain` variant suffix. Needs a declarative extension model where terrain registers `{key: 'terrain', defines: ['TERRAIN3D']}` and `useProgram()` composes extensions generically.
-- **RenderPipeline abstraction**: `RenderToTexture` still directly references `Terrain`. Needs `DirectPipeline` vs `DrapePipeline` behind an interface so Painter is strategy-agnostic.
-- **DrawContext**: Replace per-function terrain parameter threading with an ambient context that accumulates bindings from all active capabilities.
+- **Render strategy on Surface**: Add `prepareFrame()`, `renderLayer()`, `finalizeFrame()` to Surface. Move RTT logic out of `painter.render()` into `TerrainSurface`. See section 12.
+- **ShaderExtension system**: `useProgram()` still hardcodes `/terrain` variant suffix. Needs declarative extensions.
+- **TileDataLayer**: Replace `usedForTerrain` mutation with declarative tile loading behavior.
+- **Terrain lifecycle out of Map**: `map.setTerrain()` / `map.getTerrain()` should be owned by the terrain feature, exposed through the surface type.
 
-See sections 12-13 of this doc and `DECOUPLING_STRATEGIES.md` for the full capability-based architecture design.
+See sections 12-13 of this doc for the full architecture.
 
 ### 5. Remove `create_style_layer.ts` Monolithic Switch
 
