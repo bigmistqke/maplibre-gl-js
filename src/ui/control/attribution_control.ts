@@ -145,7 +145,7 @@ export class AttributionControl implements IControl {
         const tileManagers = this._map.style.tileManagers;
         for (const id in tileManagers) {
             const tileManager = tileManagers[id];
-            if (tileManager.used || tileManager.usedForTerrain) {
+            if (tileManager.used || tileManager.hasDataLayers) {
                 const source = tileManager.getSource();
                 if (source.attribution && attributions.indexOf(source.attribution) < 0) {
                     attributions.push(source.attribution);

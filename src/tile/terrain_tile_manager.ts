@@ -4,7 +4,7 @@ import {EXTENT} from '../data/extent';
 import {mat4} from 'gl-matrix';
 import {Evented} from '../util/evented';
 import type {ITransform} from '../geo/transform_interface';
-import type {TileManager} from './tile_manager';
+import {type TileManager, type TileDataLayer} from './tile_manager';
 import type {Source} from '../source/source';
 import {type Terrain} from '../render/terrain';
 import {TerrainSurface} from '../render/terrain_surface';
@@ -61,6 +61,8 @@ export class TerrainTileManager extends Evented {
      */
     _lastTilesetChange: number = now();
 
+    private _dataLayer: TileDataLayer;
+
     constructor(tileManager: TileManager) {
         super();
         this.tileManager = tileManager;
@@ -71,13 +73,17 @@ export class TerrainTileManager extends Evented {
         this.maxzoom = 22;
         this.deltaZoom = 1;
         this.tileSize = tileManager._source.tileSize * 2 ** this.deltaZoom;
-        tileManager.usedForTerrain = true;
-        tileManager.tileSize = this.tileSize;
+        this._dataLayer = {
+            name: 'terrain-dem',
+            tileSize: this.tileSize,
+            roundZoom: false,
+            loadParentTiles: true,
+        };
+        tileManager.addTileDataLayer(this._dataLayer);
     }
 
     destruct() {
-        this.tileManager.usedForTerrain = false;
-        this.tileManager.tileSize = null;
+        this.tileManager.removeTileDataLayer(this._dataLayer.name);
     }
 
     getSource(): Source {

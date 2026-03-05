@@ -63,8 +63,7 @@ describe('TerrainTileManager', () => {
     });
 
     test('constructor', () => {
-        expect(tsc.tileManager.usedForTerrain).toBeTruthy();
-        expect(tsc.tileManager.tileSize).toBe(tsc.tileManager._source.tileSize * 2 ** tsc.deltaZoom);
+        expect(tsc.tileManager.hasDataLayers).toBeTruthy();
     });
 
     test('getSourceTile', () => {

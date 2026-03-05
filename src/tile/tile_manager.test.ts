@@ -1,7 +1,8 @@
 import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {describe, beforeEach, afterEach, test, expect, vi} from 'vitest';
 import {TileManager} from './tile_manager';
-import {type Source, addSourceType} from '../source/source';
+import type {Source} from '../source/source';
+import {FeatureRegistry} from '../core/feature';
 import {Tile, FadingRoles, FadingDirections} from './tile';
 import {CanonicalTileID, OverscaledTileID} from './tile_id';
 import {LngLat} from '../geo/lng_lat';
@@ -70,16 +71,13 @@ class SourceMock extends Evented implements Source {
     }
 }
 
-// Add a mocked source type for use in these tests
-function createSource(id: string, sourceOptions: any, _dispatcher: any, eventedParent: Evented) {
-    // allow tests to override mocked methods/properties by providing
-    // them in the source definition object that's given to Source.create()
-    const source = new SourceMock(id, sourceOptions, _dispatcher, eventedParent);
-
-    return source;
-}
-
-addSourceType('mock-source-type', createSource as any);
+const mockRegistry = new FeatureRegistry([{
+    sources: {
+        'mock-source-type': {
+            Source: SourceMock as any,
+        },
+    } as any,
+}]);
 
 function createTileManager(options?, used?) {
     const sc = new TileManager('id', extend({
@@ -87,7 +85,7 @@ function createTileManager(options?, used?) {
         minzoom: 0,
         maxzoom: 14,
         type: 'mock-source-type'
-    }, options), {} as Dispatcher);
+    }, options), {} as Dispatcher, mockRegistry);
     const scWithTestLogic = extend(sc, {
         used: typeof used === 'boolean' ? used : true,
         addTile(tileID: OverscaledTileID): Tile {
@@ -1139,7 +1137,7 @@ describe('TileManager._updateRetainedTiles', () => {
 
             //see covering tile logic in tile_manager.update
             const idealTileIDs = coveringTiles(transform, {
-                tileSize: tileManager.usedForTerrain ? tileManager.tileSize : tileManager._source.tileSize,
+                tileSize: tileManager._source.tileSize,
                 minzoom: tileManager._source.minzoom,
                 maxzoom: tileManager._source.maxzoom,
                 roundZoom: tileManager._source.roundZoom,
@@ -2201,13 +2199,12 @@ describe('tile manager loaded', () => {
         expect(tileManager.loaded()).toBeTruthy();
     });
 
-    test('TileManager.loaded (unusedForTerrain)', async () => {
+    test('TileManager.loaded (no data layers)', async () => {
         const tileManager = createTileManager(undefined, false);
         tileManager._source.loadTile = async (tile) => {
             tile.state = 'errored';
             throw new Error('Error');
         };
-        tileManager.usedForTerrain = false;
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
         tileManager.onAdd(undefined);
@@ -2407,16 +2404,17 @@ describe('TileManager.onRemove', () => {
     });
 });
 
-describe('TileManager.usedForTerrain', () => {
-    test('loads covering tiles with usedForTerrain with source zoom 0-14', async () => {
+describe('TileManager.tileDataLayers', () => {
+    const TERRAIN_DATA_LAYER = {name: 'terrain-dem', tileSize: 1024, roundZoom: false, loadParentTiles: true};
+
+    test('loads covering tiles with terrain data layer with source zoom 0-14', async () => {
         const transform = new MercatorTransform();
         transform.resize(511, 511);
         transform.setZoom(10);
 
         const tileManager = createTileManager({});
-        tileManager.usedForTerrain = true;
-        tileManager.tileSize = 1024;
-        expect(tileManager.usedForTerrain).toBeTruthy();
+        tileManager.addTileDataLayer(TERRAIN_DATA_LAYER);
+        expect(tileManager.hasDataLayers).toBeTruthy();
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
         tileManager.onAdd(undefined);
         await dataPromise;
@@ -2426,14 +2424,13 @@ describe('TileManager.usedForTerrain', () => {
         );
     });
 
-    test('loads covering tiles with usedForTerrain with source zoom 8-14', async () => {
+    test('loads covering tiles with terrain data layer with source zoom 8-14', async () => {
         const transform = new MercatorTransform();
         transform.resize(511, 511);
         transform.setZoom(10);
 
         const tileManager = createTileManager({minzoom: 8, maxzoom: 14});
-        tileManager.usedForTerrain = true;
-        tileManager.tileSize = 1024;
+        tileManager.addTileDataLayer(TERRAIN_DATA_LAYER);
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
         tileManager.onAdd(undefined);
         await dataPromise;
@@ -2443,14 +2440,13 @@ describe('TileManager.usedForTerrain', () => {
         );
     });
 
-    test('loads covering tiles with usedForTerrain with source zoom 0-4', async () => {
+    test('loads covering tiles with terrain data layer with source zoom 0-4', async () => {
         const transform = new MercatorTransform();
         transform.resize(511, 511);
         transform.setZoom(10);
 
         const tileManager = createTileManager({minzoom: 0, maxzoom: 4});
-        tileManager.usedForTerrain = true;
-        tileManager.tileSize = 1024;
+        tileManager.addTileDataLayer(TERRAIN_DATA_LAYER);
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
         tileManager.onAdd(undefined);
         await dataPromise;
@@ -2460,14 +2456,13 @@ describe('TileManager.usedForTerrain', () => {
         );
     });
 
-    test('loads covering tiles with usedForTerrain with source zoom 4-4', async () => {
+    test('loads covering tiles with terrain data layer with source zoom 4-4', async () => {
         const transform = new MercatorTransform();
         transform.resize(511, 511);
         transform.setZoom(10);
 
         const tileManager = createTileManager({minzoom: 4, maxzoom: 4});
-        tileManager.usedForTerrain = true;
-        tileManager.tileSize = 1024;
+        tileManager.addTileDataLayer(TERRAIN_DATA_LAYER);
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
         tileManager.onAdd(undefined);
         await dataPromise;

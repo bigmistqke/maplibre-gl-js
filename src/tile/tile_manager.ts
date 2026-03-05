@@ -31,6 +31,21 @@ import type {MapSourceDataEvent} from '../ui/events';
 import type {Surface} from '../core/surface';
 import type {CanvasSourceSpecification} from '../source/canvas_source';
 
+/**
+ * A declarative descriptor for additional data layers that affect tile loading
+ * behavior (e.g. terrain DEM tiles need custom tile size and parent tile loading).
+ */
+export interface TileDataLayer {
+    /** Identifier for this data layer (e.g. 'terrain-dem'). */
+    readonly name: string;
+    /** Override tile size for covering tile calculation. */
+    readonly tileSize?: number;
+    /** Override zoom rounding for covering tile calculation. */
+    readonly roundZoom?: boolean;
+    /** Load parent tiles for complete level coverage. */
+    readonly loadParentTiles?: boolean;
+}
+
 type TileResult = {
     tile: Tile;
     tileID: OverscaledTileID;
@@ -83,8 +98,7 @@ export class TileManager extends Evented {
     transform: ITransform;
     surface: Surface;
     used: boolean;
-    usedForTerrain: boolean;
-    tileSize: number;
+    private _tileDataLayers: TileDataLayer[] = [];
     _state: SourceFeatureState;
     _didEmitContent: boolean;
     _updated: boolean;
@@ -145,6 +159,38 @@ export class TileManager extends Evented {
         this._inViewTiles = new InViewTiles();
     }
 
+    addTileDataLayer(layer: TileDataLayer): void {
+        if (!this._tileDataLayers.some(l => l.name === layer.name)) {
+            this._tileDataLayers.push(layer);
+        }
+    }
+
+    removeTileDataLayer(name: string): void {
+        this._tileDataLayers = this._tileDataLayers.filter(l => l.name !== name);
+    }
+
+    get hasDataLayers(): boolean {
+        return this._tileDataLayers.length > 0;
+    }
+
+    private _getEffectiveTileSize(): number {
+        for (const layer of this._tileDataLayers) {
+            if (layer.tileSize != null) return layer.tileSize;
+        }
+        return this._source.tileSize;
+    }
+
+    private _getEffectiveRoundZoom(): boolean {
+        for (const layer of this._tileDataLayers) {
+            if (layer.roundZoom != null) return layer.roundZoom;
+        }
+        return this._source.roundZoom;
+    }
+
+    private _shouldLoadParentTiles(): boolean {
+        return this._tileDataLayers.some(l => l.loadParentTiles);
+    }
+
     /**
      * Return true if no tile data is pending, tiles will not change unless
      * an additional API call is received.
@@ -153,7 +199,7 @@ export class TileManager extends Evented {
         if (this._sourceErrored) { return true; }
         if (!this._sourceLoaded) { return false; }
         if (!this._source.loaded()) { return false; }
-        if ((this.used !== undefined || this.usedForTerrain !== undefined) && !this.used && !this.usedForTerrain) { return true; }
+        if (!this.used && !this.hasDataLayers) { return true; }
         // do not consider as loaded if the update hasn't been called yet (we do not know if we will have any tiles to fetch)
         if (!this._updated) { return false; }
 
@@ -496,19 +542,19 @@ export class TileManager extends Evented {
 
         let idealTileIDs: OverscaledTileID[];
 
-        if (!this.used && !this.usedForTerrain) {
+        if (!this.used && !this.hasDataLayers) {
             idealTileIDs = [];
         } else if (this._source.tileID) { // image source
             idealTileIDs = transform.getVisibleUnwrappedCoordinates(this._source.tileID)
                 .map((unwrapped) => new OverscaledTileID(unwrapped.canonical.z, unwrapped.wrap, unwrapped.canonical.z, unwrapped.canonical.x, unwrapped.canonical.y));
         } else {
             idealTileIDs = coveringTiles(transform, {
-                tileSize: this.usedForTerrain ? this.tileSize : this._source.tileSize,
+                tileSize: this._getEffectiveTileSize(),
                 minzoom: this._source.minzoom,
                 maxzoom: this._source.type === 'vector' && this.map._zoomLevelsToOverscale !== undefined
-                    ? transform.maxZoom - this.map._zoomLevelsToOverscale 
+                    ? transform.maxZoom - this.map._zoomLevelsToOverscale
                     : this._source.maxzoom,
-                roundZoom: this.usedForTerrain ? false : this._source.roundZoom,
+                roundZoom: this._getEffectiveRoundZoom(),
                 reparseOverscaled: this._source.reparseOverscaled,
                 surface,
                 calculateTileZoom: this._source.calculateTileZoom,
@@ -519,8 +565,8 @@ export class TileManager extends Evented {
             }
         }
 
-        // When tilemanager is used for terrain also load parent tiles for complete rendering of 3d terrain levels
-        if (this.usedForTerrain) {
+        // Load parent tiles when a data layer requests it (e.g. terrain DEM)
+        if (this._shouldLoadParentTiles()) {
             idealTileIDs = this._addTerrainIdealTiles(idealTileIDs);
         }
 
