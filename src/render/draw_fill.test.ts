@@ -35,7 +35,7 @@ describe('drawFill', () => {
         const painterMock: Painter = constructMockPainter();
         const layer: FillStyleLayer = constructMockLayer();
 
-        const programMock = new Program(null as any, null as any, null as any, null as any, null as any, null as any, null as any, null as any);
+        const programMock = new Program(null as any, null as any, null as any, null as any, null as any, null as any, null as any);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
 
         const mockTile = constructMockTile(layer);

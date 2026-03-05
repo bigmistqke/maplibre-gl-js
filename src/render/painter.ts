@@ -653,7 +653,6 @@ export class Painter {
      */
     useProgram(name: string, programConfiguration?: ProgramConfiguration | null, forceSimpleProjection: boolean = false, defines: Array<string> = []): Program<any> {
         this.cache = this.cache || {};
-        const useTerrain = this.surface.hasTerrain;
 
         const projection = this.style.projection;
 
@@ -661,12 +660,15 @@ export class Painter {
         const projectionDefine = forceSimpleProjection ? MercatorShaderDefine : projection.shaderDefine;
         const projectionKey = `/${forceSimpleProjection ? MercatorShaderVariantKey : projection.shaderVariantName}`;
 
+        const extensions = this.surface.shaderExtensions;
+        const extensionKey = extensions.map(e => '/' + e.key).join('');
+        const extensionDefines = extensions.flatMap(e => [...e.defines]);
+
         const configurationKey = (programConfiguration ? programConfiguration.cacheKey : '');
         const overdrawKey = (this._showOverdrawInspector ? '/overdraw' : '');
-        const terrainKey = (useTerrain ? '/terrain' : '');
         const definesKey = (defines ? `/${defines.join('/')}` : '');
 
-        const key = name + configurationKey + projectionKey + overdrawKey + terrainKey + definesKey;
+        const key = name + configurationKey + projectionKey + overdrawKey + extensionKey + definesKey;
 
         if (!this.cache[key]) {
             // Try feature registry first, fall back to core shaders
@@ -690,10 +692,9 @@ export class Painter {
                 programConfiguration,
                 uniforms,
                 this._showOverdrawInspector,
-                useTerrain,
                 projectionPrelude,
                 projectionDefine,
-                defines
+                [...extensionDefines, ...defines]
             );
         }
         return this.cache[key];

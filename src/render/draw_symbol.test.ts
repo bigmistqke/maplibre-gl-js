@@ -91,7 +91,7 @@ describe('drawSymbol', () => {
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
         tileId.terrainRttPosMatrix32f = mat4.create();
-        const programMock = new Program(null, null, null, null, null, null, null, null);
+        const programMock = new Program(null, null, null, null, null, null, null);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
         const bucketMock = new SymbolBucket(null);
         bucketMock.icon = {
@@ -154,7 +154,7 @@ describe('drawSymbol', () => {
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
         tileId.terrainRttPosMatrix32f = mat4.create();
-        const programMock = new Program(null, null, null, null, null, null, null, null);
+        const programMock = new Program(null, null, null, null, null, null, null);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
         const bucketMock = new SymbolBucket(null);
         bucketMock.icon = {
@@ -221,7 +221,7 @@ describe('drawSymbol', () => {
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
         tileId.terrainRttPosMatrix32f = mat4.create();
-        const programMock = new Program(null, null, null, null, null, null, null, null);
+        const programMock = new Program(null, null, null, null, null, null, null);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
         const bucketMock = new SymbolBucket(null);
         bucketMock.icon = {

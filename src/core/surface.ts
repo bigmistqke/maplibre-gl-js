@@ -7,6 +7,7 @@ import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {Painter, RenderOptions} from '../render/painter';
 import type {Style} from '../style/style';
 import type {StyleLayer} from '../style/style_layer';
+import type {ShaderExtension} from './shader_extension';
 import type Point from '@mapbox/point-geometry';
 
 /**
@@ -18,6 +19,9 @@ import type Point from '@mapbox/point-geometry';
 export interface Surface {
     /** Whether this surface provides 3D terrain elevation. */
     readonly hasTerrain: boolean;
+
+    /** Shader extensions provided by this surface (e.g. terrain defines). */
+    readonly shaderExtensions: readonly ShaderExtension[];
 
     /** Elevation at a point, using the current zoom level. Returns 0 for flat. */
     getElevation(lnglat: LngLat): number;
@@ -79,6 +83,7 @@ export interface Surface {
  */
 export class FlatSurface implements Surface {
     readonly hasTerrain = false;
+    readonly shaderExtensions: readonly ShaderExtension[] = [];
     readonly renderToTexture: RenderToTexture | null = null;
     readonly terrain: Terrain | null = null;
     readonly skipOpaquePass = false;

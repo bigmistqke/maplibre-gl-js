@@ -1,6 +1,7 @@
 import {mat4} from 'gl-matrix';
 import {drawDepth, drawCoords} from './draw_terrain';
 import type {Surface} from '../core/surface';
+import type {ShaderExtension} from '../core/shader_extension';
 import type {Terrain, TerrainData} from './terrain';
 import type {RenderToTexture} from './render_to_texture';
 import type {Painter, RenderOptions} from './painter';
@@ -12,12 +13,18 @@ import type {OverscaledTileID} from '../tile/tile_id';
 import type {IReadonlyTransform} from '../geo/transform_interface';
 import type Point from '@mapbox/point-geometry';
 
+const TERRAIN_SHADER_EXTENSION: ShaderExtension = {
+    key: 'terrain',
+    defines: ['#define TERRAIN3D;'],
+};
+
 /**
  * Surface implementation backed by a 3D terrain DEM mesh.
  * Wraps the existing {@link Terrain} class, delegating all calls.
  */
 export class TerrainSurface implements Surface {
     readonly hasTerrain = true;
+    readonly shaderExtensions: readonly ShaderExtension[] = [TERRAIN_SHADER_EXTENSION];
     renderToTexture: RenderToTexture | null = null;
     private _terrain: Terrain;
     private _transform: IReadonlyTransform;
