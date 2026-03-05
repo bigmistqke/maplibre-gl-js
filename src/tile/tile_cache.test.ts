@@ -13,7 +13,7 @@ const tileB = {tileID: idB} as Tile;
 const tileC = {tileID: idC} as Tile;
 const tileD = {tileID: idD} as Tile;
 
-function keysExpected(cache, ids) {
+function keysExpected(cache: TileCache, ids: OverscaledTileID[]) {
     expect(cache.order).toEqual(ids.map((id) => id.key));
 }
 describe('TileCache', () => {
@@ -64,7 +64,7 @@ describe('TileCache', () => {
         cache.add(idB, tileB, 0);
         cache.getAndRemove(idB);
         // removing clears the expiry timeout
-        cache.add(idB, null);
+        cache.add(idB, null as unknown as Tile);
 
         cache.add(idA, tileA);
         cache.add(idA, tileA2, 0); // expires immediately and `onRemove` is called.
@@ -101,7 +101,7 @@ describe('TileCache', () => {
     });
 
     test('.reset', () => {
-        let called;
+        let called: boolean = false;
         const cache = new TileCache(10, (removed) => {
             expect(removed).toBe(tileA);
             called = true;
@@ -113,7 +113,7 @@ describe('TileCache', () => {
     });
 
     test('.setMaxSize', () => {
-        let numRemoved = 0;
+        let numRemoved: number = 0;
         const cache = new TileCache(10, () => {
             numRemoved++;
         });

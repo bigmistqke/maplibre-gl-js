@@ -1,3 +1,5 @@
+import {assertedNotNullish, assertNotNullish, isNullish} from './util';
+
 // Note: all "sizes" are measured in bytes
 
 /**
@@ -26,10 +28,10 @@ class Struct {
     _pos2: number;
     _pos4: number;
     _pos8: number;
-    readonly _structArray: StructArray;
+    readonly _structArray: StructArray | undefined;
 
     // The following properties are defined on the prototype of sub classes.
-    size: number;
+    size: number | undefined;
 
     /**
      * @param structArray - The StructArray the struct is stored in
@@ -37,7 +39,7 @@ class Struct {
      */
     constructor(structArray: StructArray, index: number) {
         (this as any)._structArray = structArray;
-        this._pos1 = index * this.size;
+        this._pos1 = index * assertedNotNullish(this.size);
         this._pos2 = this._pos1 / 2;
         this._pos4 = this._pos1 / 4;
         this._pos8 = this._pos1 / 8;
@@ -93,17 +95,17 @@ export type SerializedStructArray = {
  * into ArrayBuffers for efficient web worker transfer.
  */
 abstract class StructArray {
+    length = 0;
     capacity: number;
-    length: number;
     isTransferred: boolean;
-    arrayBuffer: ArrayBuffer;
-    uint8: Uint8Array;
+    arrayBuffer?: ArrayBuffer;
+    uint8?: Uint8Array;
 
     // The following properties are defined on the prototype.
-    members: Array<StructArrayMember>;
-    bytesPerElement: number;
-    abstract emplaceBack(...v: number[]);
-    abstract emplace(i: number, ...v: number[]);
+    members?: Array<StructArrayMember>;
+    bytesPerElement?: number;
+    abstract emplaceBack(...v: number[]): number;
+    abstract emplace(i: number, ...v: number[]): number;
 
     constructor() {
         this.isTransferred = false;
@@ -117,6 +119,7 @@ abstract class StructArray {
      * deserialization.
      */
     static serialize(array: StructArray, transferables?: Array<Transferable>): SerializedStructArray {
+        assertNotNullish(array.arrayBuffer, 'Expected array.arrayBuffer to be defined');
 
         array._trim();
 
@@ -146,7 +149,7 @@ abstract class StructArray {
     _trim() {
         if (this.length !== this.capacity) {
             this.capacity = this.length;
-            this.arrayBuffer = this.arrayBuffer.slice(0, this.length * this.bytesPerElement);
+            this.arrayBuffer = assertedNotNullish(this.arrayBuffer).slice(0, this.length * assertedNotNullish(this.bytesPerElement));
             this._refreshViews();
         }
     }
@@ -177,11 +180,15 @@ abstract class StructArray {
     reserve(n: number) {
         if (n > this.capacity) {
             this.capacity = Math.max(n, Math.floor(this.capacity * RESIZE_MULTIPLIER), DEFAULT_CAPACITY);
-            this.arrayBuffer = new ArrayBuffer(this.capacity * this.bytesPerElement);
+            this.arrayBuffer = new ArrayBuffer(this.capacity * assertedNotNullish(this.bytesPerElement));
 
-            const oldUint8Array = this.uint8;
-            this._refreshViews();
-            if (oldUint8Array) this.uint8.set(oldUint8Array);
+            if (this.uint8) {
+                const oldUint8Array = this.uint8;
+                this._refreshViews();
+                this.uint8.set(oldUint8Array);
+            }else{
+                this._refreshViews();
+            }
         }
     }
 

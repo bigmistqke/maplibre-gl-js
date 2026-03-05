@@ -1,6 +1,7 @@
 import {ProjectionDefinition, type ProjectionDefinitionSpecification, type ProjectionSpecification, type StylePropertySpecification, latest as styleSpec} from '@maplibre/maplibre-gl-style-spec';
 import {DataConstantProperty, type PossiblyEvaluated, Properties, Transitionable, type Transitioning, type TransitionParameters} from '../../style/properties';
 import {Evented} from '../../util/evented';
+import {assertedNotNullish} from '../../util/util';
 import {EvaluationParameters} from '../../style/evaluation_parameters';
 import {MercatorProjection} from './mercator_projection';
 import {VerticalPerspectiveProjection} from './vertical_perspective_projection';
@@ -24,7 +25,7 @@ const properties: Properties<ProjectionProps> = new Properties({
 });
 
 export class GlobeProjection extends Evented implements Projection {
-    properties: PossiblyEvaluated<ProjectionProps, ProjectionPossiblyEvaluated>;
+    properties?: PossiblyEvaluated<ProjectionProps, ProjectionPossiblyEvaluated>;
 
     _transitionable: Transitionable<ProjectionProps>;
     _transitioning: Transitioning<ProjectionProps>;
@@ -33,7 +34,7 @@ export class GlobeProjection extends Evented implements Projection {
 
     constructor(projection?: ProjectionSpecification) {
         super();
-        this._transitionable = new Transitionable(properties, undefined);
+        this._transitionable = new Transitionable(properties);
         this.setProjection(projection);
         this._transitioning = this._transitionable.untransitioned();
         this.recalculate(new EvaluationParameters(0));
@@ -42,7 +43,7 @@ export class GlobeProjection extends Evented implements Projection {
     }
 
     public get transitionState(): number {
-        const currentProjectionSpecValue = this.properties.get('type');
+        const currentProjectionSpecValue = assertedNotNullish(this.properties).get('type');
         if (typeof currentProjectionSpecValue === 'string' && currentProjectionSpecValue === 'mercator') {
             return 0;
         }

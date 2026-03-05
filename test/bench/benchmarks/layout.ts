@@ -5,11 +5,11 @@ import TileParser from '../lib/tile_parser';
 import {OverscaledTileID} from '../../../src/tile/tile_id';
 
 export default class Layout extends Benchmark {
-    tiles: Array<{
+    tiles!: Array<{
         tileID: OverscaledTileID;
         buffer: ArrayBuffer;
     }>;
-    parser: TileParser;
+    parser!: TileParser;
     style: string | StyleSpecification;
     tileIDs: Array<OverscaledTileID>;
 

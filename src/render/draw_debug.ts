@@ -4,6 +4,7 @@ import {CullFaceMode} from '../gl/cull_face_mode';
 import {debugUniformValues} from './program/debug_program';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {ColorMode} from '../gl/color_mode';
+import {assertedNotNullish} from '../util/util';
 
 import type {Painter} from './painter';
 import type {TileManager} from '../tile/tile_manager';
@@ -52,9 +53,10 @@ function drawVerticalLine(painter: Painter, x: number, lineWidth: number, color:
 function drawDebugSSRect(painter: Painter, x: number, y: number, width: number, height: number, color: Color) {
     const context = painter.context;
     const gl = context.gl;
+    const pixelRatio = assertedNotNullish(painter.pixelRatio);
 
     gl.enable(gl.SCISSOR_TEST);
-    gl.scissor(x * painter.pixelRatio, y * painter.pixelRatio, width * painter.pixelRatio, height * painter.pixelRatio);
+    gl.scissor(x * pixelRatio, y * pixelRatio, width * pixelRatio, height * pixelRatio);
     context.clear({color});
     gl.disable(gl.SCISSOR_TEST);
 }
@@ -71,15 +73,16 @@ function drawDebugTile(painter: Painter, tileManager: TileManager, coord: Oversc
 
     const program = painter.useProgram('debug');
 
+    const painterStyle = assertedNotNullish(painter.style)
     const depthMode = DepthMode.disabled;
     const stencilMode = StencilMode.disabled;
     const colorMode = painter.colorModeForRenderPass();
     const id = '$debug';
-    const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+    const terrainData = painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(coord);
 
     context.activeTexture.set(gl.TEXTURE0);
 
-    const tileRawData = tileManager.getTileByID(coord.key).latestRawTileData;
+    const tileRawData = assertedNotNullish(tileManager.getTileByID(coord.key)).latestRawTileData;
     const tileByteLength = (tileRawData && tileRawData.byteLength) || 0;
     const tileSizeKb = Math.floor(tileByteLength / 1024);
     const tileSize = tileManager.getTile(coord).tileSize;
@@ -95,17 +98,17 @@ function drawDebugTile(painter: Painter, tileManager: TileManager, coord: Oversc
 
     program.draw(context, gl.TRIANGLES, depthMode, stencilMode, ColorMode.alphaBlended, CullFaceMode.disabled,
         debugUniformValues(Color.transparent, scaleRatio), null, projectionData, id,
-        painter.debugBuffer, painter.quadTriangleIndexBuffer, painter.debugSegments);
+        assertedNotNullish(painter.debugBuffer), assertedNotNullish(painter.quadTriangleIndexBuffer), painter.debugSegments);
     program.draw(context, gl.LINE_STRIP, depthMode, stencilMode, colorMode, CullFaceMode.disabled,
         debugUniformValues(Color.red), terrainData, projectionData, id,
-        painter.debugBuffer, painter.tileBorderIndexBuffer, painter.debugSegments);
+        assertedNotNullish(painter.debugBuffer), assertedNotNullish(painter.tileBorderIndexBuffer), painter.debugSegments);
 }
 
 function drawTextToOverlay(painter: Painter, text: string) {
     painter.initDebugOverlayCanvas();
-    const canvas = painter.debugOverlayCanvas;
+    const canvas = assertedNotNullish(painter.debugOverlayCanvas);
     const gl = painter.context.gl;
-    const ctx2d = painter.debugOverlayCanvas.getContext('2d');
+    const ctx2d = assertedNotNullish(canvas.getContext('2d'));
     ctx2d.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx2d.shadowColor = 'white';
@@ -117,14 +120,14 @@ function drawTextToOverlay(painter: Painter, text: string) {
     ctx2d.fillText(text, 5, 5);
     ctx2d.strokeText(text, 5, 5);
 
-    painter.debugOverlayTexture.update(canvas);
-    painter.debugOverlayTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+    assertedNotNullish(painter.debugOverlayTexture).update(canvas);
+    assertedNotNullish(painter.debugOverlayTexture).bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
 }
 
 export function selectDebugSource(style: Style, zoom: number): TileManager | null {
     // Use vector source with highest maxzoom
     // Else use source with highest maxzoom of any type
-    let selectedSource: TileManager = null;
+    let selectedSource: TileManager | null = null;
     const layers = Object.values(style._layers);
     const sources = layers.flatMap((layer) => {
         if (layer.source && !layer.isHidden(zoom)) {

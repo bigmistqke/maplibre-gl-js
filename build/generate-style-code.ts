@@ -118,7 +118,7 @@ function runtimeType(property) {
 }
 
 function overrides(property) {
-    return `{ runtimeType: ${runtimeType(property)}, getOverride: (o) => o.${camelCase(property.name)}, hasOverride: (o) => !!o.${camelCase(property.name)} }`;
+    return `{ runtimeType: ${runtimeType(property)}, getOverride: (o: any) => o.${camelCase(property.name)}, hasOverride: (o: any) => !!o.${camelCase(property.name)} }`;
 }
 
 function propertyValue(property, type) {

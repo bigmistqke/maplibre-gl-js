@@ -21,8 +21,8 @@ export const StatisticsPlot = (props:StatisticsPlotProps) => {
 
     const t = d3.scaleLinear()
         .domain([
-            d3.min(summaries.map(s => s.min)),
-            d3.max(summaries.map(s => Math.min(s.max, s.q2 + 3 * s.iqr)))
+            d3.min(summaries.map(s => s.min)) as any,
+            d3.max(summaries.map(s => Math.min(s.max, s.q2 + 3 * s.iqr))) as any
         ])
         .range([height, 0])
         .clamp(true)
@@ -42,7 +42,7 @@ export const StatisticsPlot = (props:StatisticsPlotProps) => {
     }));
 
     const p = d3.scaleLinear()
-        .domain([0, d3.max(versions.map(v => d3.max(v.density, d => d[1])))])
+        .domain([0, d3.max(versions.map(v => d3.max(v.density, d => d[1]) ?? 0)) ?? 0])
         .range([0, kdeWidth]);
 
     const line = d3.line()
@@ -64,7 +64,7 @@ export const StatisticsPlot = (props:StatisticsPlotProps) => {
             <g transform={`translate(${margin.left},${margin.top})`}>
                 <Axis orientation="bottom" scale={p} ticks={[2, '%']} transform={`translate(0,${height})`}>
                 </Axis>
-                <Axis orientation="left" scale={t} tickFormat={formatSample}>
+                <Axis orientation="left" scale={t} tickFormat={formatSample as any}>
                     <text fill='#000' textAnchor="end"  y={6} transform="rotate(-90)" dy=".71em">Time (ms)</text>
                 </Axis>
                 {versions.map((v, i) => {
@@ -97,7 +97,7 @@ export const StatisticsPlot = (props:StatisticsPlotProps) => {
                             stroke={color}
                             strokeWidth={2}
                             strokeOpacity={0.7}
-                            d={line(v.density)} />
+                            d={line(v.density) as any} />
                         <g transform={`translate(${b(v.name)},0)`}>
                             {v.samples.map((d, i) =>
                                 <circle

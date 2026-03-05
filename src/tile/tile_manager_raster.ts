@@ -1,5 +1,5 @@
 import {now} from '../util/time_control';
-import {getEdgeTiles} from '../util/util';
+import {assertedNotNullish, getEdgeTiles} from '../util/util';
 import {FadingDirections, FadingRoles, type Tile} from './tile';
 import {type OverscaledTileID} from './tile_id';
 import {type InViewTiles} from './tile_manager_in_view_tiles';
@@ -22,7 +22,7 @@ export function isRasterType(type: string): boolean {
  */
 export function updateFadingTiles(
     inViewTiles: InViewTiles,
-    idealTileIDs: OverscaledTileID[], 
+    idealTileIDs: OverscaledTileID[],
     retain: Record<string, OverscaledTileID>,
     maxFadingAncestorLevels: number,
     sourceMinZoom: number,
@@ -32,7 +32,7 @@ export function updateFadingTiles(
     const edgeTileIDs: Set<OverscaledTileID> = getEdgeTiles(idealTileIDs);
 
     for (const idealID of idealTileIDs) {
-        const idealTile = inViewTiles.getTileById(idealID.key);
+        const idealTile = assertedNotNullish(inViewTiles.getTileById(idealID.key));
 
         // reset any previously departing(ed) tiles that are now ideal tiles
         if (idealTile.fadingDirection === FadingDirections.Departing || idealTile.fadeOpacity === 0) {
@@ -65,8 +65,8 @@ export function updateFadingTiles(
  */
 function updateFadingAncestor(
     inViewTiles: InViewTiles,
-    idealTile: Tile, 
-    retain: Record<string, OverscaledTileID>, 
+    idealTile: Tile,
+    retain: Record<string, OverscaledTileID>,
     now: number,
     maxFadingAncestorLevels: number,
     sourceMinZoom: number,
@@ -140,10 +140,10 @@ function updateFadingDescendents(inViewTiles: InViewTiles, idealTile: Tile, reta
 
 function updateFadingChildren(
     inViewTiles: InViewTiles,
-    idealTile: Tile, 
-    childIDs: OverscaledTileID[], 
-    retain: Record<string, OverscaledTileID>, 
-    now: number, 
+    idealTile: Tile,
+    childIDs: OverscaledTileID[],
+    retain: Record<string, OverscaledTileID>,
+    now: number,
     sourceMaxZoom: number,
     rasterFadeDuration: number): boolean {
     if (childIDs[0].overscaledZ >= sourceMaxZoom) return false;

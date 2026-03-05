@@ -1,6 +1,6 @@
 import {Event, ErrorEvent, Evented} from '../util/evented';
 
-import {extend, pick} from '../util/util';
+import {extend, pick, assertedNotNullish} from '../util/util';
 import {loadTileJson} from './load_tilejson';
 import {TileBounds} from '../tile/tile_bounds';
 import {ResourceType} from '../util/request_manager';
@@ -67,22 +67,22 @@ export class VectorTileSource extends Evented implements Source {
     id: string;
     minzoom: number;
     maxzoom: number;
-    url: string;
+    url: string | undefined;
     scheme: string;
-    encoding: string;
+    encoding: string | undefined;
     tileSize: number;
-    promoteId: PromoteIdSpecification;
+    promoteId: PromoteIdSpecification | undefined;
 
     _options: VectorSourceSpecification;
     _collectResourceTiming: boolean;
     dispatcher: Dispatcher;
-    map: Map;
-    bounds: [number, number, number, number];
-    tiles: Array<string>;
-    tileBounds: TileBounds;
+    map: Map | undefined;
+    bounds: [number, number, number, number] | undefined;
+    tiles: Array<string> | undefined;
+    tileBounds: TileBounds | undefined;
     reparseOverscaled: boolean;
     isTileClipped: boolean;
-    _tileJSONRequest: AbortController;
+    _tileJSONRequest: AbortController | undefined;
     _loaded: boolean;
 
     constructor(id: string, options: VectorTileSourceOptions, dispatcher: Dispatcher, eventedParent: Evented) {
@@ -102,7 +102,7 @@ export class VectorTileSource extends Evented implements Source {
         extend(this, pick(options, ['url', 'scheme', 'tileSize', 'promoteId', 'encoding']));
         this._options = extend({type: 'vector'}, options);
 
-        this._collectResourceTiming = options.collectResourceTiming;
+        this._collectResourceTiming = options.collectResourceTiming ?? false;
 
         if (this.tileSize !== 512) {
             throw new Error('vector tile sources must have a tileSize of 512');
@@ -116,8 +116,9 @@ export class VectorTileSource extends Evented implements Source {
         this.fire(new Event('dataloading', {dataType: 'source'}));
         this._tileJSONRequest = new AbortController();
         try {
-            const tileJSON = await loadTileJson(this._options, this.map._requestManager, this._tileJSONRequest, this.map._ownerWindow);
-            this._tileJSONRequest = null;
+            const map = assertedNotNullish(this.map);
+            const tileJSON = await loadTileJson(this._options, map._requestManager, this._tileJSONRequest, map._ownerWindow);
+            this._tileJSONRequest = undefined;
             this._loaded = true;
             if (tileJSON) {
                 extend(this, tileJSON);
@@ -129,13 +130,13 @@ export class VectorTileSource extends Evented implements Source {
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'metadata'}));
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'content', sourceDataChanged}));
             }
-        } catch (err) {
-            this._tileJSONRequest = null;
+        } catch (err: unknown) {
+            this._tileJSONRequest = undefined;
             this._loaded = true; // let's pretend it's loaded so the source will be ignored
 
             // only fire error event if it is not due to aborting the request
             if (!isAbortError(err)) {
-                this.fire(new ErrorEvent(err));
+                this.fire(new ErrorEvent(err instanceof Error ? err : new Error(String(err))));
             }
         }
     }
@@ -193,7 +194,7 @@ export class VectorTileSource extends Evented implements Source {
     onRemove() {
         if (this._tileJSONRequest) {
             this._tileJSONRequest.abort();
-            this._tileJSONRequest = null;
+            this._tileJSONRequest = undefined;
         }
     }
 
@@ -202,24 +203,25 @@ export class VectorTileSource extends Evented implements Source {
     }
 
     async loadTile(tile: Tile): Promise<LoadTileResult | void> {
-        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme);
+        const map = assertedNotNullish(this.map);
+        const url = tile.tileID.canonical.url(assertedNotNullish(this.tiles), map.getPixelRatio(), this.scheme);
         const params: WorkerTileParameters = {
-            request: this.map._requestManager.transformRequest(url, ResourceType.Tile),
+            request: map._requestManager.transformRequest(url, ResourceType.Tile),
             uid: tile.uid,
             tileID: tile.tileID,
             zoom: tile.tileID.overscaledZ,
             tileSize: this.tileSize * tile.tileID.overscaleFactor(),
             type: this.type,
             source: this.id,
-            pixelRatio: this.map.getPixelRatio(),
-            showCollisionBoxes: this.map.showCollisionBoxes,
+            pixelRatio: map.getPixelRatio(),
+            showCollisionBoxes: map.showCollisionBoxes,
             promoteId: this.promoteId,
-            subdivisionGranularity: this.map.style.projection.subdivisionGranularity,
+            subdivisionGranularity: assertedNotNullish(assertedNotNullish(map.style).projection).subdivisionGranularity,
             encoding: this.encoding,
             overzoomParameters: this._getOverzoomParameters(tile),
             etag: tile.etag
         };
-        params.request.collectResourceTiming = this._collectResourceTiming;
+        assertedNotNullish(params.request).collectResourceTiming = this._collectResourceTiming;
         let messageType: MessageType.loadTile | MessageType.reloadTile = MessageType.reloadTile;
         if (!tile.actor || tile.state === 'expired') {
             tile.actor = this.dispatcher.getActor();
@@ -242,13 +244,14 @@ export class VectorTileSource extends Evented implements Source {
             const result: LoadTileResult = {};
             if (data?.etagUnmodified) result.unmodified = true;
             return result;
-        } catch (err) {
+        } catch (err: unknown) {
             delete tile.abortController;
 
             if (tile.aborted) {
                 return;
             }
-            if (err && err.status !== 404) {
+            const error = err as {status?: number};
+            if (err && error.status !== 404) {
                 throw err;
             }
             this._afterTileLoadWorkerResponse(tile, null);
@@ -263,33 +266,34 @@ export class VectorTileSource extends Evented implements Source {
         if (tile.tileID.canonical.z <= this.maxzoom) {
             return undefined;
         }
-        if (this.map._zoomLevelsToOverscale === undefined) {
+        const map = assertedNotNullish(this.map);
+        if (map._zoomLevelsToOverscale === undefined) {
             return undefined;
         }
         const maxZoomTileID = tile.tileID.scaledTo(this.maxzoom).canonical;
-        const maxZoomTileUrl = maxZoomTileID.url(this.tiles, this.map.getPixelRatio(), this.scheme);
+        const maxZoomTileUrl = maxZoomTileID.url(assertedNotNullish(this.tiles), map.getPixelRatio(), this.scheme);
 
         return {
             maxZoomTileID,
-            overzoomRequest: this.map._requestManager.transformRequest(maxZoomTileUrl, ResourceType.Tile)
+            overzoomRequest: map._requestManager.transformRequest(maxZoomTileUrl, ResourceType.Tile)
         };
     }
 
-    private _afterTileLoadWorkerResponse(tile: Tile, data: WorkerTileResult) {
+    private _afterTileLoadWorkerResponse(tile: Tile, data: WorkerTileResult | null | undefined) {
         if (data?.resourceTiming) {
             tile.resourceTiming = data.resourceTiming;
         }
 
-        if (data && this.map._refreshExpiredTiles) {
+        if (data && assertedNotNullish(this.map)._refreshExpiredTiles) {
             tile.setExpiryData(data);
         }
         tile.etag = data?.etag;
 
-        tile.loadVectorData(data, this.map.painter);
+        tile.loadVectorData(data, assertedNotNullish(assertedNotNullish(this.map).painter));
 
         if (tile.reloadPromise) {
             const reloadPromise = tile.reloadPromise;
-            tile.reloadPromise = null;
+            tile.reloadPromise = undefined;
             this.loadTile(tile).then(reloadPromise.resolve).catch(reloadPromise.reject);
         }
     }

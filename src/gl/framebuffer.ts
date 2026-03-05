@@ -13,7 +13,7 @@ export class Framebuffer {
     height: number;
     framebuffer: WebGLFramebuffer;
     colorAttachment: ColorAttachment;
-    depthAttachment: DepthAttachment;
+    depthAttachment?: DepthAttachment;
 
     constructor(context: Context, width: number, height: number, hasDepth: boolean, hasStencil: boolean) {
         this.context = context;

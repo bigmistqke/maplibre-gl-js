@@ -1,10 +1,12 @@
 import {beforeEach, test, expect, vi} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {type StyleImageInterface} from '../../style/style_image';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // eslint-disable-next-line -- setting fetch to null to prevent network requests in tests
+    global.fetch = null as any;
 });
 
 test('listImages', async () => {
@@ -34,7 +36,7 @@ test('map fires `styleimagemissing` for missing icons', async () => {
 
     const sampleImage = {width: 2, height: 1, data: new Uint8Array(8)};
 
-    let called: string;
+    let called: string | undefined;
     map.on('styleimagemissing', e => {
         map.addImage(e.id, sampleImage);
         called = e.id;
@@ -42,10 +44,12 @@ test('map fires `styleimagemissing` for missing icons', async () => {
 
     expect(map.hasImage(id)).toBeFalsy();
 
-    const generatedImage = await map.style.imageManager.getImages([id]);
-    expect(generatedImage[id].data.width).toEqual(sampleImage.width);
-    expect(generatedImage[id].data.height).toEqual(sampleImage.height);
-    expect(generatedImage[id].data.data).toEqual(sampleImage.data);
+    const generatedImage = await assertedNotNullish(map.style).imageManager.getImages([id]);
+    const image = assertedNotNullish(generatedImage[id]);
+    const imageData = assertedNotNullish(image.data);
+    expect(imageData.width).toEqual(sampleImage.width);
+    expect(imageData.height).toEqual(sampleImage.height);
+    expect(imageData.data).toEqual(sampleImage.data);
     expect(called).toBe(id);
     expect(map.hasImage(id)).toBeTruthy();
 });
@@ -58,9 +62,10 @@ test('map getImage matches addImage, uintArray', () => {
     map.addImage(id, inputImage);
     expect(map.hasImage(id)).toBeTruthy();
 
-    const gotImage = map.getImage(id);
-    expect(gotImage.data.width).toEqual(inputImage.width);
-    expect(gotImage.data.height).toEqual(inputImage.height);
+    const gotImage = assertedNotNullish(map.getImage(id));
+    const gotImageData = assertedNotNullish(gotImage.data);
+    expect(gotImageData.width).toEqual(inputImage.width);
+    expect(gotImageData.height).toEqual(inputImage.height);
     expect(gotImage.sdf).toBe(false);
 });
 
@@ -72,9 +77,10 @@ test('map getImage matches addImage, uintClampedArray', () => {
     map.addImage(id, inputImage);
     expect(map.hasImage(id)).toBeTruthy();
 
-    const gotImage = map.getImage(id);
-    expect(gotImage.data.width).toEqual(inputImage.width);
-    expect(gotImage.data.height).toEqual(inputImage.height);
+    const gotImage = assertedNotNullish(map.getImage(id));
+    const gotImageData = assertedNotNullish(gotImage.data);
+    expect(gotImageData.width).toEqual(inputImage.width);
+    expect(gotImageData.height).toEqual(inputImage.height);
     expect(gotImage.sdf).toBe(false);
 });
 
@@ -86,9 +92,10 @@ test('map getImage matches addImage, ImageData', () => {
     map.addImage(id, inputImage);
     expect(map.hasImage(id)).toBeTruthy();
 
-    const gotImage = map.getImage(id);
-    expect(gotImage.data.width).toEqual(inputImage.width);
-    expect(gotImage.data.height).toEqual(inputImage.height);
+    const gotImage = assertedNotNullish(map.getImage(id));
+    const gotImageData = assertedNotNullish(gotImage.data);
+    expect(gotImageData.width).toEqual(inputImage.width);
+    expect(gotImageData.height).toEqual(inputImage.height);
     expect(gotImage.sdf).toBe(false);
 });
 
@@ -104,9 +111,10 @@ test('map getImage matches addImage, StyleImageInterface uint', () => {
     map.addImage(id, inputImage);
     expect(map.hasImage(id)).toBeTruthy();
 
-    const gotImage = map.getImage(id);
-    expect(gotImage.data.width).toEqual(inputImage.width);
-    expect(gotImage.data.height).toEqual(inputImage.height);
+    const gotImage = assertedNotNullish(map.getImage(id));
+    const gotImageData = assertedNotNullish(gotImage.data);
+    expect(gotImageData.width).toEqual(inputImage.width);
+    expect(gotImageData.height).toEqual(inputImage.height);
     expect(gotImage.sdf).toBe(false);
 });
 
@@ -122,9 +130,10 @@ test('map getImage matches addImage, StyleImageInterface clamped', () => {
     map.addImage(id, inputImage);
     expect(map.hasImage(id)).toBeTruthy();
 
-    const gotImage = map.getImage(id);
-    expect(gotImage.data.width).toEqual(inputImage.width);
-    expect(gotImage.data.height).toEqual(inputImage.height);
+    const gotImage = assertedNotNullish(map.getImage(id));
+    const gotImageData = assertedNotNullish(gotImage.data);
+    expect(gotImageData.width).toEqual(inputImage.width);
+    expect(gotImageData.height).toEqual(inputImage.height);
     expect(gotImage.sdf).toBe(false);
 });
 
@@ -140,9 +149,10 @@ test('map getImage matches addImage, StyleImageInterface SDF', () => {
     map.addImage(id, inputImage, {sdf: true});
     expect(map.hasImage(id)).toBeTruthy();
 
-    const gotImage = map.getImage(id);
-    expect(gotImage.data.width).toEqual(inputImage.width);
-    expect(gotImage.data.height).toEqual(inputImage.height);
+    const gotImage = assertedNotNullish(map.getImage(id));
+    const gotImageData = assertedNotNullish(gotImage.data);
+    expect(gotImageData.width).toEqual(inputImage.width);
+    expect(gotImageData.height).toEqual(inputImage.height);
     expect(gotImage.sdf).toBe(true);
 });
 

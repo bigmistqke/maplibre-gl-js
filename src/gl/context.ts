@@ -30,7 +30,7 @@ type ClearArgs = {
 export class Context {
     gl: WebGLRenderingContext | WebGL2RenderingContext;
 
-    currentNumAttributes: number;
+    currentNumAttributes?: number;
     maxTextureSize: number;
 
     clearColor: ClearColor;
@@ -306,7 +306,7 @@ export class Context {
         return this.gl.getExtension('OES_vertex_array_object')?.createVertexArrayOES();
     }
 
-    deleteVertexArray(x: WebGLVertexArrayObject | undefined) {
+    deleteVertexArray(x: WebGLVertexArrayObject | null = null) {
         if (isWebGL2(this.gl))
             return this.gl.deleteVertexArray(x);
         return this.gl.getExtension('OES_vertex_array_object')?.deleteVertexArrayOES(x);

@@ -16,7 +16,7 @@ import type {IndexBuffer} from '../gl/index_buffer';
 import type {UniformValues} from './uniform_binding';
 import type {CircleUniformsType} from './program/circle_program';
 import type {TerrainData} from '../render/terrain';
-import {translatePosition} from '../util/util';
+import {translatePosition, assertedNotNullish} from '../util/util';
 import type {ProjectionData} from '../geo/projection/projection_data';
 
 type TileRenderState = {
@@ -39,10 +39,10 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
     if (painter.renderPass !== 'translucent') return;
 
     const {isRenderingToTexture} = renderOptions;
-    const opacity = layer.paint.get('circle-opacity');
-    const strokeWidth = layer.paint.get('circle-stroke-width');
-    const strokeOpacity = layer.paint.get('circle-stroke-opacity');
-    const sortFeaturesByKey = !layer.layout.get('circle-sort-key').isConstant();
+    const opacity = assertedNotNullish(layer.paint).get('circle-opacity');
+    const strokeWidth = assertedNotNullish(layer.paint).get('circle-stroke-width');
+    const strokeOpacity = assertedNotNullish(layer.paint).get('circle-stroke-opacity');
+    const sortFeaturesByKey = !assertedNotNullish(layer.layout).get('circle-sort-key').isConstant();
 
     if (opacity.constantOr(1) === 0 && (strokeWidth.constantOr(1) === 0 || strokeOpacity.constantOr(1) === 0)) {
         return;
@@ -63,6 +63,9 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
     // Note: due to how the shader is written, this value only has effect when globe rendering is enabled and `circle-pitch-alignment` is set to 'map'.
     const radiusCorrectionFactor = transform.getCircleRadiusCorrection();
 
+    const painterStyle = assertedNotNullish(painter.style);
+    const layerPaint = assertedNotNullish(layer.paint);
+
     for (let i = 0; i < coords.length; i++) {
         const coord = coords[i];
 
@@ -70,15 +73,15 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
         const bucket: CircleBucket<any> = (tile.getBucket(layer) as any);
         if (!bucket) continue;
 
-        const styleTranslate = layer.paint.get('circle-translate');
-        const styleTranslateAnchor = layer.paint.get('circle-translate-anchor');
+        const styleTranslate = layerPaint.get('circle-translate');
+        const styleTranslateAnchor = layerPaint.get('circle-translate-anchor');
         const translateForUniforms = translatePosition(transform, tile, styleTranslate, styleTranslateAnchor);
 
         const programConfiguration = bucket.programConfigurations.get(layer.id);
         const program = painter.useProgram('circle', programConfiguration);
         const layoutVertexBuffer = bucket.layoutVertexBuffer;
         const indexBuffer = bucket.indexBuffer;
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const terrainData = painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(coord);
         const uniformValues = circleUniformValues(painter, tile, layer, translateForUniforms, radiusCorrectionFactor);
 
         const projectionData = transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
@@ -86,10 +89,10 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
         const state: TileRenderState = {
             programConfiguration,
             program,
-            layoutVertexBuffer,
-            indexBuffer,
+            layoutVertexBuffer: assertedNotNullish(layoutVertexBuffer),
+            indexBuffer: assertedNotNullish(indexBuffer),
             uniformValues,
-            terrainData,
+            terrainData: assertedNotNullish(terrainData),
             projectionData
         };
 

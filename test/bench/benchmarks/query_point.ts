@@ -6,7 +6,7 @@ import type {LngLatLike} from '../../../src/geo/lng_lat';
 const width = 1024;
 const height = 768;
 
-const points = [];
+const points: Array<[number, number]> = [];
 const d = 4;
 for (let x = 0; x < d; x++) {
     for (let y = 0; y < d; y++) {
@@ -23,7 +23,7 @@ export default class QueryPoint extends Benchmark {
         zoom: number;
         center: LngLatLike;
     }>;
-    maps: Array<Map>;
+    maps!: Array<Map>;
 
     constructor(style: string, locations: Array<any>) {
         super();

@@ -5,7 +5,7 @@ import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest} from '../../util/test/util';
 import type {BoxZoomHandlerOptions} from './box_zoom';
 
-function createMap(clickTolerance, boxZoom: boolean | BoxZoomHandlerOptions = true) {
+function createMap(clickTolerance?: number, boxZoom: boolean | BoxZoomHandlerOptions = true) {
     return new Map({
         style: '',
         container: DOM.create('div', '', window.document.body),
@@ -93,8 +93,8 @@ describe('BoxZoomHandler', () => {
     test('avoids conflicts with DragPanHandler when disabled and reenabled (#2237)', () => {
         const map = createMap(undefined);
 
-        map.boxZoom.disable();
-        map.boxZoom.enable();
+        map.boxZoom?.disable();
+        map.boxZoom?.enable();
 
         const boxzoomstart = vi.fn();
         const boxzoomend   = vi.fn();

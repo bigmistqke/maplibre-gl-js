@@ -34,10 +34,12 @@ import {subdividePolygon, subdivideVertexLine} from '../../render/subdivision';
 import type {SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
 import {fillLargeMeshArrays} from '../../render/fill_large_mesh_arrays';
 import type {VectorTileLayerLike} from '@maplibre/vt-pbf';
+import type {StructArray} from '../../util/struct_array';
+import {assertedNotNullish} from '../../util/util';
 
 const FACTOR = Math.pow(2, 13);
 
-function addVertex(vertexArray, x, y, nx, ny, nz, t, e) {
+function addVertex(vertexArray: StructArray, x: number, y: number, nx: number, ny: number, nz: number, t: number, e: number) {
     vertexArray.emplaceBack(
         // a_pos
         x,
@@ -63,23 +65,23 @@ export class FillExtrusionBucket implements Bucket {
     overscaling: number;
     layers: Array<FillExtrusionStyleLayer>;
     layerIds: Array<string>;
-    stateDependentLayers: Array<FillExtrusionStyleLayer>;
+    stateDependentLayers?: Array<FillExtrusionStyleLayer>;
     stateDependentLayerIds: Array<string>;
 
     layoutVertexArray: FillExtrusionLayoutArray;
-    layoutVertexBuffer: VertexBuffer;
+    layoutVertexBuffer?: VertexBuffer;
 
     centroidVertexArray: PosArray;
-    centroidVertexBuffer: VertexBuffer;
+    centroidVertexBuffer?: VertexBuffer;
 
     indexArray: TriangleIndexArray;
-    indexBuffer: IndexBuffer;
+    indexBuffer?: IndexBuffer;
 
     hasDependencies: boolean;
     programConfigurations: ProgramConfigurationSet<FillExtrusionStyleLayer>;
     segments: SegmentVector;
-    uploaded: boolean;
-    features: Array<BucketFeature>;
+    uploaded?: boolean;
+    features?: Array<BucketFeature>;
 
     constructor(options: BucketParameters<FillExtrusionStyleLayer>) {
         this.zoom = options.zoom;
@@ -128,15 +130,15 @@ export class FillExtrusionBucket implements Bucket {
     }
 
     addFeatures(options: PopulateParameters, canonical: CanonicalTileID, imagePositions: {[_: string]: ImagePosition}) {
-        for (const feature of this.features) {
+        for (const feature of assertedNotNullish(this.features)) {
             const {geometry} = feature;
             this.addFeature(feature, geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
         }
     }
 
     update(states: FeatureStates, vtLayer: VectorTileLayerLike, imagePositions: {[_: string]: ImagePosition}) {
-        if (!this.stateDependentLayers.length) return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
+        if (!assertedNotNullish(this.stateDependentLayers).length) return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers!, {
             imagePositions
         });
     }
@@ -162,10 +164,10 @@ export class FillExtrusionBucket implements Bucket {
     destroy() {
         if (!this.layoutVertexBuffer) return;
         this.layoutVertexBuffer.destroy();
-        this.indexBuffer.destroy();
+        assertedNotNullish(this.indexBuffer).destroy();
         this.programConfigurations.destroy();
         this.segments.destroy();
-        this.centroidVertexBuffer.destroy();
+        assertedNotNullish(this.centroidVertexBuffer).destroy();
     }
 
     addFeature(feature: BucketFeature, geometry: Array<Array<Point>>, index: number, canonical: CanonicalTileID, imagePositions: {[_: string]: ImagePosition}, subdivisionGranularity: SubdivisionGranularitySetting) {
@@ -323,14 +325,14 @@ function accumulatePointsToCentroid(centroid: CentroidAccumulator, geometry: Arr
 
 register('FillExtrusionBucket', FillExtrusionBucket, {omit: ['layers', 'features']});
 
-function isBoundaryEdge(p1, p2) {
+function isBoundaryEdge(p1: Point, p2: Point) {
     return (p1.x === p2.x && (p1.x < 0 || p1.x > EXTENT)) ||
         (p1.y === p2.y && (p1.y < 0 || p1.y > EXTENT));
 }
 
-function isEntirelyOutside(ring) {
-    return ring.every(p => p.x < 0) ||
-        ring.every(p => p.x > EXTENT) ||
-        ring.every(p => p.y < 0) ||
-        ring.every(p => p.y > EXTENT);
+function isEntirelyOutside(ring: any[]) {
+    return ring.every((p: { x: number }) => p.x < 0) ||
+        ring.every((p: { x: number }) => p.x > EXTENT) ||
+        ring.every((p: { y: number }) => p.y < 0) ||
+        ring.every((p: { y: number }) => p.y > EXTENT);
 }

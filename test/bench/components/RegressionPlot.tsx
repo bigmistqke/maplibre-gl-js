@@ -14,12 +14,12 @@ export const RegressionPlot = (props: RegressionPlotProps) => {
     const versions = props.versions.filter(version => version.regression);
 
     const x = d3.scaleLinear()
-        .domain([0, d3.max(versions.map(version => d3.max(version.regression.data, d => d[0])))])
+        .domain([0, d3.max(versions.map(version => d3.max(version.regression.data, d => d[0]) ?? 0)) ?? 0])
         .range([0, width])
         .nice();
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(versions.map(version => d3.max(version.regression.data, d => d[1])))])
+        .domain([0, d3.max(versions.map(version => d3.max(version.regression.data, d => d[1]) ?? 0)) ?? 0])
         .range([height, 0])
         .nice();
 
@@ -36,7 +36,7 @@ export const RegressionPlot = (props: RegressionPlotProps) => {
                 <Axis orientation="bottom" scale={x} transform={`translate(0,${height})`}>
                     <text fill='#000' textAnchor="end" y={-6} x={width}>Iterations</text>
                 </Axis>
-                <Axis orientation="left" scale={y} ticks={4} tickFormat={formatSample}>
+                <Axis orientation="left" scale={y} ticks={4} tickFormat={formatSample as any}>
                     <text fill='#000' textAnchor="end"  y={6} transform="rotate(-90)" dy=".71em">Time (ms)</text>
                 </Axis>
                 {versions.map((v, i) =>
@@ -54,7 +54,7 @@ export const RegressionPlot = (props: RegressionPlotProps) => {
                             d={line(v.regression.data.map(d => [
                                 d[0],
                                 d[0] * v.regression.slope + v.regression.intercept
-                            ]))} />
+                            ])) as any} />
                     </g>
                 )}
             </g>

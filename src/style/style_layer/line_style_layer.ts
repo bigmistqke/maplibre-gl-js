@@ -3,9 +3,10 @@ import {LineBucket} from '../../data/bucket/line_bucket';
 import {polygonIntersectsBufferedMultiLine} from '../../util/intersection_tests';
 import {getMaximumPaintValue, translateDistance, translate, offsetLine} from '../query_utils';
 import properties, {type LineLayoutPropsPossiblyEvaluated, type LinePaintPropsPossiblyEvaluated} from './line_style_layer_properties.g';
-import {extend} from '../../util/util';
+import {extend, assertedNotNullish} from '../../util/util';
 import {EvaluationParameters} from '../evaluation_parameters';
-import {type Transitionable, type Transitioning, type Layout, type PossiblyEvaluated, DataDrivenProperty} from '../properties';
+import {type Transitionable, type Transitioning, type Layout, type PossiblyEvaluated, DataDrivenProperty, type PossiblyEvaluatedPropertyValue, type PropertyValue, type PossiblyEvaluatedValue} from '../properties';
+import type {Feature, FeatureState} from '@maplibre/maplibre-gl-style-spec';
 
 import {isZoomExpression, Step} from '@maplibre/maplibre-gl-style-spec';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -13,9 +14,9 @@ import type {Bucket, BucketParameters} from '../../data/bucket';
 import type {LineLayoutProps, LinePaintProps} from './line_style_layer_properties.g';
 
 export class LineFloorwidthProperty extends DataDrivenProperty<number> {
-    useIntegerZoom: true;
+    useIntegerZoom: true | undefined;
 
-    possiblyEvaluate(value, parameters) {
+    possiblyEvaluate(value: PropertyValue<number, PossiblyEvaluatedPropertyValue<number>>, parameters: EvaluationParameters): PossiblyEvaluatedPropertyValue<number> {
         parameters = new EvaluationParameters(Math.floor(parameters.zoom), {
             now: parameters.now,
             fadeDuration: parameters.fadeDuration,
@@ -25,7 +26,7 @@ export class LineFloorwidthProperty extends DataDrivenProperty<number> {
         return super.possiblyEvaluate(value, parameters);
     }
 
-    evaluate(value, globals, feature, featureState) {
+    evaluate(value: PossiblyEvaluatedValue<number>, globals: EvaluationParameters, feature: Feature, featureState: FeatureState): number {
         globals = extend({}, globals, {zoom: Math.floor(globals.zoom)});
         return super.evaluate(value, globals, feature, featureState);
     }
@@ -36,15 +37,15 @@ let lineFloorwidthProperty: LineFloorwidthProperty;
 export const isLineStyleLayer = (layer: StyleLayer): layer is LineStyleLayer => layer.type === 'line';
 
 export class LineStyleLayer extends StyleLayer {
-    _unevaluatedLayout: Layout<LineLayoutProps>;
-    layout: PossiblyEvaluated<LineLayoutProps, LineLayoutPropsPossiblyEvaluated>;
+    _unevaluatedLayout: Layout<LineLayoutProps> | undefined;
+    layout: PossiblyEvaluated<LineLayoutProps, LineLayoutPropsPossiblyEvaluated> | undefined;
 
     gradientVersion: number;
-    stepInterpolant: boolean;
+    stepInterpolant: boolean | undefined;
 
-    _transitionablePaint: Transitionable<LinePaintProps>;
-    _transitioningPaint: Transitioning<LinePaintProps>;
-    paint: PossiblyEvaluated<LinePaintProps, LinePaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<LinePaintProps> | undefined;
+    _transitioningPaint: Transitioning<LinePaintProps> | undefined;
+    paint: PossiblyEvaluated<LinePaintProps, LinePaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
@@ -69,13 +70,15 @@ export class LineStyleLayer extends StyleLayer {
     }
 
     gradientExpression() {
-        return this._transitionablePaint._values['line-gradient'].value.expression;
+        return assertedNotNullish(this._transitionablePaint)._values['line-gradient'].value.expression;
     }
 
     recalculate(parameters: EvaluationParameters, availableImages: Array<string>) {
         super.recalculate(parameters, availableImages);
-        (this.paint._values as any)['line-floorwidth'] =
-            lineFloorwidthProperty.possiblyEvaluate(this._transitioningPaint._values['line-width'].value, parameters);
+
+        // @ts-expect-error UNEXPECTED BEHAVIOR: Property 'line-floorwidth' does not exist on type 'LinePaintPropsPossiblyEvaluated'.
+        (assertedNotNullish(this.paint)._values)['line-floorwidth'] =
+            lineFloorwidthProperty.possiblyEvaluate(assertedNotNullish(this._transitioningPaint)._values['line-width'].value as PropertyValue<number, PossiblyEvaluatedPropertyValue<number>>, parameters);
     }
 
     createBucket(parameters: BucketParameters<any>) {
@@ -88,7 +91,7 @@ export class LineStyleLayer extends StyleLayer {
             getMaximumPaintValue('line-width', this, lineBucket),
             getMaximumPaintValue('line-gap-width', this, lineBucket));
         const offset = getMaximumPaintValue('line-offset', this, lineBucket);
-        return width / 2 + Math.abs(offset) + translateDistance(this.paint.get('line-translate'));
+        return width / 2 + Math.abs(offset) + translateDistance(assertedNotNullish(this.paint).get('line-translate'));
     }
 
     queryIntersectsFeature({
@@ -100,13 +103,13 @@ export class LineStyleLayer extends StyleLayer {
         pixelsToTileUnits}: QueryIntersectsFeatureParams
     ): boolean {
         const translatedPolygon = translate(queryGeometry,
-            this.paint.get('line-translate'),
-            this.paint.get('line-translate-anchor'),
+            assertedNotNullish(this.paint).get('line-translate'),
+            assertedNotNullish(this.paint).get('line-translate-anchor'),
             -transform.bearingInRadians, pixelsToTileUnits);
         const halfWidth = pixelsToTileUnits / 2 * getLineWidth(
-            this.paint.get('line-width').evaluate(feature, featureState),
-            this.paint.get('line-gap-width').evaluate(feature, featureState));
-        const lineOffset = this.paint.get('line-offset').evaluate(feature, featureState);
+            assertedNotNullish(this.paint).get('line-width').evaluate(feature, featureState),
+            assertedNotNullish(this.paint).get('line-gap-width').evaluate(feature, featureState));
+        const lineOffset = assertedNotNullish(this.paint).get('line-offset').evaluate(feature, featureState);
         if (lineOffset) {
             geometry = offsetLine(geometry, lineOffset * pixelsToTileUnits);
         }
@@ -119,7 +122,7 @@ export class LineStyleLayer extends StyleLayer {
     }
 }
 
-function getLineWidth(lineWidth, lineGapWidth) {
+function getLineWidth(lineWidth: number, lineGapWidth: number): number {
     if (lineGapWidth > 0) {
         return lineGapWidth + 2 * lineWidth;
     } else {

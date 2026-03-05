@@ -1,4 +1,4 @@
-import {clamp} from '../util/util';
+import {clamp, assertedNotNullish} from '../util/util';
 
 import {ImageSource} from '../source/image_source';
 import {now} from '../util/time_control';
@@ -17,7 +17,7 @@ import type {OverscaledTileID} from '../tile/tile_id';
 import type {Tile} from '../tile/tile';
 
 type FadeProperties = {
-    parentTile: Tile;
+    parentTile: Tile | null;
     parentScaleBy: number;
     parentTopLeft: [number, number];
     fadeValues: FadeValues;
@@ -38,14 +38,14 @@ const cornerCoords = [
 
 export function drawRaster(painter: Painter, tileManager: TileManager, layer: RasterStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (painter.renderPass !== 'translucent') return;
-    if (layer.paint.get('raster-opacity') === 0) return;
+    if (assertedNotNullish(layer.paint).get('raster-opacity') === 0) return;
     if (!tileIDs.length) return;
 
     const {isRenderingToTexture} = renderOptions;
     const source = tileManager.getSource();
 
-    const projection = painter.style.projection;
-    const useSubdivision = projection.useSubdivision;
+    const projection = assertedNotNullish(painter.style).projection;
+    const useSubdivision = assertedNotNullish(projection).useSubdivision;
 
     // When rendering globe (or any other subdivided projection), two passes are needed.
     // Subdivided tiles with different granularities might have tiny gaps between them.
@@ -59,7 +59,7 @@ export function drawRaster(painter: Painter, tileManager: TileManager, layer: Ra
     // Stencil mask and two-pass is not used for ImageSource sources regardless of projection.
     if (source instanceof ImageSource) {
         // Image source - no stencil is used
-        drawTiles(painter, tileManager, layer, tileIDs, null, false, false, source.tileCoords, source.flippedWindingOrder, isRenderingToTexture);
+        drawTiles(painter, tileManager, layer, tileIDs, null, false, false, assertedNotNullish(source.tileCoords), source.flippedWindingOrder, isRenderingToTexture);
     } else if (useSubdivision) {
         // Two-pass rendering
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
@@ -90,15 +90,15 @@ function drawTiles(
     const program = painter.useProgram('raster');
     const transform = painter.transform;
 
-    const projection = painter.style.projection;
+    const projection = assertedNotNullish(painter.style).projection;
 
     const colorMode = painter.colorModeForRenderPass();
-    const align = !painter.options.moving;
-    const rasterOpacity = layer.paint.get('raster-opacity');
-    const resampling = layer.paint.get('resampling') ?? layer.paint.get('raster-resampling');
+    const align = !assertedNotNullish(painter.options).moving;
+    const rasterOpacity = assertedNotNullish(layer.paint).get('raster-opacity');
+    const resampling = assertedNotNullish(layer.paint).get('resampling') ?? assertedNotNullish(layer.paint).get('raster-resampling');
     const textureFilter = resampling === 'nearest' ?  gl.NEAREST : gl.LINEAR;
-    const fadeDuration = layer.paint.get('raster-fade-duration');
-    const isTerrain = !!painter.style.map.terrain;
+    const fadeDuration = assertedNotNullish(layer.paint).get('raster-fade-duration');
+    const isTerrain = !!assertedNotNullish(painter.style).map.terrain;
 
     // Draw all tiles
     for (const coord of coords) {
@@ -118,7 +118,7 @@ function drawTiles(
         const {parentTile, parentScaleBy, parentTopLeft, fadeValues} = getFadeProperties(tile, tileManager, fadeDuration, isTerrain);
         tile.fadeOpacity = fadeValues.tileOpacity;
         if (parentTile) {
-            parentTile.fadeOpacity = fadeValues.parentTileOpacity;
+            parentTile.fadeOpacity = assertedNotNullish(fadeValues.parentTileOpacity);
             parentTile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
         } else {
             tile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
@@ -126,16 +126,17 @@ function drawTiles(
 
         // Enable anisotropic filtering only when the pitch is greater than the threshold pitch.
         // The default threshold is 20 degrees to preserve image sharpness on flat or slightly tilted maps.
-        if (tile.texture.useMipmap && context.extTextureFilterAnisotropic && painter.transform.pitch > painter.options.anisotropicFilterPitch) {
+        if (tile.texture.useMipmap && context.extTextureFilterAnisotropic && painter.transform.pitch > assertedNotNullish(painter.options).anisotropicFilterPitch) {
             gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT,
-                context.extTextureFilterAnisotropicMax);
+                assertedNotNullish(context.extTextureFilterAnisotropicMax));
         }
 
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const painterStyle = assertedNotNullish(painter.style);
+        const terrainData = painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(coord);
         const projectionData = transform.getProjectionData({overscaledTileID: coord, aligned: align, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
         const uniformValues = rasterUniformValues(parentTopLeft, parentScaleBy, fadeValues.fadeMix, layer, corners);
 
-        const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, allowPoles, 'raster');
+        const mesh = assertedNotNullish(projection).getMeshFromTileID(context, coord.canonical, useBorder, allowPoles, 'raster');
         const stencilMode = stencilModes ? stencilModes[coord.overscaledZ] : StencilMode.disabled;
 
         program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, flipCullfaceMode ? CullFaceMode.frontCCW : CullFaceMode.backCCW,

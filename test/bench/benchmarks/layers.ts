@@ -7,7 +7,7 @@ const width = 1024;
 const height = 768;
 const layerCount = 50;
 
-function generateLayers(layer) {
+function generateLayers(layer: any): any[] {
     const generated = [];
     for (let i = 0; i < layerCount; i++) {
         const id = layer.id + i;

@@ -87,10 +87,16 @@ export const verticalizedCharacterMap = {
     '｣': '﹂'
 };
 
+type VerticalizedCharacter = keyof typeof verticalizedCharacterMap;
+
+function isValidVerticalizedCharacter(char: string): char is VerticalizedCharacter {
+    return char in verticalizedCharacterMap;
+}
+
 export function verticalizePunctuation(input: string) {
     let output = '';
 
-    let prevChar = {premature: true, value: undefined};
+    let prevChar: {premature:true; value: undefined} | {premature:false; value: string} = {premature: true, value: undefined};
     const chars = input[Symbol.iterator]();
     let char = chars.next();
     const nextChars = input[Symbol.iterator]();
@@ -99,11 +105,11 @@ export function verticalizePunctuation(input: string) {
 
     while (!char.done) {
         const canReplacePunctuation = (
-            (nextChar.done || !charHasRotatedVerticalOrientation(nextChar.value.codePointAt(0)) || verticalizedCharacterMap[nextChar.value]) &&
-            (prevChar.premature || !charHasRotatedVerticalOrientation(prevChar.value.codePointAt(0)) || verticalizedCharacterMap[prevChar.value])
+            (nextChar.done || !charHasRotatedVerticalOrientation(nextChar.value.codePointAt(0)!) || isValidVerticalizedCharacter(nextChar.value)) &&
+            (prevChar.premature || !charHasRotatedVerticalOrientation(prevChar.value.codePointAt(0)!) || isValidVerticalizedCharacter(prevChar.value))
         );
 
-        if (canReplacePunctuation && verticalizedCharacterMap[char.value]) {
+        if (canReplacePunctuation && isValidVerticalizedCharacter(char.value)) {
             output += verticalizedCharacterMap[char.value];
         } else {
             output += char.value;

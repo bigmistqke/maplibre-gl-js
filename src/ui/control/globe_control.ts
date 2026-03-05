@@ -2,6 +2,7 @@ import {DOM} from '../../util/dom';
 
 import type {Map} from '../map';
 import type {IControl} from './control';
+import {assertedNotNullish, assertNotNullish} from '../../util/util';
 
 /**
  * A `GlobeControl` control contains a button for toggling the map projection between "mercator" and "globe".
@@ -17,9 +18,9 @@ import type {IControl} from './control';
  * @see [Display a globe with a fill extrusion layer](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-globe-with-a-fill-extrusion-layer/)
  */
 export class GlobeControl implements IControl {
-    _map: Map;
-    _container: HTMLElement;
-    _globeButton: HTMLButtonElement;
+    _map: Map | undefined;
+    _container: HTMLElement | undefined;
+    _globeButton: HTMLButtonElement | undefined;
 
     /** {@inheritDoc IControl.onAdd} */
     onAdd(map: Map) {
@@ -38,14 +39,16 @@ export class GlobeControl implements IControl {
 
     /** {@inheritDoc IControl.onRemove} */
     onRemove() {
-        DOM.remove(this._container);
-        this._map.off('styledata', this._updateGlobeIcon);
-        this._map.off('projectiontransition', this._updateGlobeIcon);
-        this._globeButton.removeEventListener('click', this._toggleProjection);
+        DOM.remove(assertedNotNullish(this._container));
+        assertedNotNullish(this._map).off('styledata', this._updateGlobeIcon);
+        assertedNotNullish(this._map).off('projectiontransition', this._updateGlobeIcon);
+        assertedNotNullish(this._globeButton).removeEventListener('click', this._toggleProjection);
         this._map = undefined;
     }
 
     _toggleProjection = () => {
+        assertNotNullish(this._map);
+
         const currentProjection = this._map.getProjection()?.type;
         if (currentProjection === 'mercator' || !currentProjection) {
             this._map.setProjection({type: 'globe'});
@@ -56,6 +59,9 @@ export class GlobeControl implements IControl {
     };
 
     _updateGlobeIcon = () => {
+        assertNotNullish(this._globeButton);
+        assertNotNullish(this._map);
+
         this._globeButton.classList.remove('maplibregl-ctrl-globe');
         this._globeButton.classList.remove('maplibregl-ctrl-globe-enabled');
         if (this._map.getProjection()?.type === 'globe') {

@@ -1,12 +1,13 @@
 import {describe, beforeEach,  afterEach,  test, expect} from 'vitest';
 import {Hash} from './hash';
 import {createMap as globalCreateMap, beforeMapTest} from '../util/test/util';
+import {assertedNotNullish} from '../util/util';
 import type {Map} from './map';
 
 describe('hash', () => {
-    function createHash(name: string = undefined) {
+    function createHash(name?: string) {
         const hash = new Hash(name);
-        hash._updateHash = hash._updateHashUnthrottled.bind(hash);
+        hash._updateHash = hash._updateHashUnthrottled.bind(hash) as any;
         return hash;
     }
 
@@ -68,8 +69,12 @@ describe('hash', () => {
 
         // map is created with `interactive: false`
         // so explicitly enable rotation for this test
-        map.dragRotate.enable();
-        map.touchZoomRotate.enable();
+        if (map.dragRotate) {
+            map.dragRotate.enable();
+        }
+        if (map.touchZoomRotate) {
+            map.touchZoomRotate.enable();
+        }
 
         window.location.hash = '#5/1.00/0.50/30/60';
 
@@ -83,8 +88,12 @@ describe('hash', () => {
 
         // disable rotation to test that updating
         // the hash's bearing won't change the map
-        map.dragRotate.disable();
-        map.touchZoomRotate.disable();
+        if (map.dragRotate) {
+            map.dragRotate.disable();
+        }
+        if (map.touchZoomRotate) {
+            map.touchZoomRotate.disable();
+        }
 
         window.location.hash = '#5/1.00/0.50/-45/60';
 
@@ -646,8 +655,8 @@ describe('hash', () => {
         });
 
         test('Bearing at exact -180° boundary', () => {
-            map.dragRotate.enable();
-            map.touchZoomRotate.enable();
+            assertedNotNullish(map.dragRotate).enable();
+            assertedNotNullish(map.touchZoomRotate).enable();
             window.location.hash = '#10/0/0/-180';
             hash._onHashChange();
             expect(map.getBearing()).toBe(180);

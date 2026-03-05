@@ -5,7 +5,7 @@ import fetchStyle from '../lib/fetch_style';
 
 export default class StyleValidate extends Benchmark {
     style: string | StyleSpecification;
-    json: StyleSpecification;
+    json!: StyleSpecification;
 
     constructor(style: string) {
         super();

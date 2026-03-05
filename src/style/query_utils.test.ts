@@ -5,8 +5,8 @@ import {offsetLine} from './query_utils';
 
 const defaultPrecision = 10;
 
-const closeTo = (expected, precision = defaultPrecision) => ({
-    asymmetricMatch: (actual) => Math.abs(expected - actual) < Math.pow(10, -precision) / 2
+const closeTo = (expected: number, precision = defaultPrecision) => ({
+    asymmetricMatch: (actual: number) => Math.abs(expected - actual) < Math.pow(10, -precision) / 2
 });
 
 describe('offsetLine', () => {

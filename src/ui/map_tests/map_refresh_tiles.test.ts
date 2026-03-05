@@ -1,10 +1,11 @@
 import {beforeEach, test, expect, vi, describe} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {CanonicalTileID} from '../../tile/tile_id';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
 });
 
 describe('Map::refreshTiles', () => {
@@ -14,7 +15,7 @@ describe('Map::refreshTiles', () => {
 
         map.addSource('source-id1', {type: 'raster', url: ''});
         const spy = vi.fn();
-        map.style.tileManagers['source-id1'].refreshTiles = spy;
+        assertedNotNullish(map.style).tileManagers['source-id1'].refreshTiles = spy;
 
         expect(() => {map.refreshTiles('source-id2', [{x: 1024, y: 1023, z: 11}]);})
             .toThrow('There is no tile manager with ID "source-id2", cannot refresh tile');
@@ -27,7 +28,7 @@ describe('Map::refreshTiles', () => {
 
         map.addSource('source-id1', {type: 'raster', url: ''});
         const spy = vi.fn();
-        map.style.tileManagers['source-id1'].refreshTiles = spy;
+        assertedNotNullish(map.style).tileManagers['source-id1'].refreshTiles = spy;
 
         map.refreshTiles('source-id1', [{x: 1024, y: 1023, z: 11}]);
         expect(spy).toHaveBeenCalledOnce();
@@ -40,7 +41,7 @@ describe('Map::refreshTiles', () => {
 
         map.addSource('source-id1', {type: 'raster', url: ''});
         const spy = vi.fn();
-        map.style.tileManagers['source-id1'].reload = spy;
+        assertedNotNullish(map.style).tileManagers['source-id1'].reload = spy;
 
         map.refreshTiles('source-id1');
         expect(spy).toHaveBeenCalledOnce();

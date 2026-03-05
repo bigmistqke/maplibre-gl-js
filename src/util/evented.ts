@@ -1,4 +1,4 @@
-import {extend, type Subscription} from './util';
+import {extend, type Subscription, assertedNotNullish} from './util';
 
 /**
  * A listener method used as a callback to events
@@ -44,7 +44,7 @@ interface ErrorLike {
  * An error event
  */
 export class ErrorEvent extends Event {
-    error: ErrorLike;
+    error: ErrorLike | undefined;
 
     constructor(error: ErrorLike, data: any = {}) {
         super('error', extend({error}, data));
@@ -57,9 +57,9 @@ export class ErrorEvent extends Event {
  * @group Event Related
  */
 export class Evented {
-    _listeners: Listeners;
-    _oneTimeListeners: Listeners;
-    _eventedParent: Evented;
+    _listeners: Listeners | undefined;
+    _oneTimeListeners: Listeners | undefined;
+    _eventedParent: Evented | null | undefined;
     _eventedParentData: any | (() => any);
 
     /**
@@ -88,8 +88,8 @@ export class Evented {
      * @param listener - The listener function to remove.
      */
     off(type: string, listener: Listener) {
-        _removeEventListener(type, listener, this._listeners);
-        _removeEventListener(type, listener, this._oneTimeListeners);
+        _removeEventListener(type, listener, assertedNotNullish(this._listeners));
+        _removeEventListener(type, listener, assertedNotNullish(this._oneTimeListeners));
 
         return this;
     }
@@ -134,7 +134,7 @@ export class Evented {
 
             const oneTimeListeners = this._oneTimeListeners && this._oneTimeListeners[type] ? this._oneTimeListeners[type].slice() : [];
             for (const listener of oneTimeListeners) {
-                _removeEventListener(type, listener, this._oneTimeListeners);
+                _removeEventListener(type, listener, assertedNotNullish(this._oneTimeListeners));
                 listener.call(this, event);
             }
 
@@ -163,7 +163,7 @@ export class Evented {
      * @returns `true` if there is at least one registered listener for specified event type, `false` otherwise
      */
     listens(type: string): boolean {
-        return (
+        return !!(
             (this._listeners && this._listeners[type] && this._listeners[type].length > 0) ||
             (this._oneTimeListeners && this._oneTimeListeners[type] && this._oneTimeListeners[type].length > 0) ||
             (this._eventedParent && this._eventedParent.listens(type))

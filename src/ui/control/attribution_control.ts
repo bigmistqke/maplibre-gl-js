@@ -1,4 +1,5 @@
 import {DOM} from '../../util/dom';
+import {assertedNotNullish} from '../../util/util';
 
 import type {Map} from '../map';
 import type {ControlPosition, IControl} from './control';
@@ -38,15 +39,15 @@ export const defaultAttributionControlOptions: AttributionControlOptions = {
  */
 export class AttributionControl implements IControl {
     options: AttributionControlOptions;
-    _map: Map;
+    _map: Map | undefined;
     _compact: boolean | undefined;
-    _container: HTMLElement;
-    _innerContainer: HTMLElement;
-    _compactButton: HTMLElement;
-    _editLink: HTMLAnchorElement;
-    _attribHTML: string;
-    styleId: string;
-    styleOwner: string;
+    _container: HTMLElement | undefined;
+    _innerContainer: HTMLElement | undefined;
+    _compactButton: HTMLElement | undefined;
+    _editLink: HTMLAnchorElement | undefined;
+    _attribHTML: string | undefined;
+    styleId: string | undefined;
+    styleOwner: string | undefined;
 
     /**
      * @param options - the attribution options
@@ -83,13 +84,13 @@ export class AttributionControl implements IControl {
 
     /** {@inheritDoc IControl.onRemove} */
     onRemove() {
-        DOM.remove(this._container);
+        DOM.remove(assertedNotNullish(this._container, 'Expected container to be defined'));
 
-        this._map.off('styledata', this._updateData);
-        this._map.off('sourcedata', this._updateData);
-        this._map.off('terrain', this._updateData);
-        this._map.off('resize', this._updateCompact);
-        this._map.off('drag', this._updateCompactMinimize);
+        assertedNotNullish(this._map).off('styledata', this._updateData);
+        assertedNotNullish(this._map).off('sourcedata', this._updateData);
+        assertedNotNullish(this._map).off('terrain', this._updateData);
+        assertedNotNullish(this._map).off('resize', this._updateCompact);
+        assertedNotNullish(this._map).off('drag', this._updateCompactMinimize);
 
         this._map = undefined;
         this._compact = undefined;
@@ -97,19 +98,19 @@ export class AttributionControl implements IControl {
     }
 
     _setElementTitle(element: HTMLElement, title: 'ToggleAttribution' | 'MapFeedback') {
-        const str = this._map._getUIString(`AttributionControl.${title}`);
+        const str = assertedNotNullish(this._map)._getUIString(`AttributionControl.${title}`);
         element.title = str;
         element.setAttribute('aria-label', str);
     }
 
     _toggleAttribution = () => {
-        if (this._container.classList.contains('maplibregl-compact')) {
-            if (this._container.classList.contains('maplibregl-compact-show')) {
-                this._container.setAttribute('open', '');
-                this._container.classList.remove('maplibregl-compact-show');
+        if (assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact')) {
+            if (assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact-show')) {
+                assertedNotNullish(this._container).setAttribute('open', '');
+                assertedNotNullish(this._container).classList.remove('maplibregl-compact-show');
             } else {
-                this._container.classList.add('maplibregl-compact-show');
-                this._container.removeAttribute('open');
+                assertedNotNullish(this._container).classList.add('maplibregl-compact-show');
+                assertedNotNullish(this._container).removeAttribute('open');
             }
         }
     };
@@ -121,7 +122,7 @@ export class AttributionControl implements IControl {
     };
 
     _updateAttributions() {
-        if (!this._map.style) return;
+        if (!assertedNotNullish(this._map, 'Expected map to be defined').style) return;
         let attributions: Array<string> = [];
         if (this.options.customAttribution) {
             if (Array.isArray(this.options.customAttribution)) {
@@ -136,13 +137,13 @@ export class AttributionControl implements IControl {
             }
         }
 
-        if (this._map.style.stylesheet) {
-            const stylesheet = this._map.style.stylesheet as StyleSpecification & { owner: string; id: string };
+        if (assertedNotNullish(assertedNotNullish(this._map, 'Expected map to be defined').style, 'Expected style to be defined').stylesheet) {
+            const stylesheet = assertedNotNullish(assertedNotNullish(this._map).style, 'Expected style to be defined').stylesheet as StyleSpecification & { owner: string; id: string };
             this.styleOwner = stylesheet.owner;
             this.styleId = stylesheet.id;
         }
 
-        const tileManagers = this._map.style.tileManagers;
+        const tileManagers = assertedNotNullish(assertedNotNullish(this._map).style, 'Expected style to be defined').tileManagers;
         for (const id in tileManagers) {
             const tileManager = tileManagers[id];
             if (tileManager.used || tileManager.usedForTerrain) {
@@ -173,36 +174,36 @@ export class AttributionControl implements IControl {
         this._attribHTML = attribHTML;
 
         if (attributions.length) {
-            this._innerContainer.innerHTML = DOM.sanitize(attribHTML);
-            this._container.classList.remove('maplibregl-attrib-empty');
+            assertedNotNullish(this._innerContainer).innerHTML = DOM.sanitize(attribHTML);
+            assertedNotNullish(this._container).classList.remove('maplibregl-attrib-empty');
         } else {
-            this._container.classList.add('maplibregl-attrib-empty');
+            assertedNotNullish(this._container).classList.add('maplibregl-attrib-empty');
         }
         this._updateCompact();
         // remove old DOM node from _editLink
-        this._editLink = null;
+        this._editLink = undefined;
     }
 
     _updateCompact = () => {
-        if (this._map.getCanvasContainer().offsetWidth <= 640 || this._compact) {
+        if (assertedNotNullish(this._map, 'Expected map to be defined').getCanvasContainer().offsetWidth <= 640 || this._compact) {
             if (this._compact === false) {
-                this._container.setAttribute('open', '');
-            } else if (!this._container.classList.contains('maplibregl-compact') && !this._container.classList.contains('maplibregl-attrib-empty')) {
-                this._container.setAttribute('open', '');
-                this._container.classList.add('maplibregl-compact', 'maplibregl-compact-show');
+                assertedNotNullish(this._container).setAttribute('open', '');
+            } else if (!assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact') && !assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-attrib-empty')) {
+                assertedNotNullish(this._container).setAttribute('open', '');
+                assertedNotNullish(this._container).classList.add('maplibregl-compact', 'maplibregl-compact-show');
             }
         } else {
-            this._container.setAttribute('open', '');
-            if (this._container.classList.contains('maplibregl-compact')) {
-                this._container.classList.remove('maplibregl-compact', 'maplibregl-compact-show');
+            assertedNotNullish(this._container).setAttribute('open', '');
+            if (assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact')) {
+                assertedNotNullish(this._container).classList.remove('maplibregl-compact', 'maplibregl-compact-show');
             }
         }
     };
 
     _updateCompactMinimize = () => {
-        if (this._container.classList.contains('maplibregl-compact')) {
-            if (this._container.classList.contains('maplibregl-compact-show')) {
-                this._container.classList.remove('maplibregl-compact-show');
+        if (assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact')) {
+            if (assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact-show')) {
+                assertedNotNullish(this._container).classList.remove('maplibregl-compact-show');
             }
         }
     };

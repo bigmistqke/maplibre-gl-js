@@ -7,7 +7,7 @@ import {MessageType} from '../util/actor_messages';
 
 class RTLMainThreadPlugin extends Evented {
     status: RTLPluginStatus = 'unavailable';
-    url: string = null;
+    url: string | null = null;
     dispatcher: Dispatcher = getGlobalDispatcher();
 
     /** Sync RTL plugin state by broadcasting a message to the worker */
@@ -79,7 +79,7 @@ class RTLMainThreadPlugin extends Evented {
     }
 }
 
-let rtlMainThreadPlugin: RTLMainThreadPlugin = null;
+let rtlMainThreadPlugin: RTLMainThreadPlugin | null = null;
 
 export function rtlMainThreadPluginFactory(): RTLMainThreadPlugin {
     if (!rtlMainThreadPlugin) {

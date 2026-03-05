@@ -1,19 +1,20 @@
 import {describe, test, expect} from 'vitest';
 import {AJAXError} from './ajax';
 import {register, serialize, deserialize} from './web_worker_transfer';
+import type {Serialized} from './web_worker_transfer';
 
 describe('web worker transfer', () => {
     test('round trip', () => {
         class SerializableMock {
-            n;
-            buffer;
-            blob;
-            _cached;
-            dataView;
-            imageData;
-            array;
+            n: number;
+            buffer: ArrayBuffer;
+            blob: Blob;
+            _cached: number | undefined;
+            dataView: DataView;
+            imageData: ImageData;
+            array: Array<boolean | number | string | ArrayBuffer>;
 
-            constructor(n) {
+            constructor(n: number) {
                 this.n = n;
                 this.buffer = new ArrayBuffer(100);
                 this.dataView = new DataView(this.buffer);
@@ -35,8 +36,8 @@ describe('web worker transfer', () => {
         register('SerializableMock', SerializableMock, {omit: ['_cached']});
 
         const serializableMock = new SerializableMock(10);
-        const transferables = [];
-        const deserialized = deserialize(serialize(serializableMock, transferables)) as SerializableMock;
+        const transferables: Array<Transferable> = [];
+        const deserialized = deserialize(serialize(serializableMock, transferables)) as SerializableMock; // as SerializableMock: deserialize returns unknown, but we know the registered type
         expect(deserialize(serialize(serializableMock, transferables)) instanceof SerializableMock).toBeTruthy();
         expect(serializableMock.dataView instanceof DataView).toBeTruthy();
 
@@ -64,18 +65,18 @@ describe('web worker transfer', () => {
 
     test('custom serialization', () => {
         class CustomSerialization {
-            id;
-            _deserialized;
-            constructor(id) {
+            id: string;
+            _deserialized: boolean;
+            constructor(id: string) {
                 this.id = id;
                 this._deserialized = false;
             }
 
-            static serialize(b) {
+            static serialize(b: CustomSerialization) {
                 return {custom: `custom serialization,${b.id}`};
             }
 
-            static deserialize(input) {
+            static deserialize(input: {custom: string}) {
                 const b = new CustomSerialization(input.custom.split(',')[1]);
                 b._deserialized = true;
                 return b;
@@ -87,7 +88,7 @@ describe('web worker transfer', () => {
         const customSerialization = new CustomSerialization('a');
         expect(!customSerialization._deserialized).toBeTruthy();
 
-        const deserialized = deserialize(serialize(customSerialization)) as CustomSerialization;
+        const deserialized = deserialize(serialize(customSerialization)) as CustomSerialization; // as CustomSerialization: deserialize returns unknown, but we know the registered type
         expect(deserialize(serialize(customSerialization)) instanceof CustomSerialization).toBeTruthy();
         expect(deserialized.id).toBe(customSerialization.id);
         expect(deserialized._deserialized).toBeTruthy();
@@ -100,7 +101,7 @@ describe('web worker transfer', () => {
 
         const ajaxError = new AJAXError(status, statusText, url, new Blob());
         const serialized = serialize(ajaxError);
-        const deserialized = deserialize(serialized) as AJAXError;
+        const deserialized = deserialize(serialized) as AJAXError; // as AJAXError: deserialize returns unknown, but we know the registered type
         expect(deserialized.status).toBe(404);
         expect(deserialized.statusText).toBe(statusText);
         expect(deserialized.url).toBe(url);
@@ -108,7 +109,7 @@ describe('web worker transfer', () => {
 
     test('serialize Object has _classRegistryKey', () => {
         class BadClass {
-            _classRegistryKey: 'foo';
+            _classRegistryKey: 'foo' = 'foo';
         }
         const trySerialize = () => {
             serialize(new BadClass());
@@ -146,7 +147,7 @@ describe('web worker transfer', () => {
     });
     test('some objects can not be deserialized', () => {
         expect(() => {
-            deserialize(BigInt(123) as unknown);
+            deserialize(BigInt(123) as unknown as Serialized); // as unknown as Serialized: intentionally testing deserialization of an invalid type
         }).toThrow();
     });
 });

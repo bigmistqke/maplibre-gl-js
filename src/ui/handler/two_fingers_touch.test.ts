@@ -4,9 +4,10 @@ import {Marker} from '../marker';
 import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 function createMap() {
-    return new Map({container: DOM.create('div', '', window.document.body)} as any as MapOptions);
+    return new Map({container: DOM.create('div', '', window.document.body)} as MapOptions); // Test mock
 }
 
 beforeEach(() => {
@@ -24,7 +25,7 @@ describe('touch zoom rotate', () => {
         const zoomend   = vi.fn();
 
         map.handlers._handlersById.tapZoom.disable();
-        map.touchPitch.disable();
+        map.touchPitch?.disable();
         map.on('zoomstart', zoomstart);
         map.on('zoom',      zoom);
         map.on('zoomend',   zoomend);
@@ -124,7 +125,7 @@ describe('touch zoom rotate', () => {
     test('TwoFingersTouchZoomRotateHandler starts zoom immediately when rotation disabled', () => {
         const map = createMap();
         const target = map.getCanvas();
-        map.touchZoomRotate.disableRotation();
+        assertedNotNullish(map.touchZoomRotate).disableRotation();
         map.handlers._handlersById.tapZoom.disable();
 
         const zoomstart = vi.fn();
@@ -169,9 +170,9 @@ describe('touch zoom rotate', () => {
 
         const className = 'maplibregl-touch-zoom-rotate';
         expect(map.getCanvasContainer().classList.contains(className)).toBeTruthy();
-        map.touchZoomRotate.disable();
+        assertedNotNullish(map.touchZoomRotate).disable();
         expect(map.getCanvasContainer().classList.contains(className)).toBeFalsy();
-        map.touchZoomRotate.enable();
+        assertedNotNullish(map.touchZoomRotate).enable();
         expect(map.getCanvasContainer().classList.contains(className)).toBeTruthy();
     });
 
@@ -192,7 +193,7 @@ describe('touch zoom rotate', () => {
         const zoomend   = vi.fn();
 
         map.handlers._handlersById.tapZoom.disable();
-        map.touchPitch.disable();
+        map.touchPitch?.disable();
         map.on('zoomstart', zoomstart);
         map.on('zoom',      zoom);
         map.on('zoomend',   zoomend);
@@ -245,8 +246,8 @@ describe('touch zoom rotate', () => {
         const zoomend   = vi.fn();
 
         map.handlers._handlersById.tapZoom.disable();
-        map.touchPitch.disable();
-        map.dragPan.disable();
+        map.touchPitch?.disable();
+        map.dragPan?.disable();
         map.on('zoomstart', zoomstart);
         map.on('zoom',      zoom);
         map.on('zoomend',   zoomend);

@@ -10,6 +10,7 @@ import type {UniformValues, UniformLocations} from '../../render/uniform_binding
 import {type Sky} from '../../style/sky';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {type mat4} from 'gl-matrix';
+import {assertedNotNullish} from '../../util/util';
 
 export type TerrainPreludeUniformsType = {
     'u_depth': Uniform1i;
@@ -82,12 +83,12 @@ const terrainUniformValues = (
     'u_texture': 0,
     'u_ele_delta': eleDelta,
     'u_fog_matrix': fogMatrix,
-    'u_fog_color': sky ? sky.properties.get('fog-color') : Color.white,
-    'u_fog_ground_blend': sky ? sky.properties.get('fog-ground-blend') : 1,
+    'u_fog_color': sky ? assertedNotNullish(sky.properties).get('fog-color') : Color.white,
+    'u_fog_ground_blend': sky ? assertedNotNullish(sky.properties).get('fog-ground-blend') : 1,
     // Set opacity to 0 when in globe mode to disable fog
     'u_fog_ground_blend_opacity': isGlobeMode ? 0 : (sky ? sky.calculateFogBlendOpacity(pitch) : 0),
-    'u_horizon_color': sky ? sky.properties.get('horizon-color') : Color.white,
-    'u_horizon_fog_blend': sky ? sky.properties.get('horizon-fog-blend') : 1,
+    'u_horizon_color': sky ? assertedNotNullish(sky.properties).get('horizon-color') : Color.white,
+    'u_horizon_fog_blend': sky ? assertedNotNullish(sky.properties).get('horizon-fog-blend') : 1,
     'u_is_globe_mode': isGlobeMode ? 1 : 0
 });
 

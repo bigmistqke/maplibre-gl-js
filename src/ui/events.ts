@@ -479,6 +479,9 @@ export type MapSourceDataEvent = MapLibreEvent & {
      */
     shouldReloadTileOptions: GeoJSONSourceShouldReloadTileOptions;
 };
+
+type MouseMapEventKind = 'mousedown' | 'mouseup' | 'click' | 'dblclick' | 'mousemove' | 'mouseover' | 'mouseenter' | 'mouseleave' | 'mouseout' | 'contextmenu';
+
 /**
  * `MapMouseEvent` is the event type for mouse-related map events.
  *
@@ -499,7 +502,7 @@ export class MapMouseEvent extends Event implements MapLibreEvent<MouseEvent> {
     /**
      * The event type
      */
-    type: 'mousedown' | 'mouseup' | 'click' | 'dblclick' | 'mousemove' | 'mouseover' | 'mouseenter' | 'mouseleave' | 'mouseout' | 'contextmenu';
+    type: MouseMapEventKind;
 
     /**
      * The `Map` object that fired the event.
@@ -514,12 +517,12 @@ export class MapMouseEvent extends Event implements MapLibreEvent<MouseEvent> {
     /**
      * The pixel coordinates of the mouse cursor, relative to the map and measured from the top left corner.
      */
-    point: Point;
+    point: Point | undefined;
 
     /**
      * The geographic location on the map of the mouse cursor.
      */
-    lngLat: LngLat;
+    lngLat: LngLat | undefined;
 
     /**
      * Prevents subsequent default processing of the event by the map.
@@ -545,15 +548,21 @@ export class MapMouseEvent extends Event implements MapLibreEvent<MouseEvent> {
 
     _defaultPrevented: boolean;
 
-    constructor(type: string, map: Map, originalEvent: MouseEvent, data: any = {}) {
+    constructor(type: MouseMapEventKind, map: Map, originalEvent: MouseEvent, data: any = {}) {
         originalEvent = originalEvent instanceof MouseEvent ? originalEvent : new MouseEvent(type, originalEvent);
         const point = DOM.mousePos(map.getCanvas(), originalEvent);
         const lngLat = map.unproject(point);
         super(type, extend({point, lngLat, originalEvent}, data));
         this._defaultPrevented = false;
         this.target = map;
+        this.type = type;
+        this.point = point;
+        this.lngLat = lngLat;
+        this.originalEvent = originalEvent;
     }
 }
+
+export type MapTouchEventKind = 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel';
 
 /**
  * `MapTouchEvent` is the event type for touch-related map events.
@@ -564,7 +573,7 @@ export class MapTouchEvent extends Event implements MapLibreEvent<TouchEvent> {
     /**
      * The event type.
      */
-    type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel';
+    type: MapTouchEventKind;
 
     /**
      * The `Map` object that fired the event.
@@ -621,7 +630,7 @@ export class MapTouchEvent extends Event implements MapLibreEvent<TouchEvent> {
 
     _defaultPrevented: boolean;
 
-    constructor(type: string, map: Map, originalEvent: TouchEvent) {
+    constructor(type: MapTouchEventKind, map: Map, originalEvent: TouchEvent) {
         const touches = type === 'touchend' ? originalEvent.changedTouches : originalEvent.touches;
         const points = DOM.touchPos(map.getCanvasContainer(), touches);
         const lngLats = points.map((t) => map.unproject(t));
@@ -631,6 +640,13 @@ export class MapTouchEvent extends Event implements MapLibreEvent<TouchEvent> {
         const lngLat = map.unproject(point);
         super(type, {points, point, lngLats, lngLat, originalEvent});
         this._defaultPrevented = false;
+        this.type = type;
+        this.points = points;
+        this.point = point;
+        this.lngLats = lngLats;
+        this.lngLat = lngLat;
+        this.originalEvent= originalEvent;
+        this.target = map;
     }
 }
 
@@ -643,17 +659,17 @@ export class MapWheelEvent extends Event {
     /**
      * The event type.
      */
-    type: 'wheel';
+    type = 'wheel';
 
     /**
      * The `Map` object that fired the event.
      */
-    target: Map;
+    target: Map | undefined;
 
     /**
      * The DOM event which caused the map event.
      */
-    originalEvent: WheelEvent;
+    originalEvent: WheelEvent | undefined;
 
     /**
      * Prevents subsequent default processing of the event by the map.

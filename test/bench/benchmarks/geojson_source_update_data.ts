@@ -4,7 +4,7 @@ import type {Map} from '../../../src/ui/map';
 import type {GeoJSONSource} from '../../../src/source/geojson_source';
 
 export default class GeoJSONSourceUpdateData extends Benchmark {
-    map: Map;
+    map?: Map;
 
     async setup() {
         this.map = await createMap({
@@ -47,16 +47,16 @@ export default class GeoJSONSourceUpdateData extends Benchmark {
         });
 
         await new Promise(resolve => {
-            if (this.map.loaded()) {
+            if (this.map?.loaded()) {
                 resolve(null);
             } else {
-                this.map.once('idle', resolve);
+                this.map?.once('idle', resolve);
             }
         });
     }
 
     async bench() {
-        const source = this.map.getSource('points') as GeoJSONSource;
+        const source = this.map?.getSource('points') as GeoJSONSource;
 
         source.updateData({
             update: [{
@@ -69,11 +69,11 @@ export default class GeoJSONSourceUpdateData extends Benchmark {
         });
 
         await new Promise(resolve => {
-            this.map.once('idle', resolve);
+            this.map?.once('idle', resolve);
         });
     }
 
     teardown() {
-        this.map.remove();
+        this.map?.remove();
     }
 }

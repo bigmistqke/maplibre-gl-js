@@ -3,6 +3,7 @@ import {DOM} from '../../util/dom';
 import type {Map} from '../map';
 import type {IControl} from './control';
 import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
+import {assertedNotNullish} from '../../util/util';
 
 /**
  * A `TerrainControl` control contains a button for turning the terrain on and off.
@@ -19,9 +20,9 @@ import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
  */
 export class TerrainControl implements IControl {
     options: TerrainSpecification;
-    _map: Map;
-    _container: HTMLElement;
-    _terrainButton: HTMLButtonElement;
+    _map: Map | undefined;
+    _container: HTMLElement | undefined;
+    _terrainButton: HTMLButtonElement | undefined;
 
     /**
      * @param options - the control's options
@@ -46,29 +47,29 @@ export class TerrainControl implements IControl {
 
     /** {@inheritDoc IControl.onRemove} */
     onRemove() {
-        DOM.remove(this._container);
-        this._map.off('terrain', this._updateTerrainIcon);
+        DOM.remove(assertedNotNullish(this._container));
+        assertedNotNullish(this._map).off('terrain', this._updateTerrainIcon);
         this._map = undefined;
     }
 
     _toggleTerrain = () => {
-        if (this._map.getTerrain()) {
-            this._map.setTerrain(null);
+        if (assertedNotNullish(this._map).getTerrain()) {
+            assertedNotNullish(this._map).setTerrain(null);
         } else {
-            this._map.setTerrain(this.options);
+            assertedNotNullish(this._map).setTerrain(this.options);
         }
         this._updateTerrainIcon();
     };
 
     _updateTerrainIcon = () => {
-        this._terrainButton.classList.remove('maplibregl-ctrl-terrain');
-        this._terrainButton.classList.remove('maplibregl-ctrl-terrain-enabled');
-        if (this._map.terrain) {
-            this._terrainButton.classList.add('maplibregl-ctrl-terrain-enabled');
-            this._terrainButton.title = this._map._getUIString('TerrainControl.Disable');
+        assertedNotNullish(this._terrainButton).classList.remove('maplibregl-ctrl-terrain');
+        assertedNotNullish(this._terrainButton).classList.remove('maplibregl-ctrl-terrain-enabled');
+        if (assertedNotNullish(this._map).terrain) {
+            assertedNotNullish(this._terrainButton).classList.add('maplibregl-ctrl-terrain-enabled');
+            assertedNotNullish(this._terrainButton).title = assertedNotNullish(this._map)._getUIString('TerrainControl.Disable');
         } else {
-            this._terrainButton.classList.add('maplibregl-ctrl-terrain');
-            this._terrainButton.title = this._map._getUIString('TerrainControl.Enable');
+            assertedNotNullish(this._terrainButton).classList.add('maplibregl-ctrl-terrain');
+            assertedNotNullish(this._terrainButton).title = assertedNotNullish(this._map)._getUIString('TerrainControl.Enable');
         }
     };
 }

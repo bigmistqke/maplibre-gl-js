@@ -28,13 +28,13 @@ export class GlobeTransform implements ITransform {
     // Implementation of transform getters and setters
     //
 
-    get pixelsToClipSpaceMatrix(): mat4 {
+    get pixelsToClipSpaceMatrix(): mat4 | undefined {
         return this._helper.pixelsToClipSpaceMatrix;
     }
-    get clipSpaceToPixelsMatrix(): mat4 {
+    get clipSpaceToPixelsMatrix(): mat4 | undefined {
         return this._helper.clipSpaceToPixelsMatrix;
     }
-    get pixelsToGLUnits(): [number, number] {
+    get pixelsToGLUnits(): [number, number] | undefined {
         return this._helper.pixelsToGLUnits;
     }
     get centerOffset(): Point {
@@ -43,13 +43,13 @@ export class GlobeTransform implements ITransform {
     get size(): Point {
         return this._helper.size;
     }
-    get rotationMatrix(): mat2 {
+    get rotationMatrix(): mat2 | undefined {
         return this._helper.rotationMatrix;
     }
     get centerPoint(): Point {
         return this._helper.centerPoint;
     }
-    get pixelsPerMeter(): number {
+    get pixelsPerMeter(): number | undefined {
         return this._helper.pixelsPerMeter;
     }
     setMinZoom(zoom: number): void {
@@ -103,7 +103,7 @@ export class GlobeTransform implements ITransform {
     resize(width: number, height: number, constrainTransform: boolean = true): void {
         this._helper.resize(width, height, constrainTransform);
     }
-    getMaxBounds(): LngLatBounds {
+    getMaxBounds(): LngLatBounds | null {
         return this._helper.getMaxBounds();
     }
     setMaxBounds(bounds?: LngLatBounds): void {
@@ -140,10 +140,10 @@ export class GlobeTransform implements ITransform {
     get height(): number {
         return this._helper.height;
     }
-    get lngRange(): [number, number] {
+    get lngRange(): [number, number] | null | undefined {
         return this._helper.lngRange;
     }
-    get latRange(): [number, number] {
+    get latRange(): [number, number] | undefined {
         return this._helper.latRange;
     }
     get minZoom(): number {
@@ -203,20 +203,20 @@ export class GlobeTransform implements ITransform {
     get renderWorldCopies(): boolean {
         return this._helper.renderWorldCopies;
     }
-    get cameraToCenterDistance(): number {
+    get cameraToCenterDistance(): number | undefined {
         return this._helper.cameraToCenterDistance;
     }
-    get constrainOverride(): TransformConstrainFunction {
+    get constrainOverride(): TransformConstrainFunction | null {
         return this._helper.constrainOverride;
     }
-    public get nearZ(): number { 
-        return this._helper.nearZ; 
+    public get nearZ(): number | undefined  {
+        return this._helper.nearZ;
     }
-    public get farZ(): number { 
-        return this._helper.farZ; 
+    public get farZ(): number | undefined  {
+        return this._helper.farZ;
     }
-    public get autoCalculateNearFarZ(): boolean { 
-        return this._helper.autoCalculateNearFarZ; 
+    public get autoCalculateNearFarZ(): boolean {
+        return this._helper.autoCalculateNearFarZ;
     }
     //
     // Implementation of globe transform
@@ -320,7 +320,7 @@ export class GlobeTransform implements ITransform {
         return lerp(mercatorCorrection, verticalCorrection, this._globeness);
     }
 
-    public projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation: (x: number, y: number) => number): PointProjection {
+    public projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): PointProjection {
         return this.currentTransform.projectTileCoordinates(x, y, unwrappedTileID, getElevation);
     }
 
@@ -354,7 +354,7 @@ export class GlobeTransform implements ITransform {
         return this.currentTransform.getVisibleUnwrappedCoordinates(tileID);
     }
 
-    getCameraFrustum(): Frustum {
+    getCameraFrustum(): Frustum | undefined {
         return this.currentTransform.getCameraFrustum();
     }
     getClippingPlane(): vec4 | null {
@@ -426,11 +426,11 @@ export class GlobeTransform implements ITransform {
         return;
     }
 
-    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain): Point {
+    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain | null): Point {
         return this.currentTransform.locationToScreenPoint(lnglat, terrain);
     }
 
-    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain): MercatorCoordinate {
+    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain | null): MercatorCoordinate {
         return this.currentTransform.screenPointToMercatorCoordinate(p, terrain);
     }
 
@@ -465,7 +465,7 @@ export class GlobeTransform implements ITransform {
         return globeData;
     }
 
-    getFastPathSimpleProjectionMatrix(tileID: OverscaledTileID): mat4 {
+    getFastPathSimpleProjectionMatrix(tileID: OverscaledTileID): mat4 | undefined {
         return this.currentTransform.getFastPathSimpleProjectionMatrix(tileID);
     }
 }

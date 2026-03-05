@@ -7,6 +7,7 @@ import type {Tile} from '../../tile/tile';
 import type {CircleStyleLayer} from '../../style/style_layer/circle_style_layer';
 import type {Painter} from '../painter';
 import {EXTENT} from '../../data/extent';
+import {assertedNotNullish} from '../../util/util';
 
 export type CircleUniformsType = {
     'u_camera_to_center_distance': Uniform1f;
@@ -37,9 +38,9 @@ const circleUniformValues = (
 ): UniformValues<CircleUniformsType> => {
     const transform = painter.transform;
 
-    let pitchWithMap: boolean, extrudeScale: [number, number];
+    let pitchWithMap: boolean, extrudeScale: [number, number] | undefined;
     let globeExtrudeScale: number = 0;
-    if (layer.paint.get('circle-pitch-alignment') === 'map') {
+    if (assertedNotNullish(layer.paint).get('circle-pitch-alignment') === 'map') {
         const pixelRatio = pixelsToTileUnits(tile, 1, transform.zoom);
         pitchWithMap = true;
         extrudeScale = [pixelRatio, pixelRatio];
@@ -54,7 +55,7 @@ const circleUniformValues = (
 
     return {
         'u_camera_to_center_distance': transform.cameraToCenterDistance,
-        'u_scale_with_map': +(layer.paint.get('circle-pitch-scale') === 'map'),
+        'u_scale_with_map': +(assertedNotNullish(layer.paint).get('circle-pitch-scale') === 'map'),
         'u_pitch_with_map': +(pitchWithMap),
         'u_device_pixel_ratio': painter.pixelRatio,
         'u_extrude_scale': extrudeScale,

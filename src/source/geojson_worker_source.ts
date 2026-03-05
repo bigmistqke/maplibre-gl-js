@@ -8,7 +8,7 @@ import {isAbortError} from '../util/abort_error';
 import {toVirtualVectorTile} from './vector_tile_overzoomed';
 import {WorkerTile} from './worker_tile';
 import {WorkerTileState, type ParsingState} from './worker_tile_state';
-import {extend} from '../util/util';
+import {assertedNotNullish, extend} from '../util/util';
 
 import type {GeoJSONSourceDiff} from './geojson_source_diff';
 import type {WorkerSource, WorkerTileParameters, TileParameters, WorkerTileResult} from './worker_source';
@@ -69,8 +69,8 @@ export class GeoJSONWorkerSource implements WorkerSource {
     availableImages: Array<string>;
     tileState: WorkerTileState;
 
-    _pendingRequest: AbortController;
-    _geoJSONIndex: GeoJSONVT;
+    _pendingRequest: AbortController | undefined;
+    _geoJSONIndex: GeoJSONVT | undefined;
     _createGeoJSONIndex: typeof createGeoJSONIndex;
 
     constructor(actor: IActor, layerIndex: StyleLayerIndex, availableImages: Array<string>, createGeoJSONIndexFunc: typeof createGeoJSONIndex = createGeoJSONIndex) {
@@ -126,7 +126,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
         }
     }
 
-    private async _reloadLoadedTile(params: WorkerTileParameters): Promise<WorkerTileResult> {
+    private async _reloadLoadedTile(params: WorkerTileParameters): Promise<WorkerTileResult | undefined> {
         const uid = params.uid;
 
         const workerTile = this.tileState.getLoaded(uid);
@@ -147,7 +147,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
     }
 
     async _parseWorkerTile(workerTile: WorkerTile, params: WorkerTileParameters, parseState?: ParsingState): Promise<WorkerTileResult> {
-        let result = await workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+        let result = await workerTile.parse(assertedNotNullish(workerTile.vectorTile), this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
 
         if (parseState) {
             const {rawData} = parseState;
@@ -205,7 +205,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
 
             this._finishRequestTiming(timing, params, result);
             return result;
-        } catch (err) {
+        } catch (err: unknown) {
             delete this._pendingRequest;
             if (!isAbortError(err)) throw err;
             return {abandoned: true};
@@ -217,13 +217,13 @@ export class GeoJSONWorkerSource implements WorkerSource {
         return new RequestPerformance(params.request.url);
     }
 
-    _finishRequestTiming(timing: RequestPerformance, params: LoadGeoJSONParameters, result: GeoJSONWorkerSourceLoadDataResult): void {
+    _finishRequestTiming(timing: RequestPerformance | undefined, params: LoadGeoJSONParameters, result: GeoJSONWorkerSourceLoadDataResult): void {
         const timingData = timing?.finish();
         if (!timingData) return;
 
         // it's necessary to eval the result of getEntriesByName() here via parse/stringify
         // late evaluation in the main thread causes TypeError: illegal invocation
-        result.resourceTiming = {[params.source]: JSON.parse(JSON.stringify(timingData))};
+        result.resourceTiming = {[assertedNotNullish(params.source)]: JSON.parse(JSON.stringify(timingData))};
     }
 
     /**
@@ -235,7 +235,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
      * @param params - the parameters
      * @returns A promise that resolves when the tile is reloaded
      */
-    reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult> {
+    reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult | undefined | null> {
         const tile = this.tileState.getLoaded(params.uid);
 
         if (tile) {
@@ -253,7 +253,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
      * @param abortController - the abort controller that allows aborting this operation
      * @returns a promise that is resolved with the processes GeoJSON
      */
-    async loadAndProcessGeoJSON(params: LoadGeoJSONParameters, abortController: AbortController): Promise<GeoJSON.GeoJSON> {
+    async loadAndProcessGeoJSON(params: LoadGeoJSONParameters, abortController: AbortController): Promise<GeoJSON.GeoJSON | undefined> {
         if (params.request) {
             params.data = (await getJSON<GeoJSON.GeoJSON>(params.request, abortController)).data;
         }
@@ -271,7 +271,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
         }
 
         if (params.updateCluster) {
-            this._geoJSONIndex.updateClusterOptions(params.cluster, getSuperclusterOptions(params));
+            assertedNotNullish(this._geoJSONIndex).updateClusterOptions(!!params.cluster, assertedNotNullish(getSuperclusterOptions(params)));
         }
 
         if (this._geoJSONIndex == null) {
@@ -282,9 +282,9 @@ export class GeoJSONWorkerSource implements WorkerSource {
     /**
      * Applies a filter to a GeoJSON object.
      */
-    _filterGeoJSON(data: GeoJSON.GeoJSON, filter: FilterSpecification): GeoJSON.GeoJSON {
+    _filterGeoJSON(data: GeoJSON.GeoJSON, filter: FilterSpecification | undefined): GeoJSON.GeoJSON {
         if (data.type !== 'FeatureCollection') return data;
-        
+
         const predicate = this._getFilterPredicate(filter);
         if (!predicate) return data;
 
@@ -294,14 +294,14 @@ export class GeoJSONWorkerSource implements WorkerSource {
     /**
      * Gets a predicate function that can be used to filter GeoJSON features.
      */
-    _getFilterPredicate(filter: FilterSpecification): (feature: GeoJSON.Feature) => boolean {
+    _getFilterPredicate(filter: FilterSpecification | undefined): ((feature: GeoJSON.Feature) => boolean) | undefined {
         if (typeof filter !== 'boolean' && !filter?.length) return undefined;
 
         const compiled = createExpression(filter, {type: 'boolean', 'property-type': 'data-driven', overridable: false, transition: false} as any);
         if (compiled.result === 'error') {
             throw new Error(compiled.value.map(err => `${err.key}: ${err.message}`).join(', '));
         }
-        
+
         const predicate = (feature: GeoJSON.Feature) => compiled.value.evaluate({zoom: 0}, feature as any);
         return predicate;
     }
@@ -310,20 +310,20 @@ export class GeoJSONWorkerSource implements WorkerSource {
         this._pendingRequest?.abort();
     }
 
-    getClusterExpansionZoom(params: ClusterIDAndSource): number {
-        return this._geoJSONIndex.getClusterExpansionZoom(params.clusterId);
+    getClusterExpansionZoom(params: ClusterIDAndSource): number | null {
+        return assertedNotNullish(this._geoJSONIndex).getClusterExpansionZoom(params.clusterId);
     }
 
-    getClusterChildren(params: ClusterIDAndSource): Array<GeoJSON.Feature> {
-        return this._geoJSONIndex.getClusterChildren(params.clusterId);
+    getClusterChildren(params: ClusterIDAndSource): Array<GeoJSON.Feature> | null {
+        return assertedNotNullish(this._geoJSONIndex).getClusterChildren(params.clusterId);
     }
 
     getClusterLeaves(params: {
         clusterId: number;
         limit: number;
         offset: number;
-    }): Array<GeoJSON.Feature> {
-        return this._geoJSONIndex.getClusterLeaves(params.clusterId, params.limit, params.offset);
+    }): Array<GeoJSON.Feature> | null {
+        return assertedNotNullish(this._geoJSONIndex).getClusterLeaves(params.clusterId, params.limit, params.offset);
     }
 }
 
@@ -340,10 +340,10 @@ export function createGeoJSONIndex(data: GeoJSON.GeoJSON, params: LoadGeoJSONPar
 function getSuperclusterOptions({superclusterOptions, clusterProperties}: LoadGeoJSONParameters) {
     if (!clusterProperties || !superclusterOptions) return superclusterOptions;
 
-    const mapExpressions = {};
-    const reduceExpressions = {};
-    const globals = {accumulated: null, zoom: 0};
-    const feature = {properties: null};
+    const mapExpressions: Record<string, any> = {};
+    const reduceExpressions: Record<string, any> = {};
+    const globals: {accumulated: any; zoom: number} = {accumulated: null, zoom: 0};
+    const feature: {properties: any} = {properties: null};
     const propertyNames = Object.keys(clusterProperties);
 
     for (const key of propertyNames) {
@@ -359,14 +359,14 @@ function getSuperclusterOptions({superclusterOptions, clusterProperties}: LoadGe
 
     superclusterOptions.map = (pointProperties) => {
         feature.properties = pointProperties;
-        const properties = {};
+        const properties: Record<string, any> = {};
         for (const key of propertyNames) {
             properties[key] = mapExpressions[key].evaluate(globals, feature);
         }
         return properties;
     };
-    superclusterOptions.reduce = (accumulated, clusterProperties) => {
-        feature.properties = clusterProperties;
+    superclusterOptions.reduce = (accumulated: Record<string, any>, clusterProps) => {
+        feature.properties = clusterProps;
         for (const key of propertyNames) {
             globals.accumulated = accumulated[key];
             accumulated[key] = reduceExpressions[key].evaluate(globals, feature);

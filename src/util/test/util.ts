@@ -1,5 +1,5 @@
 import {vi, expect} from 'vitest';
-import {Map} from '../../ui/map';
+import {Map, type MapOptions} from '../../ui/map';
 import {extend} from '../../util/util';
 import {type Dispatcher} from '../../util/dispatcher';
 import {type IActor} from '../actor';
@@ -14,10 +14,10 @@ import {Frustum} from '../primitives/frustum';
 import {mat4} from 'gl-matrix';
 
 export class StubMap extends Evented {
-    style: Style;
+    style?: Style;
     transform: IReadonlyTransform;
     private _requestManager: RequestManager;
-    _terrain: TerrainSpecification;
+    _terrain?: TerrainSpecification;
 
     constructor() {
         super();
@@ -33,7 +33,7 @@ export class StubMap extends Evented {
         return 1;
     }
 
-    setTerrain(terrain) { this._terrain = terrain; }
+    setTerrain(terrain: TerrainSpecification | undefined) { this._terrain = terrain; }
     getTerrain() { return this._terrain; }
 
     migrateProjection(newTransform: ITransform) {
@@ -42,9 +42,16 @@ export class StubMap extends Evented {
     }
 }
 
-export function createMap(options?) {
+export function createMap(options?: Partial<MapOptions> & { deleteStyle?: boolean }) {
     const container = window.document.createElement('div');
-    const defaultOptions = {
+    const defaultOptions: {
+        container: HTMLDivElement;
+        interactive: boolean;
+        attributionControl: boolean;
+        maplibreLogo: boolean;
+        trackResize: boolean;
+        style?: {version: 8; sources: {}; layers: never[]};
+    } = {
         container,
         interactive: false,
         attributionControl: false,
@@ -67,7 +74,7 @@ export function createMap(options?) {
     return map;
 }
 
-export function equalWithPrecision(test, expected, actual, multiplier, message, extra) {
+export function equalWithPrecision(test: { equal: (arg0: number, arg1: number, arg2: any, arg3: any) => any }, expected: number, actual: number, multiplier: number, message: string, extra: any) {
     message = message || `should be equal to within ${multiplier}`;
     const expectedRounded = Math.round(expected / multiplier) * multiplier;
     const actualRounded = Math.round(actual / multiplier) * multiplier;
@@ -111,8 +118,9 @@ export function beforeMapTest() {
     setMatchMedia();
     setResizeObserver();
     // remove the following when the following is merged and released: https://github.com/Adamfsk/jest-webgl-canvas-mock/pull/5
-    (WebGLRenderingContext.prototype as any).bindVertexArray = WebGLRenderingContext.prototype.getExtension('OES_vertex_array_object').bindVertexArrayOES;
-    (WebGLRenderingContext.prototype as any).createVertexArray = WebGLRenderingContext.prototype.getExtension('OES_vertex_array_object').createVertexArrayOES;
+    const vaoExt = WebGLRenderingContext.prototype.getExtension('OES_vertex_array_object');
+    (WebGLRenderingContext.prototype as any).bindVertexArray = vaoExt?.bindVertexArrayOES;
+    (WebGLRenderingContext.prototype as any).createVertexArray = vaoExt?.createVertexArrayOES;
     if (!WebGLRenderingContext.prototype.drawingBufferHeight && !WebGLRenderingContext.prototype.drawingBufferWidth) {
         Object.defineProperty(WebGLRenderingContext.prototype, 'drawingBufferWidth', {
             get: vi.fn(),
@@ -147,11 +155,11 @@ export function getMockDispatcher() {
     return mockDispatcher;
 }
 
-export function stubAjaxGetImage(createImageBitmap) {
-    global.createImageBitmap = createImageBitmap;
+export function stubAjaxGetImage(createImageBitmap: ((...args: unknown[]) => Promise<ImageBitmap>) | undefined) {
+    Object.defineProperty(global, 'createImageBitmap', {value: createImageBitmap, writable: true, configurable: true});
 
     global.URL.revokeObjectURL = () => {};
-    global.URL.createObjectURL = (_) => { return null; };
+    global.URL.createObjectURL = (_) => { return ''; };
 
     Object.defineProperty(global.Image.prototype, 'src', {
         set(url: string) {

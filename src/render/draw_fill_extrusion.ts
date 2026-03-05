@@ -14,19 +14,19 @@ import type {FillExtrusionBucket} from '../data/bucket/fill_extrusion_bucket';
 import type {OverscaledTileID} from '../tile/tile_id';
 
 import {updatePatternPositionsInProgram} from './update_pattern_positions_in_program';
-import {translatePosition} from '../util/util';
+import {translatePosition, assertedNotNullish} from '../util/util';
 
 export function drawFillExtrusion(painter: Painter, tileManager: TileManager, layer: FillExtrusionStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const opacity = layer.paint.get('fill-extrusion-opacity');
+    const opacity = assertedNotNullish(layer.paint).get('fill-extrusion-opacity');
     if (opacity === 0) {
         return;
     }
 
     const {isRenderingToTexture} = renderOptions;
     if (painter.renderPass === 'translucent') {
-        const depthMode = new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, painter.depthRangeFor3D);
+        const depthMode = new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, assertedNotNullish(painter.depthRangeFor3D));
 
-        if (opacity === 1 && !layer.paint.get('fill-extrusion-pattern').constantOr(1 as any)) {
+        if (opacity === 1 && !assertedNotNullish(layer.paint).get('fill-extrusion-pattern').constantOr(1)) {
             const colorMode = painter.colorModeForRenderPass();
             drawExtrusionTiles(painter, tileManager, layer, coords, depthMode, StencilMode.disabled, colorMode, isRenderingToTexture);
 
@@ -59,25 +59,26 @@ function drawExtrusionTiles(
     const context = painter.context;
     const gl = context.gl;
     const fillPropertyName = 'fill-extrusion-pattern';
-    const patternProperty = layer.paint.get(fillPropertyName);
-    const image = patternProperty.constantOr(1 as any);
+    const patternProperty = assertedNotNullish(layer.paint).get(fillPropertyName);
+    const image = patternProperty.constantOr(1);
     const crossfade = layer.getCrossfadeParameters();
-    const opacity = layer.paint.get('fill-extrusion-opacity');
+    const opacity = assertedNotNullish(layer.paint).get('fill-extrusion-opacity');
     const constantPattern = patternProperty.constantOr(null);
     const transform = painter.transform;
+    const painterStyle = assertedNotNullish(painter.style);
 
     for (const coord of coords) {
         const tile = tileManager.getTile(coord);
         const bucket: FillExtrusionBucket = (tile.getBucket(layer) as any);
         if (!bucket) continue;
 
-        const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
+        const terrainData = painterStyle.map.terrain && painterStyle.map.terrain.getTerrainData(coord);
         const programConfiguration = bucket.programConfigurations.get(layer.id);
         const program = painter.useProgram(image ? 'fillExtrusionPattern' : 'fillExtrusion', programConfiguration);
 
         if (image) {
             painter.context.activeTexture.set(gl.TEXTURE0);
-            tile.imageAtlasTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+            assertedNotNullish(tile.imageAtlasTexture).bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
             programConfiguration.updatePaintBuffers(crossfade);
         }
 
@@ -87,18 +88,18 @@ function drawExtrusionTiles(
         const translate = translatePosition(
             transform,
             tile,
-            layer.paint.get('fill-extrusion-translate'),
-            layer.paint.get('fill-extrusion-translate-anchor')
+            assertedNotNullish(layer.paint).get('fill-extrusion-translate'),
+            assertedNotNullish(layer.paint).get('fill-extrusion-translate-anchor')
         );
 
-        const shouldUseVerticalGradient = layer.paint.get('fill-extrusion-vertical-gradient');
+        const shouldUseVerticalGradient = assertedNotNullish(layer.paint).get('fill-extrusion-vertical-gradient');
         const uniformValues = image ?
-            fillExtrusionPatternUniformValues(painter, shouldUseVerticalGradient, opacity, translate, coord, crossfade, tile) :
+            fillExtrusionPatternUniformValues(painter, shouldUseVerticalGradient, opacity, translate, coord, assertedNotNullish(crossfade), tile) :
             fillExtrusionUniformValues(painter, shouldUseVerticalGradient, opacity, translate);
 
         program.draw(context, context.gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.backCCW,
-            uniformValues, terrainData, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer,
+            uniformValues, terrainData, projectionData, layer.id, assertedNotNullish(bucket.layoutVertexBuffer), bucket.indexBuffer,
             bucket.segments, layer.paint, painter.transform.zoom,
-            programConfiguration, painter.style.map.terrain && bucket.centroidVertexBuffer);
+            programConfiguration, assertedNotNullish(painter.style).map.terrain && bucket.centroidVertexBuffer);
     }
 }

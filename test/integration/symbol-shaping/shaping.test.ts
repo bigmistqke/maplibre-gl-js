@@ -23,11 +23,11 @@ if (typeof process !== 'undefined' && process.env !== undefined) {
 }
 
 function sectionForImage(name: string, verticalAlign?: VerticalAlign) {
-    return new FormattedSection('', ResolvedImage.fromString(name), null, null, null, verticalAlign);
+    return new FormattedSection('', ResolvedImage.fromString(name), null, null, null, verticalAlign ?? null);
 }
 
 function sectionForText(name: string, scale?: number, verticalAlign?: VerticalAlign) {
-    return new FormattedSection(name, null, scale, null, null, verticalAlign);
+    return new FormattedSection(name, null, scale ?? null, null, null, verticalAlign ?? null);
 }
 
 describe('shaping', () => {
@@ -35,12 +35,12 @@ describe('shaping', () => {
     const layoutTextSize = 16;
     const layoutTextSizeThisZoom = 16;
     const fontStack = 'Test';
-    const glyphs = {
+    const glyphs: Record<string, StyleGlyph> = {
         'Test': glyphsJson as any as StyleGlyph
     };
     const glyphPositions = glyphs;
 
-    const images = {
+    const images: Record<string, ImagePosition> = {
         'square': new ImagePosition({x: 0, y: 0, w: 16, h: 16}, {pixelRatio: 1, version: 1} as StyleImage),
         'tall': new ImagePosition({x: 0, y: 0, w: 16, h: 32}, {pixelRatio: 1, version: 1} as StyleImage),
         'wide': new ImagePosition({x: 0, y: 0, w: 32, h: 16}, {pixelRatio: 1, version: 1} as StyleImage),
@@ -146,7 +146,7 @@ describe('shaping', () => {
     });
 
     test('images in vertical layout', () => {
-        const expectedImagesVertical = require('./tests/text-shaping-images-vertical.json');
+        const expectedImagesVertical = require('./tests/text-shaping-images-vertical.json') as any;
         const horizontalFormatted = new Formatted([
             sectionForText('三'),
             sectionForImage('square'),

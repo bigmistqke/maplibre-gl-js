@@ -10,7 +10,7 @@ describe('bounding volume creation', () => {
             x: 0,
             y: 0,
             z: 0,
-        }, null, null, null);
+        }, 0, 0, {tileSize: 512});
         expect(convex).toEqual(ConvexVolume.fromAabb(
             [-1, -1, -1],
             [1, 1, 1],
@@ -23,7 +23,7 @@ describe('bounding volume creation', () => {
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, {tileSize: 512});
         expect(convex).toEqual(ConvexVolume.fromAabb(
             [-1, 0, -1],
             [0, 1, 1],
@@ -36,7 +36,7 @@ describe('bounding volume creation', () => {
             x: 1,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, {tileSize: 512});
         expect(convex).toEqual(ConvexVolume.fromAabb(
             [0, 0, -1],
             [1, 1, 1],
@@ -49,7 +49,7 @@ describe('bounding volume creation', () => {
             x: 1,
             y: 1,
             z: 5,
-        }, null, null, null);
+        }, 0, 0, {tileSize: 512});
         const precision = 10;
         const expectedMin = [-0.04878262717137475, 0.9918417649235776, -0.1250257487589308];
         const expectedMax = [-0.020462724105427713, 0.9944839919477184, -0.09690430455523656];

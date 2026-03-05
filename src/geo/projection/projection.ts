@@ -93,8 +93,8 @@ export interface Projection {
     /**
      * @internal
      * A number representing the current transition state of the projection.
-     * The return value should be a number between 0 and 1, 
-     * where 0 means the projection is fully in the initial state, 
+     * The return value should be a number between 0 and 1,
+     * where 0 means the projection is fully in the initial state,
      * and 1 means the projection is fully in the final state.
      */
     get transitionState(): number;
@@ -145,5 +145,5 @@ export interface Projection {
      * @internal
      * Sets the error query latidude in degrees
      */
-    setErrorQueryLatitudeDegrees(value: number);
+    setErrorQueryLatitudeDegrees(value: number): void;
 }

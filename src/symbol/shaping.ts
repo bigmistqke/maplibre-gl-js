@@ -7,6 +7,7 @@ import {
 } from '../util/script_detection';
 import {rtlWorkerPlugin} from '../source/rtl_text_plugin_worker';
 import ONE_EM from './one_em';
+import {warnOnce, assertedNotNullish, assertNotNullish} from '../util/util';
 
 import {TaggedString, type TextSectionOptions, type ImageSectionOptions} from './tagged_string';
 import type {StyleGlyph, GlyphMetrics} from '../style/style_glyph';
@@ -101,7 +102,7 @@ function shapeText(
     text: Formatted,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     glyphPositions: {
@@ -173,7 +174,7 @@ function shapeText(
         lines = breakLines(logicalInput, lineBreaks);
     }
 
-    const positionedLines = [];
+    const positionedLines: PositionedLine[] = [];
     const shaping = {
         positionedLines,
         text: logicalInput.toString(),
@@ -255,7 +256,7 @@ function getRectAndMetrics(
     glyphPosition: GlyphPosition,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     section: TextSectionOptions,
@@ -289,7 +290,7 @@ function isLineVertical(
 function shapeLines(shaping: Shaping,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     glyphPositions: {
@@ -313,7 +314,7 @@ function shapeLines(shaping: Shaping,
     let maxLineLength = 0;
     let maxLineHeight = 0;
 
-    const justify =
+    const justify: 1 | 0 | 0.5 =
         textJustify === 'right' ? 1 :
             textJustify === 'left' ? 0 : 0.5;
     const layoutTextSizeFactor = ONE_EM / layoutTextSizeThisZoom;
@@ -323,7 +324,7 @@ function shapeLines(shaping: Shaping,
         line.trim();
 
         const lineMaxScale = line.getMaxScale();
-        const positionedLine = {positionedGlyphs: [], lineOffset: 0};
+        const positionedLine: PositionedLine = {positionedGlyphs: [], lineOffset: 0};
         shaping.positionedLines[lineIndex] = positionedLine;
         const positionedGlyphs = positionedLine.positionedGlyphs;
         let imageOffset = 0.0;
@@ -339,7 +340,7 @@ function shapeLines(shaping: Shaping,
         let i = 0;
         for (const char of line.text) {
             const section = line.getSection(i);
-            const codePoint = char.codePointAt(0);
+            const codePoint = char.codePointAt(0)!;
             const vertical = isLineVertical(writingMode, allowVerticalPlacement, codePoint);
             const positionedGlyph: PositionedGlyph = {
                 glyph: codePoint,
@@ -350,11 +351,11 @@ function shapeLines(shaping: Shaping,
                 scale: 1,
                 fontStack: '',
                 sectionIndex: line.getSectionIndex(i),
-                metrics: null,
+                metrics: null!,
                 rect: null
             };
 
-            let sectionAttributes: ShapingSectionAttributes;
+            let sectionAttributes: ShapingSectionAttributes | null;
             if ('fontStack' in section) {
                 sectionAttributes = shapeTextSection(section, codePoint, vertical, lineShapingSize, glyphMap, glyphPositions);
                 if (!sectionAttributes) continue;
@@ -368,11 +369,11 @@ function shapeLines(shaping: Shaping,
 
                 sectionAttributes = shapeImageSection(section, vertical, lineMaxScale, lineShapingSize, imagePositions);
                 if (!sectionAttributes) continue;
-                imageOffset = Math.max(imageOffset, sectionAttributes.imageOffset);
+                imageOffset = Math.max(imageOffset, assertedNotNullish(sectionAttributes?.imageOffset));
                 positionedGlyph.imageName = section.imageName;
             }
 
-            const {rect, metrics, baselineOffset} = sectionAttributes;
+            const {rect, metrics, baselineOffset} = assertedNotNullish(sectionAttributes);
             positionedGlyph.y += baselineOffset;
             positionedGlyph.scale = section.scale;
             positionedGlyph.metrics = metrics;
@@ -425,7 +426,7 @@ function shapeTextSection(
     lineShapingSize: LineShapingSize,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     glyphPositions: {
@@ -463,6 +464,7 @@ function shapeImageSection(
     lineShapingSize: LineShapingSize,
     imagePositions: {[_: string]: ImagePosition},
 ): ShapingSectionAttributes | null {
+    if (!section.imageName) return null;
     const imagePosition = imagePositions[section.imageName];
     if (!imagePosition) return null;
     const rect = imagePosition.paddedRect;
@@ -485,7 +487,7 @@ function shapeImageSection(
     // Difference between height of an image and one EM at max line scale.
     // Pushes current line down if an image size is over 1 EM at max line scale.
     const imageOffset = (vertical ? size[0] : size[1]) * section.scale - ONE_EM * lineMaxScale;
-    
+
     return {rect, metrics, baselineOffset, imageOffset};
 }
 
@@ -580,8 +582,10 @@ function applyTextFit(shapedIcon: PositionedIcon): Box {
     let iconWidth = shapedIcon.right - iconLeft;
     let iconHeight = shapedIcon.bottom - iconTop;
     // Size of the original content area
-    const contentWidth = shapedIcon.image.content[2] - shapedIcon.image.content[0];
-    const contentHeight = shapedIcon.image.content[3] - shapedIcon.image.content[1];
+    const content = shapedIcon.image.content;
+    assertNotNullish(content, 'Expected shapedIcon.image.content to be defined for text fit');
+    const contentWidth = content[2] - content[0];
+    const contentHeight = content[3] - content[1];
     const textFitWidth = shapedIcon.image.textFitWidth ?? TextFit.stretchOrShrink;
     const textFitHeight = shapedIcon.image.textFitHeight ?? TextFit.stretchOrShrink;
     const contentAspectRatio = contentWidth / contentHeight;
@@ -620,7 +624,7 @@ function fitIconToText(
 
     const image = shapedIcon.image;
 
-    let collisionPadding;
+    let collisionPadding: [number, number, number, number] | undefined;
     if (image.content) {
         const content = image.content;
         const pixelRatio = image.pixelRatio || 1;

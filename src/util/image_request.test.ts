@@ -10,7 +10,7 @@ import * as ajax from './ajax';
 describe('ImageRequest', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        (global as any).fetch = undefined;
         server = fakeServer.create();
         ImageRequest.resetRequestQueue();
         stubAjaxGetImage(undefined);

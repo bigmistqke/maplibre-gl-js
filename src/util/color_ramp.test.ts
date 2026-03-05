@@ -1,6 +1,7 @@
 import {describe, test, expect} from 'vitest';
 
 import {renderColorRamp} from './color_ramp';
+import {RGBAImage} from './image';
 import {createPropertyExpression, type StylePropertyExpression, type StylePropertySpecification} from '@maplibre/maplibre-gl-style-spec';
 
 const spec = {
@@ -9,16 +10,16 @@ const spec = {
     'type': 'color'
 } as any as StylePropertySpecification;
 
-function pixelAt(image, i) {
-    return image.data.slice(i * 4, (i + 1) * 4);
+function pixelAt(image: RGBAImage, i: number): Uint8Array {
+    return image.data.slice(i * 4, (i + 1) * 4) as Uint8Array;
 }
 
-function nearlyEquals(a, b) {
+function nearlyEquals(a: Uint8Array | number[], b: number[]): boolean {
     // we're actually looking for colors that are _almost_ equal, but don't
     // expect exact equal since 256 px need to represent a range from [0, 1]
     // (inclusive) -- the first and last pixel should be exact, the halfway
     // pixel may not be
-    return a.every((e, i) => Math.abs(e - b[i]) <= 3);
+    return Array.from(a).every((e, i) => Math.abs(e - b[i]) <= 3);
 }
 
 describe('renderColorRamp', () => {

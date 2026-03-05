@@ -26,7 +26,7 @@ export type RTLPluginStatus =
  */
 export type PluginState = {
     pluginStatus: RTLPluginStatus;
-    pluginURL: string;
+    pluginURL: string | null;
 };
 
 export const RTLPluginLoadedEventName = 'RTLPluginLoaded';

@@ -5,7 +5,7 @@ import {type StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 export function localizeURLs(style: any, port: number, baseTestsDir: string) {
     localizeStyleURLs(style, port);
     if (style.metadata && style.metadata.test && style.metadata.test.operations) {
-        style.metadata.test.operations.forEach((op) => {
+        style.metadata.test.operations.forEach((op: any) => {
             if (op[0] === 'addSource') {
                 localizeSourceURLs(op[2], port);
             } else if (op[0] === 'setStyle') {
@@ -17,7 +17,7 @@ export function localizeURLs(style: any, port: number, baseTestsDir: string) {
                 let styleJSON;
                 try {
                     const relativePath = op[1].replace(/^local:\/\//, '');
-                    styleJSON = fs.readFileSync(path.join(baseTestsDir, 'assets', relativePath));
+                    styleJSON = fs.readFileSync(path.join(baseTestsDir, 'assets', relativePath), 'utf8');
                 } catch (error) {
                     console.log(`* ${error}`);
                     return;
@@ -60,14 +60,19 @@ function localizeMapboxTilesetURL(url: string, port: number) {
 }
 
 function localizeSourceURLs(source: any, port: number) {
-    for (const tile in source.tiles) {
-        source.tiles[tile] = localizeMapboxTilesURL(source.tiles[tile], port);
-        source.tiles[tile] = localizeURL(source.tiles[tile], port);
+    if (source.tiles) {
+        for (const tile in source.tiles) {
+            const tileUrl = source.tiles[tile];
+            if (typeof tileUrl === 'string') {
+                source.tiles[tile] = localizeMapboxTilesURL(tileUrl, port);
+                source.tiles[tile] = localizeURL(source.tiles[tile], port);
+            }
+        }
     }
 
     if (source.urls) {
-        source.urls = source.urls.map((url) => localizeMapboxTilesetURL(url, port));
-        source.urls = source.urls.map((url) => localizeURL(url, port));
+        source.urls = source.urls.map((url: string) => localizeMapboxTilesetURL(url, port));
+        source.urls = source.urls.map((url: string) => localizeURL(url, port));
     }
 
     if (source.url) {
@@ -91,8 +96,11 @@ function localizeStyleURLs(style: StyleSpecification, port: number) {
             style.sprite = localizeURL(style.sprite, port);
         } else if (Array.isArray(style.sprite)) {
             for (const sprite of style.sprite) {
-                sprite.url = localizeMapboxSpriteURL(sprite.url, port);
-                sprite.url = localizeURL(sprite.url, port);
+                const spriteUrl = sprite.url;
+                if (spriteUrl) {
+                    sprite.url = localizeMapboxSpriteURL(spriteUrl, port);
+                    sprite.url = localizeURL(sprite.url, port);
+                }
             }
         }
     }

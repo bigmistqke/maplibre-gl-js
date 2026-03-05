@@ -1,6 +1,7 @@
 import {Texture} from '../render/texture';
 import {type Context} from './context';
 import {type Framebuffer} from './framebuffer';
+import {assertedNotNullish} from '../util/util';
 
 export type PoolObject = {
     id: number;
@@ -43,9 +44,9 @@ export class RenderPool {
         const texture = new Texture(this._context, {width: this._tileSize, height: this._tileSize, data: null}, this._context.gl.RGBA);
         texture.bind(this._context.gl.LINEAR, this._context.gl.CLAMP_TO_EDGE);
         if (this._context.extTextureFilterAnisotropic) {
-            this._context.gl.texParameterf(this._context.gl.TEXTURE_2D, this._context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, this._context.extTextureFilterAnisotropicMax);
+            this._context.gl.texParameterf(this._context.gl.TEXTURE_2D, this._context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, assertedNotNullish(this._context.extTextureFilterAnisotropicMax));
         }
-        fbo.depthAttachment.set(this._context.createRenderbuffer(this._context.gl.DEPTH_STENCIL, this._tileSize, this._tileSize));
+        assertedNotNullish(fbo.depthAttachment).set(this._context.createRenderbuffer(this._context.gl.DEPTH_STENCIL, this._tileSize, this._tileSize));
         fbo.colorAttachment.set(texture.texture);
         return {id, fbo, texture, stamp: -1, inUse: false};
     }

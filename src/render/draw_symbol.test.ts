@@ -17,6 +17,7 @@ import type {SymbolLayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {type Style} from '../style/style';
 import {MercatorProjection} from '../geo/projection/mercator_projection';
 import type {ProjectionData} from '../geo/projection/projection_data';
+import type {CrossTileID, VariableOffset} from '../symbol/placement';
 
 vi.mock('./painter');
 vi.mock('./program');
@@ -38,7 +39,7 @@ function createMockTransform() {
         getCircleRadiusCorrection: () => 1,
         angle: 0,
         zoom: 0,
-        getProjectionData(_canonical, fallback): ProjectionData {
+        getProjectionData(_canonical: unknown, fallback: mat4): ProjectionData {
             return {
                 mainMatrix: fallback,
                 tileMercatorCoords: [0, 0, 1, 1],
@@ -52,17 +53,19 @@ function createMockTransform() {
 
 describe('drawSymbol', () => {
     test('should not do anything', () => {
-        const mockPainter = new Painter(null, null);
+        // Painter is mocked via vi.mock, so constructor args are unused
+        const mockPainter = new Painter(null as any, null as any); // Test mock
         mockPainter.renderPass = 'opaque';
 
         const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
-        drawSymbols(mockPainter, null, null, null, null, renderOptions);
+        // renderPass is 'opaque' so drawSymbols returns immediately; args after painter are unused
+        drawSymbols(mockPainter, null as any, null as any, null as any, null as any, renderOptions); // Test mock
 
         expect(mockPainter.colorModeForRenderPass).not.toHaveBeenCalled();
     });
 
     test('should call program.draw', () => {
-        const painterMock = new Painter(null, null);
+        const painterMock = new Painter(null as any, null as any); // Test mock
         painterMock.context = {
             gl: {},
             activeTexture: {
@@ -91,9 +94,9 @@ describe('drawSymbol', () => {
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
         tileId.terrainRttPosMatrix32f = mat4.create();
-        const programMock = new Program(null, null, null, null, null, null, null, null);
+        const programMock = new Program(null as any, null as any, null as any, null as any, null as any, null as any, null as any, null as any); // Test mock
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
-        const bucketMock = new SymbolBucket(null);
+        const bucketMock = new SymbolBucket(null as any); // Test mock
         bucketMock.icon = {
             programConfigurations: {
                 get: () => { }
@@ -113,19 +116,19 @@ describe('drawSymbol', () => {
         } as any;
         tile.getBucket = () => bucketMock;
         tile.tileID = tileId;
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null as any, null as any, null as any); // Test mock
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
         tileManagerMock.getTile = (_a) => tile;
 
         const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
-        drawSymbols(painterMock, tileManagerMock, layer, [tileId], null, renderOptions);
+        drawSymbols(painterMock, tileManagerMock, layer, [tileId], null as any, renderOptions); // Test mock
 
         expect(programMock.draw).toHaveBeenCalledTimes(1);
     });
 
     test('should call updateLineLabels with rotateToLine === false if text-rotation-alignment is viewport-glyph', () => {
 
-        const painterMock = new Painter(null, null);
+        const painterMock = new Painter(null as any, null as any); // Test mock
         painterMock.context = {
             gl: {},
             activeTexture: {
@@ -154,9 +157,9 @@ describe('drawSymbol', () => {
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
         tileId.terrainRttPosMatrix32f = mat4.create();
-        const programMock = new Program(null, null, null, null, null, null, null, null);
+        const programMock = new Program(null as any, null as any, null as any, null as any, null as any, null as any, null as any, null as any); // Test mock
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
-        const bucketMock = new SymbolBucket(null);
+        const bucketMock = new SymbolBucket(null as any); // Test mock
         bucketMock.icon = {
             programConfigurations: {
                 get: () => { }
@@ -176,7 +179,7 @@ describe('drawSymbol', () => {
             bind: () => { }
         } as any;
         (tile.getBucket as Mock).mockReturnValue(bucketMock);
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null as any, null as any, null as any); // Test mock
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
         painterMock.style = {
@@ -186,14 +189,14 @@ describe('drawSymbol', () => {
 
         const spy = vi.spyOn(symbolProjection, 'updateLineLabels');
         const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
-        drawSymbols(painterMock, tileManagerMock, layer, [tileId], null, renderOptions);
+        drawSymbols(painterMock, tileManagerMock, layer, [tileId], null as any, renderOptions); // Test mock
 
         expect(spy.mock.calls[0][7]).toBeFalsy(); // rotateToLine === false
     });
 
     test('transparent tile optimization should prevent program.draw from being called', () => {
 
-        const painterMock = new Painter(null, null);
+        const painterMock = new Painter(null as any, null as any); // Test mock
         painterMock.context = {
             gl: {},
             activeTexture: {
@@ -221,9 +224,9 @@ describe('drawSymbol', () => {
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
         tileId.terrainRttPosMatrix32f = mat4.create();
-        const programMock = new Program(null, null, null, null, null, null, null, null);
+        const programMock = new Program(null as any, null as any, null as any, null as any, null as any, null as any, null as any, null as any); // Test mock
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
-        const bucketMock = new SymbolBucket(null);
+        const bucketMock = new SymbolBucket(null as any); // Test mock
         bucketMock.icon = {
             programConfigurations: {
                 get: () => { }
@@ -243,12 +246,12 @@ describe('drawSymbol', () => {
             bind: () => { }
         } as any;
         (tile.getBucket as Mock).mockReturnValue(bucketMock);
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null as any, null as any, null as any); // Test mock
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 
         const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
-        drawSymbols(painterMock, tileManagerMock, layer, [tileId], null, renderOptions);
+        drawSymbols(painterMock, tileManagerMock, layer, [tileId], null as any, renderOptions); // Test mock
 
         expect(programMock.draw).toHaveBeenCalledTimes(0);
     });

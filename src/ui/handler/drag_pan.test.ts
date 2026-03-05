@@ -5,12 +5,12 @@ import {beforeMapTest} from '../../util/test/util';
 import {Map, type MapOptions} from '../map';
 import type {MapGeoJSONFeature} from '../../util/vectortile_to_geojson';
 
-function createMap(clickTolerance?, dragPan?) {
+function createMap(clickTolerance?: number, dragPan?: boolean) {
     return new Map({
         container: DOM.create('div', '', window.document.body),
         clickTolerance: clickTolerance || 0,
         dragPan: dragPan || true,
-    } as any as MapOptions);
+    } as MapOptions); // Test mock
 }
 
 beforeEach(() => {
@@ -243,7 +243,7 @@ describe('drag_pan', () => {
     ['ctrl', 'shift'].forEach((modifier) => {
         test(`DragPanHandler does not begin a drag if the ${modifier} key is down on mousedown`, () => {
             const map = createMap();
-            expect(map.dragRotate.isEnabled()).toBeTruthy();
+            expect(map.dragRotate?.isEnabled()).toBeTruthy();
 
             const dragstart = vi.fn();
             const drag      = vi.fn();
@@ -276,7 +276,7 @@ describe('drag_pan', () => {
 
         test(`DragPanHandler still ends a drag if the ${modifier} key is down on mouseup`, () => {
             const map = createMap();
-            expect(map.dragRotate.isEnabled()).toBeTruthy();
+            expect(map.dragRotate?.isEnabled()).toBeTruthy();
 
             const dragstart = vi.fn();
             const drag      = vi.fn();
@@ -310,7 +310,7 @@ describe('drag_pan', () => {
 
     test('DragPanHandler does not begin a drag on right button mousedown', () => {
         const map = createMap();
-        map.dragRotate.disable();
+        map.dragRotate?.disable();
 
         const dragstart = vi.fn();
         const drag      = vi.fn();
@@ -343,7 +343,7 @@ describe('drag_pan', () => {
 
     test('DragPanHandler does not end a drag on right button mouseup', () => {
         const map = createMap();
-        map.dragRotate.disable();
+        map.dragRotate?.disable();
 
         const dragstart = vi.fn();
         const drag      = vi.fn();

@@ -45,8 +45,8 @@ describe('TaskQueue', () => {
         const yes = vi.fn();
         const no = vi.fn();
         q.add(yes);
-        let id; // eslint-disable-line prefer-const
-        q.add(() => q.remove(id));
+        let id: number | undefined; // eslint-disable-line prefer-const
+        q.add(() => { if (id !== undefined) q.remove(id); });
         id = q.add(no);
         q.run();
         expect(yes).toHaveBeenCalledTimes(1);

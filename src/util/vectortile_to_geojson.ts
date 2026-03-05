@@ -29,7 +29,7 @@ export type MapGeoJSONFeature = GeoJSONFeature & {
  */
 export class GeoJSONFeature {
     type: 'Feature';
-    _geometry: GeoJSON.Geometry;
+    _geometry?: GeoJSON.Geometry;
     properties: { [name: string]: any };
     id: number | string | undefined;
     _x: number;

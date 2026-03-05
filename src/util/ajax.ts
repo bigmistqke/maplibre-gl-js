@@ -1,4 +1,4 @@
-import {extend, isWorker} from './util';
+import {extend, isWorker, assertedNotNullish} from './util';
 import {AbortError, isAbortError} from './abort_error';
 import {getProtocol} from '../source/protocol_crud';
 import {MessageType} from './actor_messages';
@@ -137,7 +137,7 @@ export const getReferrer = () => isWorker(self) ?
  * @param url - The URL to check
  * @returns `true` if the URL is a file:// URL, `false` otherwise
  */
-const isFileURL = url => /^file:/.test(url) || (/^file:/.test(getReferrer()) && !/^\w+:/.test(url));
+const isFileURL = (url: string) => /^file:/.test(url) || (/^file:/.test(assertedNotNullish(getReferrer())) && !/^\w+:/.test(url));
 
 async function makeFetchRequest(requestParameters: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<any>> {
     const request = new Request(requestParameters.url, {
@@ -158,7 +158,7 @@ async function makeFetchRequest(requestParameters: RequestParameters, abortContr
     let response: Response;
     try {
         response = await fetch(request);
-    } catch (e) {
+    } catch (e: unknown) {
         // Pass through AbortErrors for upstream handling
         if (isAbortError(e)) {
             throw e;
@@ -167,7 +167,8 @@ async function makeFetchRequest(requestParameters: RequestParameters, abortContr
         // When the error is due to CORS policy, DNS issue or malformed URL, the fetch call does not resolve but throws a generic TypeError instead.
         // It is preferable to throw an AJAXError so that the Map event "error" can catch it and still have
         // access to the faulty url. In such case, we provide the arbitrary HTTP error code of `0`.
-        throw new AJAXError(0, e.message, requestParameters.url, new Blob());
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        throw new AJAXError(0, message, requestParameters.url, new Blob());
     }
 
     if (!response.ok) {
@@ -184,7 +185,7 @@ async function makeFetchRequest(requestParameters: RequestParameters, abortContr
     }
     const result = await parsePromise;
     abortController.signal.throwIfAborted();
-    return {data: result, cacheControl: response.headers.get('Cache-Control'), expires: response.headers.get('Expires'), etag: response.headers.get('ETag')};
+    return {data: result, cacheControl: response.headers.get('Cache-Control') ?? undefined, expires: response.headers.get('Expires') ?? undefined, etag: response.headers.get('ETag') ?? undefined};
 }
 
 function makeXMLHttpRequest(requestParameters: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<any>> {
@@ -224,9 +225,9 @@ function makeXMLHttpRequest(requestParameters: RequestParameters, abortControlle
                         return;
                     }
                 }
-                resolve({data, cacheControl: xhr.getResponseHeader('Cache-Control'), expires: xhr.getResponseHeader('Expires'), etag: xhr.getResponseHeader('ETag')});
+                resolve({data, cacheControl: xhr.getResponseHeader('Cache-Control') ?? undefined, expires: xhr.getResponseHeader('Expires') ?? undefined, etag: xhr.getResponseHeader('ETag') ?? undefined});
             } else {
-                const body = new Blob([xhr.response], {type: xhr.getResponseHeader('Content-Type')});
+                const body = new Blob([xhr.response], {type: xhr.getResponseHeader('Content-Type') ?? undefined});
                 reject(new AJAXError(xhr.status, xhr.statusText, requestParameters.url, body));
             }
         };
@@ -257,7 +258,7 @@ export const makeRequest = function(requestParameters: RequestParameters, abortC
         }
     }
     if (!isFileURL(requestParameters.url)) {
-        if (fetch && Request && AbortController && Object.prototype.hasOwnProperty.call(Request.prototype, 'signal')) {
+        if (typeof fetch !== 'undefined' && typeof Request !== 'undefined' && typeof AbortController !== 'undefined' && Object.prototype.hasOwnProperty.call(Request.prototype, 'signal')) {
             return makeFetchRequest(requestParameters, abortController);
         }
         if (isWorker(self) && self.worker && self.worker.actor) {

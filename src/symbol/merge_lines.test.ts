@@ -1,15 +1,16 @@
 import {describe, test, expect} from 'vitest';
 import {mergeLines} from './merge_lines';
+import type {SymbolFeature} from '../data/bucket/symbol_bucket';
 import Point from '@mapbox/point-geometry';
 
-function makeFeatures(lines) {
-    const features = [];
+function makeFeatures(lines: (string | number)[][]): SymbolFeature[] {
+    const features: SymbolFeature[] = [];
     for (const line of lines) {
-        const points = [];
+        const points: Point[] = [];
         for (let j = 1; j < line.length; j++) {
-            points.push(new Point(line[j], 0));
+            points.push(new Point(line[j] as number, 0));
         }
-        features.push({text: line[0], geometry: [points]});
+        features.push({text: line[0] as any, geometry: [points]} as SymbolFeature);
     }
     return features;
 }

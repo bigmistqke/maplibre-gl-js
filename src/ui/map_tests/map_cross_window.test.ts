@@ -1,10 +1,11 @@
 import {describe, beforeEach, afterEach, test, expect} from 'vitest';
 import {Map} from '../map';
 import {beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = null as any;
 });
 
 describe('Map cross-window support', () => {
@@ -19,8 +20,8 @@ describe('Map cross-window support', () => {
             iframe = window.document.createElement('iframe');
             window.document.body.appendChild(iframe);
             
-            iframeDocument = iframe.contentDocument;
-            iframeWindow = iframe.contentWindow;
+            iframeDocument = assertedNotNullish(iframe.contentDocument);
+            iframeWindow = assertedNotNullish(iframe.contentWindow);
 
             container = iframeDocument.createElement('div');
             iframeDocument.body.appendChild(container);
@@ -39,7 +40,7 @@ describe('Map cross-window support', () => {
             expect(iframeWindow).not.toBe(window);
 
             expect(container instanceof HTMLElement).toBe(false);
-            expect(container instanceof iframeDocument.defaultView.HTMLElement).toBe(true);
+            expect(container instanceof assertedNotNullish(iframeDocument.defaultView).HTMLElement).toBe(true);
 
             const map = new Map({
                 container,

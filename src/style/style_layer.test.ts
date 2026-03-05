@@ -1,8 +1,8 @@
 import {describe, test, expect} from 'vitest';
 import {createStyleLayer} from './create_style_layer';
 import {FillStyleLayer} from './style_layer/fill_style_layer';
-import {extend} from '../util/util';
-import {Color, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
+import {assertedNotNullish, extend} from '../util/util';
+import {Color, type Feature, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {type EvaluationParameters} from './evaluation_parameters';
 import {type TransitionParameters} from './properties';
 import {type BackgroundStyleLayer} from './style_layer/background_style_layer';
@@ -55,11 +55,11 @@ describe('StyleLayer.setPaintProperty', () => {
 
         layer.setPaintProperty('background-color', null);
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(layer.paint.get('background-color')).toEqual(new Color(0, 0, 0, 1));
+        expect(assertedNotNullish(layer.paint).get('background-color')).toEqual(new Color(0, 0, 0, 1));
         expect(layer.getPaintProperty('background-color')).toBeUndefined();
-        expect(layer.paint.get('background-opacity')).toBe(1);
+        expect(assertedNotNullish(layer.paint).get('background-opacity')).toBe(1);
         expect(layer.getPaintProperty('background-opacity')).toBe(1);
     });
 
@@ -135,13 +135,13 @@ describe('StyleLayer.setPaintProperty', () => {
 
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
-        expect(layer.paint.get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(1, 0, 0, 1)});
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
+        expect(assertedNotNullish(layer.paint).get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(1, 0, 0, 1)});
 
         layer.setPaintProperty('fill-outline-color', undefined);
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
-        expect(layer.paint.get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(0, 0, 1, 1)});
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
+        expect(assertedNotNullish(layer.paint).get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(0, 0, 1, 1)});
 
     });
 
@@ -159,19 +159,19 @@ describe('StyleLayer.setPaintProperty', () => {
         // to re-set it, StyleTransition.calculate() attempts interpolation
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
         layer.setPaintProperty('fill-outline-color', undefined);
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
         // re-set fill-outline-color and get its value, triggering the attempt
         // to interpolate between undefined and #f00
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        layer.paint.get('fill-outline-color');
+        assertedNotNullish(layer.paint).get('fill-outline-color');
 
     });
 
@@ -236,9 +236,9 @@ describe('StyleLayer.setLayoutProperty', () => {
         } as LayerSpecification, {}) as SymbolStyleLayer;
 
         layer.setLayoutProperty('text-transform', null);
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(layer.layout.get('text-transform').value).toEqual({kind: 'constant', value: 'none'});
+        expect(assertedNotNullish(layer.layout).get('text-transform').value).toEqual({kind: 'constant', value: 'none'});
         expect(layer.getLayoutProperty('text-transform')).toBeUndefined();
     });
 });
@@ -339,7 +339,7 @@ describe('StyleLayer.getPaintAffectingGlobalStateRefs', () => {
 
 describe('StyleLayer.serialize', () => {
 
-    function createSymbolLayer(layer?) {
+    function createSymbolLayer(layer?: Record<string, any>) {
         return extend({
             id: 'symbol',
             type: 'symbol',
@@ -353,7 +353,7 @@ describe('StyleLayer.serialize', () => {
     }
 
     test('serializes layers', () => {
-        expect(createStyleLayer(createSymbolLayer(), {}).serialize()).toEqual(createSymbolLayer());
+        expect(createStyleLayer(createSymbolLayer() as any, {}).serialize()).toEqual(createSymbolLayer());
     });
 
     test('serializes functions', () => {
@@ -364,48 +364,53 @@ describe('StyleLayer.serialize', () => {
             }
         };
 
-        expect(createStyleLayer(createSymbolLayer({paint: layerPaint}), {}).serialize().paint).toEqual(layerPaint);
+        expect(createStyleLayer(createSymbolLayer({paint: layerPaint}) as any, {}).serialize().paint).toEqual(layerPaint);
     });
 
     test('serializes added paint properties', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setPaintProperty('text-halo-color', 'orange');
 
-        expect(layer.serialize().paint['text-halo-color']).toBe('orange');
-        expect(layer.serialize().paint['text-color']).toBe('blue');
+        const serialized = layer.serialize();
+        expect((serialized.paint as any)['text-halo-color']).toBe('orange');
+        expect((serialized.paint as any)['text-color']).toBe('blue');
 
     });
 
     test('serializes added layout properties', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setLayoutProperty('text-size', 20);
 
-        expect(layer.serialize().layout['text-transform']).toBe('uppercase');
-        expect(layer.serialize().layout['text-size']).toBe(20);
+        const serialized2 = layer.serialize();
+        expect((serialized2.layout as any)['text-transform']).toBe('uppercase');
+        expect((serialized2.layout as any)['text-size']).toBe(20);
 
     });
 
     test('serializes "visibility" of "visible"', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setLayoutProperty('visibility', 'visible');
 
-        expect(layer.serialize().layout['visibility']).toBe('visible');
+        const serialized3 = layer.serialize();
+        expect((serialized3.layout as any)['visibility']).toBe('visible');
 
     });
 
     test('serializes "visibility" of "none"', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setLayoutProperty('visibility', 'none');
 
-        expect(layer.serialize().layout['visibility']).toBe('none');
+        const serialized4 = layer.serialize();
+        expect((serialized4.layout as any)['visibility']).toBe('none');
 
     });
 
     test('serializes "visibility" of undefined', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setLayoutProperty('visibility', undefined);
 
-        expect(layer.serialize().layout['visibility']).toBeUndefined();
+        const serialized5 = layer.serialize();
+        expect((serialized5.layout as any)['visibility']).toBeUndefined();
 
     });
 
@@ -413,7 +418,7 @@ describe('StyleLayer.serialize', () => {
 
 describe('StyleLayer.serialize', () => {
 
-    function createSymbolLayer(layer?) {
+    function createSymbolLayer(layer?: Record<string, any>) {
         return extend({
             id: 'symbol',
             type: 'symbol',
@@ -427,7 +432,7 @@ describe('StyleLayer.serialize', () => {
     }
 
     test('serializes layers', () => {
-        expect(createStyleLayer(createSymbolLayer(), {}).serialize()).toEqual(createSymbolLayer());
+        expect(createStyleLayer(createSymbolLayer() as any, {}).serialize()).toEqual(createSymbolLayer());
     });
 
     test('serializes functions', () => {
@@ -438,24 +443,26 @@ describe('StyleLayer.serialize', () => {
             }
         };
 
-        expect(createStyleLayer(createSymbolLayer({paint: layerPaint}), {}).serialize().paint).toEqual(layerPaint);
+        expect(createStyleLayer(createSymbolLayer({paint: layerPaint}) as any, {}).serialize().paint).toEqual(layerPaint);
     });
 
     test('serializes added paint properties', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setPaintProperty('text-halo-color', 'orange');
 
-        expect(layer.serialize().paint['text-halo-color']).toBe('orange');
-        expect(layer.serialize().paint['text-color']).toBe('blue');
+        const serialized = layer.serialize();
+        expect((serialized.paint as any)['text-halo-color']).toBe('orange');
+        expect((serialized.paint as any)['text-color']).toBe('blue');
 
     });
 
     test('serializes added layout properties', () => {
-        const layer = createStyleLayer(createSymbolLayer(), {});
+        const layer = createStyleLayer(createSymbolLayer() as any, {});
         layer.setLayoutProperty('text-size', 20);
 
-        expect(layer.serialize().layout['text-transform']).toBe('uppercase');
-        expect(layer.serialize().layout['text-size']).toBe(20);
+        const serialized2 = layer.serialize();
+        expect((serialized2.layout as any)['text-transform']).toBe('uppercase');
+        expect((serialized2.layout as any)['text-size']).toBe(20);
 
     });
 
@@ -478,10 +485,10 @@ describe('StyleLayer.globalState', () => {
             }
         } as LayerSpecification, {textSize: 15, textTransform: 'uppercase'}) as SymbolStyleLayer;
 
-        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(layer.layout.get('text-size').evaluate(undefined, {})).toBe(15);
-        expect(layer.layout.get('text-transform').evaluate(undefined, {})).toBe('uppercase');
+        expect(assertedNotNullish(layer.layout).get('text-size').evaluate(undefined as any, {})).toBe(15);
+        expect(assertedNotNullish(layer.layout).get('text-transform').evaluate(undefined as any, {})).toBe('uppercase');
     });
 
     test('uses layer global state when recalculating paint properties', () => {
@@ -494,10 +501,10 @@ describe('StyleLayer.globalState', () => {
             }
         } as LayerSpecification, {radius: 15, color: '#FF0000'}) as CircleStyleLayer;
 
-        layer.recalculate({zoom: 0} as EvaluationParameters, undefined);
+        layer.recalculate({zoom: 0} as EvaluationParameters, []);
 
-        expect(layer.paint.get('circle-color').evaluate(undefined, {})).toEqual(new Color(1, 0, 0, 1));
-        expect(layer.paint.get('circle-radius').evaluate(undefined, {})).toBe(15);
+        expect(assertedNotNullish(layer.paint).get('circle-color').evaluate(undefined as any, {})).toEqual(new Color(1, 0, 0, 1));
+        expect(assertedNotNullish(layer.paint).get('circle-radius').evaluate(undefined as any, {})).toBe(15);
     });
 
     test('uses layer global state when recalculating visiblity', () => {

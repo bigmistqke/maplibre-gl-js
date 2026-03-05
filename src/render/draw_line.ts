@@ -21,6 +21,7 @@ import {clamp, nextPowerOfTwo} from '../util/util';
 import {renderColorRamp} from '../util/color_ramp';
 import {EXTENT} from '../data/extent';
 import type {RGBAImage} from '../util/image';
+import {assertedNotNullish} from '../util/util';
 
 type GradientTexture = {
     texture?: Texture;
@@ -74,7 +75,7 @@ function bindImagePatternTextures(
     crossfade: ReturnType<LineStyleLayer['getCrossfadeParameters']>
 ) {
     context.activeTexture.set(gl.TEXTURE0);
-    tile.imageAtlasTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+    assertedNotNullish(tile.imageAtlasTexture).bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
     programConfiguration.updatePaintBuffers(crossfade);
 }
 
@@ -86,9 +87,9 @@ function bindDasharrayTextures(
     programChanged: boolean,
     crossfade: ReturnType<LineStyleLayer['getCrossfadeParameters']>
 ) {
-    if (programChanged || painter.lineAtlas.dirty) {
+    if (programChanged || assertedNotNullish(painter.lineAtlas).dirty) {
         context.activeTexture.set(gl.TEXTURE0);
-        painter.lineAtlas.bind(context);
+        assertedNotNullish(painter.lineAtlas).bind(context);
     }
     programConfiguration.updatePaintBuffers(crossfade);
 }
@@ -108,7 +109,7 @@ function bindGradientTextures(
         gradientTexture = updateGradientTexture(painter, tileManager, context, gl, layer, bucket, coord, layerGradient);
     }
     context.activeTexture.set(gl.TEXTURE0);
-    gradientTexture.bind(layer.stepInterpolant ? gl.NEAREST : gl.LINEAR, gl.CLAMP_TO_EDGE);
+    assertedNotNullish(gradientTexture).bind(layer.stepInterpolant ? gl.NEAREST : gl.LINEAR, gl.CLAMP_TO_EDGE);
 }
 
 function bindGradientAndDashTextures(
@@ -129,11 +130,11 @@ function bindGradientAndDashTextures(
         gradientTexture = updateGradientTexture(painter, tileManager, context, gl, layer, bucket, coord, layerGradient);
     }
     context.activeTexture.set(gl.TEXTURE0);
-    gradientTexture.bind(layer.stepInterpolant ? gl.NEAREST : gl.LINEAR, gl.CLAMP_TO_EDGE);
+    assertedNotNullish(gradientTexture).bind(layer.stepInterpolant ? gl.NEAREST : gl.LINEAR, gl.CLAMP_TO_EDGE);
 
     // Bind dash atlas to TEXTURE1
     context.activeTexture.set(gl.TEXTURE1);
-    painter.lineAtlas.bind(context);
+    assertedNotNullish(painter.lineAtlas).bind(context);
 
     programConfiguration.updatePaintBuffers(crossfade);
 }
@@ -143,19 +144,19 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
 
     const {isRenderingToTexture} = renderOptions;
 
-    const opacity = layer.paint.get('line-opacity');
-    const width = layer.paint.get('line-width');
+    const opacity = assertedNotNullish(layer.paint).get('line-opacity');
+    const width = assertedNotNullish(layer.paint).get('line-width');
     if (opacity.constantOr(1) === 0 || width.constantOr(1) === 0) return;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
     const colorMode = painter.colorModeForRenderPass();
 
-    const dasharrayProperty = layer.paint.get('line-dasharray');
+    const dasharrayProperty = assertedNotNullish(layer.paint).get('line-dasharray');
     const dasharray = dasharrayProperty.constantOr(1 as any);
-    const patternProperty = layer.paint.get('line-pattern');
+    const patternProperty = assertedNotNullish(layer.paint).get('line-pattern');
     const image = patternProperty.constantOr(1 as any);
 
-    const gradient = layer.paint.get('line-gradient');
+    const gradient = assertedNotNullish(layer.paint).get('line-gradient');
     const crossfade = layer.getCrossfadeParameters();
 
     let programId: string;
@@ -170,6 +171,7 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
     const transform = painter.transform;
 
     let firstTile = true;
+    const painterStyle = assertedNotNullish(painter.style);
 
     for (const coord of coords) {
         const tile = tileManager.getTile(coord);
@@ -183,7 +185,7 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
         const prevProgram = painter.context.program.get();
         const program = painter.useProgram(programId, programConfiguration);
         const programChanged = firstTile || program.program !== prevProgram;
-        const terrainData = painter.style.map.terrain &&  painter.style.map.terrain.getTerrainData(coord);
+        const terrainData = painterStyle.map.terrain &&  painterStyle.map.terrain.getTerrainData(coord);
 
         const constantPattern = patternProperty.constantOr(null);
         const constantDasharray = dasharrayProperty && dasharrayProperty.constantOr(null);
@@ -195,9 +197,9 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
             if (posTo && posFrom) programConfiguration.setConstantPatternPositions(posTo, posFrom);
 
         } else if (constantDasharray) {
-            const round = layer.layout.get('line-cap') === 'round';
-            const dashTo = painter.lineAtlas.getDash(constantDasharray.to, round);
-            const dashFrom = painter.lineAtlas.getDash(constantDasharray.from, round);
+            const round = assertedNotNullish(layer.layout).get('line-cap') === 'round';
+            const dashTo = assertedNotNullish(assertedNotNullish(painter.lineAtlas).getDash(constantDasharray.to, round));
+            const dashFrom = assertedNotNullish(assertedNotNullish(painter.lineAtlas).getDash(constantDasharray.from, round));
             programConfiguration.setConstantDashPositions(dashTo, dashFrom);
         }
 
@@ -211,14 +213,14 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
 
         let uniformValues;
         if (image) {
-            uniformValues = linePatternUniformValues(painter, tile, layer, pixelRatio, crossfade);
-            bindImagePatternTextures(context, gl, tile, programConfiguration, crossfade);
+            uniformValues = linePatternUniformValues(painter, tile, layer, pixelRatio, assertedNotNullish(crossfade));
+            bindImagePatternTextures(context, gl, tile, programConfiguration, assertedNotNullish(crossfade));
         } else if (dasharray && gradient) {
-            uniformValues = lineGradientSDFUniformValues(painter, tile, layer, pixelRatio, crossfade, bucket.lineClipsArray.length);
-            bindGradientAndDashTextures(painter, tileManager, context, gl, layer, bucket, coord, programConfiguration, crossfade);
+            uniformValues = lineGradientSDFUniformValues(painter, tile, layer, pixelRatio, assertedNotNullish(crossfade), bucket.lineClipsArray.length);
+            bindGradientAndDashTextures(painter, tileManager, context, gl, layer, bucket, coord, programConfiguration, assertedNotNullish(crossfade));
         } else if (dasharray) {
-            uniformValues = lineSDFUniformValues(painter, tile, layer, pixelRatio, crossfade);
-            bindDasharrayTextures(painter, context, gl, programConfiguration, programChanged, crossfade);
+            uniformValues = lineSDFUniformValues(painter, tile, layer, pixelRatio, assertedNotNullish(crossfade));
+            bindDasharrayTextures(painter, context, gl, programConfiguration, programChanged, assertedNotNullish(crossfade));
         } else if (gradient) {
             uniformValues = lineGradientUniformValues(painter, tile, layer, pixelRatio, bucket.lineClipsArray.length);
             bindGradientTextures(painter, tileManager, context, gl, layer, bucket, coord);

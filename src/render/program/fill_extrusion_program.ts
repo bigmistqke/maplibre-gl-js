@@ -7,7 +7,7 @@ import {
 } from '../uniform_binding';
 
 import {mat3, vec3} from 'gl-matrix';
-import {extend} from '../../util/util';
+import {extend, assertedNotNullish, assertNotNullish } from '../../util/util';
 
 import type {Context} from '../../gl/context';
 import type {Painter} from '../painter';
@@ -78,11 +78,13 @@ const fillExtrusionUniformValues = (
     opacity: number,
     translate: [number, number],
 ): UniformValues<FillExtrusionUniformsType> => {
-    const light = painter.style.light;
+    const light = assertedNotNullish(painter.style).light;
+    assertNotNullish(light?.properties);
+
     const _lp = light.properties.get('position');
     const lightPos = [_lp.x, _lp.y, _lp.z] as vec3;
     const lightMat = mat3.create();
-    if (light.properties.get('anchor') === 'viewport') {
+    if (assertedNotNullish(light.properties).get('anchor') === 'viewport') {
         mat3.fromRotation(lightMat, painter.transform.bearingInRadians);
     }
     vec3.transformMat3(lightPos, lightPos, lightMat);

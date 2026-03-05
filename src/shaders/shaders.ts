@@ -1,5 +1,6 @@
 // Disable Flow annotations here because Flow doesn't support importing GLSL files
 
+import {assertedNotNullish} from '../util/util';
 import preludeFrag from './_prelude.fragment.glsl.g';
 import preludeVert from './_prelude.vertex.glsl.g';
 import backgroundFrag from './background.fragment.glsl.g';
@@ -126,9 +127,9 @@ function prepare(fragmentSource: string, vertexSource: string): PreparedShader {
     const vertexAttributes = vertexSource.match(/in ([\w]+) ([\w]+)/g);
     const fragmentUniforms = fragmentSource.match(/uniform ([\w]+) ([\w]+)([\s]*)([\w]*)/g);
     const vertexUniforms = vertexSource.match(/uniform ([\w]+) ([\w]+)([\s]*)([\w]*)/g);
-    const shaderUniforms = vertexUniforms ? vertexUniforms.concat(fragmentUniforms) : fragmentUniforms;
+    const shaderUniforms = vertexUniforms ? vertexUniforms.concat(assertedNotNullish(fragmentUniforms)) : fragmentUniforms;
 
-    const fragmentPragmas = {};
+    const fragmentPragmas: Record<string, boolean> = {};
 
     fragmentSource = fragmentSource.replace(re, (match, operation, precision, type, name) => {
         fragmentPragmas[name] = true;
@@ -217,7 +218,7 @@ uniform ${precision} ${type} u_${name};
         }
     });
 
-    return {fragmentSource, vertexSource, staticAttributes: vertexAttributes, staticUniforms: shaderUniforms};
+    return {fragmentSource, vertexSource, staticAttributes: assertedNotNullish(vertexAttributes), staticUniforms: assertedNotNullish(shaderUniforms)};
 }
 
 /** Transpile WebGL2 vertex shader source to WebGL1 */

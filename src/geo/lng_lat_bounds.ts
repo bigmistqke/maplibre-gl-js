@@ -1,3 +1,4 @@
+import {assertedNotNullish, isNullish} from '../util/util';
 import {LngLat} from './lng_lat';
 import type {LngLatLike} from './lng_lat';
 import {wrap} from '../util/util';
@@ -40,8 +41,8 @@ export type LngLatBoundsLike = LngLatBounds | [LngLatLike, LngLatLike] | [number
  * ```
  */
 export class LngLatBounds {
-    _ne: LngLat;
-    _sw: LngLat;
+    _ne?: LngLat;
+    _sw?: LngLat;
 
     /**
      * @param sw - The southwest corner of the bounding box.
@@ -103,10 +104,11 @@ export class LngLatBounds {
      *
      * @param obj - object to extend to
      */
-    extend(obj: LngLatLike | LngLatBoundsLike): this {
-        const sw = this._sw,
-            ne = this._ne;
-        let sw2, ne2;
+    extend(obj: LngLatLike | LngLatBoundsLike|null): this {
+        const sw = this._sw;
+        const ne = this._ne;
+        let sw2: LngLat | undefined;
+        let ne2: LngLat | undefined;
 
         if (obj instanceof LngLat) {
             sw2 = obj;
@@ -135,15 +137,18 @@ export class LngLatBounds {
             return this;
         }
 
-        if (!sw && !ne) {
-            this._sw = new LngLat(sw2.lng, sw2.lat);
-            this._ne = new LngLat(ne2.lng, ne2.lat);
-
-        } else {
+        if (sw){
             sw.lng = Math.min(sw2.lng, sw.lng);
             sw.lat = Math.min(sw2.lat, sw.lat);
+        } else {
+            this._sw = new LngLat(sw2.lng, sw2.lat);
+        }
+
+        if(ne){
             ne.lng = Math.max(ne2.lng, ne.lng);
             ne.lat = Math.max(ne2.lat, ne.lat);
+        }else{
+            this._ne = new LngLat(ne2.lng, ne2.lat);
         }
 
         return this;
@@ -160,6 +165,9 @@ export class LngLatBounds {
      * ```
      */
     getCenter(): LngLat {
+        if(isNullish(this._sw) || isNullish(this._ne)){
+            throw new Error('Expected this._sw and this._ne to be defined');
+        }
         return new LngLat((this._sw.lng + this._ne.lng) / 2, (this._sw.lat + this._ne.lat) / 2);
     }
 
@@ -168,14 +176,14 @@ export class LngLatBounds {
      *
      * @returns The southwest corner of the bounding box.
      */
-    getSouthWest(): LngLat { return this._sw; }
+    getSouthWest(): LngLat { return assertedNotNullish(this._sw); }
 
     /**
      * Returns the northeast corner of the bounding box.
      *
      * @returns The northeast corner of the bounding box.
      */
-    getNorthEast(): LngLat { return this._ne; }
+    getNorthEast(): LngLat { return assertedNotNullish(this._ne); }
 
     /**
      * Returns the northwest corner of the bounding box.
@@ -196,28 +204,28 @@ export class LngLatBounds {
      *
      * @returns The west edge of the bounding box.
      */
-    getWest(): number { return this._sw.lng; }
+    getWest(): number { return assertedNotNullish(this._sw).lng; }
 
     /**
      * Returns the south edge of the bounding box.
      *
      * @returns The south edge of the bounding box.
      */
-    getSouth(): number { return this._sw.lat; }
+    getSouth(): number { return assertedNotNullish(this._sw).lat; }
 
     /**
      * Returns the east edge of the bounding box.
      *
      * @returns The east edge of the bounding box.
      */
-    getEast(): number { return this._ne.lng; }
+    getEast(): number { return assertedNotNullish(this._ne).lng; }
 
     /**
      * Returns the north edge of the bounding box.
      *
      * @returns The north edge of the bounding box.
      */
-    getNorth(): number { return this._ne.lat; }
+    getNorth(): number { return assertedNotNullish(this._ne).lat; }
 
     /**
      * Returns the bounding box represented as an array.
@@ -231,7 +239,7 @@ export class LngLatBounds {
      * ```
      */
     toArray(): [[number, number], [number, number]] {
-        return [this._sw.toArray(), this._ne.toArray()];
+        return [assertedNotNullish(this._sw).toArray(), assertedNotNullish(this._ne).toArray()];
     }
 
     /**
@@ -246,7 +254,7 @@ export class LngLatBounds {
      * ```
      */
     toString() {
-        return `LngLatBounds(${this._sw.toString()}, ${this._ne.toString()})`;
+        return `LngLatBounds(${assertedNotNullish(this._sw).toString()}, ${assertedNotNullish(this._ne).toString()})`;
     }
 
     /**
@@ -278,6 +286,10 @@ export class LngLatBounds {
     contains(lnglat: LngLatLike) {
         const {lng, lat} = LngLat.convert(lnglat);
 
+        if(isNullish(this._sw) || isNullish(this._ne)){
+            throw new Error('Expected this._sw and this._ne to be defined');
+        }
+
         const containsLatitude = this._sw.lat <= lat && lat <= this._ne.lat;
         let containsLongitude = this._sw.lng <= lng && lng <= this._ne.lng;
         if (this._sw.lng > this._ne.lng) { // wrapped coordinates
@@ -297,18 +309,18 @@ export class LngLatBounds {
      * the antimeridian (date line).
      */
     intersects(other: LngLatBoundsLike): boolean {
-        other = LngLatBounds.convert(other);
+        const otherBounds = assertedNotNullish(LngLatBounds.convert(other));
 
         const latIntersects =
-            other.getNorth() >= this.getSouth() &&
-            other.getSouth() <= this.getNorth();
+            otherBounds.getNorth() >= this.getSouth() &&
+            otherBounds.getSouth() <= this.getNorth();
 
         if (!latIntersects) return false;
 
         // Check if either bound covers the full world (|span| >= 360°)
         // This must be done before wrapping to preserve the span information
         const thisSpan = Math.abs(this.getEast() - this.getWest());
-        const otherSpan = Math.abs(other.getEast() - other.getWest());
+        const otherSpan = Math.abs(otherBounds.getEast() - otherBounds.getWest());
 
         if (thisSpan >= 360 || otherSpan >= 360) {
             return true;
@@ -317,8 +329,8 @@ export class LngLatBounds {
         // Normalize longitudes to [-180, 180] range
         const thisWest = wrap(this.getWest(), -180, 180);
         const thisEast = wrap(this.getEast(), -180, 180);
-        const otherWest = wrap(other.getWest(), -180, 180);
-        const otherEast = wrap(other.getEast(), -180, 180);
+        const otherWest = wrap(otherBounds.getWest(), -180, 180);
+        const otherEast = wrap(otherBounds.getEast(), -180, 180);
 
         // Check if either bounds wraps around the antimeridian
         // Use strict inequality: equal values indicate zero-width bounds (e.g., a point), not wrapping
@@ -359,9 +371,9 @@ export class LngLatBounds {
      * let llb = LngLatBounds.convert(arr); // = LngLatBounds {_sw: LngLat {lng: -73.9876, lat: 40.7661}, _ne: LngLat {lng: -73.9397, lat: 40.8002}}
      * ```
      */
-    static convert(input: LngLatBoundsLike | null): LngLatBounds {
+    static convert(input: LngLatBoundsLike | null): LngLatBounds|null {
         if (input instanceof LngLatBounds) return input;
-        if (!input) return input as null;
+        if (isNullish(input)) return null;
         return new LngLatBounds(input);
     }
 
@@ -398,6 +410,10 @@ export class LngLatBounds {
      * ```
      */
     adjustAntiMeridian(): LngLatBounds {
+        if(isNullish(this._sw) || isNullish(this._ne)){
+            throw new Error('Expected this._sw and this._ne to be defined');
+        }
+
         const sw = new LngLat(this._sw.lng, this._sw.lat);
         const ne = new LngLat(this._ne.lng, this._ne.lat);
 

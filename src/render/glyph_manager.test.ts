@@ -3,14 +3,16 @@ import {parseGlyphPbf} from '../style/parse_glyph_pbf';
 import {GlyphManager} from './glyph_manager';
 import fs from 'fs';
 import {type RequestManager} from '../util/request_manager';
+import type {StyleGlyph} from '../style/style_glyph';
+import {assertedNotNullish} from '../util/util';
 
 describe('GlyphManager', () => {
-    const GLYPHS = {};
+    const GLYPHS: {[id: number]: StyleGlyph | null} = {};
     for (const glyph of parseGlyphPbf(fs.readFileSync('./test/unit/assets/0-255.pbf'))) {
         GLYPHS[glyph.id] = glyph;
     }
 
-    const identityTransform = ((url) => ({url})) as any as RequestManager;
+    const identityTransform = ((url: string) => ({url})) as any as RequestManager; // cast required: test stub for RequestManager
 
     const createLoadGlyphRangeStub = () => {
         return vi.spyOn(GlyphManager, 'loadGlyphRange').mockImplementation((stack, range, urlTemplate, transform) => {
@@ -39,7 +41,7 @@ describe('GlyphManager', () => {
         const manager = createGlyphManager(true);
 
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [55]});
-        expect(returnedGlyphs['Arial Unicode MS']['55'].metrics.advance).toBe(12);
+        expect(assertedNotNullish(returnedGlyphs['Arial Unicode MS']['55']).metrics.advance).toBe(12);
     });
 
     test('GlyphManager doesn\'t request twice 0-255 PBF if a glyph is missing', async () => {
@@ -83,7 +85,7 @@ describe('GlyphManager', () => {
 
     test('GlyphManager does not cache CJK chars that should be rendered locally', async () => {
         vi.spyOn(GlyphManager, 'loadGlyphRange').mockImplementation((_stack, range, _urlTemplate, _transform) => {
-            const overlappingGlyphs = {};
+            const overlappingGlyphs: {[id: number]: StyleGlyph | null} = {};
             const start = range * 256;
             const end = start + 256;
             for (let i = start, j = 0; i < end; i++, j++) {
@@ -99,7 +101,7 @@ describe('GlyphManager', () => {
         expect(returnedGlyphs['Arial Unicode MS'][0x3005]).not.toBeNull();
         //Request char from Katakana range (te テ)
         returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30C6]});
-        const glyph = returnedGlyphs['Arial Unicode MS'][0x30c6];
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x30c6]);
         //Ensure that te is locally generated.
         expect(glyph.bitmap.height).toBe(12);
         expect(glyph.bitmap.width).toBe(12);
@@ -110,7 +112,8 @@ describe('GlyphManager', () => {
 
         // Chinese character píng 平
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x5e73]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x5e73].metrics.advance).toBe(0.5);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x5e73]);
+        expect(glyph.metrics.advance).toBe(0.5);
     });
 
     test('GlyphManager generates non-BMP CJK PBF locally', async () => {
@@ -118,7 +121,7 @@ describe('GlyphManager', () => {
 
         // Chinese character biáng 𰻞
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30EDE]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x30EDE].metrics.advance).toBe(1);
+        expect(returnedGlyphs['Arial Unicode MS'][0x30EDE]!.metrics.advance).toBe(1);
     });
 
     test('GlyphManager generates Katakana PBF locally', async () => {
@@ -126,7 +129,8 @@ describe('GlyphManager', () => {
 
         // Katakana letter te テ
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30c6]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x30c6].metrics.advance).toBe(0.5);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x30c6]);
+        expect(glyph.metrics.advance).toBe(0.5);
     });
 
     test('GlyphManager generates Hiragana PBF locally', async () => {
@@ -134,7 +138,8 @@ describe('GlyphManager', () => {
 
         //Hiragana letter te て
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x3066]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x3066].metrics.advance).toBe(0.5);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x3066]);
+        expect(glyph.metrics.advance).toBe(0.5);
     });
 
     test('GlyphManager consistently generates CJKV text locally', async () => {
@@ -165,8 +170,8 @@ describe('GlyphManager', () => {
 
         // A
         const returnedGlyphs = await manager.getGlyphs({'Times Old Roman': [0x41]});
-        expect(returnedGlyphs['Times Old Roman'][0x41].metrics.width).toBeGreaterThan(0);
-        expect(returnedGlyphs['Times Old Roman'][0x41].metrics.advance).toBeGreaterThan(0);
+        expect(returnedGlyphs['Times Old Roman'][0x41]!.metrics.width).toBeGreaterThan(0);
+        expect(returnedGlyphs['Times Old Roman'][0x41]!.metrics.advance).toBeGreaterThan(0);
     });
 
     test('GlyphManager locally generates nonspacing control character', async () => {
@@ -174,8 +179,8 @@ describe('GlyphManager', () => {
 
         // U+202E RIGHT-TO-LEFT OVERRIDE
         const returnedGlyphs = await manager.getGlyphs({'Ctrl Alt Del': [0x202e]});
-        expect(returnedGlyphs['Ctrl Alt Del'][0x202e].metrics.width).toBe(0);
-        expect(returnedGlyphs['Ctrl Alt Del'][0x202e].metrics.advance).toBe(0);
+        expect(returnedGlyphs['Ctrl Alt Del'][0x202e]!.metrics.width).toBe(0);
+        expect(returnedGlyphs['Ctrl Alt Del'][0x202e]!.metrics.advance).toBe(0);
     });
 
     test('GlyphManager matches font styles', async () => {
@@ -201,7 +206,7 @@ describe('GlyphManager', () => {
         const manager = createGlyphManager(true, 'sans-serif');
 
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x10e1]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x10e1].metrics.advance).toBe(12);
+        expect(returnedGlyphs['Arial Unicode MS'][0x10e1]!.metrics.advance).toBe(12);
     });
 
     test('GlyphManager caches locally generated glyphs', async () => {
@@ -213,7 +218,8 @@ describe('GlyphManager', () => {
 
         // Katakana letter te
         const returnedGlyphs = await manager.getGlyphs({'Arial Unicode MS': [0x30c6]});
-        expect(returnedGlyphs['Arial Unicode MS'][0x30c6].metrics.advance).toBe(24);
+        const glyph = assertedNotNullish(returnedGlyphs['Arial Unicode MS'][0x30c6]);
+        expect(glyph.metrics.advance).toBe(24);
         await manager.getGlyphs({'Arial Unicode MS': [0x30c6]});
         expect(drawSpy).toHaveBeenCalledTimes(1);
     });

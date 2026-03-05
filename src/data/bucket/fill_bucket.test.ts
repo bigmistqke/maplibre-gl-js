@@ -12,7 +12,7 @@ import {SubdivisionGranularitySetting} from '../../render/subdivision_granularit
 import {CanonicalTileID} from '../../tile/tile_id';
 import type {VectorTileLayerLike} from '@maplibre/vt-pbf';
 
-function createPolygon(numPoints) {
+function createPolygon(numPoints: number) {
     const points = [];
     for (let i = 0; i < numPoints; i++) {
         points.push(new Point(2048 + 256 * Math.cos(i / numPoints * 2 * Math.PI), 2048 + 256 * Math.sin(i / numPoints * 2 * Math.PI)));
@@ -20,7 +20,7 @@ function createPolygon(numPoints) {
     return points;
 }
 
-function createFillBucket({id, layout, paint, globalState, availableImages}: CreateBucketParameters): FillBucket {
+function createFillBucket({id, layout, paint, globalState = {}, availableImages = []}: CreateBucketParameters): FillBucket {
     const layer = new FillStyleLayer({
         id,
         type: 'fill',
@@ -28,14 +28,14 @@ function createFillBucket({id, layout, paint, globalState, availableImages}: Cre
         paint
     } as LayerSpecification, globalState);
     layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters,
-        availableImages as Array<string>);
+        availableImages);
 
     return new FillBucket({layers: [layer]} as BucketParameters<FillStyleLayer>);
 }
 
 describe('FillBucket', () => {
     let sourceLayer: VectorTileLayerLike;
-    let canonicalTileID;
+    let canonicalTileID: CanonicalTileID;
     beforeAll(() => {
         // Load fill features from fixture tile.
         sourceLayer = loadVectorTile().layers.water;
@@ -49,16 +49,16 @@ describe('FillBucket', () => {
             bucket.addFeature({} as BucketFeature, [[
                 new Point(0, 0),
                 new Point(10, 10)
-            ]], undefined, canonicalTileID, undefined, SubdivisionGranularitySetting.noSubdivision);
+            ]], 0, canonicalTileID, {}, SubdivisionGranularitySetting.noSubdivision);
 
             bucket.addFeature({} as BucketFeature, [[
                 new Point(0, 0),
                 new Point(10, 10),
                 new Point(10, 20)
-            ]], undefined, canonicalTileID, undefined, SubdivisionGranularitySetting.noSubdivision);
+            ]], 0, canonicalTileID, {}, SubdivisionGranularitySetting.noSubdivision);
 
             const feature = sourceLayer.feature(0);
-            bucket.addFeature(feature as any, feature.loadGeometry(), undefined, canonicalTileID, undefined, SubdivisionGranularitySetting.noSubdivision);
+            bucket.addFeature(feature as any, feature.loadGeometry(), 0, canonicalTileID, {}, SubdivisionGranularitySetting.noSubdivision);
         }).not.toThrow();
     });
 
@@ -73,13 +73,13 @@ describe('FillBucket', () => {
 
         // first add an initial, small feature to make sure the next one starts at
         // a non-zero offset
-        bucket.addFeature({} as BucketFeature, [createPolygon(10)], undefined, canonicalTileID, undefined, SubdivisionGranularitySetting.noSubdivision);
+        bucket.addFeature({} as BucketFeature, [createPolygon(10)], 0, canonicalTileID, {}, SubdivisionGranularitySetting.noSubdivision);
 
         // add a feature that will break across the group boundary
         bucket.addFeature({} as BucketFeature, [
             createPolygon(128),
             createPolygon(128)
-        ], undefined, canonicalTileID, undefined, SubdivisionGranularitySetting.noSubdivision);
+        ], 0, canonicalTileID, {}, SubdivisionGranularitySetting.noSubdivision);
 
         // Each polygon must fit entirely within a segment, so we expect the
         // first segment to include the first feature and the first polygon
@@ -104,12 +104,12 @@ describe('FillBucket', () => {
     });
 
     test('FillBucket fill-pattern with global-state', () => {
-        const availableImages = [];
+        const availableImages: Array<string> = [];
         const bucket = createFillBucket({id: 'test', paint: {
             'fill-pattern': ['coalesce', ['get', 'pattern'], ['global-state', 'pattern']]
         }, globalState: {pattern: 'test-pattern'}, availableImages});
 
-        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), undefined);
+        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), canonicalTileID);
 
         expect(bucket.patternFeatures.length).toBeGreaterThan(0);
         expect(bucket.patternFeatures[0].patterns).toEqual({

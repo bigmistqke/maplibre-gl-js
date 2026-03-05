@@ -13,6 +13,7 @@ import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 
 import {circleIntersection, getMaximumPaintValue} from '../query_utils';
 import type {Bucket} from '../../data/bucket';
+import {assertedNotNullish} from '../../util/util';
 
 export const HEATMAP_FULL_RENDER_FBO_KEY = 'big-fb';
 
@@ -24,12 +25,12 @@ export const isHeatmapStyleLayer = (layer: StyleLayer): layer is HeatmapStyleLay
 export class HeatmapStyleLayer extends StyleLayer {
 
     heatmapFbos: Map<string, Framebuffer>;
-    colorRamp: RGBAImage;
-    colorRampTexture: Texture;
+    colorRamp: RGBAImage | undefined;
+    colorRampTexture: Texture | undefined;
 
-    _transitionablePaint: Transitionable<HeatmapPaintProps>;
-    _transitioningPaint: Transitioning<HeatmapPaintProps>;
-    paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<HeatmapPaintProps> | undefined;
+    _transitioningPaint: Transitioning<HeatmapPaintProps> | undefined;
+    paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated> | undefined;
 
     createBucket(options: any) {
         return new HeatmapBucket(options);
@@ -50,13 +51,13 @@ export class HeatmapStyleLayer extends StyleLayer {
     }
 
     _updateColorRamp() {
-        const expression = this._transitionablePaint._values['heatmap-color'].value.expression;
+        const expression = assertedNotNullish(this._transitionablePaint)._values['heatmap-color'].value.expression;
         this.colorRamp = renderColorRamp({
             expression,
             evaluationKey: 'heatmapDensity',
             image: this.colorRamp
         });
-        this.colorRampTexture = null;
+        this.colorRampTexture = undefined;
     }
 
     resize() {
@@ -81,7 +82,7 @@ export class HeatmapStyleLayer extends StyleLayer {
     ): boolean {
         return circleIntersection({
             queryGeometry,
-            size: this.paint.get('heatmap-radius').evaluate(feature, featureState) * pixelsToTileUnits,
+            size: assertedNotNullish(this.paint).get('heatmap-radius').evaluate(feature, featureState) * pixelsToTileUnits,
             transform,
             unwrappedTileID,
             getElevation
@@ -89,6 +90,6 @@ export class HeatmapStyleLayer extends StyleLayer {
     }
 
     hasOffscreenPass() {
-        return this.paint.get('heatmap-opacity') !== 0 && !this.isHidden();
+        return assertedNotNullish(this.paint).get('heatmap-opacity') !== 0 && !this.isHidden();
     }
 }

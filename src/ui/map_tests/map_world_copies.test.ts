@@ -3,7 +3,7 @@ import {createMap, beforeMapTest} from '../../util/test/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    (global as any).fetch = undefined;
 });
 
 describe('getRenderWorldCopies', () => {

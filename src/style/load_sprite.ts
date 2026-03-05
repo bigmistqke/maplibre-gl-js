@@ -4,6 +4,7 @@ import {ResourceType} from '../util/request_manager';
 
 import {browser} from '../util/browser';
 import {coerceSpriteToArray} from '../util/style';
+import {assertedNotNullish} from '../util/util';
 
 import type {SpriteSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {SpriteJSON, StyleImage} from './style_image';
@@ -36,7 +37,7 @@ export async function loadSprite(
     const format = pixelRatio > 1 ? '@2x' : '';
 
     const jsonsMap: {[id: string]: Promise<GetResourceResponse<SpriteJSON>>} = {};
-    const imagesMap: {[id: string]: Promise<GetResourceResponse<HTMLImageElement | ImageBitmap>>} = {};
+    const imagesMap: {[id: string]: Promise<GetResourceResponse<HTMLImageElement | ImageBitmap | null>>} = {};
 
     for (const {id, url} of spriteArray) {
         const jsonRequestParameters = requestManager.transformRequest(normalizeSpriteURL(url, format, '.json'), ResourceType.SpriteJSON);
@@ -56,13 +57,13 @@ export async function loadSprite(
  */
 async function doOnceCompleted(
     jsonsMap:{[id: string]: Promise<GetResourceResponse<SpriteJSON>>},
-    imagesMap:{[id: string]: Promise<GetResourceResponse<HTMLImageElement | ImageBitmap>>}): Promise<LoadSpriteResult> {
+    imagesMap:{[id: string]: Promise<GetResourceResponse<HTMLImageElement | ImageBitmap | null>>}): Promise<LoadSpriteResult> {
 
     const result = {} as {[spriteName: string]: {[id: string]: StyleImage}};
     for (const spriteName in jsonsMap) {
         result[spriteName] = {};
 
-        const context = browser.getImageCanvasContext((await imagesMap[spriteName]).data);
+        const context = browser.getImageCanvasContext(assertedNotNullish((await imagesMap[spriteName]).data));
         const json = (await jsonsMap[spriteName]).data;
 
         for (const id in json) {

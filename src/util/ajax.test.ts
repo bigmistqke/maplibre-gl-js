@@ -9,10 +9,10 @@ import {isAbortError} from './abort_error';
 
 import {fakeServer, type FakeServer} from 'nise';
 
-function readAsText(blob) {
+function readAsText(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
         const fileReader = new FileReader();
-        fileReader.onload = () => resolve(fileReader.result);
+        fileReader.onload = () => resolve(fileReader.result as string);
         fileReader.onerror = () => reject(fileReader.error);
         fileReader.readAsText(blob);
     });
@@ -23,7 +23,7 @@ const originalFetch = global.fetch;
 describe('ajax', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        (global as any).fetch = undefined;
         server = fakeServer.create();
     });
     afterEach(() => {
@@ -103,7 +103,7 @@ describe('ajax', () => {
 
         try {
             await promise;
-        } catch (error) {
+        } catch (error: any) {
             expect(error.name).toBe('AbortError');
             expect(isAbortError(error)).toBe(true);
         }
@@ -126,7 +126,7 @@ describe('ajax', () => {
 
         try {
             await promise;
-        } catch (error) {
+        } catch (error: any) {
             expect(error.name).toBe('AbortError');
             expect(isAbortError(error)).toBe(true);
         }
@@ -153,8 +153,8 @@ describe('ajax', () => {
 
         // empty string is considered as relative, and should be true
         expect(sameOrigin('')).toBe(true);
-        expect(sameOrigin(null)).toBe(true);
-        expect(sameOrigin(undefined)).toBe(true);
+        expect(sameOrigin(null as any)).toBe(true);
+        expect(sameOrigin(undefined as any)).toBe(true);
 
         expect(sameOrigin('HTTPS://somewhere.com')).toBe(true);
 

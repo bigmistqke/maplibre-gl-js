@@ -70,7 +70,7 @@ let lightProperties: Properties<LightProps>;
 export class Light extends Evented {
     _transitionable: Transitionable<LightProps>;
     _transitioning: Transitioning<LightProps>;
-    properties: PossiblyEvaluated<LightProps, LightPropsPossiblyEvaluated>;
+    properties: PossiblyEvaluated<LightProps, LightPropsPossiblyEvaluated> | undefined;
 
     constructor(lightOptions?: LightSpecification) {
         super();
@@ -95,11 +95,11 @@ export class Light extends Evented {
         }
 
         for (const name in light) {
-            const value = light[name];
+            const value = (light as Record<string, unknown>)[name];
             if (name.endsWith(TRANSITION_SUFFIX)) {
-                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX.length) as keyof LightProps, value);
+                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX.length) as keyof LightProps, value as Parameters<typeof this._transitionable.setTransition>[1]);
             } else {
-                this._transitionable.setValue(name as keyof LightProps, value);
+                this._transitionable.setValue(name as keyof LightProps, value as Parameters<typeof this._transitionable.setValue>[1]);
             }
         }
     }

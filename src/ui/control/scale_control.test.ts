@@ -1,6 +1,7 @@
 import {describe, beforeEach, test, expect} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {ScaleControl} from './scale_control';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
@@ -31,11 +32,11 @@ describe('ScaleControl', () => {
         const selector = '.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale';
         map.addControl(scale);
 
-        let contents = map.getContainer().querySelector(selector).innerHTML;
+        let contents = map.getContainer().querySelector(selector)?.innerHTML;
         expect(contents).toMatch(/km/);
 
         scale.setUnit('imperial');
-        contents = map.getContainer().querySelector(selector).innerHTML;
+        contents = map.getContainer().querySelector(selector)?.innerHTML;
         expect(contents).toMatch(/mi/);
     });
 
@@ -57,7 +58,7 @@ describe('ScaleControl', () => {
         const selector = '.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale';
         map.addControl(scale);
 
-        const contents = map.getContainer().querySelector(selector).innerHTML;
+        const contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         // Should show either km or m for metric
         expect(contents).toMatch(/km|m/);
     });
@@ -69,7 +70,7 @@ describe('ScaleControl', () => {
         map.addControl(scale);
         map.setZoom(15); // Zoom in to get smaller distances
 
-        const contents = map.getContainer().querySelector(selector).innerHTML;
+        const contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/ft/);
     });
 
@@ -80,7 +81,7 @@ describe('ScaleControl', () => {
         map.addControl(scale);
         map.setZoom(5); // Zoom out to get larger distances
 
-        const contents = map.getContainer().querySelector(selector).innerHTML;
+        const contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/mi/);
     });
 
@@ -91,7 +92,7 @@ describe('ScaleControl', () => {
         map.addControl(scale);
         map.setZoom(15); // Zoom in to get smaller distances
 
-        const contents = map.getContainer().querySelector(selector).innerHTML;
+        const contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         // Match digits followed by nbsp and 'm' (not 'km')
         expect(contents).toMatch(/\d+&nbsp;m$/);
         expect(contents).not.toMatch(/km/);
@@ -104,7 +105,7 @@ describe('ScaleControl', () => {
         map.addControl(scale);
         map.setZoom(5);
 
-        const contents = map.getContainer().querySelector(selector).innerHTML;
+        const contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/km/);
     });
 
@@ -114,7 +115,7 @@ describe('ScaleControl', () => {
         const selector = '.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale';
         map.addControl(scale);
 
-        const contents = map.getContainer().querySelector(selector).innerHTML;
+        const contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/nm/);
     });
 
@@ -124,9 +125,9 @@ describe('ScaleControl', () => {
         const selector = '.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale';
         map.addControl(scale);
 
-        const initialContents = map.getContainer().querySelector(selector).innerHTML;
+        const initialContents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         map.setZoom(10);
-        const newContents = map.getContainer().querySelector(selector).innerHTML;
+        const newContents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(newContents).not.toBe(initialContents);
     });
 
@@ -136,19 +137,19 @@ describe('ScaleControl', () => {
         const selector = '.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale';
         map.addControl(scale);
 
-        let contents = map.getContainer().querySelector(selector).innerHTML;
+        let contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/km|m/);
 
         scale.setUnit('imperial');
-        contents = map.getContainer().querySelector(selector).innerHTML;
+        contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/mi|ft/);
 
         scale.setUnit('nautical');
-        contents = map.getContainer().querySelector(selector).innerHTML;
+        contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/nm/);
 
         scale.setUnit('metric');
-        contents = map.getContainer().querySelector(selector).innerHTML;
+        contents = assertedNotNullish(map.getContainer().querySelector(selector)).innerHTML;
         expect(contents).toMatch(/km|m/);
     });
 

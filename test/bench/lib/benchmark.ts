@@ -39,10 +39,10 @@ class Benchmark {
      */
     public minimumMeasurements = 210;
 
-    _elapsed: number;
-    _measurements: Array<Measurement>;
-    _iterationsPerMeasurement: number;
-    _start: number;
+    _elapsed: number = 0;
+    _measurements: Array<Measurement> = [];
+    _iterationsPerMeasurement: number = 1;
+    _start: number = 0;
 
     /**
      * Run the benchmark by executing `setup` once, sampling the execution time of `bench` some number of
@@ -55,6 +55,7 @@ class Benchmark {
         } catch (e) {
             // The bench run will break here but should at least provide helpful information:
             console.error(e);
+            return [];
         }
     }
 

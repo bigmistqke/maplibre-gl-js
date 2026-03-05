@@ -2,19 +2,18 @@ import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {describe, beforeEach, afterEach, test, expect, vi} from 'vitest';
 import {TileManager} from './tile_manager';
 import {type Source, addSourceType} from '../source/source';
-import {Tile, FadingRoles, FadingDirections} from './tile';
+import {Tile, FadingRoles, FadingDirections, type TileState} from './tile';
 import {CanonicalTileID, OverscaledTileID} from './tile_id';
 import {LngLat} from '../geo/lng_lat';
 import Point from '@mapbox/point-geometry';
 import {Event, ErrorEvent, Evented} from '../util/evented';
-import {extend} from '../util/util';
+import {assertedNotNullish, assertNotNullish, extend} from '../util/util';
 import {type Dispatcher} from '../util/dispatcher';
 import {TileBounds} from './tile_bounds';
 import {sleep, waitForEvent, beforeMapTest, createMap as globalCreateMap} from '../util/test/util';
 import {now} from '../util/time_control';
 
 import {type Map} from '../ui/map';
-import {type TileCache} from './tile_cache';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
 import {GlobeTransform} from '../geo/projection/globe_transform';
 import {coveringTiles} from '../geo/projection/covering_tiles';
@@ -23,10 +22,10 @@ class SourceMock extends Evented implements Source {
     id: string;
     minzoom: number;
     maxzoom: number;
-    hasTile: (tileID: OverscaledTileID) => boolean;
+    hasTile!: (tileID: OverscaledTileID) => boolean;
     sourceOptions: any;
-    type: string;
-    tileSize: number;
+    type!: string;
+    tileSize!: number;
 
     constructor(id: string, sourceOptions: any, _dispatcher: Dispatcher, eventedParent: Evented) {
         super();
@@ -79,28 +78,17 @@ function createSource(id: string, sourceOptions: any, _dispatcher: any, eventedP
     return source;
 }
 
-addSourceType('mock-source-type', createSource as any);
+addSourceType('mock-source-type', createSource as unknown as any);
 
-function createTileManager(options?, used?) {
+function createTileManager(options?: Record<string, any>, used?: boolean) {
     const sc = new TileManager('id', extend({
         tileSize: 512,
         minzoom: 0,
         maxzoom: 14,
         type: 'mock-source-type'
-    }, options), {} as Dispatcher);
-    const scWithTestLogic = extend(sc, {
-        used: typeof used === 'boolean' ? used : true,
-        addTile(tileID: OverscaledTileID): Tile {
-            return this._addTile(tileID);
-        },
-        getCache(): TileCache {
-            return this._cache;
-        },
-        getTiles(): { [_: string]: Tile } {
-            return this._tiles;
-        }
-    });
-    return scWithTestLogic;
+    }, options) as any, {} as unknown as Dispatcher); // Test mock: no real dispatcher needed
+    sc.used = typeof used === 'boolean' ? used : true;
+    return sc;
 }
 
 type MapOptions = {
@@ -130,7 +118,7 @@ describe('TileManager.addTile', () => {
         const spy = vi.fn();
         tileManager._source.loadTile = spy;
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         tileManager._addTile(tileID);
         expect(spy).toHaveBeenCalledTimes(1);
         expect(spy.mock.calls[0][0].tileID).toEqual(tileID);
@@ -141,7 +129,7 @@ describe('TileManager.addTile', () => {
         const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
         const tileManager = createTileManager({});
         const dataLoadingPromise = tileManager.once('dataloading');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         tileManager._addTile(tileID);
         const data = await dataLoadingPromise;
         expect(data.tile.tileID).toEqual(tileID);
@@ -150,15 +138,15 @@ describe('TileManager.addTile', () => {
 
     test('updates feature state on added uncached tile', async () => {
         const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
-        let updateFeaturesSpy;
+        let updateFeaturesSpy: ReturnType<typeof vi.spyOn> | undefined;
         const tileManager = createTileManager({});
-        let dataPromise: any;
+        let dataPromise: Promise<any> | undefined;
         tileManager._source.loadTile = async (tile) => {
-            dataPromise = tileManager.once('data');
+            dataPromise = tileManager.once('data') as Promise<any>;
             updateFeaturesSpy = vi.spyOn(tile, 'setFeatureState');
             tile.state = 'loaded';
         };
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         tileManager._addTile(tileID);
         await dataPromise;
         expect(updateFeaturesSpy).toHaveBeenCalledTimes(1);
@@ -216,8 +204,8 @@ describe('TileManager.addTile', () => {
         time.setSeconds(time.getSeconds() + 5);
 
         const tileManager = createTileManager();
-        tileManager._setTileReloadTimer = (id) => {
-            tileManager._timers[id] = setTimeout(() => {}, 0);
+        tileManager._setTileReloadTimer = (id: string | number) => {
+            tileManager._timers[id as string] = setTimeout(() => {}, 0);
         };
         tileManager._source.loadTile = async (tile) => {
             tile.state = 'loaded';
@@ -290,7 +278,7 @@ describe('TileManager.addTile', () => {
             const key = id.key;
 
             expect(tileManager._inViewTiles.getTileById(key)).toBeTruthy();
-            expect(tileManager._inViewTiles.getTileById(key).tileID).toEqual(id);
+            expect(assertedNotNullish(tileManager._inViewTiles.getTileById(key)).tileID).toEqual(id);
         }
 
     });
@@ -354,7 +342,7 @@ describe('TileManager.removeTile', () => {
         tileManager._source.loadTile = async () => {
             tileManager._removeTile(tileID.key);
         };
-        tileManager.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as any;
+        tileManager.map = {painter: {crossTileSymbolIndex: '', tileExtentVAO: {}}} as any as Map;
 
         tileManager._addTile(tileID);
     });
@@ -406,8 +394,8 @@ describe('TileManager.removeTile', () => {
     test('resets raster fade timer upon load of unloaded edge tiles', async () => {
         const tileManager = createTileManager();
         tileManager._rasterFadeDuration = 300;
-        let tile: Tile;
-        let endMs: number;
+        let tile: Tile | undefined;
+        let endMs: number | undefined;
         tileManager._source.loadTile = async (_tile) => {
             tile = _tile;
             tile.selfFading = true;
@@ -417,6 +405,8 @@ describe('TileManager.removeTile', () => {
         };
         tileManager._addTile(new OverscaledTileID(0, 0, 0, 0, 0));
         await sleep(200);
+        assertNotNullish(tile);
+        assertNotNullish(endMs);
         const deltaMs = tile.fadeEndTime - endMs;
         expect(deltaMs).toBeGreaterThanOrEqual(290);
         expect(deltaMs).toBeLessThanOrEqual(310);
@@ -428,7 +418,7 @@ describe('TileManager / Source lifecycle', () => {
         const tileManager = createTileManager({noLoad: true});
         const spy = vi.fn();
         tileManager.on('data', spy);
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await sleep(1);
         expect(spy).not.toHaveBeenCalled();
     });
@@ -436,14 +426,14 @@ describe('TileManager / Source lifecycle', () => {
     test('forward load event', async () => {
         const tileManager = createTileManager({});
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await expect(dataPromise).resolves.toBeDefined();
     });
 
     test('forward change event', async () => {
         const tileManager = createTileManager();
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         tileManager.getSource().fire(new Event('data'));
         await expect(dataPromise).resolves.toBeDefined();
     });
@@ -451,7 +441,7 @@ describe('TileManager / Source lifecycle', () => {
     test('forward error event', async () => {
         const tileManager = createTileManager({error: 'Error loading source'});
         const errorPromise = tileManager.once('error');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         const err = await errorPromise;
         expect(err.error).toBe('Error loading source');
     });
@@ -459,13 +449,13 @@ describe('TileManager / Source lifecycle', () => {
     test('suppress 404 errors', () => {
         const tileManager = createTileManager({status: 404, message: 'Not found'});
         tileManager.on('error', () => { throw new Error('test failed: error event fired'); });
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
     });
 
     test('loaded() true after source error', async () => {
         const tileManager = createTileManager({error: 'Error loading source'});
         const errorPromise = tileManager.once('error');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await errorPromise;
         expect(tileManager.loaded()).toBeTruthy();
     });
@@ -485,7 +475,7 @@ describe('TileManager / Source lifecycle', () => {
         });
         const errorPromise = tileManager.once('error');
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await errorPromise;
         expect(tileManager.loaded()).toBeTruthy();
     });
@@ -493,7 +483,7 @@ describe('TileManager / Source lifecycle', () => {
     test('loaded() false after source begins loading following error', async () => {
         const tileManager = createTileManager({error: 'Error loading source'});
         const errorPromise = tileManager.once('error');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await errorPromise;
         const dataLoadingProimse = tileManager.once('dataloading');
         tileManager.getSource().fire(new Event('dataloading'));
@@ -510,7 +500,7 @@ describe('TileManager / Source lifecycle', () => {
             }
         });
         const errorPromise = tileManager.once('error');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await errorPromise;
         expect(tileManager.loaded()).toBeFalsy();
     });
@@ -536,7 +526,7 @@ describe('TileManager / Source lifecycle', () => {
             }
         });
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
     });
 
     test('does not reload errored tiles', () => {
@@ -558,7 +548,7 @@ describe('TileManager / Source lifecycle', () => {
                 tileManager.getSource().fire(new Event('data', {dataType: 'source', sourceDataType: 'content'}));
             }
         });
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         // we expect the tile manager to have five tiles, but only to have reloaded one
         expect(tileManager._inViewTiles.getAllIds()).toHaveLength(5);
         expect(reloadTileSpy).toHaveBeenCalledTimes(1);
@@ -584,7 +574,7 @@ describe('TileManager / Source lifecycle', () => {
                 tileManager.getSource().fire(new Event('data', {dataType: 'source', sourceDataType: 'content', sourceDataChanged: true}));
             }
         });
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         // We expect the tile manager to have five tiles, and for all of them
         // to be reloaded
         expect(tileManager._inViewTiles.getAllIds()).toHaveLength(5);
@@ -603,7 +593,7 @@ describe('TileManager.update', () => {
         const tileManager = createTileManager({}, false);
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getIds()).toEqual([]);
@@ -616,7 +606,7 @@ describe('TileManager.update', () => {
 
         const tileManager = createTileManager({});
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getIds()).toEqual([new OverscaledTileID(0, 0, 0, 0, 0).key]);
@@ -634,7 +624,7 @@ describe('TileManager.update', () => {
 
         const addSpy = vi.spyOn(tileManager, '_addTile');
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
 
         // on update at zoom 1 there should be 4 ideal tiles added through _addTiles
@@ -654,14 +644,14 @@ describe('TileManager.update', () => {
         });
         await map.once('styledata');
 
-        const style = map.style;
+        const style = assertedNotNullish(map.style);
         const tileManager = style.tileManagers['rasterSource'];
 
         tileManager._loadTile = async () => {};
 
-        const fakeTile = new Tile(new OverscaledTileID(3, 0, 3, 1, 2), undefined);
+        const fakeTile = new Tile(new OverscaledTileID(3, 0, 3, 1, 2), undefined as any);
         fakeTile.resetFadeLogic = vi.fn();
-        (fakeTile as any).texture = {bind: () => {}, size: [256, 256]};
+        (fakeTile as unknown as {texture?: {bind: () => void; size: number[]}}).texture = {bind: () => {}, size: [256, 256]};
         fakeTile.state = 'loaded';
         tileManager._inViewTiles.setTile(fakeTile.tileID.key, fakeTile);
 
@@ -678,11 +668,11 @@ describe('TileManager.update', () => {
         transform.setZoom(1);
 
         const tileManager = createTileManager({
-            hasTile: (coord) => (coord.canonical.x !== 0)
+            hasTile: (coord: OverscaledTileID) => (coord.canonical.x !== 0)
         });
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getIds().sort()).toEqual([
@@ -702,7 +692,7 @@ describe('TileManager.update', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getIds()).toEqual([new OverscaledTileID(0, 0, 0, 0, 0).key]);
@@ -720,7 +710,7 @@ describe('TileManager.update', () => {
 
     test('retains parent tiles for pending children', async () => {
         const transform = new MercatorTransform();
-        (transform as any)._test = 'retains';
+        (transform as unknown as {_test?: string})._test = 'retains';
         transform.resize(511, 511);
         transform.setZoom(0);
 
@@ -731,7 +721,7 @@ describe('TileManager.update', () => {
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getIds()).toEqual([new OverscaledTileID(0, 0, 0, 0, 0).key]);
@@ -760,7 +750,7 @@ describe('TileManager.update', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getIds()).toEqual([new OverscaledTileID(0, 1, 0, 0, 0).key]);
@@ -810,7 +800,7 @@ describe('TileManager.update', () => {
                 ]);
             }
         });
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
     });
 
     test('retains overscaled loaded children', async () => {
@@ -827,7 +817,7 @@ describe('TileManager.update', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager.getRenderableIds()).toEqual([
@@ -856,7 +846,7 @@ describe('TileManager.update', () => {
 
         const tileManager = createTileManager({});
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         transform.setCenter(new LngLat(360, 0));
         const tileID = new OverscaledTileID(0, 1, 0, 0, 0);
@@ -888,7 +878,7 @@ describe('TileManager.update', () => {
             }
         });
         tileManager.setRasterFadeDuration(300);
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -926,7 +916,7 @@ describe('TileManager.update', () => {
             }
         });
         tileManager.setRasterFadeDuration(300);
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -964,7 +954,7 @@ describe('TileManager.update', () => {
             }
         });
         tileManager.setRasterFadeDuration(300);
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -1010,7 +1000,7 @@ describe('TileManager.update', () => {
             }
         });
         tileManager.setRasterFadeDuration(300);
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
 
         // get default zoom ideal tiles at zoom specified above
         await sleep(0);
@@ -1043,7 +1033,7 @@ describe('TileManager.update', () => {
 describe('TileManager._updateRetainedTiles', () => {
 
     test('loads ideal tiles if they exist', () => {
-        const stateCache = {};
+        const stateCache: Record<string, TileState> = {};
         const tileManager = createTileManager();
         tileManager._source.loadTile = async (tile) => {
             tile.state = stateCache[tile.tileID.key] || 'errored';
@@ -1064,8 +1054,8 @@ describe('TileManager._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(3, 0, 3, 1, 2);
-        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined));
-        tileManager._inViewTiles.getTileById(idealTile.key).state = 'errored';
+        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined as any));
+        tileManager._inViewTiles.getTileById(idealTile.key)!.state = 'errored';
 
         const loadedTiles = [
             // loaded children - topmost zoom partially covered
@@ -1083,8 +1073,8 @@ describe('TileManager._updateRetainedTiles', () => {
             new OverscaledTileID(1, 0, 1, 0, 0)
         ];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const expectedTiles = [
@@ -1106,8 +1096,8 @@ describe('TileManager._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(3, 0, 3, 1, 2);
-        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined));
-        tileManager._inViewTiles.getTileById(idealTile.key).state = 'errored';
+        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined as any));
+        tileManager._inViewTiles.getTileById(idealTile.key)!.state = 'errored';
 
         const secondGeneration = idealTile
             .children(10)
@@ -1115,8 +1105,8 @@ describe('TileManager._updateRetainedTiles', () => {
         expect(secondGeneration.length).toEqual(16);
 
         for (const id of secondGeneration) {
-            tileManager._inViewTiles.setTile(id.key, new Tile(id, undefined));
-            tileManager._inViewTiles.getTileById(id.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(id.key, new Tile(id, undefined as any));
+            tileManager._inViewTiles.getTileById(id.key)!.state = 'loaded';
         }
         const expectedTiles = [...secondGeneration, idealTile];
 
@@ -1139,7 +1129,7 @@ describe('TileManager._updateRetainedTiles', () => {
 
             //see covering tile logic in tile_manager.update
             const idealTileIDs = coveringTiles(transform, {
-                tileSize: tileManager.usedForTerrain ? tileManager.tileSize : tileManager._source.tileSize,
+                tileSize: tileManager.usedForTerrain ? (tileManager.tileSize ?? 512) : tileManager._source.tileSize,
                 minzoom: tileManager._source.minzoom,
                 maxzoom: tileManager._source.maxzoom,
                 roundZoom: tileManager._source.roundZoom,
@@ -1149,7 +1139,7 @@ describe('TileManager._updateRetainedTiles', () => {
 
             const idealChildIDs = idealTileIDs.flatMap(id => id.children(tileManager._source.maxzoom));
             for (const idealID of idealChildIDs) {
-                const tile = new Tile(idealID, undefined);
+                const tile = new Tile(idealID, 0);
                 tile.state = 'loaded';  //all children are loaded to be retained for missing ideal tiles
                 tileManager._inViewTiles.setTile(idealID.key, tile);
             }
@@ -1184,7 +1174,7 @@ describe('TileManager._updateRetainedTiles', () => {
             new OverscaledTileID(5, 0, 5, 8, 8),  //discard
         ];
         for (const child of children) {
-            const tile = new Tile(child, undefined);
+            const tile = new Tile(child, 0);
             tile.state = 'loaded';
             tileManager._inViewTiles.setTile(child.key, tile);
         }
@@ -1207,16 +1197,16 @@ describe('TileManager._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(3, 0, 3, 1, 2);
-        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined));
-        tileManager._inViewTiles.getTileById(idealTile.key).state = 'errored';
+        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined as any));
+        tileManager._inViewTiles.getTileById(idealTile.key)!.state = 'errored';
 
         const loadedChildren = [
             new OverscaledTileID(4, 0, 3, 1, 2)
         ];
 
         for (const t of loadedChildren) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const retained = tileManager._updateRetainedTiles([idealTile], 2);
@@ -1256,7 +1246,7 @@ describe('TileManager._updateRetainedTiles', () => {
     });
 
     test('adds parent tile if ideal tile errors and no child tiles are loaded', () => {
-        const stateCache = {};
+        const stateCache: Record<string, TileState> = {};
         const tileManager = createTileManager();
         tileManager._source.loadTile = async (tile) => {
             tile.state = stateCache[tile.tileID.key] || 'errored';
@@ -1292,12 +1282,12 @@ describe('TileManager._updateRetainedTiles', () => {
         };
 
         const idealTile = new OverscaledTileID(2, 0, 2, 0, 0);
-        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined));
-        tileManager._inViewTiles.getTileById(idealTile.key).state = 'errored';
+        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined as any));
+        tileManager._inViewTiles.getTileById(idealTile.key)!.state = 'errored';
 
         const nonIdealTile = new OverscaledTileID(1, 0, 1, 1, 0);
-        tileManager._inViewTiles.setTile(nonIdealTile.key, new Tile(nonIdealTile, undefined));
-        tileManager._inViewTiles.getTileById(nonIdealTile.key).state = 'loaded';
+        tileManager._inViewTiles.setTile(nonIdealTile.key, new Tile(nonIdealTile, undefined as any));
+        tileManager._inViewTiles.getTileById(nonIdealTile.key)!.state = 'loaded';
 
         const addTileSpy = vi.spyOn(tileManager, '_addTile');
         const getTileSpy = vi.spyOn(tileManager, 'getTile');
@@ -1325,10 +1315,10 @@ describe('TileManager._updateRetainedTiles', () => {
         };
         const idealTile = new OverscaledTileID(1, 0, 1, 0, 1);
         const parentTile = new OverscaledTileID(0, 0, 0, 0, 0);
-        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined));
-        tileManager._inViewTiles.getTileById(idealTile.key).state = 'loading';
-        tileManager._inViewTiles.setTile(parentTile.key, new Tile(parentTile, undefined));
-        tileManager._inViewTiles.getTileById(parentTile.key).state = 'loaded';
+        tileManager._inViewTiles.setTile(idealTile.key, new Tile(idealTile, undefined as any));
+        tileManager._inViewTiles.getTileById(idealTile.key)!.state = 'loading';
+        tileManager._inViewTiles.setTile(parentTile.key, new Tile(parentTile, undefined as any));
+        tileManager._inViewTiles.getTileById(parentTile.key)!.state = 'loaded';
 
         const addTileSpy = vi.spyOn(tileManager, '_addTile');
         const getTileSpy = vi.spyOn(tileManager, 'getTile');
@@ -1351,7 +1341,7 @@ describe('TileManager._updateRetainedTiles', () => {
         getTileSpy.mockClear();
 
         // now make sure we don't retain the parent tile when the ideal tile is loaded
-        tileManager._inViewTiles.getTileById(idealTile.key).state = 'loaded';
+        assertedNotNullish(tileManager._inViewTiles.getTileById(idealTile.key)).state = 'loaded';
         const retainedLoaded = tileManager._updateRetainedTiles([idealTile], 1);
 
         expect(getTileSpy).not.toHaveBeenCalled();
@@ -1370,8 +1360,8 @@ describe('TileManager._updateRetainedTiles', () => {
         const idealTile = new OverscaledTileID(2, 0, 2, 1, 1);
         const loadedTiles = [new OverscaledTileID(3, 0, 3, 2, 2), new OverscaledTileID(3, 0, 3, 3, 2), new OverscaledTileID(3, 0, 3, 2, 3), new OverscaledTileID(3, 0, 3, 3, 3)];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const getTileSpy = vi.spyOn(tileManager, 'getTile');
@@ -1389,8 +1379,8 @@ describe('TileManager._updateRetainedTiles', () => {
         const idealTile = new OverscaledTileID(1, 0, 1, 0, 0);
         const loadedTiles = [new OverscaledTileID(0, 0, 0, 0, 0), new OverscaledTileID(2, 0, 2, 0, 0)];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const getTileSpy = vi.spyOn(tileManager, 'getTile');
@@ -1433,8 +1423,8 @@ describe('TileManager._updateRetainedTiles', () => {
         const idealTile = new OverscaledTileID(2, 0, 2, 0, 0);
         const loadedTiles = [new OverscaledTileID(1, 0, 1, 0, 0)];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const getTileSpy = vi.spyOn(tileManager, 'getTile');
@@ -1464,8 +1454,8 @@ describe('TileManager._updateRetainedTiles', () => {
             new OverscaledTileID(0, 0, 0, 0, 0)   // parent
         ];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const retained = tileManager._updateRetainedTiles([idealTile], 2);
@@ -1501,8 +1491,8 @@ describe('TileManager._updateRetainedTiles', () => {
 
         const loadedTiles = [new OverscaledTileID(4, 0, 4, 0, 0)];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         tileManager._updateRetainedTiles(idealTiles, 8);
@@ -1519,7 +1509,7 @@ describe('TileManager._updateRetainedTiles', () => {
     test('Retain, then cancel loading tiles when zooming in', () => {
         const tileManager = createTileManager();
         // Disabling pending tile canceling (thus retaining) in Map mock:
-        const map = {cancelPendingTileRequestsWhileZooming: false} as Map;
+        const map = {cancelPendingTileRequestsWhileZooming: false} as unknown as Map;
         tileManager.onAdd(map);
         tileManager._source.loadTile = async (tile) => {
             tile.state = 'loading';
@@ -1548,7 +1538,7 @@ describe('TileManager._updateRetainedTiles', () => {
     test('Cancel, then retain, then cancel loading tiles when zooming in', () => {
         const tileManager = createTileManager();
         // Applying tile canceling default behavior in Map mock:
-        const map = {cancelPendingTileRequestsWhileZooming: true} as Map;
+        const map = {cancelPendingTileRequestsWhileZooming: true} as unknown as Map;
         tileManager.onAdd(map);
         tileManager._source.loadTile = async (tile) => {
             tile.state = 'loading';
@@ -1583,8 +1573,8 @@ describe('TileManager._updateRetainedTiles', () => {
 
         const loadedTiles = idealTiles;
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         idealTiles = [new OverscaledTileID(11, 0, 11, 0, 0), new OverscaledTileID(11, 0, 11, 1, 0)];
@@ -1620,8 +1610,8 @@ describe('TileManager._updateRetainedTiles', () => {
 
         const loadedTiles = idealTiles;
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         idealTiles = [new OverscaledTileID(5, 0, 5, 0, 0), new OverscaledTileID(5, 0, 5, 1, 0)];
@@ -1642,8 +1632,8 @@ describe('TileManager._updateRetainedTiles', () => {
         };
         const loadedTiles = [new OverscaledTileID(7, 0, 7, 0, 0), new OverscaledTileID(7, 0, 7, 1, 0)];
         for (const t of loadedTiles) {
-            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined));
-            tileManager._inViewTiles.getTileById(t.key).state = 'loaded';
+            tileManager._inViewTiles.setTile(t.key, new Tile(t, undefined as any));
+            tileManager._inViewTiles.getTileById(t.key)!.state = 'loaded';
         }
 
         const idealTiles = [new OverscaledTileID(8, 0, 7, 0, 0), new OverscaledTileID(8, 0, 7, 1, 0)];
@@ -1675,7 +1665,7 @@ describe('TileManager.clearTiles', () => {
             expect(tile.tileID).toEqual(coord);
             unload++;
         };
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
 
         tileManager._addTile(coord);
         tileManager.clearTiles();
@@ -1692,7 +1682,7 @@ describe('TileManager.tilesIn', () => {
         tr.resize(512, 512);
         const tileManager = createTileManager({noLoad: true});
         tileManager.transform = tr;
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         expect(tileManager.tilesIn([
             new Point(0, 0),
             new Point(512, 256)
@@ -1700,8 +1690,8 @@ describe('TileManager.tilesIn', () => {
 
     });
 
-    function round(queryGeometry) {
-        return queryGeometry.map((p) => {
+    function round(queryGeometry: any[]) {
+        return queryGeometry.map((p: any) => {
             return p.round();
         });
     }
@@ -1718,7 +1708,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
 
@@ -1735,7 +1725,7 @@ describe('TileManager.tilesIn', () => {
         ], 1, true);
 
         tiles.sort((a, b) => { return a.tile.tileID.canonical.x - b.tile.tileID.canonical.x; });
-        tiles.forEach((result) => { delete result.tile.uid; });
+        tiles.forEach((result) => { delete (result.tile as any).uid; }); // Test mock
 
         expect(tiles[0].tile.tileID.key).toBe('011');
         expect(tiles[0].tile.tileSize).toBe(512);
@@ -1780,7 +1770,7 @@ describe('TileManager.tilesIn', () => {
                 ], 1, true);
 
                 tiles.sort((a, b) => { return a.tile.tileID.canonical.x - b.tile.tileID.canonical.x; });
-                tiles.forEach((result) => { delete result.tile.uid; });
+                tiles.forEach((result) => { delete (result.tile as any).uid; }); // Test mock
 
                 expect(tiles[0].tile.tileID.key).toBe('012');
                 expect(tiles[0].tile.tileSize).toBe(1024);
@@ -1794,7 +1784,7 @@ describe('TileManager.tilesIn', () => {
 
             }
         });
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
     });
 
     test('overscaled tiles', async () => {
@@ -1809,7 +1799,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         const transform = new MercatorTransform();
         transform.resize(512, 512);
@@ -1829,7 +1819,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
 
         tileManager.update(transform);
@@ -1882,7 +1872,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
 
         tileManager.update(transform);
@@ -1938,7 +1928,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
 
         tileManager.update(transform);
@@ -1994,7 +1984,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
 
         tileManager.update(transform);
@@ -2047,7 +2037,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
 
         tileManager.update(transform);
@@ -2103,7 +2093,7 @@ describe('TileManager.tilesIn', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as any);
         await dataPromise;
 
         tileManager.update(transform);
@@ -2156,7 +2146,7 @@ describe('tile manager loaded', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         const tr = new MercatorTransform();
         tr.resize(512, 512);
@@ -2176,7 +2166,7 @@ describe('tile manager loaded', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         const tr = new MercatorTransform();
         tr.resize(512, 512);
@@ -2196,7 +2186,7 @@ describe('tile manager loaded', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         expect(tileManager.loaded()).toBeTruthy();
     });
@@ -2210,7 +2200,7 @@ describe('tile manager loaded', () => {
         tileManager.usedForTerrain = false;
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         expect(tileManager.loaded()).toBeTruthy();
     });
@@ -2223,7 +2213,7 @@ describe('tile manager loaded', () => {
         };
 
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         expect(tileManager.loaded()).toBeFalsy();
     });
@@ -2240,7 +2230,7 @@ describe('tile manager loaded', () => {
             });
         };
         tileManager._source.hasTile = function (tileID: OverscaledTileID) {
-            return !this.tileBounds || this.tileBounds.contains(tileID.canonical);
+            return !(this as any).tileBounds || (this as any).tileBounds.contains(tileID.canonical);
         };
 
         const tr = new MercatorTransform();
@@ -2251,7 +2241,7 @@ describe('tile manager loaded', () => {
         const spy = vi.fn();
         tileManager.on('data', spy);
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         tileManager.update(tr);
 
         await sourceLoadedPromise;
@@ -2271,9 +2261,9 @@ describe('tile manager loaded', () => {
             });
         };
         tileManager._source.onAdd = function() {
-            if (this.sourceOptions.noLoad) return;
-            if (this.sourceOptions.error) {
-                this.fire(new ErrorEvent(this.sourceOptions.error));
+            if ((this as any).sourceOptions.noLoad) return;
+            if ((this as any).sourceOptions.error) {
+                this.fire(new ErrorEvent((this as any).sourceOptions.error));
             } else {
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'metadata'}));
                 this.fire(new Event('data', {dataType: 'source', sourceDataType: 'content'}));
@@ -2292,7 +2282,7 @@ describe('tile manager loaded', () => {
             }
         });
 
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         const tr = new MercatorTransform();
         tr.setZoom(10);
         tr.resize(512, 512);
@@ -2313,7 +2303,7 @@ describe('tile manager get ids', () => {
         const tileManager = createTileManager({});
         tileManager.transform = new MercatorTransform();
         for (let i = 0; i < ids.length; i++) {
-            tileManager._inViewTiles.setTile(ids[i].key, {tileID: ids[i]} as any as Tile);
+            tileManager._inViewTiles.setTile(ids[i].key, {tileID: ids[i]} as unknown as Tile);
         }
         expect(tileManager.getIds()).toEqual([
             new OverscaledTileID(0, 0, 0, 0, 0).key,
@@ -2327,7 +2317,7 @@ describe('tile manager get ids', () => {
 describe('TileManager.reload', () => {
     test('before loaded', () => {
         const tileManager = createTileManager({noLoad: true});
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
 
         expect(() => {
             tileManager.reload();
@@ -2390,7 +2380,7 @@ describe('TileManager.onRemove', () => {
         const tileManager = createTileManager();
         vi.spyOn(tileManager, 'clearTiles');
 
-        tileManager.onRemove(undefined);
+        tileManager.onRemove(undefined as unknown as Map);
 
         expect(tileManager.clearTiles).toHaveBeenCalled();
     });
@@ -2401,7 +2391,7 @@ describe('TileManager.onRemove', () => {
             onRemove: sourceOnRemove
         });
 
-        tileManager.onRemove(undefined);
+        tileManager.onRemove(undefined as unknown as Map);
 
         expect(sourceOnRemove).toHaveBeenCalled();
     });
@@ -2418,7 +2408,7 @@ describe('TileManager.usedForTerrain', () => {
         tileManager.tileSize = 1024;
         expect(tileManager.usedForTerrain).toBeTruthy();
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager._inViewTiles.getAllIds()).toEqual(
@@ -2435,7 +2425,7 @@ describe('TileManager.usedForTerrain', () => {
         tileManager.usedForTerrain = true;
         tileManager.tileSize = 1024;
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager._inViewTiles.getAllIds()).toEqual(
@@ -2452,7 +2442,7 @@ describe('TileManager.usedForTerrain', () => {
         tileManager.usedForTerrain = true;
         tileManager.tileSize = 1024;
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager._inViewTiles.getAllIds()).toEqual(
@@ -2469,7 +2459,7 @@ describe('TileManager.usedForTerrain', () => {
         tileManager.usedForTerrain = true;
         tileManager.tileSize = 1024;
         const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
-        tileManager.onAdd(undefined);
+        tileManager.onAdd(undefined as unknown as Map);
         await dataPromise;
         tileManager.update(transform);
         expect(tileManager._inViewTiles.getAllIds()).toEqual(['3s44', '3r44', '3c44', '3b44']);

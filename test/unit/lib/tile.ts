@@ -29,7 +29,7 @@ export function getFeaturesFromLayer(sourceLayer: VectorTileLayerLike): Array<In
     return features;
 }
 
-export function createPopulateOptions(availableImages): PopulateParameters {
+export function createPopulateOptions(availableImages: Array<string>): PopulateParameters {
     return {
         featureIndex: new FeatureIndex(new OverscaledTileID(0, 0, 0, 0, 0)),
         iconDependencies: {},

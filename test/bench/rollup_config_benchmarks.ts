@@ -1,4 +1,5 @@
 import fs from 'fs';
+// @ts-expect-error - no type declarations available
 import sourcemaps from 'rollup-plugin-sourcemaps2';
 import replace from '@rollup/plugin-replace';
 import {plugins, nodeResolve} from '../../build/rollup_plugins';

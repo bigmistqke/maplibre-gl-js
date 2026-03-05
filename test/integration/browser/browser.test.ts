@@ -1,11 +1,13 @@
 import {describe, beforeEach, beforeAll, afterEach, afterAll, test, expect} from 'vitest';
 import {type Page, type Browser} from 'puppeteer';
+// @ts-expect-error - no type declarations available
 import st from 'st';
 import http, {type Server} from 'http';
 import type {AddressInfo} from 'net';
 
 import {sleep} from '../../../src/util/test/util';
 import {launchPuppeteer} from '../lib/puppeteer_config';
+// @ts-expect-error - dist types not available during type checking
 import type {default as MapLibreGL, Map} from '../../../dist/maplibre-gl';
 
 const testWidth = 800;
@@ -40,7 +42,7 @@ describe('Browser tests', () => {
         await page.goto(`http://localhost:${port}/test/integration/browser/fixtures/land.html`, {waitUntil: 'domcontentloaded'});
 
         await page.evaluate(() => {
-            new Promise<void>((resolve, _reject) => {
+            return new Promise<void>((resolve, _reject) => {
                 if (map.loaded()) {
                     resolve();
                 } else {
@@ -64,7 +66,7 @@ describe('Browser tests', () => {
     test('Contextmenu event triggered during scrollzoom', {retry: 3, timeout: 20000}, async () => {
         const contextMenuEventFired = await page.evaluate(() => {
             return new Promise<string>((resolve, _reject) => {
-                map.on('contextmenu', (e) => {resolve(e.type);});
+                map.on('contextmenu', (e: any) => {resolve(e.type);});
                 map.getCanvas().dispatchEvent(new MouseEvent('mousedown', {bubbles: true, button: 2, clientX: 10, clientY: 10}));
                 map.getCanvas().dispatchEvent(new MouseEvent('contextmenu', {bubbles: true}));
                 map.getCanvas().dispatchEvent(new WheelEvent('wheel', {deltaY: 120, bubbles: true}));
@@ -140,7 +142,10 @@ describe('Browser tests', () => {
         const canvasBB = await canvas?.boundingBox();
 
         const dragToLeft = async () => {
-            await page.mouse.move(canvasBB!.x, canvasBB!.y);
+            if (!canvasBB) {
+                throw new Error('Canvas bounding box is null');
+            }
+            await page.mouse.move(canvasBB.x, canvasBB.y);
             await page.mouse.down();
             await page.mouse.move(100, 0, {
                 steps: 10
@@ -176,8 +181,12 @@ describe('Browser tests', () => {
 
         const canvas = await page.$('.maplibregl-canvas');
         const canvasBB = await canvas?.boundingBox();
-        expect(canvasBB?.width).toBeCloseTo(400);
-        expect(canvasBB?.height).toBeCloseTo(400);
+        if (canvasBB) {
+            expect(canvasBB.width).toBeCloseTo(400);
+            expect(canvasBB.height).toBeCloseTo(400);
+        } else {
+            throw new Error('Canvas bounding box is null');
+        }
     });
 
     test('Resize div', {retry: 3, timeout: 20000}, async () => {
@@ -197,8 +206,11 @@ describe('Browser tests', () => {
     test('Zoom: Double click at the center', {retry: 3, timeout: 20000}, async () => {
 
         const canvas = await page.$('.maplibregl-canvas');
-        const canvasBB = await canvas?.boundingBox()!;
-        await page.mouse.click(canvasBB?.x!, canvasBB?.y!, {clickCount: 2});
+        const canvasBB = await canvas?.boundingBox();
+        if (!canvasBB) {
+            throw new Error('Canvas bounding box is null');
+        }
+        await page.mouse.click(canvasBB.x, canvasBB.y, {clickCount: 2});
 
         // Wait until the map has settled, then report the zoom level back.
         const zoom = await page.evaluate(() => {
@@ -212,7 +224,10 @@ describe('Browser tests', () => {
 
     test('Marker scaled: correct drag', {retry: 3}, async () => {
         await page.evaluate(() => {
-            document.getElementById('map')!.style.transform = 'scale(0.5)';
+            const mapEl = document.getElementById('map');
+            if (mapEl) {
+                mapEl.style.transform = 'scale(0.5)';
+            }
             const markerMapPosition = map.getCenter();
             (window as any).marker = new maplibregl.Marker({draggable: true})
                 .setLngLat(markerMapPosition)
@@ -220,11 +235,14 @@ describe('Browser tests', () => {
             return map.getCenter();
         });
         const canvas = await page.$('.maplibregl-canvas');
-        const canvasBB = await canvas?.boundingBox()!;
+        const canvasBB = await canvas?.boundingBox();
+        if (!canvasBB) {
+            throw new Error('Canvas bounding box is null');
+        }
         const dragToLeft = async () => {
-            await page.mouse.move(canvasBB!.x + canvasBB!.width / 2, canvasBB!.y + canvasBB!.height / 2);
+            await page.mouse.move(canvasBB.x + canvasBB.width / 2, canvasBB.y + canvasBB.height / 2);
             await page.mouse.down();
-            await page.mouse.move(canvasBB!.x, canvasBB!.y, {
+            await page.mouse.move(canvasBB.x, canvasBB.y, {
                 steps: 100
             });
             await page.mouse.up();
@@ -365,7 +383,7 @@ describe('Browser tests', () => {
             await sleepInBrowser(100);
 
             await map.once('idle');
-            const fullscreenButton = document.getElementsByTagName('map-libre')[0].shadowRoot.querySelector('.maplibregl-ctrl-fullscreen') as HTMLButtonElement;
+            const fullscreenButton = (document.getElementsByTagName('map-libre')[0].shadowRoot as any).querySelector('.maplibregl-ctrl-fullscreen') as HTMLButtonElement;
             fullscreenButton.click();
             await sleepInBrowser(1000);
 
@@ -465,7 +483,10 @@ describe('Browser tests', () => {
 
         const canvas = await page.$('.maplibregl-canvas');
         const canvasBB = await canvas?.boundingBox();
-        await page.mouse.move(canvasBB!.x, canvasBB!.y);
+        if (!canvasBB) {
+            throw new Error('Canvas bounding box is null');
+        }
+        await page.mouse.move(canvasBB.x, canvasBB.y);
         await page.mouse.down();
         await page.mouse.move(100, 0, {
             steps: 10,
@@ -482,7 +503,7 @@ describe('Browser tests', () => {
 
     test('Map canvas is not blank after context lost and restored', {retry: 3, timeout: 20000}, async () => {
         const pixel = await page.evaluate(async () => {
-            function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+            function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
             const canvas = map.getCanvas();
             const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
             const ext = gl && gl.getExtension('WEBGL_lose_context');

@@ -9,6 +9,8 @@ import type {FilterSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {GeoJSONFeature, MapGeoJSONFeature} from '../util/vectortile_to_geojson';
 import type {QueryResults, QueryResultsItem} from '../data/feature_index';
 import type {OverscaledTileID} from '../tile/tile_id';
+import {assertedNotNullish} from '../util/util';
+import type {MercatorTransform} from '../geo/projection/mercator_transform';
 
 type RenderedFeatureLayer = {
     wrappedTileID: string;
@@ -84,18 +86,20 @@ export type QueryRenderedFeaturesResultsItem = QueryResultsItem & { feature: Map
 /*
  * Returns a matrix that can be used to convert from tile coordinates to viewport pixel coordinates.
  */
-function getPixelPosMatrix(transform, tileID: OverscaledTileID) {
+function getPixelPosMatrix(transform: MercatorTransform | IReadonlyTransform, tileID: OverscaledTileID) {
     const t = mat4.create();
     mat4.translate(t, t, [1, 1, 0]);
     mat4.scale(t, t, [transform.width * 0.5, transform.height * 0.5, 1]);
-    if (transform.calculatePosMatrix) { // Globe: TODO: remove this hack once queryRendererFeatures supports globe properly
-        return mat4.multiply(t, t, transform.calculatePosMatrix(tileID.toUnwrapped()));
+    // Globe: TODO: remove this hack once queryRendererFeatures supports globe properly
+    const transformWithPosMatrix = transform;
+    if ('calculatePosMatrix' in transformWithPosMatrix) {
+        return mat4.multiply(t, t, transformWithPosMatrix.calculatePosMatrix(tileID.toUnwrapped()));
     } else {
         return t;
     }
 }
 
-function queryIncludes3DLayer(layers: Set<string> | undefined, styleLayers: {[_: string]: StyleLayer}, sourceID: string) {
+function queryIncludes3DLayer(layers: Set<string> | undefined | null, styleLayers: {[_: string]: StyleLayer}, sourceID: string) {
     if (layers) {
         for (const layerID of layers) {
             const layer = styleLayers[layerID];
@@ -182,7 +186,7 @@ export function queryRenderedSymbols(styleLayers: {[_: string]: StyleLayer},
                 globalState: params.globalState
             },
             params.layers,
-            params.availableImages,
+            params.availableImages ?? [],
             styleLayers);
 
         for (const layerID in bucketSymbols) {
@@ -222,9 +226,9 @@ export function querySourceFeatures(tileManager: TileManager, params: QuerySourc
 
     const result: GeoJSONFeature[] = [];
 
-    const dataTiles = {};
+    const dataTiles: Record<string, boolean> = {};
     for (let i = 0; i < tiles.length; i++) {
-        const tile = tiles[i];
+        const tile = assertedNotNullish(tiles[i]);
         const dataID = tile.tileID.canonical.key;
         if (!dataTiles[dataID]) {
             dataTiles[dataID] = true;
@@ -245,7 +249,7 @@ function mergeRenderedFeatureLayers(tiles: RenderedFeatureLayer[]): QueryResults
     // Merge results from all tiles, but if two tiles share the same
     // wrapped ID, don't duplicate features between the two tiles
     const result: QueryResults = {};
-    const wrappedIDLayerMap = {};
+    const wrappedIDLayerMap: Record<string, Record<string, Record<number, boolean>>> = {};
     for (const tile of tiles) {
         const queryResults = tile.queryResults;
         const wrappedID = tile.wrappedTileID;
@@ -280,7 +284,7 @@ function convertFeaturesToMapFeaturesMultiple(result: QueryResults, styleLayers:
     for (const layerName in result) {
         for (const featureWrapper of result[layerName]) {
             const layer = styleLayers[layerName];
-            const tileManager = tileManagers[layer.source];
+            const tileManager = tileManagers[assertedNotNullish(layer.source)];
             convertFeatureToMapFeature(featureWrapper, tileManager);
         };
     }
@@ -289,10 +293,12 @@ function convertFeaturesToMapFeaturesMultiple(result: QueryResults, styleLayers:
 
 function convertFeatureToMapFeature(featureWrapper: QueryResultsItem, tileManager: TileManager) {
     const feature = featureWrapper.feature as MapGeoJSONFeature;
-    const state = tileManager.getFeatureState(feature.layer['source-layer'], feature.id);
+    // @ts-expect-error - 'source-layer' is a valid property on most layer types but not part of the base union
+    const sourceLayer: string | undefined = feature.layer['source-layer'];
+    const state = tileManager.getFeatureState(sourceLayer, feature.id);
     feature.source = feature.layer.source;
-    if (feature.layer['source-layer']) {
-        feature.sourceLayer = feature.layer['source-layer'];
+    if (sourceLayer) {
+        feature.sourceLayer = sourceLayer;
     }
     feature.state = state;
 }

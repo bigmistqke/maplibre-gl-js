@@ -1,8 +1,10 @@
+import {assertedNotNullish} from '../util/util';
+
 export class ZoomHistory {
-    lastZoom: number;
-    lastFloorZoom: number;
-    lastIntegerZoom: number;
-    lastIntegerZoomTime: number;
+    lastZoom: number | undefined;
+    lastFloorZoom: number | undefined;
+    lastIntegerZoom: number | undefined;
+    lastIntegerZoomTime: number | undefined;
     first: boolean;
 
     constructor() {
@@ -21,10 +23,10 @@ export class ZoomHistory {
             return true;
         }
 
-        if (this.lastFloorZoom > floorZ) {
+        if (assertedNotNullish(this.lastFloorZoom)> floorZ) {
             this.lastIntegerZoom = floorZ + 1;
             this.lastIntegerZoomTime = now;
-        } else if (this.lastFloorZoom < floorZ) {
+        } else if (assertedNotNullish(this.lastFloorZoom)< floorZ) {
             this.lastIntegerZoom = floorZ;
             this.lastIntegerZoomTime = now;
         }

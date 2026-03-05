@@ -19,7 +19,7 @@ const data: GeoJSON.FeatureCollection = {
 }
 
 export default class GeoJSONSourceSetData extends Benchmark {
-    map: Map;
+    map?: Map;
 
     async setup() {
         this.map = await createMap({
@@ -49,25 +49,25 @@ export default class GeoJSONSourceSetData extends Benchmark {
         });
 
         await new Promise(resolve => {
-            if (this.map.loaded()) {
+            if (this.map?.loaded()) {
                 resolve(null);
             } else {
-                this.map.once('idle', resolve);
+                this.map?.once('idle', resolve);
             }
         });
     }
 
     async bench() {
-        const source = this.map.getSource('points') as GeoJSONSource;
+        const source = this.map?.getSource('points') as GeoJSONSource;
 
         source.setData(data);
 
         await new Promise(resolve => {
-            this.map.once('idle', resolve);
+            this.map?.once('idle', resolve);
         });
     }
 
     teardown() {
-        this.map.remove();
+        this.map?.remove();
     }
 }

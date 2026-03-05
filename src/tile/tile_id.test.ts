@@ -1,7 +1,7 @@
 import {describe, test, expect} from 'vitest';
 import {CanonicalTileID, OverscaledTileID} from './tile_id';
 import {EXTENT} from '../data/extent';
-import {MAX_TILE_ZOOM, MIN_TILE_ZOOM} from '../util/util';
+import {MAX_TILE_ZOOM, MIN_TILE_ZOOM, assertNotNullish} from '../util/util';
 
 describe('CanonicalTileID', () => {
     test('constructor', () => {
@@ -141,6 +141,7 @@ describe('OverscaledTileID', () => {
     test('.normalizeCoordinates - in-bounds returns original tileID', () => {
         const tileID = new OverscaledTileID(2, 0, 2, 1, 1);
         const result = tileID.normalizeCoordinates(100, 100);
+        assertNotNullish(result);
         expect(result.tileID).toBe(tileID);
         expect(result.x).toBe(100);
         expect(result.y).toBe(100);
@@ -149,6 +150,7 @@ describe('OverscaledTileID', () => {
     test('.normalizeCoordinates - out-of-bounds x positive resolves right neighbor', () => {
         const tileID = new OverscaledTileID(2, 0, 2, 1, 1);
         const result = tileID.normalizeCoordinates(EXTENT + 100, 100);
+        assertNotNullish(result);
         expect(result.tileID.canonical.x).toBe(2);
         expect(result.tileID.canonical.y).toBe(1);
         expect(result.tileID.canonical.z).toBe(2);
@@ -159,6 +161,7 @@ describe('OverscaledTileID', () => {
     test('.normalizeCoordinates - out-of-bounds x negative resolves left neighbor', () => {
         const tileID = new OverscaledTileID(2, 0, 2, 1, 1);
         const result = tileID.normalizeCoordinates(-100, 100);
+        assertNotNullish(result);
         expect(result.tileID.canonical.x).toBe(0);
         expect(result.tileID.canonical.y).toBe(1);
         expect(result.x).toBe(EXTENT - 100);
@@ -168,6 +171,7 @@ describe('OverscaledTileID', () => {
     test('.normalizeCoordinates - out-of-bounds y positive resolves bottom neighbor', () => {
         const tileID = new OverscaledTileID(2, 0, 2, 1, 1);
         const result = tileID.normalizeCoordinates(100, EXTENT + 100);
+        assertNotNullish(result);
         expect(result.tileID.canonical.x).toBe(1);
         expect(result.tileID.canonical.y).toBe(2);
         expect(result.x).toBe(100);
@@ -185,6 +189,7 @@ describe('OverscaledTileID', () => {
         // At z=2, dim=4, tile x=3 is the last column. x beyond EXTENT wraps to x=0 with wrap+1
         const tileID = new OverscaledTileID(2, 0, 2, 3, 1);
         const result = tileID.normalizeCoordinates(EXTENT + 100, 100);
+        assertNotNullish(result);
         expect(result.tileID.canonical.x).toBe(0);
         expect(result.tileID.wrap).toBe(1);
         expect(result.x).toBe(100);
@@ -195,6 +200,7 @@ describe('OverscaledTileID', () => {
         // At z=2, dim=4, tile x=0 is the first column. x < 0 wraps to x=3 with wrap-1
         const tileID = new OverscaledTileID(2, 0, 2, 0, 1);
         const result = tileID.normalizeCoordinates(-100, 100);
+        assertNotNullish(result);
         expect(result.tileID.canonical.x).toBe(3);
         expect(result.tileID.wrap).toBe(-1);
         expect(result.x).toBe(EXTENT - 100);

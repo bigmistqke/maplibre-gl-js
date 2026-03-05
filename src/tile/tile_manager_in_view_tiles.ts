@@ -2,6 +2,7 @@ import Point from '@mapbox/point-geometry';
 import {type LayerFeatureStates} from '../source/source_state';
 import {type Tile} from './tile';
 import {compareTileId, type OverscaledTileID} from './tile_id';
+import { assertedNotNullish} from '../util/util';
 
 export class InViewTiles {
     private _tiles: Record<string, Tile> = {};
@@ -67,7 +68,7 @@ export class InViewTiles {
         const renderables: Array<Tile> = [];
         for (const id of this.getAllIds()) {
             if (this.isIdRenderable(id, symbolLayer)) {
-                renderables.push(this.getTileById(id));
+                renderables.push(assertedNotNullish(this.getTileById(id)));
             }
         }
         if (symbolLayer) {

@@ -11,7 +11,7 @@ export type LocationsWithTileID = {
 export default function locationsWithTileID(locations: GeoJSON.Feature<GeoJSON.Point>[]): LocationsWithTileID[] {
     return locations.map(feature => {
         const {coordinates} = feature.geometry;
-        const {zoom} = feature.properties;
+        const zoom = feature.properties?.zoom as number;
         const {x, y} = MercatorCoordinate.fromLngLat({
             lng: coordinates[0],
             lat: coordinates[1]
@@ -22,7 +22,7 @@ export default function locationsWithTileID(locations: GeoJSON.Feature<GeoJSON.P
         const tileY = Math.floor(y * scale);
 
         return {
-            description: feature.properties['place_name'],
+            description: feature.properties?.['place_name'] as string,
             tileID: [new OverscaledTileID(zoom, 0, zoom, tileX, tileY)],
             zoom,
             center: coordinates

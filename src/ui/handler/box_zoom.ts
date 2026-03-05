@@ -6,6 +6,9 @@ import {TransformProvider} from './transform-provider';
 import type {Map} from '../map';
 import type Point from '@mapbox/point-geometry';
 import {type Handler} from '../handler_manager';
+import { assertedNotNullish, assertNotNullish } from '../../util/util';
+// import { assertedNotNullish, assertNotNullish } from "../../util/util";
+
 
 /**
  * Callback for customizing what happens when a box zoom gesture ends.
@@ -34,11 +37,11 @@ export class BoxZoomHandler implements Handler {
     _tr: TransformProvider;
     _el: HTMLElement;
     _container: HTMLElement;
-    _enabled: boolean;
-    _active: boolean;
-    _startPos: Point;
-    _lastPos: Point;
-    _box: HTMLElement;
+    _enabled: boolean | undefined;
+    _active: boolean | undefined;
+    _startPos: Point | undefined;
+    _lastPos: Point | undefined;
+    _box: HTMLElement | undefined | null;
     _clickTolerance: number;
     _boxZoomEnd?: BoxZoomEndHandler;
 
@@ -115,7 +118,7 @@ export class BoxZoomHandler implements Handler {
 
         const pos = point;
 
-        if (this._lastPos.equals(pos) || (!this._box && pos.dist(this._startPos) < this._clickTolerance)) {
+        if (assertedNotNullish(this._lastPos, 'Expected this._lastPos to be defined').equals(pos) || (!this._box && pos.dist(assertedNotNullish(this._startPos, 'Expected this._startPos to be defined')) < this._clickTolerance)) {
             return;
         }
 
@@ -128,10 +131,12 @@ export class BoxZoomHandler implements Handler {
             this._fireEvent('boxzoomstart', e);
         }
 
-        const minX = Math.min(p0.x, pos.x),
-            maxX = Math.max(p0.x, pos.x),
-            minY = Math.min(p0.y, pos.y),
-            maxY = Math.max(p0.y, pos.y);
+        assertNotNullish(p0);
+
+        const minX = Math.min(assertedNotNullish(p0.x), pos.x),
+            maxX = Math.max(assertedNotNullish(p0.x), pos.x),
+            minY = Math.min(assertedNotNullish(p0.y), pos.y),
+            maxY = Math.max(assertedNotNullish(p0.y), pos.y);
 
         DOM.setTransform(this._box, `translate(${minX}px,${minY}px)`);
 
@@ -150,6 +155,7 @@ export class BoxZoomHandler implements Handler {
         this.reset();
 
         DOM.suppressClick();
+        assertNotNullish(p0);
 
         if (p0.x === p1.x && p0.y === p1.y) {
             this._fireEvent('boxzoomcancel', e);
@@ -160,7 +166,7 @@ export class BoxZoomHandler implements Handler {
                 return;
             }
             return {
-                cameraAnimation: map => map.fitScreenCoordinates(p0, p1, this._tr.bearing, {linear: true})
+                cameraAnimation: (map: Map) => map.fitScreenCoordinates(p0, p1, this._tr.bearing, {linear: true})
             };
         }
     }

@@ -8,7 +8,7 @@ import type {
 import {getImageData, isImageBitmap} from '../util/util';
 
 export class RasterDEMTileWorkerSource {
-    actor: Actor;
+    actor?: Actor;
     loaded: {[_: string]: DEMData};
 
     constructor() {

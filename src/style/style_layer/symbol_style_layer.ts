@@ -30,70 +30,81 @@ import type {EvaluationParameters} from '../evaluation_parameters';
 import type {Expression, Feature, SourceExpression, LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {CanonicalTileID} from '../../tile/tile_id';
 import {FormatSectionOverride} from '../format_section_override';
+import {assertedNotNullish, assertNotNullish, isRecord} from '../../util/util';
 
 export const isSymbolStyleLayer = (layer: StyleLayer): layer is SymbolStyleLayer => layer.type === 'symbol';
 
 export class SymbolStyleLayer extends StyleLayer {
-    _unevaluatedLayout: Layout<SymbolLayoutProps>;
-    layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>;
+    _unevaluatedLayout: Layout<SymbolLayoutProps> | undefined;
+    layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated> | undefined;
 
-    _transitionablePaint: Transitionable<SymbolPaintProps>;
-    _transitioningPaint: Transitioning<SymbolPaintProps>;
-    paint: PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated>;
+    _transitionablePaint: Transitionable<SymbolPaintProps> | undefined;
+    _transitioningPaint: Transitioning<SymbolPaintProps> | undefined;
+    paint: PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated> | undefined;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
     }
 
-    recalculate(parameters: EvaluationParameters, availableImages: Array<string>) {
+    recalculate(parameters: EvaluationParameters, availableImages: Array<string> | undefined) {
         super.recalculate(parameters, availableImages);
+
+        assertNotNullish(this.layout);
+        const layoutValues = this.layout._values as Record<string, any>;
 
         if (this.layout.get('icon-rotation-alignment') === 'auto') {
             if (this.layout.get('symbol-placement') !== 'point') {
-                this.layout._values['icon-rotation-alignment'] = 'map';
+                layoutValues['icon-rotation-alignment'] = 'map';
             } else {
-                this.layout._values['icon-rotation-alignment'] = 'viewport';
+                layoutValues['icon-rotation-alignment'] = 'viewport';
             }
         }
 
         if (this.layout.get('text-rotation-alignment') === 'auto') {
             if (this.layout.get('symbol-placement') !== 'point') {
-                this.layout._values['text-rotation-alignment'] = 'map';
+                layoutValues['text-rotation-alignment'] = 'map';
             } else {
-                this.layout._values['text-rotation-alignment'] = 'viewport';
+                layoutValues['text-rotation-alignment'] = 'viewport';
             }
         }
 
         // If unspecified, `*-pitch-alignment` inherits `*-rotation-alignment`
         if (this.layout.get('text-pitch-alignment') === 'auto') {
-            this.layout._values['text-pitch-alignment'] = this.layout.get('text-rotation-alignment') === 'map' ? 'map' : 'viewport';
+            layoutValues['text-pitch-alignment'] = this.layout.get('text-rotation-alignment') === 'map' ? 'map' : 'viewport';
         }
         if (this.layout.get('icon-pitch-alignment') === 'auto') {
-            this.layout._values['icon-pitch-alignment'] = this.layout.get('icon-rotation-alignment');
+            layoutValues['icon-pitch-alignment'] = this.layout.get('icon-rotation-alignment');
         }
 
         if (this.layout.get('symbol-placement') === 'point') {
             const writingModes = this.layout.get('text-writing-mode');
             if (writingModes) {
                 // remove duplicates, preserving order
-                const deduped = [];
+                const deduped: Array<'horizontal' | 'vertical'> = [];
                 for (const m of writingModes) {
                     if (deduped.indexOf(m) < 0) deduped.push(m);
                 }
-                this.layout._values['text-writing-mode'] = deduped;
+                layoutValues['text-writing-mode'] = deduped;
             } else {
-                this.layout._values['text-writing-mode'] = ['horizontal'];
+                layoutValues['text-writing-mode'] = ['horizontal'];
             }
         }
 
         this._setPaintOverrides();
     }
 
-    getValueAndResolveTokens(name: any, feature: Feature, canonical: CanonicalTileID, availableImages: Array<string>) {
-        const value = this.layout.get(name).evaluate(feature, {}, canonical, availableImages);
-        const unevaluated = this._unevaluatedLayout._values[name];
+    getValueAndResolveTokens(name: keyof SymbolLayoutPropsPossiblyEvaluated, feature: Feature, canonical: CanonicalTileID, availableImages: Array<string>) {
+        const layoutValue = assertedNotNullish(this.layout).get(name);
+        const value = isRecord(layoutValue) && 'evaluate' in layoutValue
+            ? layoutValue.evaluate(feature, {}, canonical, availableImages)
+            : layoutValue;
+        const unevaluatedValues = assertedNotNullish(this._unevaluatedLayout)._values;
+        const unevaluated = unevaluatedValues[name];
         if (!unevaluated.isDataDriven() && !isExpression(unevaluated.value) && value) {
-            return resolveTokens(feature.properties, value);
+            return resolveTokens(feature.properties,
+                // @ts-expect-error UNEXPECTED BEHAVIOR: resolveTokens expects second argument to be 'string', but value can be typed as 'number'
+                value
+            );
         }
 
         return value;
@@ -112,8 +123,10 @@ export class SymbolStyleLayer extends StyleLayer {
     }
 
     _setPaintOverrides() {
+        assertNotNullish(this.paint);
+        const paintValues = this.paint._values as unknown as Record<string, PossiblyEvaluatedPropertyValue<any>>;
         for (const overridable of properties.paint.overridableProperties) {
-            if (!SymbolStyleLayer.hasPaintOverride(this.layout, overridable)) {
+            if (!SymbolStyleLayer.hasPaintOverride(assertedNotNullish(this.layout), overridable)) {
                 continue;
             }
             const overridden = this.paint.get(overridable as keyof SymbolPaintPropsPossiblyEvaluated) as PossiblyEvaluatedPropertyValue<number>;
@@ -127,7 +140,7 @@ export class SymbolStyleLayer extends StyleLayer {
                     styleExpression,
                     overridden.value.zoomStops);
             }
-            this.paint._values[overridable] = new PossiblyEvaluatedPropertyValue(overridden.property,
+            paintValues[overridable] = new PossiblyEvaluatedPropertyValue(overridden.property,
                 expression,
                 overridden.parameters);
         }
@@ -142,10 +155,10 @@ export class SymbolStyleLayer extends StyleLayer {
 
     static hasPaintOverride(layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>, propertyName: string): boolean {
         const textField = layout.get('text-field');
-        const property = properties.paint.properties[propertyName];
+        const property = (properties.paint.properties as Record<string, any>)[propertyName];
         let hasOverrides = false;
 
-        const checkSections = (sections) => {
+        const checkSections = (sections: Formatted['sections']) => {
             for (const section of sections) {
                 if (property.overrides && property.overrides.hasOverride(section)) {
                     hasOverrides = true;
@@ -165,7 +178,7 @@ export class SymbolStyleLayer extends StyleLayer {
                     const formatted: Formatted = (expression.value as any);
                     checkSections(formatted.sections);
                 } else if (expression instanceof FormatExpression) {
-                    checkSections(expression.sections);
+                    checkSections(expression.sections as unknown as Formatted['sections']);
                 } else {
                     expression.eachChild(checkExpression);
                 }

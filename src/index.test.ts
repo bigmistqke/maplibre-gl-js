@@ -105,7 +105,7 @@ describe('maplibre', () => {
         try {
             await promise;
         } catch (err) {
-            expect(isAbortError(err)).toBeTruthy();
+            expect(isAbortError(err as Error)).toBeTruthy();
         }
 
         expect(cancelCalled).toBeTruthy();

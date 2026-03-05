@@ -1,6 +1,6 @@
 import {RGBAImage} from '../util/image';
 
-import {warnOnce} from '../util/util';
+import {warnOnce, assertedNotNullish} from '../util/util';
 import {register} from '../util/web_worker_transfer';
 
 /**
@@ -21,15 +21,15 @@ export type DEMEncoding = 'mapbox' | 'terrarium' | 'custom';
  */
 export class DEMData {
     uid: string | number;
-    data: Uint32Array;
-    stride: number;
-    dim: number;
-    min: number;
-    max: number;
-    redFactor: number;
-    greenFactor: number;
-    blueFactor: number;
-    baseShift: number;
+    data?: Uint32Array<ArrayBuffer>;
+    stride?: number;
+    dim?: number;
+    min?: number;
+    max?: number;
+    redFactor?: number;
+    greenFactor?: number;
+    blueFactor?: number;
+    baseShift?: number;
 
     /**
      * Constructs a `DEMData` object
@@ -81,51 +81,56 @@ export class DEMData {
         // in order to avoid flashing seams between tiles, here we are initially populating a 1px border of pixels around the image
         // with the data of the nearest pixel from the image. this data is eventually replaced when the tile's neighboring
         // tiles are loaded and the accurate data can be backfilled using DEMData#backfillBorder
+        const dataArr = assertedNotNullish(this.data, 'DEM data array must be initialized');
         for (let x = 0; x < dim; x++) {
             // left vertical border
-            this.data[this._idx(-1, x)] = this.data[this._idx(0, x)];
+            dataArr[this._idx(-1, x)] = dataArr[this._idx(0, x)];
             // right vertical border
-            this.data[this._idx(dim, x)] = this.data[this._idx(dim - 1, x)];
+            dataArr[this._idx(dim, x)] = dataArr[this._idx(dim - 1, x)];
             // left horizontal border
-            this.data[this._idx(x, -1)] = this.data[this._idx(x, 0)];
+            dataArr[this._idx(x, -1)] = dataArr[this._idx(x, 0)];
             // right horizontal border
-            this.data[this._idx(x, dim)] = this.data[this._idx(x, dim - 1)];
+            dataArr[this._idx(x, dim)] = dataArr[this._idx(x, dim - 1)];
         }
         // corners
-        this.data[this._idx(-1, -1)] = this.data[this._idx(0, 0)];
-        this.data[this._idx(dim, -1)] = this.data[this._idx(dim - 1, 0)];
-        this.data[this._idx(-1, dim)] = this.data[this._idx(0, dim - 1)];
-        this.data[this._idx(dim, dim)] = this.data[this._idx(dim - 1, dim - 1)];
+        dataArr[this._idx(-1, -1)] = dataArr[this._idx(0, 0)];
+        dataArr[this._idx(dim, -1)] = dataArr[this._idx(dim - 1, 0)];
+        dataArr[this._idx(-1, dim)] = dataArr[this._idx(0, dim - 1)];
+        dataArr[this._idx(dim, dim)] = dataArr[this._idx(dim - 1, dim - 1)];
 
         // calculate min/max values
-        this.min = Number.MAX_SAFE_INTEGER;
-        this.max = Number.MIN_SAFE_INTEGER;
+        let min = Number.MAX_SAFE_INTEGER;
+        let max = Number.MIN_SAFE_INTEGER;
         for (let x = 0; x < dim; x++) {
             for (let y = 0; y < dim; y++) {
                 const ele = this.get(x, y);
-                if (ele > this.max) this.max = ele;
-                if (ele < this.min) this.min = ele;
+                if (ele > max) max = ele;
+                if (ele < min) min = ele;
             }
         }
+        this.min = min;
+        this.max = max;
     }
 
     get(x: number, y: number) {
-        const pixels = new Uint8Array(this.data.buffer);
+        const pixels = new Uint8Array(assertedNotNullish(this.data).buffer);
         const index = this._idx(x, y) * 4;
         return this.unpack(pixels[index], pixels[index + 1], pixels[index + 2]);
     }
 
     getUnpackVector() {
-        return [this.redFactor, this.greenFactor, this.blueFactor, this.baseShift];
+        return [assertedNotNullish(this.redFactor), assertedNotNullish(this.greenFactor), assertedNotNullish(this.blueFactor), assertedNotNullish(this.baseShift)];
     }
 
     _idx(x: number, y: number) {
-        if (x < -1 || x >= this.dim + 1 ||  y < -1 || y >= this.dim + 1) throw new RangeError(`Out of range source coordinates for DEM data. x: ${x}, y: ${y}, dim: ${this.dim}`);
-        return (y + 1) * this.stride + (x + 1);
+        const dim = assertedNotNullish(this.dim);
+        const stride = assertedNotNullish(this.stride);
+        if (x < -1 || x >= dim + 1 ||  y < -1 || y >= dim + 1) throw new RangeError(`Out of range source coordinates for DEM data. x: ${x}, y: ${y}, dim: ${dim}`);
+        return (y + 1) * stride + (x + 1);
     }
 
     unpack(r: number, g: number, b: number) {
-        return (r * this.redFactor + g * this.greenFactor + b * this.blueFactor - this.baseShift);
+        return (r * assertedNotNullish(this.redFactor) + g * assertedNotNullish(this.greenFactor) + b * assertedNotNullish(this.blueFactor) - assertedNotNullish(this.baseShift));
     }
 
     pack(v: number): {r: number; g: number; b: number} {
@@ -133,16 +138,18 @@ export class DEMData {
     }
 
     getPixels() {
-        return new RGBAImage({width: this.stride, height: this.stride}, new Uint8Array(this.data.buffer));
+        const stride = assertedNotNullish(this.stride);
+        return new RGBAImage({width: stride, height: stride}, new Uint8Array(assertedNotNullish(this.data).buffer));
     }
 
     backfillBorder(borderTile: DEMData, dx: number, dy: number) {
         if (this.dim !== borderTile.dim) throw new Error('dem dimension mismatch');
+        const dim = assertedNotNullish(this.dim);
 
-        let xMin = dx * this.dim,
-            xMax = dx * this.dim + this.dim,
-            yMin = dy * this.dim,
-            yMax = dy * this.dim + this.dim;
+        let xMin = dx * dim,
+            xMax = dx * dim + dim,
+            yMin = dy * dim,
+            yMax = dy * dim + dim;
 
         switch (dx) {
             case -1:
@@ -162,11 +169,13 @@ export class DEMData {
                 break;
         }
 
-        const ox = -dx * this.dim;
-        const oy = -dy * this.dim;
+        const ox = -dx * dim;
+        const oy = -dy * dim;
+        const targetData = assertedNotNullish(this.data);
+        const sourceData = assertedNotNullish(borderTile.data);
         for (let y = yMin; y < yMax; y++) {
             for (let x = xMin; x < xMax; x++) {
-                this.data[this._idx(x, y)] = borderTile.data[this._idx(x + ox, y + oy)];
+                targetData[this._idx(x, y)] = sourceData[this._idx(x + ox, y + oy)];
             }
         }
     }

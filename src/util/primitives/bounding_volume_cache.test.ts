@@ -1,5 +1,8 @@
 import {describe, expect, test} from 'vitest';
 import {GlobeCoveringTilesDetailsProvider} from '../../geo/projection/globe_covering_tiles_details_provider';
+import type {CoveringTilesOptionsInternal} from '../../geo/projection/covering_tiles';
+
+const defaultOptions: CoveringTilesOptionsInternal = {tileSize: 512};
 
 describe('bounding volume cache', () => {
     test('retains bounding volumes from last frame', () => {
@@ -8,13 +11,13 @@ describe('bounding volume cache', () => {
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         detailsProvider.prepareNextFrame();
         const box1b = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         expect(box1a).toBe(box1b); // Test reference equality
     });
 
@@ -25,51 +28,51 @@ describe('bounding volume cache', () => {
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box2a = detailsProvider.getTileBoundingVolume({
             x: 1,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box3a = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         detailsProvider.prepareNextFrame();
         // Get 2+3+4
         const box2b = detailsProvider.getTileBoundingVolume({
             x: 1,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box3b = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box4b = detailsProvider.getTileBoundingVolume({
             x: 1,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         detailsProvider.prepareNextFrame();
         // Get 1+3+4
         const box1c = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box3c = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box4c = detailsProvider.getTileBoundingVolume({
             x: 1,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         // All returned objects should have equal internal values
         expect(box1a).toEqual(box1c);
         expect(box2a).toEqual(box2b);
@@ -91,41 +94,41 @@ describe('bounding volume cache', () => {
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box2a = detailsProvider.getTileBoundingVolume({
             x: 1,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box3a = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         detailsProvider.prepareNextFrame();
         // Get 2+3
         const box2b = detailsProvider.getTileBoundingVolume({
             x: 1,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box3b = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         detailsProvider.prepareNextFrame();
         // Get 1+3
         const box1c = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 0,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         const box3c = detailsProvider.getTileBoundingVolume({
             x: 0,
             y: 1,
             z: 1,
-        }, null, null, null);
+        }, 0, 0, defaultOptions);
         // All returned objects should have equal internal values
         expect(box1a).toEqual(box1c);
         expect(box2a).toEqual(box2b);

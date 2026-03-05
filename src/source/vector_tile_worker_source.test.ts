@@ -9,6 +9,7 @@ import {type IActor} from '../util/actor';
 import {type TileParameters, type WorkerTileParameters, type WorkerTileResult, type WorkerTileWithData} from './worker_source';
 import {WorkerTile} from './worker_tile';
 import {setPerformance, sleep} from '../util/test/util';
+import {assertedNotNullish} from '../util/util';
 import {ABORT_ERROR} from '../util/abort_error';
 import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings';
 import {OverscaledTileID, CanonicalTileID} from '../tile/tile_id';
@@ -16,11 +17,11 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Point from '@mapbox/point-geometry';
 
 describe('vector tile worker source', () => {
-    const actor = {sendAsync: () => Promise.resolve({})} as IActor;
+    const actor = {sendAsync: () => Promise.resolve({})} as unknown as IActor;
     let server: FakeServer;
 
     beforeEach(() => {
-        global.fetch = null;
+        global.fetch = null as unknown as typeof global.fetch;
         server = fakeServer.create();
         setPerformance();
     });
@@ -37,12 +38,12 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/abort'}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         const abortPromise = source.abortTile({
             source: 'source',
             uid: 0
-        } as any as TileParameters);
+        } as unknown as TileParameters);
 
         expect(source.tileState.loading).toEqual({});
         await expect(abortPromise).resolves.toBeFalsy();
@@ -59,7 +60,7 @@ describe('vector tile worker source', () => {
         const res = await source.removeTile({
             source: 'source',
             uid: 0
-        } as any as TileParameters);
+        } as unknown as TileParameters);
         expect(res).toBeUndefined();
 
         expect(source.tileState.loaded).toEqual({});
@@ -67,17 +68,17 @@ describe('vector tile worker source', () => {
 
     test('VectorTileWorkerSource.reloadTile reloads a previously-loaded tile', async () => {
         const source = new VectorTileWorkerSource(actor, new StyleLayerIndex(), []);
-        const parse = vi.fn().mockReturnValue(Promise.resolve({} as WorkerTileResult));
+        const parse = vi.fn().mockReturnValue(Promise.resolve({} as unknown as WorkerTileResult));
 
         source.tileState.loaded = {
             '0': {
                 status: 'done',
                 vectorTile: {},
                 parse
-            } as any as WorkerTile
+            } as unknown as WorkerTile
         };
 
-        const reloadPromise = source.reloadTile({uid: 0} as any as WorkerTileParameters);
+        const reloadPromise = source.reloadTile({uid: 0} as unknown as WorkerTileParameters);
         expect(parse).toHaveBeenCalledTimes(1);
         await expect(reloadPromise).resolves.toBeTruthy();
     });
@@ -113,8 +114,8 @@ describe('vector tile worker source', () => {
             }
         };
 
-        const source = new VectorTileWorkerSource(actor, layerIndex, ['hello']);
-        source.loadVectorTile = (_params, _rawData) => {
+        const source = new VectorTileWorkerSource(actor as any as IActor, layerIndex, ['hello']);
+        source.loadVectorTile = (_params: any, _rawData: any) => {
             return {
                 vectorTile: {
                     layers: {
@@ -151,7 +152,7 @@ describe('vector tile worker source', () => {
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf'},
             subdivisionGranularity: SubdivisionGranularitySetting.noSubdivision,
-        } as any as WorkerTileParameters).then(() => expect(false).toBeTruthy());
+        } as unknown as WorkerTileParameters).then(() => expect(false).toBeTruthy());
 
         server.respond();
 
@@ -165,13 +166,13 @@ describe('vector tile worker source', () => {
             subdivisionGranularity: SubdivisionGranularitySetting.noSubdivision,
         } as any as WorkerTileParameters) as WorkerTileWithData;
         expect(res).toBeDefined();
-        expect(res.rawTileData).toBeDefined();
-        expect(res.rawTileData).toStrictEqual(rawTileData);
+        expect(res?.rawTileData).toBeDefined();
+        expect(res?.rawTileData).toStrictEqual(rawTileData);
     });
 
     test('VectorTileWorkerSource.loadTile reparses tile if reloadTile is called during reparsing', async () => {
         const rawTileData = new ArrayBuffer(0);
-        const loadVectorData = (_params, _rawData) => {
+        const loadVectorData = (_params: any, _rawData: any) => {
             return {
                 vectorTile: new VectorTile(new Protobuf(rawTileData)),
                 rawData: rawTileData
@@ -190,10 +191,10 @@ describe('vector tile worker source', () => {
 
         const parseWorkerTileMock = vi
             .spyOn(WorkerTile.prototype, 'parse')
-            .mockImplementation(function(_data, _layerIndex, _availableImages, _actor) {
+            .mockImplementation(function(this: any, _data, _layerIndex, _availableImages, _actor) {
                 this.status = 'parsing';
                 return new Promise((resolve) => {
-                    setTimeout(() => resolve({} as WorkerTileResult), 20);
+                    setTimeout(() => resolve({} as unknown as WorkerTileResult), 20);
                 });
             });
 
@@ -206,7 +207,7 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf'}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         server.respond();
 
@@ -217,7 +218,7 @@ describe('vector tile worker source', () => {
             source: 'source',
             uid: '0',
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
         expect(res).toBeDefined();
         expect(parseWorkerTileMock).toHaveBeenCalledTimes(2);
         await expect(loadPromise).resolves.toBeTruthy();
@@ -266,16 +267,16 @@ describe('vector tile worker source', () => {
             '0': {
                 status: 'done',
                 parse
-            } as any as WorkerTile
+            } as unknown as WorkerTile
         };
 
-        await source.reloadTile({uid: 0} as any as WorkerTileParameters);
+        await source.reloadTile({uid: 0} as unknown as WorkerTileParameters);
         expect(parse).not.toHaveBeenCalled();
     });
 
     test('VectorTileWorkerSource.loadTile returns null for an empty tile', async () => {
         const source = new VectorTileWorkerSource(actor, new StyleLayerIndex(), []);
-        source.loadVectorTile = (_params, _rawData) => null;
+        source.loadVectorTile = (_params: any, _rawData: any) => null as any;
         const parse = vi.fn();
 
         server.respondWith(request => {
@@ -287,7 +288,7 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf'}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         server.respond();
 
@@ -308,7 +309,7 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf'}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         server.respond();
 
@@ -327,7 +328,7 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf'}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         server.respond();
 
@@ -338,7 +339,7 @@ describe('vector tile worker source', () => {
     test('VectorTileWorkerSource provides resource timing information', async () => {
         const rawTileData = fs.readFileSync(path.join(__dirname, '/../../test/unit/assets/mbsv5-6-18-23.vector.pbf')).buffer.slice(0) as ArrayBuffer;
 
-        const loadVectorData = (_params, _rawData) => {
+        const loadVectorData = (_params: any, _rawData: any) => {
             return {
                 vectorTile: new VectorTile(new Protobuf(rawTileData)),
                 rawData: rawTileData,
@@ -389,19 +390,19 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf', collectResourceTiming: true}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         await sleep(0);
         server.respond();
         const res = await promise;
 
-        expect(res.resourceTiming[0]).toEqual(exampleResourceTiming);
+        expect(assertedNotNullish(assertedNotNullish(res).resourceTiming)[0]).toEqual(exampleResourceTiming);
     });
 
     test('VectorTileWorkerSource provides resource timing information (fallback method)', async () => {
         const rawTileData = fs.readFileSync(path.join(__dirname, '/../../test/unit/assets/mbsv5-6-18-23.vector.pbf')).buffer.slice(0) as ArrayBuffer;
 
-        const loadVectorData = (_params, _rawData) => {
+        const loadVectorData = (_params: any, _rawData: any) => {
             return {
                 vectorTile: new VectorTile(new Protobuf(rawTileData)),
                 rawData: rawTileData,
@@ -421,22 +422,22 @@ describe('vector tile worker source', () => {
         source.loadVectorTile = loadVectorData;
 
         const sampleMarks = [100, 350];
-        const marks = {};
-        const measures = {};
-        window.performance.getEntriesByName = vi.fn().mockImplementation(name => (measures[name] || []));
-        window.performance.mark = vi.fn().mockImplementation(name => {
+        const marks: Record<string, number | undefined> = {};
+        const measures: Record<string, any[]> = {};
+        window.performance.getEntriesByName = vi.fn().mockImplementation((name: string) => (measures[name] || []));
+        window.performance.mark = vi.fn().mockImplementation((name: string) => {
             marks[name] = sampleMarks.shift();
-            return null;
+            return {} as unknown as PerformanceMark; // Test mock
         });
-        window.performance.measure = vi.fn().mockImplementation((name, start, end) => {
+        window.performance.measure = vi.fn().mockImplementation((name: string, start: string, end: string) => {
             measures[name] = measures[name] || [];
             measures[name].push({
-                duration: marks[end] - marks[start],
+                duration: (marks[end] ?? 0) - (marks[start] ?? 0),
                 entryType: 'measure',
                 name,
                 startTime: marks[start]
             });
-            return null;
+            return {} as unknown as PerformanceMeasure; // Test mock
         });
 
         server.respondWith(request => {
@@ -448,13 +449,13 @@ describe('vector tile worker source', () => {
             uid: 0,
             tileID: {overscaledZ: 0, wrap: 0, canonical: {x: 0, y: 0, z: 0, w: 0}},
             request: {url: 'http://localhost:2900/faketile.pbf', collectResourceTiming: true}
-        } as any as WorkerTileParameters);
+        } as unknown as WorkerTileParameters);
 
         await sleep(0);
         server.respond();
         const res = await promise;
 
-        expect(res.resourceTiming[0]).toEqual(
+        expect(assertedNotNullish(assertedNotNullish(res).resourceTiming)[0]).toEqual(
             {'duration': 250, 'entryType': 'measure', 'name': 'http://localhost:2900/faketile.pbf', 'startTime': 100}
         );
     });
@@ -487,6 +488,6 @@ describe('vector tile worker source', () => {
         const res = await promise;
 
         expect(res).toBeDefined();
-        expect(res.etagUnmodified).toBe(true);
+        expect(assertedNotNullish(res).etagUnmodified).toBe(true);
     });
 });

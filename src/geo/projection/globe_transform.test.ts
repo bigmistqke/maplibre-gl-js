@@ -8,6 +8,7 @@ import {angularCoordinatesRadiansToVector, mercatorCoordinatesToAngularCoordinat
 import {expectToBeCloseToArray} from '../../util/test/util';
 import {MercatorCoordinate} from '../mercator_coordinate';
 import {tileCoordinatesToLocation} from './mercator_utils';
+import {assertedNotNullish} from '../../util/util';
 import {MercatorTransform} from './mercator_transform';
 import {globeConstants} from './vertical_perspective_projection';
 
@@ -479,40 +480,40 @@ describe('GlobeTransform', () => {
             globeTransform.setCenter(new LngLat(0, 0));
             globeTransform.setZoom(1);
             const bounds = globeTransform.getBounds();
-            expect(bounds._ne.lat).toBeCloseTo(79.3636705287052, precisionDigits);
-            expect(bounds._ne.lng).toBeCloseTo(79.36367052870514, precisionDigits);
-            expect(bounds._sw.lat).toBeCloseTo(-79.3636705287052, precisionDigits);
-            expect(bounds._sw.lng).toBeCloseTo(-79.3636705287052, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lat).toBeCloseTo(79.3636705287052, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lng).toBeCloseTo(79.36367052870514, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lat).toBeCloseTo(-79.3636705287052, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lng).toBeCloseTo(-79.3636705287052, precisionDigits);
         });
 
         test('zoomed in', () => {
             globeTransform.setCenter(new LngLat(0, 0));
             globeTransform.setZoom(4);
             const bounds = globeTransform.getBounds();
-            expect(bounds._ne.lat).toBeCloseTo(11.76627084591695, precisionDigits);
-            expect(bounds._ne.lng).toBeCloseTo(16.124697669965144, precisionDigits);
-            expect(bounds._sw.lat).toBeCloseTo(-11.76627084591695, precisionDigits);
-            expect(bounds._sw.lng).toBeCloseTo(-16.124697669965144, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lat).toBeCloseTo(11.76627084591695, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lng).toBeCloseTo(16.124697669965144, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lat).toBeCloseTo(-11.76627084591695, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lng).toBeCloseTo(-16.124697669965144, precisionDigits);
         });
 
         test('looking at south pole', () => {
             globeTransform.setCenter(new LngLat(0, -84));
             globeTransform.setZoom(-2);
             const bounds = globeTransform.getBounds();
-            expect(bounds._ne.lat).toBeCloseTo(-6.299534770946991, precisionDigits);
-            expect(bounds._ne.lng).toBeCloseTo(180, precisionDigits);
-            expect(bounds._sw.lat).toBeCloseTo(-90, precisionDigits);
-            expect(bounds._sw.lng).toBeCloseTo(-180, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lat).toBeCloseTo(-6.299534770946991, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lng).toBeCloseTo(180, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lat).toBeCloseTo(-90, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lng).toBeCloseTo(-180, precisionDigits);
         });
 
         test('looking at south edge of mercator', () => {
             globeTransform.setCenter(new LngLat(-163, -83));
             globeTransform.setZoom(3);
             const bounds = globeTransform.getBounds();
-            expect(bounds._ne.lat).toBeCloseTo(-79.75570418234764, precisionDigits);
-            expect(bounds._ne.lng).toBeCloseTo(-124.19771985801174, precisionDigits);
-            expect(bounds._sw.lat).toBeCloseTo(-85.59109073899032, precisionDigits);
-            expect(bounds._sw.lng).toBeCloseTo(-201.80228014198985, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lat).toBeCloseTo(-79.75570418234764, precisionDigits);
+            expect(assertedNotNullish(bounds._ne).lng).toBeCloseTo(-124.19771985801174, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lat).toBeCloseTo(-85.59109073899032, precisionDigits);
+            expect(assertedNotNullish(bounds._sw).lng).toBeCloseTo(-201.80228014198985, precisionDigits);
         });
     });
 

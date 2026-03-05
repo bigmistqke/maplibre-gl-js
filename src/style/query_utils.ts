@@ -7,6 +7,7 @@ import type {LineBucket} from '../data/bucket/line_bucket';
 import {polygonIntersectsBufferedPoint} from '../util/intersection_tests';
 import type {IReadonlyTransform} from '../geo/transform_interface';
 import type {UnwrappedTileID} from '../tile/tile_id';
+import {assertedNotNullish} from '../util/util';
 
 export function getMaximumPaintValue(
     property: string,
@@ -113,14 +114,14 @@ function intersectionTestMapMap({queryGeometry, size}: CircleIntersectionTestPar
 }
 
 function intersectionTestMapViewport({queryGeometry, size, transform, unwrappedTileID, getElevation}: CircleIntersectionTestParams, point: Point): boolean {
-    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
-    const adjustedSize = size * (w / transform.cameraToCenterDistance);
+    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, assertedNotNullish(getElevation)).signedDistanceFromCamera;
+    const adjustedSize = size * (w / assertedNotNullish(transform.cameraToCenterDistance));
     return polygonIntersectsBufferedPoint(queryGeometry, point, adjustedSize);
 }
 
 function intersectionTestViewportMap({queryGeometry, size, transform, unwrappedTileID, getElevation}: CircleIntersectionTestParams, point: Point): boolean {
-    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
-    const adjustedSize = size * (transform.cameraToCenterDistance / w);
+    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, assertedNotNullish(getElevation)).signedDistanceFromCamera;
+    const adjustedSize = size * (assertedNotNullish(transform.cameraToCenterDistance)/ w);
     return polygonIntersectsBufferedPoint(queryGeometry, projectPoint(point, transform, unwrappedTileID, getElevation), adjustedSize);
 }
 
@@ -136,7 +137,7 @@ export function circleIntersection({
     getElevation,
     pitchAlignment = 'map',
     pitchScale = 'map'
-}: CircleIntersectionTestParams, geometry): boolean {
+}: CircleIntersectionTestParams, geometry: Array<Array<Point>>): boolean {
     const intersectionTest = pitchAlignment === 'map'
         ? (pitchScale === 'map' ? intersectionTestMapMap : intersectionTestMapViewport)
         : (pitchScale === 'map' ? intersectionTestViewportMap : intersectionTestViewportViewport);
@@ -154,7 +155,7 @@ export function circleIntersection({
 
 function projectPoint(tilePoint: Point, transform: IReadonlyTransform, unwrappedTileID: UnwrappedTileID, getElevation: undefined | ((x: number, y: number) => number)): Point {
     // Convert `tilePoint` from tile coordinates to clip coordinates.
-    const clipPoint = transform.projectTileCoordinates(tilePoint.x, tilePoint.y, unwrappedTileID, getElevation).point;
+    const clipPoint = transform.projectTileCoordinates(tilePoint.x, tilePoint.y, unwrappedTileID, assertedNotNullish(getElevation)).point;
     // Convert `clipPoint` from clip coordinates into pixel/screen coordinates.
     const pixelPoint = new Point(
         (clipPoint.x * 0.5 + 0.5) * transform.width,

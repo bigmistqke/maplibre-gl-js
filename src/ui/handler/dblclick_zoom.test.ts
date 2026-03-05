@@ -10,7 +10,7 @@ function createMap(options: any = {}) {
     } as any as MapOptions);
 }
 
-async function simulateDoubleTap(map, delay = 100) {
+async function simulateDoubleTap(map: Map, delay: number = 100) {
     const canvas = map.getCanvas();
 
     simulate.touchstart(canvas, {touches: [{target: canvas, clientX: 0, clientY: 0}]});

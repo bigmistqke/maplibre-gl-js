@@ -8,6 +8,7 @@ import type {FillLayerSpecification, ResolvedImage} from '@maplibre/maplibre-gl-
 import type {ProgramConfiguration} from '../data/program_configuration';
 import type {ImagePosition} from './image_atlas';
 import type {Rect} from './glyph_atlas';
+import {assertedNotNullish} from '../util/util';
 
 interface MockProgramConfiguration extends ProgramConfiguration {
     patternPositions: {
@@ -50,9 +51,9 @@ function constructMockFillStyleLayer(): FillStyleLayer {
 describe('updatePatternPositionsInProgram', () => {
     test('geojson tile', () => {
         const config = constructMockProgramConfiguration();
-        const tile = new Tile(new OverscaledTileID(3, 0, 2, 1, 2), undefined);
+        const tile = new Tile(new OverscaledTileID(3, 0, 2, 1, 2), 512);
         tile.imageAtlas = {} as any;
-        tile.imageAtlas.patternPositions = {
+        assertedNotNullish(tile.imageAtlas).patternPositions = {
             'volcano_11': {paddedRect: {x: 0, y: 0, w: 0, h: 0}, version: 0, tl: [0, 0], pixelRatio: 1, br: [0, 0], tlbr: [0, 0, 0, 0], displaySize: [0, 0], stretchX: [], stretchY: [], content: [0, 0, 0, 0], textFitWidth: undefined, textFitHeight: undefined},
         };
         const crossFadeResolveImage: CrossFaded<ResolvedImage> = {

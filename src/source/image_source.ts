@@ -15,7 +15,7 @@ import type {
     VideoSourceSpecification
 } from '@maplibre/maplibre-gl-style-spec';
 import type Point from '@mapbox/point-geometry';
-import {MAX_TILE_ZOOM} from '../util/util';
+import {MAX_TILE_ZOOM, assertedNotNullish} from '../util/util';
 import {Bounds} from '../geo/bounds';
 import {isAbortError} from '../util/abort_error';
 
@@ -104,25 +104,25 @@ export class ImageSource extends Evented implements Source {
     minzoom: number;
     maxzoom: number;
     tileSize: number;
-    url: string;
+    url: string | undefined;
     /**
      * This object is used to store the range of terrain tiles that overlap with this tile.
      * It is relevant for image tiles, as the image exceeds single tile boundaries.
      */
-    terrainTileRanges: {[zoom: string]: CanonicalTileRange};
+    terrainTileRanges: {[zoom: string]: CanonicalTileRange} | undefined;
 
     coordinates: Coordinates;
     tiles: {[_: string]: Tile};
     options: any;
     dispatcher: Dispatcher;
-    map: Map;
-    texture: Texture | null;
-    image: HTMLImageElement | ImageBitmap;
-    tileID: CanonicalTileID;
-    tileCoords: Array<Point>;
+    map: Map | undefined;
+    texture: Texture | null | undefined;
+    image: HTMLImageElement | ImageBitmap | undefined;
+    tileID: CanonicalTileID | undefined;
+    tileCoords: Array<Point> | undefined;
     flippedWindingOrder: boolean = false;
     _loaded: boolean;
-    _request: AbortController;
+    _request: AbortController | undefined;
 
     /** @internal */
     constructor(id: string, options: ImageSourceSpecification | VideoSourceSpecification | CanvasSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) {
@@ -151,8 +151,8 @@ export class ImageSource extends Evented implements Source {
 
         this._request = new AbortController();
         try {
-            const image = await ImageRequest.getImage(this.map._requestManager.transformRequest(this.url, ResourceType.Image), this._request);
-            this._request = null;
+            const image = await ImageRequest.getImage(assertedNotNullish(this.map, 'Expected this.map to be defined')._requestManager.transformRequest(assertedNotNullish(this.url, 'Expected this.url to be defined'), ResourceType.Image), this._request);
+            this._request = undefined;
             this._loaded = true;
 
             if (image && image.data) {
@@ -162,11 +162,11 @@ export class ImageSource extends Evented implements Source {
                 }
                 this._finishLoading();
             }
-        } catch (err) {
-            this._request = null;
+        } catch (err: unknown) {
+            this._request = undefined;
             this._loaded = true;
             if (!isAbortError(err)) {
-                this.fire(new ErrorEvent(err));
+                this.fire(new ErrorEvent(err instanceof Error ? err : new Error(String(err))));
             }
         }
     }
@@ -188,7 +188,7 @@ export class ImageSource extends Evented implements Source {
 
         if (this._request) {
             this._request.abort();
-            this._request = null;
+            this._request = undefined;
         }
 
         this.options.url = options.url;
@@ -211,7 +211,7 @@ export class ImageSource extends Evented implements Source {
     onRemove() {
         if (this._request) {
             this._request.abort();
-            this._request = null;
+            this._request = undefined;
         }
     }
 
@@ -248,7 +248,7 @@ export class ImageSource extends Evented implements Source {
 
         // Transform the corner coordinates into the coordinate space of our
         // tile.
-        this.tileCoords = cornerCoords.map((coord) => this.tileID.getTilePoint(coord)._round());
+        this.tileCoords = cornerCoords.map((coord) => assertedNotNullish(this.tileID).getTilePoint(coord)._round());
         this.flippedWindingOrder = hasWrongWindingOrder(this.tileCoords);
 
         this.fire(new Event('data', {dataType: 'source', sourceDataType: 'content'}));
@@ -260,7 +260,7 @@ export class ImageSource extends Evented implements Source {
             return;
         }
 
-        const context = this.map.painter.context;
+        const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
         const gl = context.gl;
 
         if (!this.texture) {
@@ -306,7 +306,7 @@ export class ImageSource extends Evented implements Source {
         };
     }
 
-    hasTransition() {
+    hasTransition(): boolean {
         return false;
     }
 

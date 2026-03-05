@@ -22,14 +22,14 @@ export function createSymbolBucket(layerId: string, font: string, text: string, 
     } as BucketParameters<SymbolStyleLayer>);
 }
 
-export function createSymbolIconBucket(layerId, iconProperty, collisionBoxArray) {
+export function createSymbolIconBucket(layerId: string, iconProperty: string, collisionBoxArray: CollisionBoxArray) {
     const layer = new SymbolStyleLayer({
         id: layerId,
         type: 'symbol',
         layout: {'icon-image': ['get', iconProperty]},
         filter: featureFilter(undefined)
     } as any as LayerSpecification, {});
-    layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, undefined);
+    layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
     return new SymbolBucket({
         overscaling: 1,

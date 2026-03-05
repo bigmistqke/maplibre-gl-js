@@ -2,9 +2,10 @@ import {describe, test, expect} from 'vitest';
 import {createStyleLayer} from '../create_style_layer';
 import {extend} from '../../util/util';
 import {type LineStyleLayer} from './line_style_layer';
+import {type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 
 describe('LineStyleLayer', () => {
-    function createLineLayer(layer?) {
+    function createLineLayer(layer?: Partial<LineStyleLayer>): LayerSpecification {
         return extend({
             type: 'line',
             source: 'line',
@@ -22,7 +23,7 @@ describe('LineStyleLayer', () => {
                     'red'
                 ]
             }
-        }, layer);
+        }, layer) as LayerSpecification;
     }
 
     test('updating with valid line-gradient updates this.gradientVersion', () => {

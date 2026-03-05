@@ -4,6 +4,7 @@ import {
     codePointHasNeutralVerticalOrientation,
     codePointRequiresComplexTextShaping
 } from '../util/unicode_properties.g';
+import { assertedNotNullish} from './util';
 
 export function charIsWhitespace(char: number) {
     return /\s/u.test(String.fromCodePoint(char));
@@ -11,21 +12,21 @@ export function charIsWhitespace(char: number) {
 
 export function allowsIdeographicBreaking(chars: string) {
     for (const char of chars) {
-        if (!codePointAllowsIdeographicBreaking(char.codePointAt(0))) return false;
+        if (!codePointAllowsIdeographicBreaking(assertedNotNullish(char.codePointAt(0)))) return false;
     }
     return true;
 }
 
 export function allowsVerticalWritingMode(chars: string) {
     for (const char of chars) {
-        if (codePointHasUprightVerticalOrientation(char.codePointAt(0))) return true;
+        if (codePointHasUprightVerticalOrientation(assertedNotNullish(char.codePointAt(0)))) return true;
     }
     return false;
 }
 
 export function allowsLetterSpacing(chars: string) {
     for (const char of chars) {
-        if (!charAllowsLetterSpacing(char.codePointAt(0))) return false;
+        if (!charAllowsLetterSpacing(assertedNotNullish(char.codePointAt(0)))) return false;
     }
     return true;
 }
@@ -151,7 +152,7 @@ export function charInSupportedScript(char: number, canRenderRTL: boolean) {
 
 export function stringContainsRTLText(chars: string): boolean {
     for (const char of chars) {
-        if (charInRTLScript(char.codePointAt(0))) {
+        if (charInRTLScript(char.codePointAt(0)!)) {
             return true;
         }
     }
@@ -160,7 +161,7 @@ export function stringContainsRTLText(chars: string): boolean {
 
 export function isStringInSupportedScript(chars: string, canRenderRTL: boolean) {
     for (const char of chars) {
-        if (!charInSupportedScript(char.codePointAt(0), canRenderRTL)) {
+        if (!charInSupportedScript(char.codePointAt(0)!, canRenderRTL)) {
             return false;
         }
     }

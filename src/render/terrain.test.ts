@@ -8,7 +8,7 @@ import {OverscaledTileID} from '../tile/tile_id';
 import {Tile} from '../tile/tile';
 import {LngLat} from '../geo/lng_lat';
 import {EXTENT} from '../data/extent';
-import {MAX_TILE_ZOOM, MIN_TILE_ZOOM} from '../util/util';
+import {assertedNotNullish, MAX_TILE_ZOOM, MIN_TILE_ZOOM} from '../util/util';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
 import type {TileManager} from '../tile/tile_manager';
 import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -19,9 +19,11 @@ describe('Terrain', () => {
     let gl: WebGLRenderingContext;
 
     beforeEach(() => {
-        gl = document.createElement('canvas').getContext('webgl');
+        gl = assertedNotNullish(document.createElement('canvas').getContext('webgl'));
         vi.spyOn(gl, 'checkFramebufferStatus').mockReturnValue(gl.FRAMEBUFFER_COMPLETE);
-        vi.spyOn(gl, 'readPixels').mockImplementation((_1, _2, _3, _4, _5, _6, rgba) => {
+        vi.spyOn(gl, 'readPixels').mockImplementation((_1, _2, _3, _4, _5, _6, pixels) => {
+            // readPixels passes a Uint8Array in practice
+            const rgba = assertedNotNullish(pixels) as Uint8Array;
             rgba[0] = 0;
             rgba[1] = 0;
             rgba[2] = 255;
@@ -44,7 +46,7 @@ describe('Terrain', () => {
             maybeDrawDepthAndCoords: vi.fn(),
         } as any as Painter;
         const tileManager = {_source: {tileSize: 512}} as TileManager;
-        const getTileByID = (tileID) : Tile => {
+        const getTileByID = (tileID: string) : Tile => {
             if (tileID !== 'abcd') {
                 return null as any as Tile;
             }
@@ -74,7 +76,7 @@ describe('Terrain', () => {
         } as any as Painter;
         const tileManager = {_source: {tileSize: 512}} as TileManager;
         const terrain = new Terrain(painter, tileManager, {} as any as TerrainSpecification);
-        const tileIdsToWraps = {a: -1, b: 0, c: 1, d: 2};
+        const tileIdsToWraps: Record<string, number> = {a: -1, b: 0, c: 1, d: 2};
         terrain.tileManager.getTileByID = (id) => {
             return {
                 tileID: {
@@ -85,7 +87,9 @@ describe('Terrain', () => {
         };
         terrain.getElevation = () => 0;
         terrain.coordsIndex = Object.keys(tileIdsToWraps);
-        vi.spyOn(gl, 'readPixels').mockImplementation((x, _2, _3, _4, _5, _6, rgba) => {
+        vi.spyOn(gl, 'readPixels').mockImplementation((x, _2, _3, _4, _5, _6, pixels) => {
+            // readPixels passes a Uint8Array in practice
+            const rgba = assertedNotNullish(pixels) as Uint8Array;
             rgba[0] = 0;
             rgba[1] = 0;
             rgba[2] = 0;
@@ -101,7 +105,7 @@ describe('Terrain', () => {
             expect.assertions(2);
             const pointX = 0;
             const terrain = setupMercatorOverflow();
-            const coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            const coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
 
             expect(coordinate.x).toBe(-1);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
@@ -114,7 +118,7 @@ describe('Terrain', () => {
             expect.assertions(2);
             const pointX = 3;
             const terrain = setupMercatorOverflow();
-            const coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            const coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
 
             expect(coordinate.x).toBe(2);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
@@ -126,12 +130,12 @@ describe('Terrain', () => {
             const terrain = setupMercatorOverflow(2);
 
             let pointX = 0;
-            let coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            let coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
             expect(coordinate.x).toBe(-1);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
 
             pointX = 3;
-            coordinate = terrain.pointCoordinate(new Point(pointX, 0));
+            coordinate = assertedNotNullish(terrain.pointCoordinate(new Point(pointX, 0)));
             expect(coordinate.x).toBe(2);
             expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
         });
@@ -228,12 +232,12 @@ describe('Terrain', () => {
     });
 
     test('create mesh with border', () => {
-        let actualIndexArray;
-        let actualVertexArray;
+        let actualIndexArray: number[] | undefined;
+        let actualVertexArray: number[] | undefined;
         const painter = {
             context: {
-                createIndexBuffer: array => { actualIndexArray = Array.from(array.uint16); },
-                createVertexBuffer: array => { actualVertexArray = Array.from(array.int16); }
+                createIndexBuffer: (array: {uint16: Uint16Array}) => { actualIndexArray = Array.from(array.uint16); },
+                createVertexBuffer: (array: {int16: Int16Array}) => { actualVertexArray = Array.from(array.int16); }
             },
             width: 1,
             height: 1,
@@ -260,11 +264,18 @@ describe('Terrain', () => {
     });
 
     test('interpolation works', () => {
-        const mockTerrain = {
+        const mockTerrain: Pick<Terrain, 'getDEMElevation' | 'getTerrainData'> = {
             getDEMElevation: Terrain.prototype.getDEMElevation,
             getTerrainData() {
                 return {
+                    u_depth: 0,
+                    u_terrain: 0,
+                    u_terrain_dim: 0,
                     u_terrain_matrix: mat4.create(),
+                    u_terrain_unpack: undefined,
+                    u_terrain_exaggeration: 1,
+                    texture: null,
+                    depthTexture: null as any,
                     tile: {
                         dem: {
                             dim: 1,
@@ -274,7 +285,7 @@ describe('Terrain', () => {
                                 return 100 * x + 10 * y;
                             }
                         }
-                    }
+                    } as any
                 };
             }
         };
@@ -321,21 +332,21 @@ describe('Terrain', () => {
     });
 
     test('getElevationForLngLatZoom with lng less than -180 wraps correctly', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any, {_source: {tileSize: 512}} as any, {} as any);
 
         terrain.getElevation = () => 1;
         expect(terrain.getElevationForLngLatZoom(new LngLat(-183, 40), 0)).toBe(1);
     });
 
     test('getMinTileElevationForLngLatZoom with lng less than -180 wraps correctly', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any, {_source: {tileSize: 512}} as any, {} as any);
 
         terrain.getMinMaxElevation = () => ({minElevation: 1, maxElevation: 42});
         expect(terrain.getMinTileElevationForLngLatZoom(new LngLat(-183, 40), 0)).toBe(1);
     });
 
     test('getDEMElevation normalizes out-of-bounds coordinates to neighbor tile', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any as Painter, {_source: {tileSize: 512}} as any, {} as any);
         const spy = vi.fn().mockReturnValue({tile: null});
         terrain.getTerrainData = spy;
 
@@ -351,7 +362,7 @@ describe('Terrain', () => {
     });
 
     test('getDEMElevation returns 0 for coordinates beyond tile grid', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any as Painter, {_source: {tileSize: 512}} as any, {} as any);
         const spy = vi.fn();
         terrain.getTerrainData = spy;
 
@@ -364,7 +375,7 @@ describe('Terrain', () => {
     });
 
     describe('getElevationForLngLatZoom returns 0 for out of bounds', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null as any, {_source: {tileSize: 512}} as any, {} as any);
 
         test('lng', () => {
             expect(terrain.getElevationForLngLatZoom(new LngLat(180, 0), 0)).toBe(0);

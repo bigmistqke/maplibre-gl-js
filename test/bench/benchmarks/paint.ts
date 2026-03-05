@@ -8,7 +8,7 @@ const height = 768;
 export default class Paint extends Benchmark {
     style: string;
     locations: Array<any>;
-    maps: Array<Map>;
+    maps!: Array<Map>;
 
     constructor(style: string, locations: Array<any>) {
         super();

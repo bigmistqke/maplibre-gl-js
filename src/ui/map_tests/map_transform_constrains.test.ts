@@ -1,10 +1,11 @@
 import {beforeEach, test, expect, describe} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
 import {fixedLngLat, fixedNum} from '../../../test/unit/lib/fixed';
+import {type LngLat} from '../../geo/lng_lat';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
 });
 
 test('Creating a map without style constrains invalid hash values to valid Mercator transform values', () => {
@@ -97,7 +98,7 @@ test('Changing a map projection to Mercator constrains the zoom and center to va
 describe('transformConstrain', () => {
 
     test('Creating a single-copy map with an identity transform constrain allows the map to underzoom and overpan', () => {
-        function customTransformConstrain(lngLat, zoom) {
+        function customTransformConstrain(lngLat: LngLat, zoom: number | undefined) {
             return {center: lngLat, zoom: zoom ?? 0};
         };
 
@@ -108,7 +109,7 @@ describe('transformConstrain', () => {
     });
 
     test('Changing the transform constrain of a single-copy map to an identity allows the map to underzoom and overpan', () => {
-        function customTransformConstrain(lngLat, zoom) {
+        function customTransformConstrain(lngLat: LngLat, zoom: number | undefined) {
             return {center: lngLat, zoom: zoom ?? 0};
         };
 
@@ -123,7 +124,7 @@ describe('transformConstrain', () => {
     });
 
     test('Clearing the transform constrain of a single-copy map created with underzoom and overpan reconstrains it', () => {
-        function customTransformConstrain(lngLat, zoom) {
+        function customTransformConstrain(lngLat: LngLat, zoom: number | undefined) {
             return {center: lngLat, zoom: zoom ?? 0};
         };
 
@@ -135,7 +136,7 @@ describe('transformConstrain', () => {
     });
 
     test('Switching the projection keeps the transform constrain', async () => {
-        function customTransformConstrain(lngLat, zoom) {
+        function customTransformConstrain(lngLat: LngLat, zoom: number | undefined) {
             return {center: lngLat, zoom: zoom ?? 0};
         };
 

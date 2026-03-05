@@ -13,7 +13,7 @@ import {applyTextFit} from './shaping';
 export class CollisionFeature {
     boxStartIndex: number;
     boxEndIndex: number;
-    circleDiameter: number;
+    circleDiameter: number | undefined;
 
     /**
      * Create a CollisionFeature, adding its collision box data to the given collisionBoxArray in the process.

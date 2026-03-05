@@ -1,6 +1,6 @@
 import {DOM} from '../../util/dom';
 
-import {defaultEasing, bezier, zoomScale, scaleZoom, evaluateZoomSnap} from '../../util/util';
+import {defaultEasing, bezier, zoomScale, scaleZoom, evaluateZoomSnap, assertedNotNullish} from '../../util/util';
 import {now} from '../../util/time_control';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 import {LngLat} from '../../geo/lng_lat';
@@ -36,31 +36,31 @@ const wheelEventTimeDiffAdjustment = 5;
 export class ScrollZoomHandler implements Handler {
     _map: Map;
     _tr: TransformProvider;
-    _enabled: boolean;
-    _active: boolean;
-    _zooming: boolean;
-    _aroundCenter: boolean;
-    _aroundPoint: Point;
-    _type: 'wheel' | 'trackpad' | null;
-    _lastValue: number;
-    _timeout: ReturnType<typeof setTimeout>; // used for delayed-handling of a single wheel movement
-    _finishTimeout: ReturnType<typeof setTimeout>; // used to delay final '{move,zoom}end' events
+    _enabled: boolean | undefined;
+    _active: boolean | undefined;
+    _zooming: boolean | undefined;
+    _aroundCenter: boolean | undefined;
+    _aroundPoint: Point | undefined;
+    _type: 'wheel' | 'trackpad' | null | undefined;
+    _lastValue: number | undefined;
+    _timeout: ReturnType<typeof setTimeout> | undefined | null; // used for delayed-handling of a single wheel movement
+    _finishTimeout: ReturnType<typeof setTimeout> | undefined; // used to delay final '{move,zoom}end' events
 
     _lastWheelEvent: any;
-    _lastWheelEventTime: number;
+    _lastWheelEventTime: number | undefined;
 
-    _lastExpectedZoom: number;
-    _startZoom: number;
-    _targetZoom: number;
+    _lastExpectedZoom: number | undefined;
+    _startZoom: number | undefined;
+    _targetZoom: number | undefined;
     _delta: number;
-    _easing: ((a: number) => number);
+    _easing: ((a: number) => number) | undefined;
     _prevEase: {
         start: number;
         duration: number;
         easing: (_: number) => number;
-    };
+    } | undefined;
 
-    _frameId: boolean;
+    _frameId: boolean | undefined | null;
     _triggerRenderFrame: () => void;
 
     _defaultZoomRate: number;
@@ -158,12 +158,12 @@ export class ScrollZoomHandler implements Handler {
      * Determines whether or not the gesture is blocked due to cooperativeGestures.
      */
     _shouldBePrevented(e: WheelEvent) {
-        if (!this._map.cooperativeGestures.isEnabled()) {
+        if (!assertedNotNullish(this._map.cooperativeGestures).isEnabled()) {
             return false;
         }
 
         const isTrackpadPinch = e.ctrlKey;
-        const isBypassed = isTrackpadPinch || this._map.cooperativeGestures.isBypassed(e);
+        const isBypassed = isTrackpadPinch || assertedNotNullish(this._map.cooperativeGestures).isBypassed(e);
 
         return !isBypassed;
     }
@@ -171,7 +171,7 @@ export class ScrollZoomHandler implements Handler {
     wheel(e: WheelEvent) {
         if (!this.isEnabled()) return;
         if (this._shouldBePrevented(e)) {
-            this._map.cooperativeGestures.notifyGestureBlocked('wheel_zoom', e);
+            assertedNotNullish(this._map.cooperativeGestures).notifyGestureBlocked('wheel_zoom', e);
             return;
         }
         let value = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? e.deltaY * 40 : e.deltaY;
@@ -206,7 +206,7 @@ export class ScrollZoomHandler implements Handler {
             if (this._timeout) {
                 clearTimeout(this._timeout);
                 this._timeout = null;
-                value += this._lastValue;
+                value += assertedNotNullish(this._lastValue);
             }
         }
 
@@ -227,7 +227,7 @@ export class ScrollZoomHandler implements Handler {
 
     _onTimeout = (initialEvent: MouseEvent) => {
         this._type = 'wheel';
-        this._delta -= this._lastValue;
+        this._delta -= assertedNotNullish(this._lastValue);
         if (!this._active) {
             this._start(initialEvent);
         }
@@ -326,7 +326,7 @@ export class ScrollZoomHandler implements Handler {
         let zoom;
 
         if (this._type === 'wheel' && startZoom && easing) {
-            const lastWheelEventTimeDiff = now() - this._lastWheelEventTime;
+            const lastWheelEventTimeDiff = now() - assertedNotNullish(this._lastWheelEventTime);
 
             const t = Math.min((lastWheelEventTimeDiff + wheelEventTimeDiffAdjustment) / 200, 1);
 

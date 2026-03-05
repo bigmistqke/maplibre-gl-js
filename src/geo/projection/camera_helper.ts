@@ -115,7 +115,7 @@ export interface ICameraHelper {
 
     handleMapControlsPan(deltas: MapControlsDeltas, tr: ITransform, preZoomAroundLoc: LngLat): void;
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult;
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null | undefined;
 
     handleJumpToCenterZoom(tr: ITransform, options: { zoom?: number; center?: LngLatLike }): void;
 
@@ -153,7 +153,7 @@ export function updateRotation(args: UpdateRotationArgs) {
     }
 }
 
-export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult {
+export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
     const edgePadding = tr.padding;
 
     // Consider all corners of the rotated bounding box derived from the given points
@@ -184,21 +184,27 @@ export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding:
     // Calculate zoom: consider the original bbox and padding.
     const size = upperRight.sub(lowerLeft);
 
+    // @ts-expect-error - UNEXPECTED BEHAVIOR: edgePadding/padding fields can be undefined, arithmetic with undefined results in NaN
     const availableWidth = (tr.width - (edgePadding.left + edgePadding.right + padding.left + padding.right));
+    // @ts-expect-error - UNEXPECTED BEHAVIOR: edgePadding/padding fields can be undefined, arithmetic with undefined results in NaN
     const availableHeight = (tr.height - (edgePadding.top + edgePadding.bottom + padding.top + padding.bottom));
     const scaleX = availableWidth / size.x;
     const scaleY = availableHeight / size.y;
 
     if (scaleY < 0 || scaleX < 0) {
         cameraBoundsWarning();
-        return undefined;
+        return null;
     }
 
+    // @ts-expect-error - UNEXPECTED BEHAVIOR: options.maxZoom can be undefined, Math.min with undefined returns NaN
     const zoom = Math.min(scaleZoom(tr.scale * Math.min(scaleX, scaleY)), options.maxZoom);
 
     // Calculate center: apply the zoom, the configured offset, as well as offset that exists as a result of padding.
+    // @ts-expect-error - UNEXPECTED BEHAVIOR: options.offset can be undefined, Point.convert may fail
     const offset = Point.convert(options.offset);
+    // @ts-expect-error - UNEXPECTED BEHAVIOR: padding.left/right can be undefined, subtracting undefined results in NaN
     const paddingOffsetX = (padding.left - padding.right) / 2;
+    // @ts-expect-error - UNEXPECTED BEHAVIOR: padding.top/bottom can be undefined, subtracting undefined results in NaN
     const paddingOffsetY = (padding.top - padding.bottom) / 2;
     const paddingOffset = new Point(paddingOffsetX, paddingOffsetY);
     const rotatedPaddingOffset = paddingOffset.rotate(degreesToRadians(bearing));

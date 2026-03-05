@@ -1,19 +1,20 @@
 import {type PluginState, type RTLPluginStatus} from './rtl_text_plugin_status';
+import {assertedNotNullish} from '../util/util';
 
 export interface RTLTextPlugin {
-    applyArabicShaping: (a: string) => string;
-    processBidirectionalText: ((b: string, a: Array<number>) => Array<string>);
-    processStyledBidirectionalText: ((c: string, b: Array<number>, a: Array<number>) => Array<[string, Array<number>]>);
+    applyArabicShaping: ((a: string) => string) | null;
+    processBidirectionalText: ((b: string, a: Array<number>) => Array<string>) | null;
+    processStyledBidirectionalText: ((c: string, b: Array<number>, a: Array<number>) => Array<[string, Array<number>]>) | null;
 }
 
 class RTLWorkerPlugin implements RTLTextPlugin {
     readonly TIMEOUT = 5000;
 
-    applyArabicShaping: (a: string) => string = null;
-    processBidirectionalText: ((b: string, a: Array<number>) => Array<string>) = null;
-    processStyledBidirectionalText: ((c: string, b: Array<number>, a: Array<number>) => Array<[string, Array<number>]>) = null;
+    applyArabicShaping: ((a: string) => string) | null = null;
+    processBidirectionalText: ((b: string, a: Array<number>) => Array<string>) | null = null;
+    processStyledBidirectionalText: ((c: string, b: Array<number>, a: Array<number>) => Array<[string, Array<number>]>) | null = null;
     pluginStatus: RTLPluginStatus = 'unavailable';
-    pluginURL: string = null;
+    pluginURL: string | null = null;
     loadScriptResolve: () => void = () => {};
 
     private setState(state: PluginState) {
@@ -59,7 +60,7 @@ class RTLWorkerPlugin implements RTLTextPlugin {
             this.setState(incomingState);
             return incomingState;
         }
-        const urlToLoad = incomingState.pluginURL;
+        const urlToLoad = assertedNotNullish(incomingState.pluginURL);
         const loadScriptPromise = new Promise<void>((resolve) => {
             this.loadScriptResolve = resolve;
         });

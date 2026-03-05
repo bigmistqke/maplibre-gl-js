@@ -1,5 +1,6 @@
 import path, {dirname} from 'path';
 import fs from 'fs';
+// @ts-expect-error - no type declarations available
 import st from 'st';
 import {PNG} from 'pngjs';
 import pixelmatch from 'pixelmatch';
@@ -13,9 +14,10 @@ import type {Page, Browser} from 'puppeteer';
 import {localizeURLs} from '../lib/localize-urls';
 import {launchPuppeteer} from '../lib/puppeteer_config';
 import type {default as MapLibreGL, Map as MaplibreMap, CanvasSource, PointLike, StyleSpecification} from '../../../dist/maplibre-gl';
+import { assertedNotNullish, assertNotNullish } from '../../../src/util/util';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-let maplibregl: typeof MapLibreGL;
+let maplibregl: typeof MapLibreGL | undefined;
 
 type TestData = {
     id: string;
@@ -83,7 +85,7 @@ type TestStats = {
 
 // https://stackoverflow.com/a/1349426/229714
 function makeHash(): string {
-    const array = [];
+    const array: string[] = [];
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
     for (let i = 0; i < 10; ++i)
@@ -101,7 +103,7 @@ function checkParameter(options: RenderOptions, param: string): boolean {
     return true;
 }
 
-function checkValueParameter(options: RenderOptions, defaultValue: any, param: string) {
+function checkValueParameter(options: RenderOptions, defaultValue: string, param: string): string {
     const index = options.tests.findIndex((elem) => { return String(elem).startsWith(param); });
     if (index === -1)
         return defaultValue;
@@ -160,12 +162,14 @@ function compareRenderResults(directory: string, testData: TestData, data: Uint8
     // if we have multiple expected images, we'll compare against each one and pick the one with
     // the least amount of difference; this is useful for covering features that render differently
     // depending on platform, i.e. heatmaps use half-float textures for improved rendering where supported
+    let result: {
+        minDiffImg: PNG ;
+        minExpectedBuf: Buffer;
+    } | undefined;
     let minDiff = Infinity;
-    let minDiffImg: PNG;
-    let minExpectedBuf: Buffer;
 
-    for (const path of expectedPaths) {
-        const expectedBuf = fs.readFileSync(path);
+    for (const filePath of expectedPaths) {
+        const expectedBuf = fs.readFileSync(filePath);
         const expectedImg = PNG.sync.read(expectedBuf);
         const diffImg = new PNG({width, height});
         if (!testData.expected) {
@@ -178,16 +182,18 @@ function compareRenderResults(directory: string, testData: TestData, data: Uint8
 
         if (diff < minDiff) {
             minDiff = diff;
-            minDiffImg = diffImg;
-            minExpectedBuf = expectedBuf;
+            result = {
+                minDiffImg: diffImg,
+                minExpectedBuf: expectedBuf
+            };
         }
     }
 
-    if (minDiffImg) {
-        const diffBuf = PNG.sync.write(minDiffImg, {filterType: 4});
+    if (result) {
+        const diffBuf = PNG.sync.write(result.minDiffImg, {filterType: 4});
         fs.writeFileSync(diffPath, diffBuf);
         testData.diff = diffBuf.toString('base64');
-        testData.expected = minExpectedBuf.toString('base64');
+        testData.expected = result.minExpectedBuf.toString('base64');
     }
     fs.writeFileSync(actualPath, actualBuf);
 
@@ -224,8 +230,8 @@ function getTestStyles(options: RenderOptions, directory: string, port: number):
                 recycleMap: options.recycleMap || false,
                 allowed: 0.00025,
                 threshold: 0.1285,
-                ...style.metadata.test
-            };
+                ...style.metadata.test as Partial<TestData>
+            } as TestData;
 
             return style;
         })
@@ -285,7 +291,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             id: string;
             type: string;
             renderingMode: string;
-            program: WebGLProgram;
+            program: WebGLProgram | null = null;
             constructor() {
                 this.id = 'null-island';
                 this.type = 'custom';
@@ -308,20 +314,21 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                     fragColor = vec4(1.0, 0.0, 0.0, 1.0);
                 }`;
 
-                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                const vertexShader = assertedNotNullish(gl.createShader(gl.VERTEX_SHADER), 'Failed to create vertex shader');
                 gl.shaderSource(vertexShader, vertexSource);
                 gl.compileShader(vertexShader);
-                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                const fragmentShader = assertedNotNullish(gl.createShader(gl.FRAGMENT_SHADER), 'Failed to create fragment shader');
                 gl.shaderSource(fragmentShader, fragmentSource);
                 gl.compileShader(fragmentShader);
 
-                this.program = gl.createProgram();
+                this.program = assertedNotNullish(gl.createProgram(), 'Failed to create program');
                 gl.attachShader(this.program, vertexShader);
                 gl.attachShader(this.program, fragmentShader);
                 gl.linkProgram(this.program);
             }
 
-            render(gl: WebGL2RenderingContext, args) {
+            render(gl: WebGL2RenderingContext, args: any) {
+                assertNotNullish(this.program, 'Program not initialized');
                 const vertexArray = new Float32Array([0.5, 0.5, 0.0]);
                 gl.useProgram(this.program);
                 const vertexBuffer = gl.createBuffer();
@@ -330,7 +337,8 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 const posAttrib = gl.getAttribLocation(this.program, 'aPos');
                 gl.enableVertexAttribArray(posAttrib);
                 gl.vertexAttribPointer(posAttrib, 3, gl.FLOAT, false, 0, 0);
-                gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'u_matrix'), false, args.defaultProjectionData.mainMatrix);
+                const uMatrixLoc = gl.getUniformLocation(this.program, 'u_matrix');
+                gl.uniformMatrix4fv(uMatrixLoc, false, args.defaultProjectionData.mainMatrix);
                 gl.drawArrays(gl.POINTS, 0, 1);
             }
         }
@@ -339,13 +347,14 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             id: string;
             type: string;
             renderingMode: string;
-            program: WebGLProgram & {
+            program: WebGLProgram | null = null;
+            programData: {
                 a_pos?: number;
                 aPos?: number;
-                uMatrix?:  WebGLUniformLocation;
-            };
-            vertexBuffer: WebGLBuffer;
-            indexBuffer: WebGLBuffer;
+                uMatrix?:  WebGLUniformLocation | null;
+            } = {};
+            vertexBuffer: WebGLBuffer | null = null;
+            indexBuffer: WebGLBuffer | null = null;
             constructor() {
                 this.id = 'tent-3d';
                 this.type = 'custom';
@@ -370,21 +379,21 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                     fragColor = vec4(1.0, 0.0, 0.0, 1.0);
                 }`;
 
-                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                const vertexShader = assertedNotNullish(gl.createShader(gl.VERTEX_SHADER), 'Failed to create vertex shader');
                 gl.shaderSource(vertexShader, vertexSource);
                 gl.compileShader(vertexShader);
-                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                const fragmentShader = assertedNotNullish(gl.createShader(gl.FRAGMENT_SHADER), 'Failed to create fragment shader');
                 gl.shaderSource(fragmentShader, fragmentSource);
                 gl.compileShader(fragmentShader);
 
-                this.program = gl.createProgram();
+                this.program = assertedNotNullish(gl.createProgram(), 'Failed to create program');
                 gl.attachShader(this.program, vertexShader);
                 gl.attachShader(this.program, fragmentShader);
                 gl.linkProgram(this.program);
                 gl.validateProgram(this.program);
 
-                this.program.aPos = gl.getAttribLocation(this.program, 'aPos');
-                this.program.uMatrix = gl.getUniformLocation(this.program, 'uMatrix');
+                this.programData.aPos = gl.getAttribLocation(this.program, 'aPos');
+                this.programData.uMatrix = gl.getUniformLocation(this.program, 'uMatrix');
 
                 const x = 0.5 - 0.015;
                 const y = 0.5 - 0.01;
@@ -413,13 +422,19 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
             }
 
-            render(gl: WebGL2RenderingContext, args) {
+            render(gl: WebGL2RenderingContext, args: any) {
+                assertNotNullish(this.program);
+                assertNotNullish(this.vertexBuffer);
+                assertNotNullish(this.indexBuffer);
+                assertNotNullish(this.programData.a_pos);
+                assertNotNullish(this.programData.uMatrix);
+
                 gl.useProgram(this.program);
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-                gl.enableVertexAttribArray(this.program.a_pos);
-                gl.vertexAttribPointer(this.program.aPos, 3, gl.FLOAT, false, 0, 0);
-                gl.uniformMatrix4fv(this.program.uMatrix, false, args.defaultProjectionData.mainMatrix);
+                gl.enableVertexAttribArray(this.programData.a_pos);
+                gl.vertexAttribPointer(this.programData.a_pos, 3, gl.FLOAT, false, 0, 0);
+                gl.uniformMatrix4fv(this.programData.uMatrix, false, args.defaultProjectionData.mainMatrix);
                 gl.drawElements(gl.TRIANGLES, 12, gl.UNSIGNED_SHORT, 0);
             }
         }
@@ -429,13 +444,13 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             type: string;
             renderingMode: string;
 
-            vertexBuffer: WebGLBuffer;
-            indexBuffer: WebGLBuffer;
+            vertexBuffer: WebGLBuffer | null = null;
+            indexBuffer: WebGLBuffer | null = null;
             shaderMap: Map<string, {
                 program: WebGLProgram;
                 a_pos?: number;
                 aPos?: number;
-                uMatrix?:  WebGLUniformLocation;
+                uMatrix?:  WebGLUniformLocation | null;
             }> = new Map();
 
             constructor() {
@@ -444,7 +459,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 this.renderingMode = '3d';
             }
 
-            getShader(gl, shaderDescription) {
+            getShader(gl: WebGL2RenderingContext, shaderDescription: any) {
                 if (this.shaderMap.has(shaderDescription.variantName)) {
                     return this.shaderMap.get(shaderDescription.variantName);
                 }
@@ -470,16 +485,19 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
 
                 // create a vertex shader
                 const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                if (!vertexShader) throw new Error('Failed to create vertex shader');
                 gl.shaderSource(vertexShader, vertexSource);
                 gl.compileShader(vertexShader);
 
                 // create a fragment shader
                 const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                if (!fragmentShader) throw new Error('Failed to create fragment shader');
                 gl.shaderSource(fragmentShader, fragmentSource);
                 gl.compileShader(fragmentShader);
 
                 // link the two shaders into a WebGL program
                 const program = gl.createProgram();
+                if (!program) throw new Error('Failed to create program');
                 gl.attachShader(program, vertexShader);
                 gl.attachShader(program, fragmentShader);
                 gl.linkProgram(program);
@@ -494,7 +512,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 return result;
             }
 
-            onAdd (map, gl) {
+            onAdd (map: MaplibreMap, gl: WebGL2RenderingContext) {
                 const x = 0.5 - 0.015;
                 const y = 0.5 - 0.01;
                 const z = 500_000;
@@ -522,40 +540,49 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexArray, gl.STATIC_DRAW);
             }
 
-            render (gl, args) {
+            render (gl: WebGL2RenderingContext, args: any) {
                 const shader = this.getShader(gl, args.shaderData);
+                if (!shader || !this.vertexBuffer || !this.indexBuffer) {
+                    throw new Error('Shader or buffers not initialized');
+                }
                 gl.useProgram(shader.program);
+                const fallbackMatrixLoc = gl.getUniformLocation(shader.program, 'u_projection_fallback_matrix');
                 gl.uniformMatrix4fv(
-                    gl.getUniformLocation(shader.program, 'u_projection_fallback_matrix'),
+                    fallbackMatrixLoc,
                     false,
                     args.defaultProjectionData.fallbackMatrix
                 );
+                const projectionMatrixLoc = gl.getUniformLocation(shader.program, 'u_projection_matrix');
                 gl.uniformMatrix4fv(
-                    gl.getUniformLocation(shader.program, 'u_projection_matrix'),
+                    projectionMatrixLoc,
                     false,
                     args.defaultProjectionData.mainMatrix
                 );
+                const tileMercatorLoc = gl.getUniformLocation(shader.program, 'u_projection_tile_mercator_coords');
                 gl.uniform4f(
-                    gl.getUniformLocation(shader.program, 'u_projection_tile_mercator_coords'),
-                    ...args.defaultProjectionData.tileMercatorCoords
+                    tileMercatorLoc,
+                    ...args.defaultProjectionData.tileMercatorCoords as [number, number, number, number]
                 );
+                const clippingPlaneLoc = gl.getUniformLocation(shader.program, 'u_projection_clipping_plane');
                 gl.uniform4f(
-                    gl.getUniformLocation(shader.program, 'u_projection_clipping_plane'),
-                    ...args.defaultProjectionData.clippingPlane
+                    clippingPlaneLoc,
+                    ...args.defaultProjectionData.clippingPlane as [number, number, number, number]
                 );
+                const transitionLoc = gl.getUniformLocation(shader.program, 'u_projection_transition');
                 gl.uniform1f(
-                    gl.getUniformLocation(shader.program, 'u_projection_transition'),
+                    transitionLoc,
                     args.defaultProjectionData.projectionTransition
                 );
 
                 gl.enable(gl.CULL_FACE);
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-                gl.enableVertexAttribArray(shader.aPos);
-                gl.vertexAttribPointer(shader.aPos, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(shader.aPos ?? 0);
+                gl.vertexAttribPointer(shader.aPos ?? 0, 3, gl.FLOAT, false, 0, 0);
                 for (let i = 0; i < 2; i++) {
+                    const colorLoc = gl.getUniformLocation(shader.program, 'u_color');
                     gl.uniform4f(
-                        gl.getUniformLocation(shader.program, 'u_color'),
+                        colorLoc,
                         i === 0 ? 1 : 0.25, 0, 0, 1
                     );
                     gl.cullFace(i === 0 ? gl.BACK : gl.FRONT);
@@ -571,9 +598,12 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
         };
 
         async function updateFakeCanvas(document: Document, id: string, imagePath: string) {
-            const fakeCanvas = document.getElementById(id) as HTMLCanvasElement;
+            const fakeCanvas = document.getElementById(id);
+            if (!(fakeCanvas instanceof HTMLCanvasElement)) {
+                throw new Error(`Element with id ${id} is not a canvas`);
+            }
 
-            const getMeta = async (url) => {
+            const getMeta = async (url: string) => {
                 const img = new Image();
                 img.src = url;
                 img.crossOrigin = 'anonymous';
@@ -588,8 +618,9 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             fakeCanvas.id = id;
 
             const ctx = fakeCanvas.getContext('2d');
-            ctx?.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
-
+            if (ctx) {
+                ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
+            }
         }
 
         /**
@@ -644,7 +675,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                         });
                         break;
                     case 'addImage': {
-                        const getImage = async (url) => {
+                        const getImage = async (url: string) => {
                             const img = new Image();
                             img.src = url;
                             img.crossOrigin = 'anonymous';
@@ -657,29 +688,35 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                         break;
                     }
                     case 'addCustomLayer':
-                        map.addLayer(new customLayerImplementations[operation[1]](), operation[2]);
+                        map.addLayer(new (customLayerImplementations as any)[operation[1]](), operation[2]);
                         map._render();
                         break;
                     case 'updateFakeCanvas': {
                         const canvasSource = map.getSource<CanvasSource>(operation[1]);
-                        canvasSource.play();
-                        // update before pause should be rendered
-                        await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[2]);
-                        canvasSource.pause();
-                        // update after pause should not be rendered
-                        await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[3]);
-                        map._render();
+                        if (canvasSource && 'play' in canvasSource) {
+                            (canvasSource as any).play();
+                            // update before pause should be rendered
+                            if (testData.addFakeCanvas) {
+                                await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[2]);
+                            }
+                            (canvasSource as any).pause();
+                            // update after pause should not be rendered
+                            if (testData.addFakeCanvas) {
+                                await updateFakeCanvas(window.document, testData.addFakeCanvas.id, operation[3]);
+                            }
+                            map._render();
+                        }
                         break;
                     }
                     case 'setStyle':
                         map.setStyle(operation[1], {localIdeographFontFamily: false as any});
                         break;
                     case 'pauseTiles':
-                        map.style.tileManagers[operation[1]].pause();
+                        assertedNotNullish(map.style).tileManagers[operation[1]].pause();
                         break;
                     default:
-                        if (typeof map[operation[0]] === 'function') {
-                            map[operation[0]](...operation.slice(1));
+                        if (typeof (map as any)[operation[0]] === 'function') {
+                            (map as any)[operation[0]](...operation.slice(1));
                         }
                 }
             }
@@ -689,7 +726,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
         async function createFakeCanvas(document: Document, id: string, imagePath: string): Promise<HTMLCanvasElement> {
             const fakeCanvas: HTMLCanvasElement = document.createElement('canvas');
 
-            const getImage = async (url) => {
+            const getImage = async (url: string) => {
                 const img = new Image();
                 img.src = url;
                 img.crossOrigin = 'anonymous';
@@ -704,7 +741,9 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             fakeCanvas.id = id;
 
             const ctx = fakeCanvas.getContext('2d');
-            ctx?.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
+            if (ctx) {
+                ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
+            }
 
             return fakeCanvas;
         }
@@ -719,14 +758,14 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
                 document.body.appendChild(fakeCanvas);
             }
 
-            if (maplibregl.getRTLTextPluginStatus() === 'unavailable') {
-                maplibregl.setRTLTextPlugin(
+            if (assertedNotNullish(maplibregl).getRTLTextPluginStatus() === 'unavailable') {
+                assertedNotNullish(maplibregl).setRTLTextPlugin(
                     'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js',
                     false // Don't lazy load the plugin
                 );
             }
 
-            const map = new maplibregl.Map({
+            const map = new (assertedNotNullish(maplibregl)).Map({
                 container: 'map',
                 style,
                 interactive: false,
@@ -749,7 +788,7 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             if (options.showOverdrawInspector) map.showOverdrawInspector = true;
             if (options.showPadding) map.showPadding = true;
 
-            const gl = map.painter.context.gl;
+            const gl = assertedNotNullish(map.painter).context.gl;
 
             await map.once('load');
             if (options.collisionDebug) {
@@ -763,8 +802,8 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
 
             await applyOperations(options, map as any, idle);
             const viewport = gl.getParameter(gl.VIEWPORT);
-            const w = options.reportWidth ?? viewport[2];
-            const h = options.reportHeight ?? viewport[3];
+            const w = options.reportWidth ?? (viewport ? viewport[2] : 512);
+            const h = options.reportHeight ?? (viewport ? viewport[3] : 512);
 
             const data = new Uint8Array(w * h * 4);
             gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data);
@@ -781,11 +820,13 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             }
 
             map.remove();
-            delete map.painter.context.gl;
+            delete (assertedNotNullish(map.painter).context as any).gl;
 
             if (options.addFakeCanvas) {
                 const fakeCanvas = window.document.getElementById(options.addFakeCanvas.id);
-                fakeCanvas.parentNode.removeChild(fakeCanvas);
+                if (fakeCanvas && fakeCanvas.parentNode) {
+                    fakeCanvas.parentNode.removeChild(fakeCanvas);
+                }
             }
 
             resolve(data);
@@ -886,7 +927,7 @@ function applyDebugParameter(options: RenderOptions, page: Page) {
             console.log(`${message.type().substring(0, 3).toUpperCase()} ${messages.filter(Boolean)}`);
         });
 
-        page.on('pageerror', ({message}) => console.error(message));
+        page.on('pageerror', (({message}: any) => console.error(message)) as any);
 
         page.on('response', response =>
             console.log(`${response.status()} ${response.url()}`));
@@ -908,7 +949,7 @@ async function runTests(page: Page, testStyles: StyleWithTestData[], directory: 
             style.metadata.test.error = undefined;
             const data = await getImageFromStyle(style, page);
             compareRenderResults(directory, style.metadata.test, data);
-        } catch (ex) {
+        } catch (ex: any) {
             style.metadata.test.error = ex;
         }
         printProgress(style.metadata.test, testStyles.length, ++index);
@@ -998,7 +1039,7 @@ async function executeRenderTests() {
         res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT, DELETE');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Include any custom headers your client might send
         mount(req, res, () => {
-            if (req.url.includes('/sparse204/1-')) {
+            if (req.url?.includes('/sparse204/1-')) {
                 res.writeHead(204);
                 res.end('');
             } else {

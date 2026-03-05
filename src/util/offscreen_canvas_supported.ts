@@ -1,4 +1,4 @@
-let supportsOffscreenCanvas: boolean;
+let supportsOffscreenCanvas: boolean | null;
 
 export function offscreenCanvasSupported(): boolean {
     if (supportsOffscreenCanvas == null) {
@@ -7,5 +7,5 @@ export function offscreenCanvasSupported(): boolean {
             typeof createImageBitmap === 'function';
     }
 
-    return supportsOffscreenCanvas;
+    return !!supportsOffscreenCanvas;
 }

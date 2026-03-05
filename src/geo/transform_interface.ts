@@ -49,8 +49,8 @@ export interface ITransformGetters {
      */
     get height(): number;
 
-    get lngRange(): [number, number];
-    get latRange(): [number, number];
+    get lngRange(): [number, number] | undefined | null;
+    get latRange(): [number, number] | undefined;
 
     get minZoom(): number;
     get maxZoom(): number;
@@ -90,13 +90,13 @@ export interface ITransformGetters {
     /**
      * The distance from the camera to the center of the map in pixels space.
      */
-    get cameraToCenterDistance(): number;
+    get cameraToCenterDistance(): number | undefined;
 
-    get nearZ(): number;
-    get farZ(): number;
+    get nearZ(): number | undefined;
+    get farZ(): number | undefined;
     get autoCalculateNearFarZ(): boolean;
 
-    get constrainOverride(): TransformConstrainFunction;
+    get constrainOverride(): TransformConstrainFunction | null;
 }
 
 /**
@@ -198,7 +198,7 @@ interface ITransformMutators {
      * After panning finished, call this method to recalculate the zoom level and center point for the current camera-height in current terrain.
      * @param terrain - the terrain
      */
-    recalculateZoomAndCenter(terrain?: Terrain): void;
+    recalculateZoomAndCenter(terrain?: Terrain | undefined | null): void;
 
     /**
      * Set's the transform's center so that the given point on screen is at the given world coordinates.
@@ -249,22 +249,22 @@ export interface IReadonlyTransform extends ITransformGetters {
      * Calculated using vertical fov and viewport height.
      * Center is considered to be in the middle of the viewport.
      */
-    get cameraToCenterDistance(): number;
+    get cameraToCenterDistance(): number | undefined;
     get modelViewProjectionMatrix(): mat4;
     get projectionMatrix(): mat4;
     /**
      * Inverse of matrix from camera space to clip space.
      */
     get inverseProjectionMatrix(): mat4;
-    get pixelsToClipSpaceMatrix(): mat4;
-    get clipSpaceToPixelsMatrix(): mat4;
-    get pixelsToGLUnits(): [number, number];
+    get pixelsToClipSpaceMatrix(): mat4 | undefined;
+    get clipSpaceToPixelsMatrix(): mat4 | undefined;
+    get pixelsToGLUnits(): [number, number] | undefined;
     get centerOffset(): Point;
     /**
      * Gets the transform's width and height in pixels (viewport size). Use {@link resize} to set the transform's size.
      */
     get size(): Point;
-    get rotationMatrix(): mat2;
+    get rotationMatrix(): mat2 | undefined;
     /**
      * The center of the screen in pixels with the top-left corner being (0,0)
      * and +y axis pointing downwards. This accounts for padding.
@@ -273,7 +273,7 @@ export interface IReadonlyTransform extends ITransformGetters {
     /**
      * @internal
      */
-    get pixelsPerMeter(): number;
+    get pixelsPerMeter(): number | undefined;
     /**
      * @internal
      * Returns the camera's position transformed to be in the same space as 3D features under this transform's projection. Mostly used for globe + fill-extrusion.
@@ -299,7 +299,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @internal
      * Return the camera frustum for the current view.
      */
-    getCameraFrustum(): Frustum;
+    getCameraFrustum(): Frustum | undefined;
 
     /**
      * @internal
@@ -321,7 +321,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param terrain - optional terrain
      * @returns screen point
      */
-    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain): Point;
+    locationToScreenPoint(lnglat: LngLat, terrain?: Terrain | null): Point;
 
     /**
      * @internal
@@ -330,7 +330,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param terrain - optional terrain
      * @returns lnglat location
      */
-    screenPointToLocation(p: Point, terrain?: Terrain): LngLat;
+    screenPointToLocation(p: Point, terrain?: Terrain | undefined | null): LngLat;
 
     /**
      * @internal
@@ -339,7 +339,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @param terrain - optional terrain
      * @returns lnglat
      */
-    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain): MercatorCoordinate;
+    screenPointToMercatorCoordinate(p: Point, terrain?: Terrain | null): MercatorCoordinate;
 
     /**
      * @internal
@@ -491,7 +491,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @internal
      * Projects a point in tile coordinates to clip space. Used in symbol rendering.
      */
-    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation: (x: number, y: number) => number): PointProjection;
+    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): PointProjection;
 
     /**
      * Returns a matrix that will place, rotate and scale a model to display at the given location and altitude

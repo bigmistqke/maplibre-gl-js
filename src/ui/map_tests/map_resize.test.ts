@@ -1,10 +1,11 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {MercatorProjection} from '../../geo/projection/mercator_projection';
 import {createMap, beforeMapTest, sleep} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
 });
 
 describe('resize', () => {
@@ -23,10 +24,10 @@ describe('resize', () => {
 
     test('fires movestart, move, resize, and moveend events', () => {
         const map = createMap(),
-            events = [];
+            events: string[] = [];
 
-        (['movestart', 'move', 'resize', 'moveend'] as any).forEach((event) => {
-            map.on(event, (e) => {
+        (['movestart', 'move', 'resize', 'moveend'] as const).forEach((event) => {
+            map.on(event, (e: {type: string}) => {
                 events.push(e.type);
             });
         });
@@ -48,9 +49,9 @@ describe('resize', () => {
     });
 
     test('do not resize if trackResize is false', () => {
-        let observerCallback: Function = null;
+        let observerCallback: (() => void) | undefined;
         global.ResizeObserver = vi.fn(class {
-            constructor(c) { observerCallback = c; }
+            constructor(c: () => void) { observerCallback = c; }
             observe = () => { };
         }) as any;
 
@@ -60,7 +61,8 @@ describe('resize', () => {
         const spyB = vi.spyOn(map, '_update');
         const spyC = vi.spyOn(map, 'resize');
 
-        observerCallback();
+        const callback = assertedNotNullish(observerCallback);
+        callback();
 
         expect(spyA).not.toHaveBeenCalled();
         expect(spyB).not.toHaveBeenCalled();
@@ -68,15 +70,15 @@ describe('resize', () => {
     });
 
     test('do resize if trackResize is true (default)', async () => {
-        let observerCallback: Function = null;
+        let observerCallback: (() => void) | undefined;
         global.ResizeObserver = vi.fn(class {
-            constructor(c) { observerCallback = c; }
+            constructor(c: () => void) { observerCallback = c; }
             observe = () => { };
         }) as any;
 
         const map = createMap();
 
-        map.style.projection = new MercatorProjection();
+        assertedNotNullish(map.style).projection = new MercatorProjection();
         const resizeSpy = vi.spyOn(map, 'resize');
         const redrawSpy = vi.spyOn(map, 'redraw');
         const renderSpy = vi.spyOn(map, '_render');
@@ -84,7 +86,8 @@ describe('resize', () => {
         // The initial "observe" event fired by ResizeObserver should be captured/muted
         // in the map constructor
 
-        observerCallback();
+        const callback = assertedNotNullish(observerCallback);
+        callback();
         expect(resizeSpy).not.toHaveBeenCalled();
         expect(redrawSpy).not.toHaveBeenCalled();
         expect(renderSpy).not.toHaveBeenCalled();
@@ -92,16 +95,16 @@ describe('resize', () => {
         // The next "observe" event should fire a resize and redraw
         // Resizing canvas clears it immediately. This is why synchronous "redraw" is necessary
 
-        observerCallback();
+        callback();
         expect(resizeSpy).toHaveBeenCalledTimes(1);
         expect(redrawSpy).toHaveBeenCalledTimes(1);
         expect(renderSpy).toHaveBeenCalledTimes(1);
 
         // Additional "observe" events should be throttled
-        observerCallback();
-        observerCallback();
-        observerCallback();
-        observerCallback();
+        callback();
+        callback();
+        callback();
+        callback();
         expect(resizeSpy).toHaveBeenCalledTimes(1);
         expect(redrawSpy).toHaveBeenCalledTimes(1);
         await sleep(100);
@@ -119,7 +122,7 @@ describe('resize', () => {
 
         expect(map.getCanvas().width).toBe(250);
         expect(map.getCanvas().height).toBe(250);
-        expect(map.painter.width).toBe(250);
-        expect(map.painter.height).toBe(250);
+        expect(assertedNotNullish(map.painter).width).toBe(250);
+        expect(assertedNotNullish(map.painter).height).toBe(250);
     });
 });

@@ -95,7 +95,7 @@ describe('drawFill', () => {
             labelPlaneMatrix: mat4.create(),
             zoom: 0,
             angle: 0,
-            getProjectionData(_canonical, fallback): ProjectionData {
+            getProjectionData(_canonical: any, fallback: any): ProjectionData {
                 return {
                     mainMatrix: fallback,
                     tileMercatorCoords: [0, 0, 1, 1],

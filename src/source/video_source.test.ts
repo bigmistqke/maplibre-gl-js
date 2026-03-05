@@ -29,12 +29,12 @@ class StubMap extends Evented {
     }
 }
 
-function createSource(options) {
+function createSource(options: Record<string, any>) {
     const c = options && options.video || window.document.createElement('video');
 
-    options = extend({coordinates: [[0, 0], [1, 0], [1, 1], [0, 1]]}, options);
+    const mergedOptions = extend({coordinates: [[0, 0], [1, 0], [1, 1], [0, 1]]}, options);
 
-    const source = new VideoSource('id', options, getMockDispatcher(), options.eventedParent);
+    const source = new VideoSource('id', mergedOptions as any, getMockDispatcher(), mergedOptions.eventedParent);
 
     source.video = c;
     return source;

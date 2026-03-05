@@ -1,9 +1,11 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import {createMap, beforeMapTest} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
+import type {WebGLContextAttributesWithType} from '../map';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = null as unknown as typeof global.fetch; // test setup: intentionally nullify fetch
 });
 
 describe('Max Canvas Size option', () => {
@@ -62,7 +64,7 @@ describe('Max Canvas Size option', () => {
 describe('WebGLContextAttributes options', () => {
     test('Optional values can be set correctly', () => {
         const container = window.document.createElement('div');
-        const canvasContextAttributes = {
+        const canvasContextAttributes: WebGLContextAttributesWithType = {
             antialias: true,
             preserveDrawingBuffer: true,
             powerPreference: 'default',
@@ -72,8 +74,8 @@ describe('WebGLContextAttributes options', () => {
         Object.defineProperty(container, 'clientWidth', {value: 2048});
         Object.defineProperty(container, 'clientHeight', {value: 2048});
         const map = createMap({container, canvasContextAttributes});
-        const gl = map.painter.context.gl;
-        const mapContextAttributes = gl.getContextAttributes();
+        const gl = assertedNotNullish(map.painter).context.gl;
+        const mapContextAttributes = assertedNotNullish(gl.getContextAttributes());
         expect(mapContextAttributes.antialias).toBe(canvasContextAttributes.antialias);
         expect(mapContextAttributes.preserveDrawingBuffer).toBe(canvasContextAttributes.preserveDrawingBuffer);
         expect(mapContextAttributes.powerPreference).toBe(canvasContextAttributes.powerPreference);
@@ -92,7 +94,7 @@ describe('WebGLContextAttributes options', () => {
         Object.defineProperty(container, 'clientWidth', {value: 2048});
         Object.defineProperty(container, 'clientHeight', {value: 2048});
         const map = createMap({container, canvasContextAttributes});
-        const mapContextAttributes = map.painter.context.gl.getContextAttributes();
+        const mapContextAttributes = assertedNotNullish(assertedNotNullish(map.painter).context.gl.getContextAttributes());
         expect(mapContextAttributes.alpha).toBe(true);
         expect(mapContextAttributes.depth).toBe(true);
         expect(mapContextAttributes.stencil).toBe(true);

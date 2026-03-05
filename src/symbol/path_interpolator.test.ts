@@ -4,7 +4,7 @@ import {PathInterpolator} from './path_interpolator';
 
 describe('PathInterpolator', () => {
 
-    const pointEquals = (p0, p1) => {
+    const pointEquals = (p0: Point, p1: Point): boolean => {
         const e = 0.000001;
         return Math.abs(p0.x - p1.x) < e && Math.abs(p0.y - p1.y) < e;
     };

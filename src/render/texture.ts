@@ -25,15 +25,15 @@ function hasDataProperty(image: TextureImage): image is DataTextureImage {
  */
 export class Texture {
     context: Context;
-    size: [number, number];
-    texture: WebGLTexture;
+    size?: [number, number];
+    texture: WebGLTexture | null;
     format: TextureFormat;
-    filter: TextureFilter;
-    wrap: TextureWrap;
-    useMipmap: boolean;
+    filter?: TextureFilter;
+    wrap?: TextureWrap;
+    useMipmap?: boolean;
 
     /** Tracks the original handle to detect corruption after context loss (#2811) */
-    private _ownedHandle: WebGLTexture;
+    private _ownedHandle: WebGLTexture | null;
 
     constructor(context: Context, image: TextureImage, format: TextureFormat, options?: {
         premultiply?: boolean;
@@ -144,7 +144,7 @@ export class Texture {
     }
 
     isSizePowerOfTwo() {
-        return this.size[0] === this.size[1] && (Math.log(this.size[0]) / Math.LN2) % 1 === 0;
+        return this.size && this.size[0] === this.size[1] && (Math.log(this.size[0]) / Math.LN2) % 1 === 0;
     }
 
     destroy() {

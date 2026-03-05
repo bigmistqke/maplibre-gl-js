@@ -20,8 +20,8 @@ export enum PerformanceMarkers {
     fullLoad = 'fullLoad'
 }
 
-let lastFrameTime = null;
-let frameTimes = [];
+let lastFrameTime: null | number = null;
+let frameTimes: Array<number> = [];
 
 const minFramerateTarget = 60;
 const frameTimeTarget = 1000 / minFramerateTarget;
@@ -66,7 +66,7 @@ export const PerformanceUtils = {
         performance.clearMeasures(fullLoadTimeKey);
 
         for (const marker in PerformanceMarkers) {
-            performance.clearMarks(PerformanceMarkers[marker]);
+            performance.clearMarks(PerformanceMarkers[marker as keyof typeof PerformanceMarkers]);
         }
     },
 

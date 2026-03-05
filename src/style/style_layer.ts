@@ -1,4 +1,4 @@
-import {filterObject} from '../util/util';
+import {filterObject, assertedNotNullish} from '../util/util';
 
 import {createVisibilityExpression, featureFilter, latest as styleSpec, supportsPropertyExpression} from '@maplibre/maplibre-gl-style-spec';
 import {
@@ -85,29 +85,29 @@ export abstract class StyleLayer extends Evented {
     id: string;
     metadata: unknown;
     type: LayerSpecification['type'] | CustomLayerInterface['type'];
-    source: string;
-    sourceLayer: string;
-    minzoom: number;
-    maxzoom: number;
-    filter: FilterSpecification | void;
-    visibility: VisibilitySpecification;
-    private _evaluatedVisibility: 'visible' | 'none' | void;
+    source: string | undefined;
+    sourceLayer: string | undefined;
+    minzoom: number | undefined;
+    maxzoom: number | undefined;
+    filter: FilterSpecification | void | undefined;
+    visibility: VisibilitySpecification | undefined;
+    private _evaluatedVisibility?: 'visible' | 'none' | void;
 
-    _crossfadeParameters: CrossfadeParameters;
+    _crossfadeParameters: CrossfadeParameters | undefined;
 
-    _unevaluatedLayout: Layout<any>;
+    _unevaluatedLayout: Layout<any> | undefined;
     readonly layout: unknown;
 
-    _transitionablePaint: Transitionable<any>;
-    _transitioningPaint: Transitioning<any>;
+    _transitionablePaint: Transitionable<any> | undefined;
+    _transitioningPaint: Transitioning<any> | undefined;
     readonly paint: unknown;
 
     _featureFilter: FeatureFilter;
 
     _visibilityExpression: VisibilityExpression;
 
-    readonly onAdd: ((map: Map) => void);
-    readonly onRemove: ((map: Map) => void);
+    readonly onAdd: ((map: Map) => void) | undefined;
+    readonly onRemove: ((map: Map) => void) | undefined;
 
     queryRadius?(bucket: Bucket): number;
     queryIntersectsFeature?(params: QueryIntersectsFeatureParams): boolean | number;
@@ -125,7 +125,7 @@ export abstract class StyleLayer extends Evented {
         this.type = layer.type;
         this._globalState = globalState;
         this._featureFilter = {filter: () => true, needGeometry: false, getGlobalStateRefs: () => new Set<string>()};
-        this._visibilityExpression = createVisibilityExpression(this.visibility, globalState);
+        this._visibilityExpression = createVisibilityExpression(this.visibility ?? 'visible', globalState);
 
         if (layer.type === 'custom') return;
 
@@ -150,10 +150,10 @@ export abstract class StyleLayer extends Evented {
             this._transitionablePaint = new Transitionable(properties.paint, globalState);
 
             for (const property in layer.paint) {
-                this.setPaintProperty(property, layer.paint[property], {validate: false});
+                this.setPaintProperty(property, layer.paint[property as unknown as keyof typeof layer.paint], {validate: false});
             }
             for (const property in layer.layout) {
-                this.setLayoutProperty(property, layer.layout[property], {validate: false});
+                this.setLayoutProperty(property, layer.layout[property as unknown as keyof typeof layer.paint], {validate: false});
             }
 
             this._transitioningPaint = this._transitionablePaint.untransitioned();
@@ -176,7 +176,7 @@ export abstract class StyleLayer extends Evented {
             return this.visibility;
         }
 
-        return this._unevaluatedLayout.getValue(name);
+        return assertedNotNullish(this._unevaluatedLayout).getValue(name);
     }
 
     /**
@@ -254,14 +254,14 @@ export abstract class StyleLayer extends Evented {
             return;
         }
 
-        this._unevaluatedLayout.setValue(name, value);
+        assertedNotNullish(this._unevaluatedLayout).setValue(name, value);
     }
 
     getPaintProperty(name: string) {
         if (name.endsWith(TRANSITION_SUFFIX)) {
-            return this._transitionablePaint.getTransition(name.slice(0, -TRANSITION_SUFFIX.length));
+            return assertedNotNullish(this._transitionablePaint).getTransition(name.slice(0, -TRANSITION_SUFFIX.length));
         } else {
-            return this._transitionablePaint.getValue(name);
+            return assertedNotNullish(this._transitionablePaint).getValue(name);
         }
     }
 
@@ -274,18 +274,18 @@ export abstract class StyleLayer extends Evented {
         }
 
         if (name.endsWith(TRANSITION_SUFFIX)) {
-            this._transitionablePaint.setTransition(name.slice(0, -TRANSITION_SUFFIX.length), (value as any) || undefined);
+            assertedNotNullish(this._transitionablePaint).setTransition(name.slice(0, -TRANSITION_SUFFIX.length), value || undefined);
             return false;
         } else {
-            const transitionable = this._transitionablePaint._values[name];
+            const transitionable = assertedNotNullish(this._transitionablePaint)._values[name];
             const isCrossFadedProperty = transitionable.property.specification['property-type'] === 'cross-faded-data-driven';
             const wasDataDriven = transitionable.value.isDataDriven();
             const oldValue = transitionable.value;
 
-            this._transitionablePaint.setValue(name, value);
+            assertedNotNullish(this._transitionablePaint).setValue(name, value);
             this._handleSpecialPaintPropertyUpdate(name);
 
-            const newValue = this._transitionablePaint._values[name].value;
+            const newValue = assertedNotNullish(this._transitionablePaint)._values[name].value;
             const isDataDriven = newValue.isDataDriven();
 
             // if a cross-faded value is changed, we need to make sure the new icons get added to each tile's iconAtlas
@@ -305,25 +305,25 @@ export abstract class StyleLayer extends Evented {
         return false;
     }
 
-    isHidden(zoom: number = this.minzoom, roundMinZoom: boolean = false) {
+    isHidden(zoom: number = this.minzoom!, roundMinZoom: boolean = false) {
         if (this.minzoom && zoom < (roundMinZoom ? Math.floor(this.minzoom) : this.minzoom)) return true;
         if (this.maxzoom && zoom >= this.maxzoom) return true;
         return this._evaluatedVisibility === 'none';
     }
 
     updateTransitions(parameters: TransitionParameters) {
-        this._transitioningPaint = this._transitionablePaint.transitioned(parameters, this._transitioningPaint);
+        this._transitioningPaint = assertedNotNullish(this._transitionablePaint).transitioned(parameters, assertedNotNullish(this._transitioningPaint));
     }
 
     hasTransition() {
-        return this._transitioningPaint.hasTransition();
+        return assertedNotNullish(this._transitioningPaint).hasTransition();
     }
 
     recalculateVisibility() {
         this._evaluatedVisibility = this._visibilityExpression.evaluate();
     }
 
-    recalculate(parameters: EvaluationParameters, availableImages: Array<string>) {
+    recalculate(parameters: EvaluationParameters, availableImages: Array<string> | undefined) {
         if (parameters.getCrossfadeParameters) {
             this._crossfadeParameters = parameters.getCrossfadeParameters();
         }
@@ -332,11 +332,11 @@ export abstract class StyleLayer extends Evented {
             (this as any).layout = this._unevaluatedLayout.possiblyEvaluate(parameters, undefined, availableImages);
         }
 
-        (this as any).paint = this._transitioningPaint.possiblyEvaluate(parameters, undefined, availableImages);
+        (this as any).paint = assertedNotNullish(this._transitioningPaint).possiblyEvaluate(parameters, undefined, availableImages);
     }
 
     serialize(): LayerSpecification {
-        const output: LayerSpecification = {
+        const output: Partial<LayerSpecification> = {
             'id': this.id,
             'type': this.type as LayerSpecification['type'],
             'source': this.source,
@@ -354,11 +354,11 @@ export abstract class StyleLayer extends Evented {
             output.layout.visibility = this.visibility;
         }
 
-        return filterObject(output, (value, key) => {
+        return filterObject(output, (value: unknown, key: string) => {
             return value !== undefined &&
-                !(key === 'layout' && !Object.keys(value).length) &&
-                !(key === 'paint' && !Object.keys(value).length);
-        });
+                !(key === 'layout' && !Object.keys(value as object).length) &&
+                !(key === 'paint' && !Object.keys(value as object).length);
+        }) as LayerSpecification;
     }
 
     _validate(validate: Function, key: string, name: string, value: unknown, options: StyleSetterOptions = {}) {

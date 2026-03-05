@@ -4,7 +4,7 @@ import simulate from '../../../test/unit/lib/simulate_interaction';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    (global as any).fetch = undefined;
 });
 
 test('setMinZoom', () => {

@@ -12,7 +12,7 @@ import {StyleLayerIndex} from '../../../src/style/style_layer_index';
 import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {WorkerTileResult} from '../../../src/source/worker_source';
 import type {OverscaledTileID} from '../../../src/tile/tile_id';
-import type {TileJSON} from '../../../src/util/util';
+import {assertedNotNullish, type TileJSON} from '../../../src/util/util';
 import type {Map} from '../../../src/ui/map';
 import type {IActor} from '../../../src/util/actor';
 import {SubdivisionGranularitySetting} from '../../../src/render/subdivision_granularity_settings';
@@ -20,7 +20,7 @@ import {MessageType} from '../../../src/util/actor_messages';
 import {MercatorTransform} from '../../../src/geo/projection/mercator_transform';
 
 class StubMap extends Evented {
-    style: Style;
+    style: Style | undefined;
     _requestManager: RequestManager;
     transform: IReadonlyTransform;
 
@@ -56,14 +56,14 @@ function createStyle(styleJSON: StyleSpecification): Promise<Style> {
 
 export default class TileParser {
     styleJSON: StyleSpecification;
-    tileJSON: TileJSON;
+    tileJSON: TileJSON | undefined;
     sourceID: string;
     layerIndex: StyleLayerIndex;
     icons: any;
     glyphs: any;
     dashes: any;
-    style: Style;
-    actor: IActor;
+    style: Style | undefined;
+    actor!: IActor;
 
     constructor(styleJSON: StyleSpecification, sourceID: string) {
         this.styleJSON = styleJSON;
@@ -76,31 +76,31 @@ export default class TileParser {
     async loadImages(params: any) {
         const key = JSON.stringify(params);
         if (!this.icons[key]) {
-            this.icons[key] = await this.style.getImages('', params);
+            this.icons[key] = await assertedNotNullish(this.style).getImages('', params);
         }
-        return this.icons[key];
+        return this.icons[key] ?? undefined;
     }
 
     async loadGlyphs(params: any) {
         const key = JSON.stringify(params);
         if (!this.glyphs[key]) {
-            this.glyphs[key] = await this.style.getGlyphs('', params);
+            this.glyphs[key] = await assertedNotNullish(this.style).getGlyphs('', params);
         }
-        return this.glyphs[key];
+        return this.glyphs[key] ?? undefined;
     }
 
     async loadDashes(params: any) {
         const key = JSON.stringify(params);
         if (!this.dashes[key]) {
-            this.dashes[key] = await this.style.getDashes('', params);
+            this.dashes[key] = await assertedNotNullish(this.style).getDashes('', params);
         }
-        return this.dashes[key];
+        return this.dashes[key] ?? undefined;
     }
 
     setup(): Promise<void> {
         const parser = this;
         this.actor = {
-            sendAsync(message) {
+            sendAsync(message: any) {
                 if (message.type === MessageType.getImages) {
                     return parser.loadImages(message.data);
                 }
@@ -112,11 +112,17 @@ export default class TileParser {
                 }
                 throw new Error(`Invalid action ${message.type}`);
             }
-        };
+        } as any as IActor;
+
+        const source = this.styleJSON.sources[this.sourceID];
+        const sourceUrl = (source as any)?.url;
+        if (!sourceUrl || typeof sourceUrl !== 'string') {
+            return Promise.reject(new Error(`Source ${this.sourceID} has invalid URL`));
+        }
 
         return Promise.all([
             createStyle(this.styleJSON),
-            fetch((this.styleJSON.sources[this.sourceID] as any).url).then(response => response.json())
+            fetch(sourceUrl).then(response => response.json())
         ]).then(([style, tileJSON]) => {
             this.style = style;
             this.tileJSON = tileJSON;
@@ -124,7 +130,7 @@ export default class TileParser {
     }
 
     fetchTile(tileID: OverscaledTileID) {
-        return fetch(tileID.canonical.url(this.tileJSON.tiles, devicePixelRatio))
+        return fetch(tileID.canonical.url(assertedNotNullish(this.tileJSON).tiles, devicePixelRatio))
             .then(response => response.arrayBuffer())
             .then(buffer => ({tileID, buffer}));
     }

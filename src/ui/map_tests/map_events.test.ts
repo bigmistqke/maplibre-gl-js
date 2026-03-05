@@ -2,6 +2,7 @@ import {describe, beforeEach, test, expect, vi} from 'vitest';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {type StyleLayer} from '../../style/style_layer';
 import {createMap, beforeMapTest, createStyle, sleep, createTerrain} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 import {type MapGeoJSONFeature} from '../../util/vectortile_to_geojson';
 import {type MapLayerEventType, type MapLibreEvent} from '../events';
 import {Map, type MapOptions} from '../map';
@@ -21,7 +22,7 @@ describe('map events', () => {
 
     test('Map.on adds a non-delegated event listener', () => {
         const map = createMap();
-        const spy = vi.fn(function (e) {
+        const spy = vi.fn(function (this: Map, e) {
             expect(this).toBe(map);
             expect(e.type).toBe('click');
         });
@@ -54,7 +55,7 @@ describe('map events', () => {
             return features;
         });
 
-        const spy = vi.fn(function (e) {
+        const spy = vi.fn(function (this: Map, e) {
             expect(this).toBe(map);
             expect(e.type).toBe('click');
             expect(e.features).toBe(features);
@@ -123,7 +124,7 @@ describe('map events', () => {
                 return features;
             });
 
-        const spy = vi.fn(function (e) {
+        const spy = vi.fn(function (this: Map, e) {
             expect(this).toBe(map);
             expect(e.type).toBe('click');
             expect(e.features).toBe(features);
@@ -137,7 +138,7 @@ describe('map events', () => {
 
     test('Map.on adds a listener not triggered for events not matching any features', () => {
         const map = createMap();
-        const features = [];
+        const features: MapGeoJSONFeature[] = [];
 
         vi.spyOn(map, 'getLayer').mockReturnValue({} as StyleLayer);
         vi.spyOn(map, 'queryRenderedFeatures').mockImplementation((point, options) => {
@@ -254,7 +255,7 @@ describe('map events', () => {
         const spy = vi.fn();
         map.on('mousemove', (event) => {
             assertNotAny(event);
-            const {lng, lat} = event.lngLat;
+            const {lng, lat} = assertedNotNullish(event.lngLat);
             spy({lng, lat});
         });
 
@@ -418,7 +419,7 @@ describe('map events', () => {
         const spy = vi.fn();
         map.off('mousemove', (event) => {
             assertNotAny(event);
-            const {lng, lat} = event.lngLat;
+            const {lng, lat} = assertedNotNullish(event.lngLat);
             spy({lng, lat});
         });
 
@@ -447,7 +448,7 @@ describe('map events', () => {
         const spy = vi.fn();
         map.once('mousemove', (event) => {
             assertNotAny(event);
-            const {lng, lat} = event.lngLat;
+            const {lng, lat} = assertedNotNullish(event.lngLat);
             spy({lng, lat});
         });
 
@@ -496,7 +497,7 @@ describe('map events', () => {
                 return features;
             });
 
-            const spy = vi.fn(function (e) {
+            const spy = vi.fn(function (this: Map, e) {
                 expect(this).toBe(map);
                 expect(e.type).toBe(event);
                 expect(e.target).toBe(map);
@@ -591,7 +592,7 @@ describe('map events', () => {
             const map = createMap();
 
             const nonEmptyFeatures = [{} as MapGeoJSONFeature];
-            const emptyFeatures = [];
+            const emptyFeatures: MapGeoJSONFeature[] = [];
 
             vi.spyOn(map, 'getLayer').mockReturnValue({} as StyleLayer);
             vi.spyOn(map, 'queryRenderedFeatures').mockImplementation((_point, options) => {
@@ -792,7 +793,7 @@ describe('map events', () => {
                 .mockReturnValueOnce([{} as MapGeoJSONFeature])
                 .mockReturnValueOnce([]);
 
-            const spy = vi.fn(function (e) {
+            const spy = vi.fn(function (this: Map, e) {
                 expect(this).toBe(map);
                 expect(e.type).toBe(event);
                 expect(e.features).toBeUndefined();
@@ -811,7 +812,7 @@ describe('map events', () => {
             vi.spyOn(map, 'getLayer').mockReturnValue({} as StyleLayer);
             vi.spyOn(map, 'queryRenderedFeatures').mockReturnValue([{} as MapGeoJSONFeature]);
 
-            const spy = vi.fn(function (e) {
+            const spy = vi.fn(function (this: Map, e) {
                 expect(this).toBe(map);
                 expect(e.type).toBe(event);
                 expect(e.features).toBeUndefined();
@@ -994,7 +995,7 @@ describe('map events', () => {
         const map = createMap({interactive: true, clickTolerance: 4});
         await map.once('style.load');
         map.terrain = createTerrain();
-        let actualZoom: number;
+        let actualZoom: number | undefined;
         map.on('moveend', () => {
             // this can't use a promise due to race condition
             actualZoom = map.getZoom();

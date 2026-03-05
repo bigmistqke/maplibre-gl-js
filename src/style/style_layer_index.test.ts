@@ -11,13 +11,13 @@ describe('StyleLayerIndex', () => {
             {id: '3', type: 'circle', source: 'source', 'source-layer': 'layer', paint: {'circle-color': 'blue'}}
         ]);
 
-        const families = index.familiesBySource['source']['layer'];
+        const families = index.familiesBySource?.['source']?.['layer'];
         expect(families).toHaveLength(2);
-        expect(families[0]).toHaveLength(1);
-        expect(families[0][0].id).toBe('1');
-        expect(families[1]).toHaveLength(2);
-        expect(families[1][0].id).toBe('2');
-        expect(families[1][1].id).toBe('3');
+        expect(families![0]).toHaveLength(1);
+        expect(families![0][0].id).toBe('1');
+        expect(families![1]).toHaveLength(2);
+        expect(families![1][0].id).toBe('2');
+        expect(families![1][1].id).toBe('3');
 
         index.replace([]);
         expect(index.familiesBySource).toEqual({});
@@ -37,15 +37,15 @@ describe('StyleLayerIndex', () => {
             {id: '3', type: 'circle', source: 'bar', 'source-layer': 'layer', paint: {'circle-color': 'yellow'}}
         ], []);
 
-        const families = index.familiesBySource['bar']['layer'];
+        const families = index.familiesBySource?.['bar']?.['layer'];
         expect(families).toHaveLength(2);
-        expect(families[0]).toHaveLength(1);
-        expect(families[0][0].getPaintProperty('fill-color')).toBe('cyan');
-        expect(families[1]).toHaveLength(2);
-        expect(families[1][0].getPaintProperty('circle-color')).toBe('magenta');
-        expect(families[1][0].source).toBe('bar');
-        expect(families[1][1].getPaintProperty('circle-color')).toBe('yellow');
-        expect(families[1][1].source).toBe('bar');
+        expect(families![0]).toHaveLength(1);
+        expect(families![0][0].getPaintProperty('fill-color')).toBe('cyan');
+        expect(families![1]).toHaveLength(2);
+        expect(families![1][0].getPaintProperty('circle-color')).toBe('magenta');
+        expect(families![1][0].source).toBe('bar');
+        expect(families![1][1].getPaintProperty('circle-color')).toBe('yellow');
+        expect(families![1][1].source).toBe('bar');
 
     });
 
@@ -60,10 +60,10 @@ describe('StyleLayerIndex', () => {
             {id: '6', type: 'background'}
         ]);
 
-        const ids = mapObject(index.familiesBySource, (bySource) => {
-            return mapObject(bySource, (families) => {
-                return families.map((family) => {
-                    return family.map((layer) => layer.id);
+        const ids = mapObject(index.familiesBySource ?? {}, (bySource: Record<string, any>) => {
+            return mapObject(bySource, (families: any) => {
+                return families.map((family: any) => {
+                    return family.map((layer: any) => layer.id);
                 });
             });
         });
@@ -94,8 +94,8 @@ describe('StyleLayerIndex', () => {
                 'layout': {'line-join': 'miter', 'line-cap': 'butt'}}
         ]);
 
-        const families = index.familiesBySource['source']['layer'];
-        expect(families[0]).toHaveLength(2);
+        const families = index.familiesBySource?.['source']?.['layer'];
+        expect(families?.[0]).toHaveLength(2);
 
     });
 });

@@ -8,12 +8,12 @@ const createMap = (options: any): Promise<Map> => {
         }
 
         const container = document.createElement('div');
-        container.style.width = `${options.width || 512}px`;
-        container.style.height = `${options.height || 512}px`;
+        container.style.width = `${options?.width || 512}px`;
+        container.style.height = `${options?.height || 512}px`;
         container.style.margin = '0 auto';
         container.style.display = 'block';
 
-        if (!options.showMap) {
+        if (!options?.showMap) {
             container.style.visibility = 'hidden';
         }
         document.body.appendChild(container);
@@ -23,12 +23,12 @@ const createMap = (options: any): Promise<Map> => {
             style: 'https://api.maptiler.com/maps/streets/style.json?key=get_your_own_OpIi9ZULNHzrESv6T2vL'
         }, options));
 
-        map.on(options.idle ? 'idle' : 'load', () => {
-                if (options.stubRender) {
+        map.on(options?.idle ? 'idle' : 'load', () => {
+                if (options?.stubRender) {
                     // If there's a pending rerender, cancel it.
                     if (map._frameRequest) {
                         map._frameRequest.abort();
-                        map._frameRequest = null;
+                        map._frameRequest = undefined;
                     }
                 }
                 resolve(map);

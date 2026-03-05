@@ -11,6 +11,7 @@ import type {Feature} from '@maplibre/maplibre-gl-style-spec';
 import type {StyleImage} from '../style/style_image';
 import ONE_EM from './one_em';
 import {type Rect} from '../render/glyph_atlas';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * A textured quad for rendering a single icon or glyph.
@@ -75,7 +76,7 @@ export function getIconQuads(
     const stretchX = image.stretchX || [[0, imageWidth]];
     const stretchY = image.stretchY || [[0, imageHeight]];
 
-    const reduceRanges = (sum, range) => sum + range[1] - range[0];
+    const reduceRanges = (sum: number, range: [number, number]) => sum + range[1] - range[0];
     const stretchWidth = stretchX.reduce(reduceRanges, 0);
     const stretchHeight = stretchY.reduce(reduceRanges, 0);
     const fixedWidth = imageWidth - stretchWidth;
@@ -113,7 +114,7 @@ export function getIconQuads(
     const iconWidth = icon.x2 - iconLeft;
     const iconHeight = icon.y2 - iconTop;
 
-    const makeBox = (left, top, right, bottom) => {
+    const makeBox = (left: {fixed: number, stretch: number}, top: {fixed: number, stretch: number}, right: {fixed: number, stretch: number}, bottom: {fixed: number, stretch: number}): SymbolQuad => {
 
         const leftEm = getEmOffset(left.stretch - stretchOffsetX, stretchContentWidth, iconWidth, iconLeft);
         const leftPx = getPxOffset(left.fixed - fixedOffsetX, fixedContentWidth, left.stretch, stretchWidth);
@@ -190,7 +191,7 @@ export function getIconQuads(
     return quads;
 }
 
-function sumWithinRange(ranges, min, max) {
+function sumWithinRange(ranges: [number, number][], min: number, max: number) {
     let sum = 0;
     for (const range of ranges) {
         sum += Math.max(min, Math.min(max, range[1])) - Math.max(min, Math.min(max, range[0]));
@@ -198,7 +199,7 @@ function sumWithinRange(ranges, min, max) {
     return sum;
 }
 
-function stretchZonesToCuts(stretchZones, fixedSize, stretchSize) {
+function stretchZonesToCuts(stretchZones: [number, number][], fixedSize: number, stretchSize: number) {
     const cuts = [{fixed: -border, stretch: 0}];
 
     for (const [c1, c2] of stretchZones) {
@@ -219,11 +220,11 @@ function stretchZonesToCuts(stretchZones, fixedSize, stretchSize) {
     return cuts;
 }
 
-function getEmOffset(stretchOffset, stretchSize, iconSize, iconOffset) {
+function getEmOffset(stretchOffset: number, stretchSize: number, iconSize: number, iconOffset: number) {
     return stretchOffset / stretchSize * iconSize + iconOffset;
 }
 
-function getPxOffset(fixedOffset, fixedSize, stretchOffset, stretchSize) {
+function getPxOffset(fixedOffset: number, fixedSize: number, stretchOffset: number, stretchSize: number) {
     return fixedOffset - fixedSize * stretchOffset / stretchSize;
 }
 
@@ -241,7 +242,7 @@ export function getGlyphQuads(
     allowVerticalPlacement: boolean
 ): Array<SymbolQuad> {
 
-    const textRotate = layer.layout.get('text-rotate').evaluate(feature, {}) * Math.PI / 180;
+    const textRotate = assertedNotNullish(layer.layout).get('text-rotate').evaluate(feature, {}) * Math.PI / 180;
     const quads = [];
 
     for (const line of shaping.positionedLines) {
@@ -273,7 +274,7 @@ export function getGlyphQuads(
                 rectBuffer = IMAGE_PADDING / pixelRatio;
             }
 
-            const glyphOffset = alongLine ?
+            const glyphOffset: [number, number] = alongLine ?
                 [positionedGlyph.x + halfAdvance, positionedGlyph.y] :
                 [0, 0];
 

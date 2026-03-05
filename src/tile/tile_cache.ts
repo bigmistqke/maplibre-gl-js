@@ -1,5 +1,6 @@
 import {type OverscaledTileID} from './tile_id';
 import type {Tile} from './tile';
+import {assertedNotNullish, assertNotNullish} from '../util/util';
 
 /**
  * @internal
@@ -16,10 +17,10 @@ export class TileCache {
     data: {
         [key: string]: Array<{
             value: Tile;
-            timeout: ReturnType<typeof setTimeout>;
+            timeout: ReturnType<typeof setTimeout> | undefined;
         }>;
-    };
-    order: Array<string>;
+    } | undefined;
+    order: Array<string> | undefined;
     onRemove: (element: Tile) => void;
     /**
      * @param max - number of permitted values
@@ -61,11 +62,12 @@ export class TileCache {
      */
     add(tileID: OverscaledTileID, data: Tile, expiryTimeout: number | void) {
         const key = tileID.wrapped().key;
-        if (this.data[key] === undefined) {
-            this.data[key] = [];
+        const cacheData = assertedNotNullish(this.data);
+        if (cacheData[key] === undefined) {
+            cacheData[key] = [];
         }
 
-        const dataWrapper = {
+        const dataWrapper: { value: Tile; timeout: ReturnType<typeof setTimeout> | undefined } = {
             value: data,
             timeout: undefined
         };
@@ -76,11 +78,11 @@ export class TileCache {
             }, expiryTimeout as number);
         }
 
-        this.data[key].push(dataWrapper);
-        this.order.push(key);
+        cacheData[key].push(dataWrapper);
+        assertedNotNullish(this.order).push(key);
 
-        if (this.order.length > this.max) {
-            const removedData = this._getAndRemoveByKey(this.order[0]);
+        if (assertedNotNullish(this.order).length > this.max) {
+            const removedData = this._getAndRemoveByKey(assertedNotNullish(this.order)[0]);
             if (removedData) this.onRemove(removedData);
         }
 
@@ -94,7 +96,7 @@ export class TileCache {
      * @returns whether the cache has this value
      */
     has(tileID: OverscaledTileID): boolean {
-        return tileID.wrapped().key in this.data;
+        return tileID.wrapped().key in assertedNotNullish(this.data);
     }
 
     /**
@@ -104,7 +106,7 @@ export class TileCache {
      * @param tileID - the key to look up
      * @returns the tile data, or null if it isn't found
      */
-    getAndRemove(tileID: OverscaledTileID): Tile {
+    getAndRemove(tileID: OverscaledTileID): Tile | null {
         if (!this.has(tileID)) { return null; }
         return this._getAndRemoveByKey(tileID.wrapped().key);
     }
@@ -113,13 +115,14 @@ export class TileCache {
      * Get and remove the value with the specified key.
      */
     _getAndRemoveByKey(key: string): Tile {
-        const data = this.data[key].shift();
+        const data = assertedNotNullish(this.data)[key].shift();
+        assertNotNullish(data, 'Expected cache data to exist for key');
         if (data.timeout) clearTimeout(data.timeout);
 
-        if (this.data[key].length === 0) {
-            delete this.data[key];
+        if (assertedNotNullish(this.data)[key].length === 0) {
+            delete assertedNotNullish(this.data)[key];
         }
-        this.order.splice(this.order.indexOf(key), 1);
+        assertedNotNullish(this.order).splice(assertedNotNullish(this.order).indexOf(key), 1);
 
         return data.value;
     }
@@ -127,8 +130,8 @@ export class TileCache {
     /*
      * Get the value with the specified (wrapped tile) key.
      */
-    getByKey(key: string): Tile {
-        const data = this.data[key];
+    getByKey(key: string): Tile | null {
+        const data = assertedNotNullish(this.data)[key];
         return data ? data[0].value : null;
     }
 
@@ -139,10 +142,10 @@ export class TileCache {
      * @param tileID - the key to look up
      * @returns the tile data, or null if it isn't found
      */
-    get(tileID: OverscaledTileID): Tile {
+    get(tileID: OverscaledTileID): Tile | null {
         if (!this.has(tileID)) { return null; }
 
-        const data = this.data[tileID.wrapped().key][0];
+        const data = assertedNotNullish(this.data)[tileID.wrapped().key][0];
         return data.value;
     }
 
@@ -155,20 +158,20 @@ export class TileCache {
      */
     remove(tileID: OverscaledTileID, value?: {
         value: Tile;
-        timeout: ReturnType<typeof setTimeout>;
+        timeout: ReturnType<typeof setTimeout> | undefined;
     }) {
         if (!this.has(tileID)) { return this; }
         const key = tileID.wrapped().key;
 
-        const dataIndex = value === undefined ? 0 : this.data[key].indexOf(value);
-        const data = this.data[key][dataIndex];
-        this.data[key].splice(dataIndex, 1);
+        const dataIndex = value === undefined ? 0 : assertedNotNullish(this.data)[key].indexOf(value);
+        const data = assertedNotNullish(this.data)[key][dataIndex];
+        assertedNotNullish(this.data)[key].splice(dataIndex, 1);
         if (data.timeout) clearTimeout(data.timeout);
-        if (this.data[key].length === 0) {
-            delete this.data[key];
+        if (assertedNotNullish(this.data)[key].length === 0) {
+            delete assertedNotNullish(this.data)[key];
         }
         this.onRemove(data.value);
-        this.order.splice(this.order.indexOf(key), 1);
+        assertedNotNullish(this.order).splice(assertedNotNullish(this.order).indexOf(key), 1);
 
         return this;
     }
@@ -182,8 +185,8 @@ export class TileCache {
     setMaxSize(max: number): TileCache {
         this.max = max;
 
-        while (this.order.length > this.max) {
-            const removedData = this._getAndRemoveByKey(this.order[0]);
+        while (assertedNotNullish(this.order).length > this.max) {
+            const removedData = this._getAndRemoveByKey(assertedNotNullish(this.order)[0]);
             if (removedData) this.onRemove(removedData);
         }
 
@@ -235,7 +238,7 @@ export class BoundedLRUCache<K, V> {
             this.map.delete(key);
         } else if (this.map.size >= this.maxEntries) {
             // Delete oldest
-            const oldestKey = this.map.keys().next().value;
+            const oldestKey = assertedNotNullish(this.map.keys().next().value);
             this.map.delete(oldestKey);
         }
         this.map.set(key, value);

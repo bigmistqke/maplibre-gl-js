@@ -27,7 +27,7 @@ describe('drawCustom', () => {
         transform.resize(500, 500);
         transform.setMinPitch(10);
         transform.setMaxPitch(10);
-        const mockPainter = new Painter(null, null);
+        const mockPainter = new Painter(null as any, null as any);
         mockPainter.style = {
             projection: new MercatorProjection(),
         } as any;
@@ -50,11 +50,11 @@ describe('drawCustom', () => {
         tile.imageAtlasTexture = {
             bind: () => { }
         } as any;
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null as any, null as any, null as any);
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 
-        let result;
+        let result: any;
         const mockLayer = new CustomStyleLayer({
             id: 'custom-layer',
             type: 'custom',
@@ -67,13 +67,13 @@ describe('drawCustom', () => {
         }, {});
         const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
         drawCustom(mockPainter, tileManagerMock, mockLayer, renderOptions);
-        expect(result.gl).toBeDefined();
-        expect(result.args.farZ).toBeCloseTo(804.8028169246645, 6);
-        expect(result.args.farZ).toBe(mockPainter.transform.farZ);
-        expect(result.args.nearZ).toBe(mockPainter.transform.nearZ);
-        expect(result.args.fov).toBe(mockPainter.transform.fov * Math.PI / 180);
-        expect(result.args.modelViewProjectionMatrix).toEqual(mockPainter.transform.modelViewProjectionMatrix);
-        expect(result.args.projectionMatrix).toEqual(mockPainter.transform.projectionMatrix);
+        expect(result?.gl).toBeDefined();
+        expect(result?.args.farZ).toBeCloseTo(804.8028169246645, 6);
+        expect(result?.args.farZ).toBe(mockPainter.transform.farZ);
+        expect(result?.args.nearZ).toBe(mockPainter.transform.nearZ);
+        expect(result?.args.fov).toBe(mockPainter.transform.fov * Math.PI / 180);
+        expect(result?.args.modelViewProjectionMatrix).toEqual(mockPainter.transform.modelViewProjectionMatrix);
+        expect(result?.args.projectionMatrix).toEqual(mockPainter.transform.projectionMatrix);
         // JP: TODO: test projection args
     });
 });

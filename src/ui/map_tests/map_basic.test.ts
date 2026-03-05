@@ -7,16 +7,20 @@ import {fixedLngLat} from '../../../test/unit/lib/fixed';
 import {type RequestTransformFunction, ResourceType} from '../../util/request_manager';
 import {type MapSourceDataEvent} from '../events';
 import {MessageType} from '../../util/actor_messages';
+import {assertedNotNullish} from '../../util/util';
+import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {IControl} from '../control/control';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 describe('Map', () => {
 
     test('version', () => {
-        const map = createMap({interactive: true, style: null});
+        const map = createMap({interactive: true, style: undefined});
 
         expect(typeof map.version === 'string').toBeTruthy();
 
@@ -27,16 +31,16 @@ describe('Map', () => {
     });
 
     test('constructor', () => {
-        const map = createMap({interactive: true, style: null});
+        const map = createMap({interactive: true, style: undefined});
         expect(map.getContainer()).toBeTruthy();
         expect(map.getStyle()).toBeUndefined();
-        expect(map.boxZoom.isEnabled()).toBeTruthy();
-        expect(map.doubleClickZoom.isEnabled()).toBeTruthy();
-        expect(map.dragPan.isEnabled()).toBeTruthy();
-        expect(map.dragRotate.isEnabled()).toBeTruthy();
-        expect(map.keyboard.isEnabled()).toBeTruthy();
-        expect(map.scrollZoom.isEnabled()).toBeTruthy();
-        expect(map.touchZoomRotate.isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.boxZoom).isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.doubleClickZoom).isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.dragPan).isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.dragRotate).isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.keyboard).isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.scrollZoom).isEnabled()).toBeTruthy();
+        expect(assertedNotNullish(map.touchZoomRotate).isEnabled()).toBeTruthy();
         expect(() => {
             new Map({
                 container: 'anElementIdWhichDoesNotExistInTheDocument'
@@ -137,16 +141,16 @@ describe('Map', () => {
             await map.once('load');
             const fakeTileId = new OverscaledTileID(0, 0, 0, 0, 0);
             map.addSource('geojson', createStyleSource());
-            map.style.tileManagers.geojson._inViewTiles.setTile(fakeTileId.key, new Tile(fakeTileId, undefined));
+            assertedNotNullish(map.style).tileManagers.geojson._inViewTiles.setTile(fakeTileId.key, new Tile(fakeTileId, 0));
             expect(map.areTilesLoaded()).toBe(false);
-            map.style.tileManagers.geojson._inViewTiles.getTileById(fakeTileId.key).state = 'loaded';
+            assertedNotNullish(assertedNotNullish(map.style).tileManagers.geojson._inViewTiles.getTileById(fakeTileId.key)).state = 'loaded';
             expect(map.areTilesLoaded()).toBe(true);
         });
     });
 
     test('remove', () => {
         const map = createMap();
-        const spyWorkerPoolRelease = vi.spyOn(map.style.dispatcher.workerPool, 'release');
+        const spyWorkerPoolRelease = vi.spyOn(assertedNotNullish(map.style).dispatcher.workerPool, 'release');
         expect(map.getContainer().childNodes).toHaveLength(2);
         map.remove();
         expect(spyWorkerPoolRelease).toHaveBeenCalledTimes(1);
@@ -160,7 +164,7 @@ describe('Map', () => {
         const map = createMap();
         const control = {
             onRemove: vi.fn(),
-            onAdd(_) {
+            onAdd(_: Map) {
                 return window.document.createElement('div');
             }
         };
@@ -172,13 +176,13 @@ describe('Map', () => {
     test('remove calls onRemove on added controls before style is destroyed', async () => {
         const map = createMap();
         let onRemoveCalled = 0;
-        let style = null;
+        let style: StyleSpecification | undefined = undefined;
         const control = {
-            onRemove(map) {
+            onRemove(map: Map) {
                 onRemoveCalled++;
                 expect(map.getStyle()).toEqual(style);
             },
-            onAdd(_) {
+            onAdd(_: Map) {
                 return window.document.createElement('div');
             }
         };
@@ -193,7 +197,7 @@ describe('Map', () => {
 
     test('remove broadcasts removeMap to worker', () => {
         const map = createMap();
-        const _broadcastSpyOn = vi.spyOn(map.style.dispatcher, 'broadcast');
+        const _broadcastSpyOn = vi.spyOn(assertedNotNullish(map.style).dispatcher, 'broadcast');
         map.remove();
         expect(_broadcastSpyOn).toHaveBeenCalledWith(MessageType.removeMap, undefined);
     });
@@ -211,7 +215,7 @@ describe('Map', () => {
     describe('cooperativeGestures option', () => {
         test('cooperativeGesture container element is hidden from a11y tree', () => {
             const map = createMap({cooperativeGestures: true});
-            expect(map.getContainer().querySelector('.maplibregl-cooperative-gesture-screen').getAttribute('aria-hidden')).toBeTruthy();
+            expect(assertedNotNullish(map.getContainer().querySelector('.maplibregl-cooperative-gesture-screen')).getAttribute('aria-hidden')).toBeTruthy();
         });
 
         test('cooperativeGesture container element is not available when cooperativeGestures not initialized', () => {
@@ -221,7 +225,7 @@ describe('Map', () => {
 
         test('cooperativeGesture container element is not available when cooperativeGestures disabled', () => {
             const map = createMap({cooperativeGestures: true});
-            map.cooperativeGestures.disable();
+            assertedNotNullish(map.cooperativeGestures).disable();
             expect(map.getContainer().querySelector('.maplibregl-cooperative-gesture-screen')).toBeFalsy();
         });
     });

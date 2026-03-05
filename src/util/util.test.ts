@@ -73,26 +73,25 @@ describe('util', () => {
     test('mapObject', () => {
         expect.assertions(5);
         expect(mapObject({}, () => { expect(false).toBeTruthy(); })).toEqual({});
-        const that = {};
         expect(mapObject({map: 'box'}, (value, key, object) => {
             expect(value).toBe('box');
             expect(key).toBe('map');
             expect(object).toEqual({map: 'box'});
             return 'BOX';
-        }, that)).toEqual({map: 'BOX'});
+        })).toEqual({map: 'BOX'});
     });
 
     test('filterObject', () => {
         expect.assertions(6);
         expect(filterObject({}, () => { expect(false).toBeTruthy(); })).toEqual({});
-        const that = {};
-        filterObject({map: 'box'}, function(value, key, object) {
+
+        filterObject({map: 'box'}, (value, key, object) => {
             expect(value).toBe('box');
             expect(key).toBe('map');
             expect(object).toEqual({map: 'box'});
-            expect(this).toBe(that);
             return true;
-        }, that);
+        });
+
         expect(filterObject({map: 'box', box: 'map'}, (value) => {
             return value === 'box';
         })).toEqual({map: 'box'});
@@ -651,14 +650,18 @@ describe('threePlaneIntersection', () => {
         const plane1 = [1, 0, 0, 0] as vec4;
         const plane2 = [0, 1, 0, 0] as vec4;
         const plane3 = [0, 0, 1, 0] as vec4;
-        expectToBeCloseToArray([...threePlaneIntersection(plane1, plane2, plane3)], [0, 0, 0], precision);
+        const result = threePlaneIntersection(plane1, plane2, plane3);
+        if (!result) throw new Error('Expected non-null result');
+        expectToBeCloseToArray([...result], [0, 0, 0], precision);
     });
 
     test('three translated orthogonal planes', () => {
         const plane1 = [1, 0, 0, -3] as vec4;
         const plane2 = [0, 1, 0, -4] as vec4;
         const plane3 = [0, 0, 1, -5] as vec4;
-        expectToBeCloseToArray([...threePlaneIntersection(plane1, plane2, plane3)], [3, 4, 5], precision);
+        const result = threePlaneIntersection(plane1, plane2, plane3);
+        if (!result) throw new Error('Expected non-null result');
+        expectToBeCloseToArray([...result], [3, 4, 5], precision);
     });
 
     test('three rotated planes at origin', () => {
@@ -666,7 +669,9 @@ describe('threePlaneIntersection', () => {
         const plane1 = createPlane(origin, [1, 2, 3]);
         const plane2 = createPlane(origin, [-4, 5, 6]);
         const plane3 = createPlane(origin, [7, -8, 9]);
-        expectToBeCloseToArray([...threePlaneIntersection(plane1, plane2, plane3)], origin, precision);
+        const result = threePlaneIntersection(plane1, plane2, plane3);
+        if (!result) throw new Error('Expected non-null result');
+        expectToBeCloseToArray([...result], origin, precision);
     });
 
     test('three rotated planes placed arbitrarily', () => {
@@ -675,6 +680,7 @@ describe('threePlaneIntersection', () => {
         const plane2 = createPlane(origin, [-4, 5, 6]);
         const plane3 = createPlane(origin, [7, -8, 9]);
         const intersection = threePlaneIntersection(plane1, plane2, plane3);
+        if (!intersection) throw new Error('Expected non-null intersection');
         expect(pointPlaneSignedDistance(plane1, intersection)).toBeCloseTo(0, precision);
         expect(pointPlaneSignedDistance(plane2, intersection)).toBeCloseTo(0, precision);
         expect(pointPlaneSignedDistance(plane3, intersection)).toBeCloseTo(0, precision);

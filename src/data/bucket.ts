@@ -11,6 +11,7 @@ import type {SubdivisionGranularitySetting} from '../render/subdivision_granular
 import type {DashEntry} from '../render/line_atlas';
 import type {Feature as StyleFeature} from '@maplibre/maplibre-gl-style-spec';
 import type {VectorTileFeatureLike, VectorTileLayerLike} from '@maplibre/vt-pbf';
+import { isNotNullish } from '../util/util';
 
 export type BucketParameters<Layer extends TypedStyleLayer> = {
     index: number;
@@ -23,11 +24,13 @@ export type BucketParameters<Layer extends TypedStyleLayer> = {
     sourceID: string;
 };
 
+type BucketStack = {[_: number]: boolean};
+
 export type PopulateParameters = {
     featureIndex: FeatureIndex;
-    iconDependencies: {};
-    patternDependencies: {};
-    glyphDependencies: {};
+    iconDependencies: Record<string, boolean>;
+    patternDependencies: BucketStack;
+    glyphDependencies: Record<string, BucketStack>;
     dashDependencies: Record<string, {round: boolean; dasharray: Array<number>}>;
     availableImages: Array<string>;
     subdivisionGranularity: SubdivisionGranularitySetting;
@@ -35,7 +38,7 @@ export type PopulateParameters = {
 
 export type IndexedFeature = {
     feature: VectorTileFeatureLike;
-    id: number | string;
+    id: number | string | undefined;
     index: number;
     sourceLayerIndex: number;
 };
@@ -84,7 +87,7 @@ export interface Bucket {
     layerIds: Array<string>;
     hasDependencies: boolean;
     readonly layers: Array<any>;
-    readonly stateDependentLayers: Array<any>;
+    readonly stateDependentLayers?: Array<any>;
     readonly stateDependentLayerIds: Array<string>;
     populate(features: Array<IndexedFeature>, options: PopulateParameters, canonical: CanonicalTileID): void;
     update(states: FeatureStates, vtLayer: VectorTileLayerLike, imagePositions: {[_: string]: ImagePosition}, dashPositions: Record<string, DashEntry>): void;
@@ -99,8 +102,8 @@ export interface Bucket {
     destroy(): void;
 }
 
-export function deserialize(input: Array<Bucket>, style: Style): {[_: string]: Bucket} {
-    const output = {};
+export function deserialize(input: Array<Bucket>, style: Style | undefined): Record<string, Bucket> {
+    const output: Record<string, Bucket> = {};
 
     // Guard against the case where the map's style has been set to null while
     // this bucket has been parsing.
@@ -109,7 +112,7 @@ export function deserialize(input: Array<Bucket>, style: Style): {[_: string]: B
     for (const bucket of input) {
         const layers = bucket.layerIds
             .map((id) => style.getLayer(id))
-            .filter(Boolean);
+            .filter(isNotNullish);
 
         if (layers.length === 0) {
             continue;

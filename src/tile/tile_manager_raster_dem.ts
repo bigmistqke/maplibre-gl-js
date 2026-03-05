@@ -1,3 +1,4 @@
+import {assertedNotNullish} from '../util/util';
 import {type Tile} from './tile';
 import {type InViewTiles} from './tile_manager_in_view_tiles';
 
@@ -10,7 +11,7 @@ export function backfillDEM(tile: Tile, inViewTiles: InViewTiles) {
         if (!tile.neighboringTiles || !tile.neighboringTiles[borderId]) {
             continue;
         }
-        const borderTile = inViewTiles.getTileById(borderId);
+        const borderTile = assertedNotNullish(inViewTiles.getTileById(borderId));
         if (!tile.neighboringTiles[borderId].backfilled) {
             fillBorder(tile, borderTile);
         }

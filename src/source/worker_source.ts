@@ -34,7 +34,7 @@ export type WorkerTileParameters = TileParameters & {
     zoom: number;
     maxZoom?: number;
     tileSize: number;
-    promoteId: PromoteIdSpecification;
+    promoteId: PromoteIdSpecification | undefined;
     pixelRatio: number;
     showCollisionBoxes: boolean;
     collectResourceTiming?: boolean;
@@ -63,10 +63,10 @@ export type OverzoomParameters = {
 export type WorkerDEMTileParameters = TileParameters & {
     rawImageData: RGBAImage | ImageBitmap | ImageData;
     encoding: DEMEncoding;
-    redFactor: number;
-    greenFactor: number;
-    blueFactor: number;
-    baseShift: number;
+    redFactor?: number;
+    greenFactor?: number;
+    blueFactor?: number;
+    baseShift?: number;
 };
 
 /**
@@ -85,7 +85,7 @@ export type WorkerTileWithData = ExpiryData & {
     // Only used for benchmarking:
     glyphMap?: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     } | null;
     iconMap?: {
@@ -121,13 +121,14 @@ export interface WorkerSource {
      * Loads a tile from the given params and parse it into buckets ready to send
      * back to the main thread for rendering.  Should call the callback with:
      * `{ buckets, featureIndex, collisionIndex, rawTileData}`.
+     * Returns null if the tile data is not available.
      */
-    loadTile(params: WorkerTileParameters): Promise<WorkerTileResult>;
+    loadTile(params: WorkerTileParameters): Promise<WorkerTileResult | undefined | null>;
     /**
      * Re-parses a tile that has already been loaded.  Yields the same data as
      * {@link WorkerSource.loadTile}.
      */
-    reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult>;
+    reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult | undefined | null>;
     /**
      * Aborts loading a tile that is in progress.
      */

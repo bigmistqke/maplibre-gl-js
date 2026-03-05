@@ -7,7 +7,7 @@ const styleLayer = {
     id: 'test'
 } as StyleLayer;
 
-const makeSymbolInstance = (x, y, key): any => {
+const makeSymbolInstance = (x: number, y: number, key: string): any => {
     return {
         anchorX: x,
         anchorY: y,
@@ -15,10 +15,10 @@ const makeSymbolInstance = (x, y, key): any => {
     };
 };
 
-const makeTile = (tileID, symbolInstances): any => {
+const makeTile = (tileID: unknown, symbolInstances: any[]): any => {
     const bucket = {
         symbolInstances: {
-            get(i) { return symbolInstances[i]; },
+            get(i: number) { return symbolInstances[i]; },
             length: symbolInstances.length
         },
         layerIds: ['test']

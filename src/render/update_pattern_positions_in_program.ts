@@ -21,7 +21,7 @@ import type {FillStyleLayer} from '../style/style_layer/fill_style_layer';
 export function updatePatternPositionsInProgram(
     programConfiguration: ProgramConfiguration,
     propertyName: 'fill-pattern' | 'fill-extrusion-pattern',
-    constantPattern: CrossFaded<ResolvedImage>,
+    constantPattern: CrossFaded<ResolvedImage> | null,
     tile: Tile,
     layer: FillStyleLayer | FillExtrusionStyleLayer): void {
 

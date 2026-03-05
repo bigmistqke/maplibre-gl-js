@@ -2,7 +2,7 @@ import type Point from '@mapbox/point-geometry';
 import {LngLat, type LngLatLike} from '../lng_lat';
 import {cameraForBoxAndBearing, type CameraForBoxAndBearingHandlerResult, type EaseToHandlerResult, type EaseToHandlerOptions, type FlyToHandlerResult, type FlyToHandlerOptions, type ICameraHelper, type MapControlsDeltas, updateRotation, type UpdateRotationArgs} from './camera_helper';
 import {normalizeCenter} from '../transform_helper';
-import {rollPitchBearingEqual, scaleZoom, zoomScale} from '../../util/util';
+import {assertedNotNullish, rollPitchBearingEqual, scaleZoom, zoomScale} from '../../util/util';
 import {getMercatorHorizon, projectToWorldCoordinates, unprojectFromWorldCoordinates} from './mercator_utils';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 
@@ -50,17 +50,16 @@ export class MercatorCameraHelper implements ICameraHelper {
         tr.setLocationAtPoint(preZoomAroundLoc, deltas.around);
     }
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult {
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
         return cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
     }
 
     handleJumpToCenterZoom(tr: ITransform, options: { zoom?: number; center?: LngLatLike }): void {
         // Mercator zoom & center handling.
-        const optionsZoom = typeof options.zoom !== 'undefined';
+        const zoom = typeof options.zoom !== 'undefined' ? +options.zoom : tr.zoom;
 
-        const zoom = optionsZoom ? +options.zoom : tr.zoom;
         if (tr.zoom !== zoom) {
-            tr.setZoom(+options.zoom);
+            tr.setZoom(zoom);
         }
 
         if (options.center !== undefined) {
@@ -77,13 +76,11 @@ export class MercatorCameraHelper implements ICameraHelper {
         const endBearing = options.bearing === undefined ? tr.bearing : options.bearing;
         const endEulerAngles = {roll: endRoll, pitch: endPitch, bearing: endBearing};
 
-        const optionsZoom = typeof options.zoom !== 'undefined';
-
         const doPadding = !tr.isPaddingEqual(options.padding);
 
         let isZooming = false;
 
-        const zoom = optionsZoom ? +options.zoom : tr.zoom;
+        const zoom = typeof options.zoom !== 'undefined' ? +options.zoom : tr.zoom;
 
         let pointAtOffset = tr.centerPoint.add(options.offsetAsPoint);
         const locationAtOffset = tr.screenPointToLocation(pointAtOffset);
@@ -119,7 +116,7 @@ export class MercatorCameraHelper implements ICameraHelper {
             }
 
             if (options.around) {
-                tr.setLocationAtPoint(options.around, options.aroundPoint);
+                tr.setLocationAtPoint(options.around, assertedNotNullish(options.aroundPoint));
             } else {
                 const scale = zoomScale(tr.zoom - startZoom);
                 const base = endZoom > startZoom ?
@@ -139,14 +136,12 @@ export class MercatorCameraHelper implements ICameraHelper {
     }
 
     handleFlyTo(tr: ITransform, options: FlyToHandlerOptions): FlyToHandlerResult {
-        const optionsZoom = typeof options.zoom !== 'undefined';
-
         const startZoom = tr.zoom;
 
         // Obtain target center and zoom
         const constrained = tr.applyConstrain(
             LngLat.convert(options.center || options.locationAtOffset),
-            optionsZoom ? +options.zoom : startZoom
+            typeof options.zoom !== 'undefined' ? +options.zoom : startZoom
         );
         const targetCenter = constrained.center;
         const targetZoom = constrained.zoom;
@@ -160,11 +155,9 @@ export class MercatorCameraHelper implements ICameraHelper {
 
         const scaleOfZoom = zoomScale(targetZoom - startZoom);
 
-        const optionsMinZoom = typeof options.minZoom !== 'undefined';
+        let scaleOfMinZoom: number|undefined;
 
-        let scaleOfMinZoom: number;
-
-        if (optionsMinZoom) {
+        if (typeof options.minZoom !== 'undefined') {
             const minZoomPreConstrain = Math.min(+options.minZoom, startZoom, targetZoom);
             const minZoom = tr.applyConstrain(targetCenter, minZoomPreConstrain).zoom;
             scaleOfMinZoom = zoomScale(minZoom - startZoom);

@@ -3,13 +3,14 @@ import {fakeServer, type FakeServer} from 'nise';
 import {loadTileJson} from './load_tilejson';
 import {RequestManager} from '../util/request_manager';
 import {ABORT_ERROR} from '../util/abort_error';
+import {assertedNotNullish} from '../util/util';
 
 import {type RasterSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 
 describe('loadTileJson', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        global.fetch = null as unknown as typeof global.fetch; // Test mock
         server = fakeServer.create();
     });
     afterEach(() => {
@@ -133,7 +134,7 @@ describe('loadTileJson', () => {
         server.respond();
         const result = await promise;
 
-        expect(result.vectorLayerIds).toEqual(['layer1', 'layer2']);
+        expect(assertedNotNullish(result).vectorLayerIds).toEqual(['layer1', 'layer2']);
     });
 
     test('handles aborted request', async () => {

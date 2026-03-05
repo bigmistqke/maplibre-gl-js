@@ -1,6 +1,6 @@
 import {ImageRequest} from '../util/image_request';
 import {ResourceType} from '../util/request_manager';
-import {extend, isImageBitmap, readImageUsingVideoFrame} from '../util/util';
+import {extend, isImageBitmap, readImageUsingVideoFrame, assertedNotNullish} from '../util/util';
 import {type Evented} from '../util/evented';
 import {browser} from '../util/browser';
 import {offscreenCanvasSupported} from '../util/offscreen_canvas_supported';
@@ -54,12 +54,12 @@ export class RasterDEMTileSource extends RasterTileSource implements Source {
     }
 
     override async loadTile(tile: Tile): Promise<void> {
-        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme);
-        const request = this.map._requestManager.transformRequest(url, ResourceType.Tile);
+        const url = tile.tileID.canonical.url(assertedNotNullish(this.tiles), assertedNotNullish(this.map).getPixelRatio(), this.scheme);
+        const request = assertedNotNullish(this.map)._requestManager.transformRequest(url, ResourceType.Tile);
         tile.neighboringTiles = this._getNeighboringTiles(tile.tileID);
         tile.abortController = new AbortController();
         try {
-            const response = await ImageRequest.getImage(request, tile.abortController, this.map._refreshExpiredTiles);
+            const response = await ImageRequest.getImage(request, tile.abortController, assertedNotNullish(this.map)._refreshExpiredTiles);
             delete tile.abortController;
             if (tile.aborted) {
                 tile.state = 'unloaded';
@@ -67,7 +67,7 @@ export class RasterDEMTileSource extends RasterTileSource implements Source {
             }
             if (response && response.data) {
                 const img = response.data;
-                if (this.map._refreshExpiredTiles && (response.cacheControl || response.expires)) {
+                if (assertedNotNullish(this.map)._refreshExpiredTiles && (response.cacheControl || response.expires)) {
                     tile.setExpiryData({cacheControl: response.cacheControl, expires: response.expires});
                 }
                 const transfer = isImageBitmap(img) && offscreenCanvasSupported();
@@ -86,7 +86,7 @@ export class RasterDEMTileSource extends RasterTileSource implements Source {
 
                 if (!tile.actor || tile.state === 'expired') {
                     tile.actor = this.dispatcher.getActor();
-                    const data = await tile.actor.sendAsync({type: MessageType.loadDEMTile, data: params});
+                    const data = await assertedNotNullish(tile.actor.sendAsync({type: MessageType.loadDEMTile, data: params}));
                     tile.dem = data;
                     tile.needsHillshadePrepare = true;
                     tile.needsTerrainPrepare = true;
@@ -148,7 +148,7 @@ export class RasterDEMTileSource extends RasterTileSource implements Source {
     }
 
     async unloadTile(tile: Tile) {
-        if (tile.demTexture) this.map.painter.saveTileTexture(tile.demTexture);
+        if (tile.demTexture) assertedNotNullish(assertedNotNullish(this.map).painter).saveTileTexture(tile.demTexture);
         if (tile.fbo) {
             tile.fbo.destroy();
             delete tile.fbo;

@@ -1,7 +1,7 @@
 import {AbortError} from './abort_error';
 import {subscribe} from './util';
 
-let linkEl;
+let linkEl: HTMLAnchorElement;
 
 let reducedMotionQuery: MediaQueryList;
 let reducedMotionOverride: boolean | undefined;

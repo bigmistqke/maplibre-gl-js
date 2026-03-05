@@ -19,6 +19,6 @@ export class AbortError extends Error {
  * @param error - An error object
  * @returns - true if the error is an abort error
  */
-export function isAbortError(error: Error): boolean {
-    return error.name === ABORT_ERROR;
+export function isAbortError(error: unknown): error is AbortError {
+    return error instanceof Error && error.name === ABORT_ERROR;
 }

@@ -1,7 +1,7 @@
 import {OverscaledTileID} from '../../tile/tile_id';
 import {vec2, type vec4} from 'gl-matrix';
 import {MercatorCoordinate} from '../mercator_coordinate';
-import {degreesToRadians, scaleZoom} from '../../util/util';
+import {assertedNotNullish, degreesToRadians, scaleZoom} from '../../util/util';
 
 import type {IReadonlyTransform} from '../transform_interface';
 import type {Terrain} from '../../render/terrain';
@@ -53,7 +53,7 @@ export type CoveringTilesOptionsInternal = CoveringTilesOptions & {
     /**
      * When terrain is present, tile visibility will be computed in regards to the min and max elevations for each tile.
      */
-    terrain?: Terrain;
+    terrain?: Terrain | undefined | null;
     /**
      * Optional function to redefine how tiles are loaded at high pitch angles.
      */
@@ -79,7 +79,7 @@ export type CalculateTileZoomFunction = (requestedCenterZoom: number,
  * A simple/heuristic function that returns whether the tile is visible under the current transform.
  * @returns an {@link IntersectionResult}.
  */
-export function isTileVisible(frustum: Frustum, tileBoundingVolume: IBoundingVolume, plane?: vec4): IntersectionResult {
+export function isTileVisible(frustum: Frustum, tileBoundingVolume: IBoundingVolume, plane?: vec4 | null): IntersectionResult {
     const frustumTest = tileBoundingVolume.intersectsFrustum(frustum);
     if (!plane || frustumTest === IntersectionResult.None) {
         return frustumTest;
@@ -185,10 +185,10 @@ export function coveringTiles(transform: IReadonlyTransform, options: CoveringTi
     const plane = transform.getClippingPlane();
     const cameraCoord = transform.screenPointToMercatorCoordinate(transform.getCameraPoint());
     const centerCoord = MercatorCoordinate.fromLngLat(transform.center, transform.elevation);
-    cameraCoord.z = centerCoord.z + Math.cos(transform.pitchInRadians) * transform.cameraToCenterDistance / transform.worldSize;
+    cameraCoord.z = centerCoord.z + Math.cos(transform.pitchInRadians) * assertedNotNullish(transform.cameraToCenterDistance) / transform.worldSize;
     const detailsProvider = transform.getCoveringTilesDetailsProvider();
     const allowVariableZoom = detailsProvider.allowVariableZoom(transform, options);
-    
+
     const desiredZ = coveringZoomLevel(transform, options);
     const minZoom = options.minzoom || 0;
     const maxZoom = options.maxzoom !== undefined ? options.maxzoom : transform.maxZoom;
@@ -225,8 +225,8 @@ export function coveringTiles(transform: IReadonlyTransform, options: CoveringTi
 
     stack.push(newRootTile(0));
 
-    while (stack.length > 0) {
-        const it = stack.pop();
+    let it: CoveringTilesStackEntry | undefined;
+    while (it = stack.pop()) {
         const x = it.x;
         const y = it.y;
         let fullyVisible = it.fullyVisible;
@@ -235,7 +235,7 @@ export function coveringTiles(transform: IReadonlyTransform, options: CoveringTi
 
         // Visibility of a tile is not required if any of its ancestor is fully visible
         if (!fullyVisible) {
-            const intersectResult = isTileVisible(frustum, boundingVolume, plane);
+            const intersectResult = isTileVisible(assertedNotNullish(frustum), boundingVolume, plane);
 
             if (intersectResult === IntersectionResult.None)
                 continue;

@@ -30,7 +30,7 @@ const PUAend = 0xF8FF;
 type Break = {
     index: number;
     x: number;
-    priorBreak: Break;
+    priorBreak: Break | null;
     badness: number;
 };
 
@@ -70,7 +70,7 @@ function getGlyphAdvance(
     section: SectionOptions,
     glyphMap: {
         [_: string]: {
-            [_: number]: StyleGlyph;
+            [_: number]: StyleGlyph | null;
         };
     },
     imagePositions: {[_: string]: ImagePosition},
@@ -143,7 +143,7 @@ function evaluateBreak(
     //  ...and when targetWidth and maxWidth are close, strictly enforcing maxWidth can give
     //     more lopsided results.
 
-    let bestPriorBreak: Break = null;
+    let bestPriorBreak: Break | null = null;
     let bestBreakBadness = calculateBadness(breakX, targetWidth, penalty, isLastBreak);
 
     for (const potentialBreak of potentialBreaks) {
@@ -322,13 +322,13 @@ export class TaggedString {
         maxWidth: number,
         glyphMap: {
             [_: string]: {
-                [_: number]: StyleGlyph;
+                [_: number]: StyleGlyph | null;
             };
         },
         imagePositions: {[_: string]: ImagePosition},
         layoutTextSize: number
     ): Array<number> {
-        const potentialLineBreaks = [];
+        const potentialLineBreaks: Break[] = [];
         const targetWidth = this.determineAverageLineWidth(spacing, maxWidth, glyphMap, imagePositions, layoutTextSize);
 
         const hasZeroWidthSpaces = this.hasZeroWidthSpaces();
@@ -348,14 +348,14 @@ export class TaggedString {
 
         while (!char.done) {
             const section = this.getSection(i);
-            const codePoint = char.value.codePointAt(0);
+            const codePoint = char.value.codePointAt(0)!;
             if (!charIsWhitespace(codePoint)) currentX += getGlyphAdvance(codePoint, section, glyphMap, imagePositions, spacing, layoutTextSize);
 
             // Ideographic characters, spaces, and word-breaking punctuation that often appear without
             // surrounding spaces.
             if (!nextChar.done) {
                 const ideographicBreak = codePointAllowsIdeographicBreaking(codePoint);
-                const nextCodePoint = nextChar.value.codePointAt(0);
+                const nextCodePoint = nextChar.value.codePointAt(0)!;
                 if (breakable[codePoint] || ideographicBreak || 'imageName' in section || (!nextNextChar.done && breakableBefore[nextCodePoint])) {
 
                     potentialLineBreaks.push(
@@ -389,7 +389,7 @@ export class TaggedString {
         maxWidth: number,
         glyphMap: {
             [_: string]: {
-                [_: number]: StyleGlyph;
+                [_: number]: StyleGlyph | null;
             };
         },
         imagePositions: {[_: string]: ImagePosition},
@@ -399,7 +399,7 @@ export class TaggedString {
         let index = 0;
         for (const char of this.text) {
             const section = this.getSection(index);
-            totalWidth += getGlyphAdvance(char.codePointAt(0), section, glyphMap, imagePositions, spacing, layoutTextSize);
+            totalWidth += getGlyphAdvance(char.codePointAt(0)!, section, glyphMap, imagePositions, spacing, layoutTextSize);
             index++;
         }
 

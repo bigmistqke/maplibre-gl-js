@@ -73,7 +73,7 @@ export type GetGlyphsParameters = {
  */
 export type GetGlyphsResponse = {
     [stack: string]: {
-        [id: number]: StyleGlyph;
+        [id: number]: StyleGlyph | null;
     };
 };
 
@@ -106,6 +106,7 @@ export const enum MessageType {
     getClusterChildren = 'GCC',
     getClusterLeaves = 'GCL',
     loadData = 'LD',
+    getData = 'GD',
     loadTile = 'LT',
     reloadTile = 'RT',
     getGlyphs = 'GG',
@@ -132,12 +133,13 @@ export const enum MessageType {
  */
 export type RequestResponseMessageMap = {
     [MessageType.loadDEMTile]: [WorkerDEMTileParameters, DEMData];
-    [MessageType.getClusterExpansionZoom]: [ClusterIDAndSource, number];
-    [MessageType.getClusterChildren]: [ClusterIDAndSource, Array<GeoJSON.Feature>];
-    [MessageType.getClusterLeaves]: [GetClusterLeavesParams, Array<GeoJSON.Feature>];
+    [MessageType.getClusterExpansionZoom]: [ClusterIDAndSource, number | null];
+    [MessageType.getClusterChildren]: [ClusterIDAndSource, Array<GeoJSON.Feature> | null];
+    [MessageType.getClusterLeaves]: [GetClusterLeavesParams, Array<GeoJSON.Feature> | null];
     [MessageType.loadData]: [LoadGeoJSONParameters, GeoJSONWorkerSourceLoadDataResult];
-    [MessageType.loadTile]: [WorkerTileParameters, WorkerTileResult];
-    [MessageType.reloadTile]: [WorkerTileParameters, WorkerTileResult];
+    [MessageType.getData]: [LoadGeoJSONParameters, GeoJSON.GeoJSON | undefined];
+    [MessageType.loadTile]: [WorkerTileParameters, WorkerTileResult | null | undefined];
+    [MessageType.reloadTile]: [WorkerTileParameters, WorkerTileResult | null | undefined];
     [MessageType.getGlyphs]: [GetGlyphsParameters, GetGlyphsResponse];
     [MessageType.getImages]: [GetImagesParameters, GetImagesResponse];
     [MessageType.setImages]: [string[], void];
@@ -161,7 +163,7 @@ export type RequestResponseMessageMap = {
  */
 export type ActorMessage<T extends MessageType> = {
     type: T;
-    data: RequestResponseMessageMap[T][0];
+    data: RequestResponseMessageMap[T][0] | undefined;
     targetMapId?: string | number | null;
     mustQueue?: boolean;
     sourceMapId?: string | number | null;

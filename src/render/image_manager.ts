@@ -6,7 +6,7 @@ import {RGBAImage} from '../util/image';
 import {ImagePosition} from './image_atlas';
 import {Texture} from './texture';
 import {renderStyleImage} from '../style/style_image';
-import {warnOnce} from '../util/util';
+import {assertedNotNullish, assertNotNullish, warnOnce} from '../util/util';
 
 import type {StyleImage} from '../style/style_image';
 import type {Context} from '../gl/context';
@@ -38,9 +38,9 @@ const padding = 1;
  * to refactor this.
 */
 export class ImageManager extends Evented {
-    images: {[_: string]: StyleImage};
-    updatedImages: {[_: string]: boolean};
-    callbackDispatchedThisFrame: {[_: string]: boolean};
+    images: Record<string, StyleImage>;
+    updatedImages: Record<string, boolean>;
+    callbackDispatchedThisFrame: Record<string, boolean>;
     loaded: boolean;
     /**
      * This is used to track requests for images that are not yet available. When the image is loaded,
@@ -51,9 +51,9 @@ export class ImageManager extends Evented {
         promiseResolve: (value: GetImagesResponse) => void;
     }>;
 
-    patterns: {[_: string]: Pattern};
+    patterns: Record<string, Pattern>;
     atlasImage: RGBAImage;
-    atlasTexture: Texture;
+    atlasTexture?: Texture;
     dirty: boolean;
 
     constructor() {
@@ -73,7 +73,7 @@ export class ImageManager extends Evented {
         // Destroy atlas texture if it exists
         if (this.atlasTexture) {
             this.atlasTexture.destroy();
-            this.atlasTexture = null;
+            this.atlasTexture = undefined;
         }
         // Remove all images and patterns
         for (const id of Object.keys(this.images)) {
@@ -103,7 +103,7 @@ export class ImageManager extends Evented {
         }
     }
 
-    getImage(id: string): StyleImage {
+    getImage(id: string): StyleImage | undefined {
         const image = this.images[id];
         // Extract sprite image data on demand
         if (image && !image.data && image.spriteData) {
@@ -111,12 +111,12 @@ export class ImageManager extends Evented {
             image.data = new RGBAImage({
                 width: spriteData.width,
                 height: spriteData.height
-            }, spriteData.context.getImageData(
+            }, assertedNotNullish(spriteData.context.getImageData(
                 spriteData.x,
                 spriteData.y,
                 spriteData.width,
-                spriteData.height).data);
-            image.spriteData = null;
+                spriteData.height).data));
+            image.spriteData = undefined;
         }
 
         return image;
@@ -147,22 +147,22 @@ export class ImageManager extends Evented {
         return valid;
     }
 
-    _validateStretch(stretch: Array<[number, number]>, size: number) {
+    _validateStretch(stretch: Array<[number, number]> | undefined, size: number | undefined) {
         if (!stretch) return true;
         let last = 0;
         for (const part of stretch) {
-            if (part[0] < last || part[1] < part[0] || size < part[1]) return false;
+            if (part[0] < last || part[1] < part[0] || assertedNotNullish(size) < part[1]) return false;
             last = part[1];
         }
         return true;
     }
 
-    _validateContent(content: [number, number, number, number], image: StyleImage) {
+    _validateContent(content: [number, number, number, number] | undefined, image: StyleImage) {
         if (!content) return true;
         if (content.length !== 4) return false;
         const spriteData = image.spriteData;
-        const width = (spriteData && spriteData.width) || image.data.width;
-        const height = (spriteData && spriteData.height) || image.data.height;
+        const width = (spriteData && spriteData.width) || assertedNotNullish(image.data).width;
+        const height = (spriteData && spriteData.height) || assertedNotNullish(image.data).height;
         if (content[0] < 0 || width < content[0]) return false;
         if (content[1] < 0 || height < content[1]) return false;
         if (content[2] < 0 || width < content[2]) return false;
@@ -174,10 +174,13 @@ export class ImageManager extends Evented {
 
     updateImage(id: string, image: StyleImage, validate = true) {
         const oldImage = this.getImage(id);
+        assertNotNullish(oldImage, `Image "${id}" not found for update`);
+        assertNotNullish(oldImage.data);
+        assertNotNullish(image.data);
         if (validate && (oldImage.data.width !== image.data.width || oldImage.data.height !== image.data.height)) {
             throw new Error(`size mismatch between old image (${oldImage.data.width}x${oldImage.data.height}) and new image (${image.data.width}x${image.data.height}).`);
         }
-        image.version = oldImage.version + 1;
+        image.version = (oldImage.version ?? 0) + 1;
         this.images[id] = image;
         this.updatedImages[id] = true;
     }
@@ -233,7 +236,7 @@ export class ImageManager extends Evented {
             if (image) {
                 // Clone the image so that our own copy of its ArrayBuffer doesn't get transferred.
                 response[id] = {
-                    data: image.data.clone(),
+                    data: assertedNotNullish(image.data).clone(),
                     pixelRatio: image.pixelRatio,
                     sdf: image.sdf,
                     version: image.version,
@@ -258,7 +261,7 @@ export class ImageManager extends Evented {
         return {width, height};
     }
 
-    getPattern(id: string): ImagePosition {
+    getPattern(id: string): ImagePosition | null {
         const pattern = this.patterns[id];
 
         const image = this.getImage(id);
@@ -271,8 +274,9 @@ export class ImageManager extends Evented {
         }
 
         if (!pattern) {
-            const w = image.data.width + padding * 2;
-            const h = image.data.height + padding * 2;
+            const data = assertedNotNullish(image.data);
+            const w = data.width + padding * 2;
+            const h = data.height + padding * 2;
             const bin = {w, h, x: 0, y: 0};
             const position = new ImagePosition(bin, image);
             this.patterns[id] = {bin, position};
@@ -294,7 +298,7 @@ export class ImageManager extends Evented {
             this.dirty = false;
         }
 
-        this.atlasTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+        assertedNotNullish(this.atlasTexture).bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
     }
 
     _updatePatternAtlas() {
@@ -310,9 +314,9 @@ export class ImageManager extends Evented {
 
         for (const id in this.patterns) {
             const {bin} = this.patterns[id];
-            const x = bin.x + padding;
-            const y = bin.y + padding;
-            const src = this.getImage(id).data;
+            const x = assertedNotNullish(bin.x) + padding;
+            const y = assertedNotNullish(bin.y) + padding;
+            const src = assertedNotNullish(assertedNotNullish(this.getImage(id)).data);
             const w = src.width;
             const h = src.height;
 
@@ -342,9 +346,9 @@ export class ImageManager extends Evented {
             const image = this.getImage(id);
             if (!image) warnOnce(`Image with ID: "${id}" was not found`);
 
-            const updated = renderStyleImage(image);
+            const updated = renderStyleImage(assertedNotNullish(image));
             if (updated) {
-                this.updateImage(id, image);
+                this.updateImage(id, assertedNotNullish(image));
             }
         }
     }

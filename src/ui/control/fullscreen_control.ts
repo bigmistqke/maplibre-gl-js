@@ -1,6 +1,6 @@
 import {DOM} from '../../util/dom';
 
-import {warnOnce} from '../../util/util';
+import {warnOnce, assertedNotNullish, assertNotNullish } from '../../util/util';
 
 import {Event, Evented} from '../../util/evented';
 import type {Map} from '../map';
@@ -44,13 +44,13 @@ export type FullscreenControlOptions = {
  * **Event** `fullscreenend` of type {@link Event} will be fired when fullscreen mode has ended.
  */
 export class FullscreenControl extends Evented implements IControl {
-    _map: Map;
-    _controlContainer: HTMLElement;
+    _map: Map | undefined | null;
+    _controlContainer: HTMLElement | undefined;
     _fullscreen: boolean;
-    _fullscreenchange: string;
-    _fullscreenButton: HTMLButtonElement;
-    _container: HTMLElement;
-    _prevCooperativeGesturesEnabled: boolean;
+    _fullscreenchange: string | undefined;
+    _fullscreenButton: HTMLButtonElement | undefined;
+    _container: HTMLElement | undefined;
+    _prevCooperativeGesturesEnabled: boolean | undefined;
     _pseudo: boolean;
 
     /**
@@ -91,9 +91,9 @@ export class FullscreenControl extends Evented implements IControl {
 
     /** {@inheritDoc IControl.onRemove} */
     onRemove() {
-        DOM.remove(this._controlContainer);
+        DOM.remove(assertedNotNullish(this._controlContainer));
         this._map = null;
-        window.document.removeEventListener(this._fullscreenchange, this._onFullscreenChange);
+        window.document.removeEventListener(assertedNotNullish(this._fullscreenchange), this._onFullscreenChange);
     }
 
     _setupUI() {
@@ -102,17 +102,17 @@ export class FullscreenControl extends Evented implements IControl {
         button.type = 'button';
         this._updateTitle();
         this._fullscreenButton.addEventListener('click', this._onClickFullscreen);
-        window.document.addEventListener(this._fullscreenchange, this._onFullscreenChange);
+        window.document.addEventListener(assertedNotNullish(this._fullscreenchange), this._onFullscreenChange);
     }
 
     _updateTitle() {
         const title = this._getTitle();
-        this._fullscreenButton.setAttribute('aria-label', title);
-        this._fullscreenButton.title = title;
+        assertedNotNullish(this._fullscreenButton).setAttribute('aria-label', title);
+        assertedNotNullish(this._fullscreenButton).title = title;
     }
 
     _getTitle() {
-        return this._map._getUIString(this._isFullscreen() ? 'FullscreenControl.Exit' : 'FullscreenControl.Enter');
+        return assertedNotNullish(this._map)._getUIString(this._isFullscreen() ? 'FullscreenControl.Exit' : 'FullscreenControl.Enter');
     }
 
     _isFullscreen() {
@@ -136,18 +136,20 @@ export class FullscreenControl extends Evented implements IControl {
 
     _handleFullscreenChange() {
         this._fullscreen = !this._fullscreen;
-        this._fullscreenButton.classList.toggle('maplibregl-ctrl-shrink');
-        this._fullscreenButton.classList.toggle('maplibregl-ctrl-fullscreen');
+        assertedNotNullish(this._fullscreenButton).classList.toggle('maplibregl-ctrl-shrink');
+        assertedNotNullish(this._fullscreenButton).classList.toggle('maplibregl-ctrl-fullscreen');
         this._updateTitle();
 
         if (this._fullscreen) {
             this.fire(new Event('fullscreenstart'));
-            this._prevCooperativeGesturesEnabled = this._map.cooperativeGestures.isEnabled();
-            this._map.cooperativeGestures.disable();
+            assertNotNullish(this._map);
+            this._prevCooperativeGesturesEnabled = assertedNotNullish(this._map.cooperativeGestures).isEnabled();
+            assertedNotNullish(this._map.cooperativeGestures).disable();
         } else {
             this.fire(new Event('fullscreenend'));
             if (this._prevCooperativeGesturesEnabled) {
-                this._map.cooperativeGestures.enable();
+                assertNotNullish(this._map);
+                assertedNotNullish(this._map.cooperativeGestures).enable();
             }
         }
     }
@@ -163,6 +165,7 @@ export class FullscreenControl extends Evented implements IControl {
     _exitFullscreen() {
         if (this._pseudo) {
             this._togglePseudoFullScreen();
+        // @ts-expect-error - checking for browser compatibility; exitFullscreen may not exist in older browsers
         } else if (window.document.exitFullscreen) {
             (window.document as any).exitFullscreen();
         } else if ((window.document as any).webkitCancelFullScreen) {
@@ -176,8 +179,8 @@ export class FullscreenControl extends Evented implements IControl {
     _requestFullscreen() {
         if (this._pseudo) {
             this._togglePseudoFullScreen();
-        } else if (this._container.requestFullscreen) {
-            this._container.requestFullscreen();
+        } else if (assertedNotNullish(this._container).requestFullscreen) {
+            assertedNotNullish(this._container).requestFullscreen();
         } else if ((this._container as any).webkitRequestFullscreen) {
             // due to https://caniuse.com/mdn-api_element_requestfullscreen
             (this._container as any).webkitRequestFullscreen();
@@ -187,8 +190,8 @@ export class FullscreenControl extends Evented implements IControl {
     }
 
     _togglePseudoFullScreen() {
-        this._container.classList.toggle('maplibregl-pseudo-fullscreen');
+        assertedNotNullish(this._container).classList.toggle('maplibregl-pseudo-fullscreen');
         this._handleFullscreenChange();
-        this._map.resize();
+        assertedNotNullish(this._map).resize();
     }
 }

@@ -11,24 +11,24 @@ import type {Event} from './evented';
 /**
  * Returns a new 64 bit float vec4 of zeroes.
  */
-export function createVec4f64(): vec4 { return new Float64Array(4) as any; }
+export function createVec4f64(): vec4 { return new Float64Array(4); }
 /**
  * Returns a new 64 bit float vec3 of zeroes.
  */
-export function createVec3f64(): vec3 { return new Float64Array(3) as any; }
+export function createVec3f64(): vec3 { return new Float64Array(3); }
 /**
  * Returns a new 64 bit float mat4 of zeroes.
  */
-export function createMat4f64(): mat4 { return new Float64Array(16) as any; }
+export function createMat4f64(): mat4 { return new Float64Array(16); }
 /**
  * Returns a new 32 bit float mat4 of zeroes.
  */
-export function createMat4f32(): mat4 { return new Float32Array(16) as any; }
+export function createMat4f32(): mat4 { return new Float32Array(16); }
 /**
  * Returns a new 64 bit float mat4 set to identity.
  */
 export function createIdentityMat4f64(): mat4 {
-    const m = new Float64Array(16) as any;
+    const m = new Float64Array(16);
     mat4.identity(m);
     return m;
 }
@@ -36,7 +36,7 @@ export function createIdentityMat4f64(): mat4 {
  * Returns a new 32 bit float mat4 set to identity.
  */
 export function createIdentityMat4f32(): mat4 {
-    const m = new Float32Array(16) as any;
+    const m = new Float32Array(16);
     mat4.identity(m);
     return m;
 }
@@ -99,12 +99,12 @@ export function threePlaneIntersection(plane0: vec4, plane1: vec4, plane2: vec4)
     if (det === 0) {
         return null;
     }
-    const cross12 = vec3.cross([] as any, [plane1[0], plane1[1], plane1[2]], [plane2[0], plane2[1], plane2[2]]);
-    const cross20 = vec3.cross([] as any, [plane2[0], plane2[1], plane2[2]], [plane0[0], plane0[1], plane0[2]]);
-    const cross01 = vec3.cross([] as any, [plane0[0], plane0[1], plane0[2]], [plane1[0], plane1[1], plane1[2]]);
-    const sum = vec3.scale([] as any, cross12, -plane0[3]);
-    vec3.add(sum, sum, vec3.scale([] as any, cross20, -plane1[3]));
-    vec3.add(sum, sum, vec3.scale([] as any, cross01, -plane2[3]));
+    const cross12 = vec3.cross([], [plane1[0], plane1[1], plane1[2]], [plane2[0], plane2[1], plane2[2]]);
+    const cross20 = vec3.cross([], [plane2[0], plane2[1], plane2[2]], [plane0[0], plane0[1], plane0[2]]);
+    const cross01 = vec3.cross([], [plane0[0], plane0[1], plane0[2]], [plane1[0], plane1[1], plane1[2]]);
+    const sum = vec3.scale([], cross12, -plane0[3]);
+    vec3.add(sum, sum, vec3.scale([], cross20, -plane1[3]));
+    vec3.add(sum, sum, vec3.scale([], cross01, -plane2[3]));
     vec3.scale(sum, sum, 1.0 / det);
     return sum;
 }
@@ -132,7 +132,7 @@ export function rayPlaneIntersection(origin: vec3, direction: vec3, plane: vec4)
 export function solveQuadratic(a: number, b: number, c: number): {
     t0: number;
     t1: number;
-} {
+} | null {
     const d = b * b - 4 * a * c;
     if (d < 0 || (a === 0 && b === 0)) {
         return null;
@@ -246,7 +246,7 @@ export function distanceOfAnglesRadians(radiansA: number, radiansB: number): num
  * Modulo function, as opposed to javascript's `%`, which is a remainder.
  * This functions will return positive values, even if the first operand is negative.
  */
-export function mod(n, m) {
+export function mod(n: number, m: number) {
     return ((n % m) + m) % m;
 }
 
@@ -422,8 +422,8 @@ export function keysDifference<S, T>(
 export function extend<T extends {}, U>(dest: T, source: U): T & U;
 export function extend<T extends {}, U, V>(dest: T, source1: U, source2: V): T & U & V;
 export function extend<T extends {}, U, V, W>(dest: T, source1: U, source2: V, source3: W): T & U & V & W;
-export function extend(dest: object, ...sources: Array<any>): any;
-export function extend(dest: object, ...sources: Array<any>): any {
+export function extend(dest: Record<string | number | symbol, any>, ...sources: Array<any>): any;
+export function extend(dest: Record<string | number | symbol, any>, ...sources: Array<any>): any {
     for (const src of sources) {
         for (const k in src) {
             dest[k] = src[k];
@@ -518,26 +518,47 @@ export function evaluateZoomSnap(zoom: number, zoomSnap: number, delta?: number)
  * Create an object by mapping all the values of an existing object while
  * preserving their keys.
  */
-export function mapObject(input: any, iterator: Function, context?: any): any {
-    const output = {};
+// NOTE: Could simplify types by removing this?
+export function mapObject<T extends Record<string, any>, U>(input: T, iterator: (value: T[keyof T], key: keyof T, input: T) => U): {[TKey in keyof T]: U} {
+    const output: Record<string, U> = {};
     for (const key in input) {
-        output[key] = iterator.call(context || this, input[key], key, input);
+        output[key] = iterator(input[key], key, input);
     }
-    return output;
+    return output as {[TKey in keyof T]: U};
 }
 
 /**
  * Create an object by filtering out values of an existing object.
- */
-export function filterObject(input: any, iterator: Function, context?: any): any {
-    const output = {};
+*/
+export function filterObject<T extends Record<string, any>>(input: T, iterator: (value: T[keyof T], key: keyof T, input: T) => boolean | void): Partial<T> {
+    const output: Partial<T> = {};
     for (const key in input) {
-        if (iterator.call(context || this, input[key], key, input)) {
+        if (iterator(input[key], key, input)) {
             output[key] = input[key];
         }
     }
     return output;
 }
+
+/**
+ * Removes all entries whose value is `undefined` from an object.
+ *
+ * The return type preserves keys that are always defined as required,
+ * and makes keys whose type includes `undefined` optional (with `undefined` stripped).
+ */
+export function omitUndefined<T extends Record<string, unknown>>(input: T): OmitUndefinedValues<T> {
+    const output: Record<string, unknown> = {};
+    for (const key in input) {
+        if (input[key] !== undefined) {
+            output[key] = input[key];
+        }
+    }
+    return output as OmitUndefinedValues<T>;
+}
+
+type OmitUndefinedValues<T> =
+    { [K in keyof T as undefined extends T[K] ? never : K]: T[K] } &
+    { [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<T[K], undefined> };
 
 /**
  * Deeply compares two object literals.
@@ -553,8 +574,8 @@ export function deepEqual(a?: unknown | null, b?: unknown | null): boolean {
         }
         return true;
     }
-    if (typeof a === 'object' && a !== null && b !== null) {
-        if (!(typeof b === 'object')) return false;
+    if (isRecord(a) && b !== null) {
+        if (!isRecord(b)) return false;
         const keys = Object.keys(a);
         if (keys.length !== Object.keys(b).length) return false;
         for (const key in a) {
@@ -692,7 +713,7 @@ export function parseCacheControl(cacheControl: string): any {
     // Taken from [Wreck](https://github.com/hapijs/wreck)
     const re = /(?:^|(?:\s*\,\s*))([^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)(?:\=(?:([^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)|(?:\"((?:[^"\\]|\\.)*)\")))?/g;
 
-    const header = {};
+    const header: Record<string, any> = {};
     cacheControl.replace(re, ($0, $1, $2, $3) => {
         const value = $2 || $3;
         header[$1] = value ? value.toLowerCase() : true;
@@ -708,7 +729,7 @@ export function parseCacheControl(cacheControl: string): any {
     return header;
 }
 
-let _isSafari = null;
+let _isSafari: boolean | null = null;
 
 /**
  * Returns true when run in WebKit derived browsers.
@@ -731,7 +752,7 @@ export function isSafari(scope: any): boolean {
     return _isSafari;
 }
 
-export function storageAvailable(type: string): boolean {
+export function storageAvailable(type: keyof typeof window): boolean {
     try {
         const storage = window[type];
         storage.setItem('_mapbox_test_', 1);
@@ -783,7 +804,7 @@ export const arrayBufferToImageBitmap = async (data: ArrayBuffer): Promise<Image
     try {
         return createImageBitmap(blob);
     } catch (e) {
-        throw new Error(`Could not load image because of ${e.message}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
+        throw new Error(`Could not load image because of ${(e as Error).message}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
     }
 };
 
@@ -879,7 +900,7 @@ function computeVideoFrameParameters(image: Size, x: number, y: number, width: n
 export async function readImageUsingVideoFrame(
     image: HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas,
     x: number, y: number, width: number, height: number
-): Promise<Uint8ClampedArray> {
+): Promise<Uint8ClampedArray<ArrayBuffer>> {
     if (typeof VideoFrame === 'undefined') {
         throw new Error('VideoFrame not supported');
     }
@@ -921,14 +942,14 @@ let offscreenCanvasContext: OffscreenCanvasRenderingContext2D;
 export function readImageDataUsingOffscreenCanvas(
     imgBitmap: HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas,
     x: number, y: number, width: number, height: number
-): Uint8ClampedArray {
+): Uint8ClampedArray<ArrayBuffer> {
     const origWidth = imgBitmap.width;
     const origHeight = imgBitmap.height;
     // Lazily initialize OffscreenCanvas
     if (!offscreenCanvas || !offscreenCanvasContext) {
         // Dem tiles are typically 256x256
         offscreenCanvas = new OffscreenCanvas(origWidth, origHeight);
-        offscreenCanvasContext = offscreenCanvas.getContext('2d', {willReadFrequently: true});
+        offscreenCanvasContext = assertedNotNullish(offscreenCanvas.getContext('2d', {willReadFrequently: true}));
     }
 
     offscreenCanvas.width = origWidth;
@@ -954,7 +975,7 @@ export function readImageDataUsingOffscreenCanvas(
 export async function getImageData(
     image: HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas,
     x: number, y: number, width: number, height: number
-): Promise<Uint8ClampedArray> {
+): Promise<Uint8ClampedArray<ArrayBuffer>> {
     if (isOffscreenCanvasDistorted()) {
         try {
             return await readImageUsingVideoFrame(image, x, y, width, height);
@@ -1034,7 +1055,7 @@ export function rollPitchBearingEqual(a: RollPitchBearing, b: RollPitchBearing):
  * @returns roll, pitch, and bearing angles in degrees
  */
 export function getRollPitchBearing(rotation: quat): RollPitchBearing {
-    const m: mat3 = new Float64Array(9) as any;
+    const m: mat3 = new Float64Array(9);
     mat3.fromQuat(m, rotation);
 
     const xAngle = radiansToDegrees(-Math.asin(clamp(m[2], -1, 1)));
@@ -1068,7 +1089,7 @@ export function getAngleDelta(lastPoint: Point, currentPoint: Point, center: Poi
  * @returns The rotation quaternion
  */
 export function rollPitchBearingToQuat(roll: number, pitch: number, bearing: number): quat {
-    const rotation: quat = new Float64Array(4) as any;
+    const rotation: quat = new Float64Array(4);
     quat.fromEuler(rotation, roll, pitch - 90.0, bearing);
     return rotation;
 }
@@ -1164,7 +1185,7 @@ const pointableEvents = {
 };
 
 export function isTouchableEvent(event: Event, eventType: string): event is TouchEvent {
-    return touchableEvents[eventType] && 'touches' in event;
+    return touchableEvents[eventType as keyof typeof touchableEvents] && 'touches' in event;
 }
 
 /**
@@ -1172,7 +1193,7 @@ export function isTouchableEvent(event: Event, eventType: string): event is Touc
  * Uses the event target's window context for cross-window support.
  */
 export function isPointableEvent(event: Event, eventType: string): event is MouseEvent {
-    if (!pointableEvents[eventType]) return false;
+    if (!pointableEvents[eventType as keyof typeof pointableEvents]) return false;
 
     // Get the window context from the event target to use the correct constructor.
     const domEvent = event as globalThis.Event;
@@ -1182,5 +1203,75 @@ export function isPointableEvent(event: Event, eventType: string): event is Mous
 }
 
 export function isTouchableOrPointableType(eventType: string): boolean {
-    return touchableEvents[eventType] || pointableEvents[eventType];
+    return touchableEvents[eventType as keyof typeof touchableEvents] || pointableEvents[eventType as keyof typeof pointableEvents];
+}
+
+export function assertedNotNullish<T>(value: T, message?: string):  NonNullable<T>{
+    if(!isNotNullish(value)){
+        throw new Error(message ?? `Expected ${value} to be defined.`);
+    }
+    return value;
+}
+
+export function isNotNullish<T>(value: T):value is NonNullable<T> {
+    return !(isNullish(value));
+}
+
+export function isNullish(value: any):value is null | undefined {
+    return value === undefined || value === null;
+}
+
+/**
+ * Type guard that checks if a value is an array.
+ *
+ * @template T - The expected type of array elements
+ * @param value - The value to check
+ * @returns True if the value is an array, false otherwise
+ * @example
+ * if (isArray(data)) {
+ *   // data is now typed as unknown[]
+ *   console.log(data.length);
+ * }
+ *
+ * @example
+ * const result = isArray<string>(value);
+ * // Type guard for string arrays
+ */
+export function isRecord(
+    value: unknown
+): value is Record<string | number | symbol, any> {
+    return typeof value === 'object' && value !== null;
+}
+
+export function assertNotNullish<T>(
+    val: T | undefined | null | void,
+    message = 'Expected value to not be nullish'
+): asserts val is T {
+    assert(isNotNullish(val), message);
+}
+
+/**
+ * Asserts that a condition is truthy and throws an error if it's not.
+ * Uses TypeScript assertion signatures to provide type narrowing.
+ *
+ * @param condition - The condition to assert
+ * @param message - Optional error message (defaults to 'assertion error')
+ * @throws Throws an Error if the condition is falsy
+ * @example
+ * assert(user.id, 'User ID is required');
+ * assert(items.length > 0, 'Items array cannot be empty');
+ *
+ * @example
+ * // TypeScript type narrowing
+ * const value: string | null = getValue();
+ * assert(value);
+ * // value is now typed as string (not null)
+ */
+export function assert(
+    condition: any,
+    message = 'assertion error'
+): asserts condition {
+    if (!condition) {
+        throw new Error(message);
+    }
 }

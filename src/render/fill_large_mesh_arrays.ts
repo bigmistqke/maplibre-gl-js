@@ -1,6 +1,7 @@
 import {type LineIndexArray, type TriangleIndexArray} from '../data/array_types.g';
 import {type Segment, SegmentVector} from '../data/segment';
 import {type StructArray} from '../util/struct_array';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * This function will take any "mesh" and fill in into vertex buffers, breaking it up into multiple drawcalls as needed
@@ -52,8 +53,8 @@ export function fillLargeMeshArrays(
         triangleSegment.vertexLength += numVertices;
         triangleSegment.primitiveLength += triangleIndices.length / 3;
 
-        let lineIndicesStart: number;
-        let lineSegment: Segment;
+        let lineIndicesStart: number | undefined;
+        let lineSegment: Segment | undefined;
 
         if (hasLines) {
             // Note that segment creation must happen *before* we add vertices into the vertex buffer
@@ -68,16 +69,18 @@ export function fillLargeMeshArrays(
         }
 
         if (hasLines) {
+            const startIndex = assertedNotNullish(lineIndicesStart);
+            const segment = assertedNotNullish(lineSegment);
             for (let listIndex = 0; listIndex < lineList.length; listIndex++) {
                 const lineIndices = lineList[listIndex];
 
                 for (let i = 1; i < lineIndices.length; i += 2) {
                     lineIndexArray.emplaceBack(
-                        lineIndicesStart + lineIndices[i - 1],
-                        lineIndicesStart + lineIndices[i]);
+                        startIndex + lineIndices[i - 1],
+                        startIndex + lineIndices[i]);
                 }
 
-                lineSegment.primitiveLength += lineIndices.length / 2;
+                segment.primitiveLength += lineIndices.length / 2;
             }
         }
     } else {

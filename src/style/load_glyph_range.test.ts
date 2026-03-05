@@ -1,15 +1,15 @@
 import {test, expect, vi} from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import {RequestManager} from '../util/request_manager';
 import {loadGlyphRange} from './load_glyph_range';
 import {fakeServer} from 'nise';
 import {bufferToArrayBuffer} from '../util/test/util';
 
 test('loadGlyphRange', async ()  => {
-    global.fetch = null;
+    global.fetch = undefined as any; // Test mock
 
-    const transform = vi.fn().mockImplementation((url) => {
+    const transform = vi.fn().mockImplementation((url: string) => {
         return {url};
     });
 
@@ -30,12 +30,12 @@ test('loadGlyphRange', async ()  => {
         const id = Number(key);
         const glyph = result[id];
 
-        expect(glyph.id).toBe(Number(id));
-        expect(glyph.metrics).toBeTruthy();
-        expect(typeof glyph.metrics.width).toBe('number');
-        expect(typeof glyph.metrics.height).toBe('number');
-        expect(typeof glyph.metrics.top).toBe('number');
-        expect(typeof glyph.metrics.advance).toBe('number');
+        expect(glyph?.id).toBe(Number(id));
+        expect(glyph?.metrics).toBeTruthy();
+        expect(typeof glyph?.metrics?.width).toBe('number');
+        expect(typeof glyph?.metrics?.height).toBe('number');
+        expect(typeof glyph?.metrics?.top).toBe('number');
+        expect(typeof glyph?.metrics?.advance).toBe('number');
     }
     expect(server.requests[0].url).toBe('https://localhost/fonts/v1/Arial Unicode MS/0-255.pbf');
 });

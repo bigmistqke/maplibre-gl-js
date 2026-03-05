@@ -163,19 +163,19 @@ export const create = (id: string, specification: SourceSpecification | CanvasSo
 const getSourceType = (name: string): SourceClass => {
     switch (name) {
         case 'geojson':
-            return GeoJSONSource;
+            return GeoJSONSource as unknown as SourceClass;
         case 'image':
-            return ImageSource;
+            return ImageSource as unknown as SourceClass;
         case 'raster':
-            return RasterTileSource;
+            return RasterTileSource as unknown as SourceClass;
         case 'raster-dem':
-            return RasterDEMTileSource;
+            return RasterDEMTileSource as unknown as SourceClass;
         case 'vector':
-            return VectorTileSource;
+            return VectorTileSource as unknown as SourceClass;
         case 'video':
-            return VideoSource;
+            return VideoSource as unknown as SourceClass;
         case 'canvas':
-            return CanvasSource;
+            return CanvasSource as unknown as SourceClass;
     }
     return registeredSources[name];
 };

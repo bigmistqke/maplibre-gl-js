@@ -24,11 +24,11 @@ export class LineAtlas {
     width: number;
     height: number;
     nextRow: number;
-    bytes: number;
+    bytes?: number;
     data: Uint8Array;
-    dashEntry: {[_: string]: DashEntry};
-    dirty: boolean;
-    texture: WebGLTexture;
+    dashEntry: {[_: string]: DashEntry | null};
+    dirty?: boolean;
+    texture?: WebGLTexture;
 
     constructor(width: number, height: number) {
         this.width = width;
@@ -156,7 +156,7 @@ export class LineAtlas {
         }
     }
 
-    addDash(dasharray: Array<number>, round: boolean): DashEntry {
+    addDash(dasharray: Array<number>, round: boolean): DashEntry | null {
         const n = round ? 7 : 0;
         const height = 2 * n + 1;
 

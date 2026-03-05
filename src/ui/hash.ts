@@ -1,7 +1,7 @@
 import {throttle} from '../util/throttle';
 import {LngLat} from '../geo/lng_lat';
-
 import type {Map} from './map';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * Adds the map's position to its page's location hash.
@@ -10,8 +10,8 @@ import type {Map} from './map';
  * @group Markers and Controls
  */
 export class Hash {
-    _map: Map;
-    _hashName: string;
+    _map: Map | undefined;
+    _hashName: string | null | undefined;
 
     constructor(hashName?: string | null) {
         this._hashName = hashName && encodeURIComponent(hashName);
@@ -25,7 +25,7 @@ export class Hash {
     addTo(map: Map) {
         this._map = map;
         addEventListener('hashchange', this._onHashChange, false);
-        this._map.on('moveend', this._updateHash);
+        assertedNotNullish(this._map).on('moveend', this._updateHash);
         return this;
     }
 
@@ -34,8 +34,9 @@ export class Hash {
      */
     remove() {
         removeEventListener('hashchange', this._onHashChange, false);
-        this._map.off('moveend', this._updateHash);
-        clearTimeout(this._updateHash());
+        assertedNotNullish(this._map).off('moveend', this._updateHash);
+        const handle = this._updateHash();
+        if (handle) clearTimeout(handle);
         this._removeHash();
 
         delete this._map;
@@ -43,15 +44,16 @@ export class Hash {
     }
 
     getHashString(mapFeedback?: boolean) {
-        const center = this._map.getCenter(),
-            zoom = Math.round(this._map.getZoom() * 100) / 100,
+        const map = assertedNotNullish(this._map);
+        const center = map.getCenter(),
+            zoom = Math.round(map.getZoom() * 100) / 100,
             // derived from equation: 512px * 2^z / 360 / 10^d < 0.5px
             precision = Math.ceil((zoom * Math.LN2 + Math.log(512 / 360 / 0.5)) / Math.LN10),
             m = Math.pow(10, precision),
             lng = Math.round(center.lng * m) / m,
             lat = Math.round(center.lat * m) / m,
-            bearing = this._map.getBearing(),
-            pitch = this._map.getPitch();
+            bearing = map.getBearing(),
+            pitch = map.getPitch();
         let hash = '';
         if (mapFeedback) {
             // new map feedback site has some constraints that don't allow
@@ -108,9 +110,11 @@ export class Hash {
         if (!this._isValidHash(hash)) {
             return false;
         }
-
-        const bearing = this._map.dragRotate.isEnabled() && this._map.touchZoomRotate.isEnabled() ? +(hash[3] || 0) : this._map.getBearing();
-        this._map.jumpTo({
+        const map = assertedNotNullish(this._map);
+        const dragRotate = assertedNotNullish(map.dragRotate);
+        const touchZoomRotate = assertedNotNullish(map.touchZoomRotate);
+        const bearing = dragRotate.isEnabled() && touchZoomRotate.isEnabled() ? +(hash[3] || 0) : assertedNotNullish(this._map).getBearing();
+        assertedNotNullish(this._map).jumpTo({
             center: [+hash[2], +hash[1]],
             zoom: +hash[0],
             bearing,
@@ -123,7 +127,7 @@ export class Hash {
     _updateHashUnthrottled = () => {
         // Replace if already present, else append the updated hash string
         const location = window.location.href.replace(/(#.*)?$/, this.getHashString());
-        window.history.replaceState(window.history.state, null, location);
+        window.history.replaceState(window.history.state, '', location);
     };
 
     _removeHash = () => {
@@ -147,16 +151,16 @@ export class Hash {
         }
         let location = window.location.href.replace(/(#.+)?$/, replaceString);
         location = location.replace('&&', '&');
-        window.history.replaceState(window.history.state, null, location);
+        window.history.replaceState(window.history.state, '', location);
     };
 
     /**
      * Mobile Safari doesn't allow updating the hash more than 100 times per 30 seconds.
      */
-    _updateHash: () => ReturnType<typeof setTimeout> = throttle(this._updateHashUnthrottled, 30 * 1000 / 100);
+    _updateHash: () => ReturnType<typeof setTimeout> | null = throttle(this._updateHashUnthrottled, 30 * 1000 / 100);
 
-    _isValidHash(hash: number[]) {
-        if (hash.length < 3 || hash.some(isNaN)) {
+    _isValidHash(hash: string[]) {
+        if (hash.length < 3 || hash.some(v => isNaN(Number(v)))) {
             return false;
         }
 
@@ -171,8 +175,8 @@ export class Hash {
         const bearing = +(hash[3] || 0);
         const pitch = +(hash[4] || 0);
 
-        return zoom >= this._map.getMinZoom() && zoom <= this._map.getMaxZoom() &&
+        return zoom >= assertedNotNullish(this._map).getMinZoom() && zoom <= assertedNotNullish(this._map).getMaxZoom() &&
             bearing >= -180 && bearing <= 180 &&
-            pitch >= this._map.getMinPitch() && pitch <= this._map.getMaxPitch();
+            pitch >= assertedNotNullish(this._map).getMinPitch() && pitch <= assertedNotNullish(this._map).getMaxPitch();
     };
 }

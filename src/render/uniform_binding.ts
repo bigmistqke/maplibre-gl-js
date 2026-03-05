@@ -2,6 +2,7 @@ import {Color} from '@maplibre/maplibre-gl-style-spec';
 
 import type {Context} from '../gl/context';
 import {type mat4, type vec2, type vec3, type vec4} from 'gl-matrix';
+import {assertedNotNullish} from '../util/util';
 
 type $ObjMap<T extends {}, F extends (v: any) => any> = {
     [K in keyof T]: F extends (v: T[K]) => infer R ? R : never;
@@ -17,7 +18,7 @@ export type UniformLocations = {[_: string]: WebGLUniformLocation};
 abstract class Uniform<T> {
     gl: WebGLRenderingContext|WebGL2RenderingContext;
     location: WebGLUniformLocation;
-    current: T;
+    current: T | undefined;
 
     constructor(context: Context, location: WebGLUniformLocation) {
         this.gl = context.gl;
@@ -62,7 +63,7 @@ class Uniform2f extends Uniform<vec2> {
     }
 
     set(v: vec2): void {
-        if (v[0] !== this.current[0] || v[1] !== this.current[1]) {
+        if (v[0] !== assertedNotNullish(this.current)[0] || v[1] !== assertedNotNullish(this.current)[1]) {
             this.current = v;
             this.gl.uniform2f(this.location, v[0], v[1]);
         }
@@ -76,7 +77,7 @@ class Uniform3f extends Uniform<vec3> {
     }
 
     set(v: vec3): void {
-        if (v[0] !== this.current[0] || v[1] !== this.current[1] || v[2] !== this.current[2]) {
+        if (v[0] !== assertedNotNullish(this.current)[0] || v[1] !== assertedNotNullish(this.current)[1] || v[2] !== assertedNotNullish(this.current)[2]) {
             this.current = v;
             this.gl.uniform3f(this.location, v[0], v[1], v[2]);
         }
@@ -90,8 +91,8 @@ class Uniform4f extends Uniform<vec4> {
     }
 
     set(v: vec4): void {
-        if (v[0] !== this.current[0] || v[1] !== this.current[1] ||
-            v[2] !== this.current[2] || v[3] !== this.current[3]) {
+        if (v[0] !== assertedNotNullish(this.current)[0] || v[1] !== assertedNotNullish(this.current)[1] ||
+            v[2] !== assertedNotNullish(this.current)[2] || v[3] !== assertedNotNullish(this.current)[3]) {
             this.current = v;
             this.gl.uniform4f(this.location, v[0], v[1], v[2], v[3]);
         }
@@ -105,8 +106,8 @@ class UniformColor extends Uniform<Color> {
     }
 
     set(v: Color): void {
-        if (v.r !== this.current.r || v.g !== this.current.g ||
-            v.b !== this.current.b || v.a !== this.current.a) {
+        if (v.r !== assertedNotNullish(this.current).r || v.g !== assertedNotNullish(this.current).g ||
+            v.b !== assertedNotNullish(this.current).b || v.a !== assertedNotNullish(this.current).a) {
             this.current = v;
             this.gl.uniform4f(this.location, v.r, v.g, v.b, v.a);
         }
@@ -160,13 +161,13 @@ class UniformMatrix4f extends Uniform<mat4> {
         // The vast majority of matrix comparisons that will trip this set
         // happen at i=12 or i=0, so we check those first to avoid lots of
         // unnecessary iteration:
-        if (v[12] !== this.current[12] || v[0] !== this.current[0]) {
+        if (v[12] !== assertedNotNullish(this.current)[12] || v[0] !== assertedNotNullish(this.current)[0]) {
             this.current = v;
             this.gl.uniformMatrix4fv(this.location, false, v);
             return;
         }
         for (let i = 1; i < 16; i++) {
-            if (v[i] !== this.current[i]) {
+            if (v[i] !== assertedNotNullish(this.current)[i]) {
                 this.current = v;
                 this.gl.uniformMatrix4fv(this.location, false, v);
                 break;

@@ -3,7 +3,7 @@ import {loadGlyphRange} from '../style/load_glyph_range';
 import TinySDF from '@mapbox/tiny-sdf';
 import {codePointUsesLocalIdeographFontFamily} from '../util/unicode_properties.g';
 import {AlphaImage} from '../util/image';
-import {warnOnce} from '../util/util';
+import {warnOnce, assertedNotNullish} from '../util/util';
 
 import type {StyleGlyph} from '../style/style_glyph';
 import type {RequestManager} from '../util/request_manager';
@@ -44,9 +44,9 @@ const textureScale = 2;
 
 export class GlyphManager {
     requestManager: RequestManager;
-    localIdeographFontFamily: string | false;
+    localIdeographFontFamily: string | false | undefined;
     entries: {[stack: string]: Entry};
-    url: string;
+    url?: string | null;
     lang?: string;
 
     // exposed as statics to enable stubbing in unit tests
@@ -65,7 +65,7 @@ export class GlyphManager {
     }
 
     async getGlyphs(glyphs: {[stack: string]: Array<number>}): Promise<GetGlyphsResponse> {
-        const glyphsPromises: Promise<{stack: string; id: number; glyph: StyleGlyph}>[] = [];
+        const glyphsPromises: Promise<{stack: string; id: number; glyph: StyleGlyph|null}>[] = [];
 
         for (const stack in glyphs) {
             for (const id of glyphs[stack]) {
@@ -92,7 +92,7 @@ export class GlyphManager {
         return result;
     }
 
-    async _getAndCacheGlyphsPromise(stack: string, id: number): Promise<{stack: string; id: number; glyph: StyleGlyph}> {
+    async _getAndCacheGlyphsPromise(stack: string, id: number): Promise<{stack: string; id: number; glyph: StyleGlyph | null}> {
         // Create an entry for this fontstack if it doesn’t already exist.
         let entry = this.entries[stack];
         if (!entry) {
@@ -118,7 +118,7 @@ export class GlyphManager {
         return await this._downloadAndCacheRangePromise(stack, id);
     }
 
-    async _downloadAndCacheRangePromise(stack: string, id: number): Promise<{stack: string; id: number; glyph: StyleGlyph}> {
+    async _downloadAndCacheRangePromise(stack: string, id: number): Promise<{stack: string; id: number; glyph: StyleGlyph | null}> {
         // Try to get the glyph from the cache of server-side glyphs by PBF range.
         const entry = this.entries[stack];
         const range = Math.floor(id / 256);
@@ -128,7 +128,7 @@ export class GlyphManager {
 
         // Start downloading this range unless we’re currently downloading it.
         if (!entry.requests[range]) {
-            const promise = GlyphManager.loadGlyphRange(stack, range, this.url, this.requestManager);
+            const promise = GlyphManager.loadGlyphRange(stack, range, this.url!, this.requestManager);
             entry.requests[range] = promise;
         }
 
@@ -139,11 +139,11 @@ export class GlyphManager {
                 entry.glyphs[+id] = response[+id];
             }
             entry.ranges[range] = true;
-            return {stack, id, glyph: response[id] || null};
+            return {stack, id, glyph: (response[id] || null)};
         } catch (e) {
             // Fall back to drawing the glyph locally and caching it.
             const glyph = entry.glyphs[id] = this._drawGlyph(entry, stack, id);
-            this._warnOnMissingGlyphRange(glyph, range, id, e);
+            this._warnOnMissingGlyphRange(glyph, range, id, e as Error);
             return {stack, id, glyph};
         }
     }
@@ -196,7 +196,7 @@ export class GlyphManager {
 
         return {
             id,
-            bitmap: new AlphaImage({width: char.width || 30 * textureScale, height: char.height || 30 * textureScale}, char.data),
+            bitmap: new AlphaImage({width: char.width || 30 * textureScale, height: char.height || 30 * textureScale}, assertedNotNullish(char.data) as Uint8ClampedArray<ArrayBuffer>),
             metrics: {
                 width: isControl ? 0 : (char.glyphWidth / textureScale || 24),
                 height: char.glyphHeight / textureScale || 24,
@@ -208,7 +208,7 @@ export class GlyphManager {
         };
     }
 
-    _createTinySDF(stack: String | false): TinySDF {
+    _createTinySDF(stack: String | false | undefined): TinySDF {
         // Escape and quote the font family list for use in CSS.
         const fontFamilies = stack ? stack.split(',') : [];
         fontFamilies.push(defaultGenericFontFamily);
@@ -264,17 +264,17 @@ export class GlyphManager {
                 match = `${weight}`;
             }
         }
-        return match;
+        return assertedNotNullish(match);
     }
 
     destroy() {
         for (const stack in this.entries) {
             const entry = this.entries[stack];
             if (entry.tinySDF) {
-                entry.tinySDF = null;
+                entry.tinySDF = undefined;
             }
             if (entry.ideographTinySDF) {
-                entry.ideographTinySDF = null;
+                entry.ideographTinySDF = undefined;
             }
             entry.glyphs = {};
             entry.requests = {};

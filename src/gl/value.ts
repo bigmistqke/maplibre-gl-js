@@ -46,7 +46,7 @@ class BaseValue<T> implements IValue<T> {
         // overridden in child classes;
     }
 
-    getDefault(): T {
+    getDefault(): T  {
         return this.default; // overridden in child classes
     }
     setDefault() {
@@ -315,11 +315,11 @@ export class FrontFace extends BaseValue<FrontFaceType> {
     }
 }
 
-export class ProgramValue extends BaseValue<WebGLProgram> {
-    getDefault(): WebGLProgram {
+export class ProgramValue extends BaseValue<WebGLProgram | null> {
+    getDefault(): WebGLProgram | null {
         return null;
     }
-    set(v?: WebGLProgram | null) {
+    set(v: WebGLProgram | null = null) {
         if (v === this.current && !this.dirty) return;
         this.gl.useProgram(v);
         this.current = v;
@@ -353,11 +353,11 @@ export class Viewport extends BaseValue<ViewportType> {
     }
 }
 
-export class BindFramebuffer extends BaseValue<WebGLFramebuffer> {
-    getDefault(): WebGLFramebuffer {
+export class BindFramebuffer extends BaseValue<WebGLFramebuffer | null> {
+    getDefault(): WebGLFramebuffer | null {
         return null;
     }
-    set(v?: WebGLFramebuffer | null) {
+    set(v: WebGLFramebuffer | null = null) {
         if (v === this.current && !this.dirty) return;
         const gl = this.gl;
         gl.bindFramebuffer(gl.FRAMEBUFFER, v);
@@ -366,11 +366,11 @@ export class BindFramebuffer extends BaseValue<WebGLFramebuffer> {
     }
 }
 
-export class BindRenderbuffer extends BaseValue<WebGLRenderbuffer> {
-    getDefault(): WebGLRenderbuffer {
+export class BindRenderbuffer extends BaseValue<WebGLRenderbuffer | null> {
+    getDefault(): WebGLRenderbuffer | null {
         return null;
     }
-    set(v?: WebGLRenderbuffer | null) {
+    set(v: WebGLRenderbuffer | null = null) {
         if (v === this.current && !this.dirty) return;
         const gl = this.gl;
         gl.bindRenderbuffer(gl.RENDERBUFFER, v);
@@ -379,11 +379,11 @@ export class BindRenderbuffer extends BaseValue<WebGLRenderbuffer> {
     }
 }
 
-export class BindTexture extends BaseValue<WebGLTexture> {
-    getDefault(): WebGLTexture {
+export class BindTexture extends BaseValue<WebGLTexture | null> {
+    getDefault(): WebGLTexture | null {
         return null;
     }
-    set(v?: WebGLTexture | null) {
+    set(v: WebGLTexture | null = null) {
         if (v === this.current && !this.dirty) return;
         const gl = this.gl;
         gl.bindTexture(gl.TEXTURE_2D, v);
@@ -392,11 +392,11 @@ export class BindTexture extends BaseValue<WebGLTexture> {
     }
 }
 
-export class BindVertexBuffer extends BaseValue<WebGLBuffer> {
-    getDefault(): WebGLBuffer {
+export class BindVertexBuffer extends BaseValue<WebGLBuffer | null> {
+    getDefault(): WebGLBuffer | null {
         return null;
     }
-    set(v?: WebGLBuffer | null) {
+    set(v: WebGLBuffer | null = null) {
         if (v === this.current && !this.dirty) return;
         const gl = this.gl;
         gl.bindBuffer(gl.ARRAY_BUFFER, v);
@@ -405,11 +405,11 @@ export class BindVertexBuffer extends BaseValue<WebGLBuffer> {
     }
 }
 
-export class BindElementBuffer extends BaseValue<WebGLBuffer> {
-    getDefault(): WebGLBuffer {
+export class BindElementBuffer extends BaseValue<WebGLBuffer | null> {
+    getDefault(): WebGLBuffer | null {
         return null;
     }
-    set(v?: WebGLBuffer | null) {
+    set(v: WebGLBuffer | null = null) {
         // Always rebind
         const gl = this.gl;
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, v);
@@ -476,7 +476,7 @@ export class PixelStoreUnpackFlipY extends BaseValue<boolean> {
     }
 }
 
-class FramebufferAttachment<T> extends BaseValue<T> {
+class FramebufferAttachment<T> extends BaseValue<T | null> {
     parent: WebGLFramebuffer;
     context: Context;
 
@@ -494,7 +494,7 @@ export class ColorAttachment extends FramebufferAttachment<WebGLTexture> {
     setDirty() {
         this.dirty = true;
     }
-    set(v?: WebGLTexture | null): void {
+    set(v: WebGLTexture | null = null): void {
         if (v === this.current && !this.dirty) return;
         this.context.bindFramebuffer.set(this.parent);
         // note: it's possible to attach a renderbuffer to the color
@@ -508,7 +508,7 @@ export class ColorAttachment extends FramebufferAttachment<WebGLTexture> {
 }
 
 export class DepthAttachment extends FramebufferAttachment<WebGLRenderbuffer> {
-    set(v?: WebGLRenderbuffer | null): void {
+    set(v: WebGLRenderbuffer | null = null): void {
         if (v === this.current && !this.dirty) return;
         this.context.bindFramebuffer.set(this.parent);
         // note: it's possible to attach a texture to the depth attachment
@@ -521,7 +521,7 @@ export class DepthAttachment extends FramebufferAttachment<WebGLRenderbuffer> {
 }
 
 export class DepthStencilAttachment extends FramebufferAttachment<WebGLRenderbuffer> {
-    set(v?: WebGLRenderbuffer | null): void {
+    set(v: WebGLRenderbuffer | null = null): void {
         if (v === this.current && !this.dirty) return;
         this.context.bindFramebuffer.set(this.parent);
         // note: it's possible to attach a texture to the depth attachment

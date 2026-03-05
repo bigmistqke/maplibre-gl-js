@@ -13,11 +13,11 @@ import {StubMap} from '../util/test/util';
 
 const transform = new MercatorTransform();
 
-function createSource(options, transformCallback?) {
-    const source = new RasterDEMTileSource('id', options, {send() {}} as any as Dispatcher, null);
+function createSource(options: Record<string, unknown>, transformCallback?: (url: string, resourceType: string) => {url: string}) {
+    const source = new RasterDEMTileSource('id', options as any, {send() {}} as unknown as Dispatcher, null as any);
     source.onAdd({
         transform,
-        _requestManager: new RequestManager(transformCallback),
+        _requestManager: new RequestManager(transformCallback as any),
         getPixelRatio() { return 1; }
     } as any);
 
@@ -34,7 +34,7 @@ describe('TerrainTileManager', () => {
     let tsc: TerrainTileManager;
 
     beforeAll(async () => {
-        global.fetch = null;
+        global.fetch = null as unknown as typeof global.fetch;
         server = fakeServer.create();
         server.respondWith('/source.json', JSON.stringify({
             minzoom: 5,
@@ -44,7 +44,7 @@ describe('TerrainTileManager', () => {
             bounds: [-47, -7, -45, -5]
         }));
         const map = new StubMap();
-        style = new Style(map as any);
+        style = new Style(map as unknown as any);
         const loadPromise = style.once('style.load');
         style.loadJSON({
             'version': 8,
@@ -54,7 +54,7 @@ describe('TerrainTileManager', () => {
         await loadPromise;
         const source = createSource({url: '/source.json'});
         server.respond();
-        style.addSource('terrain', source as any);
+        style.addSource('terrain', source as unknown as any);
         tsc = new TerrainTileManager(style.tileManagers.terrain);
     });
 
@@ -70,7 +70,7 @@ describe('TerrainTileManager', () => {
     test('getSourceTile', () => {
         const tileID = new OverscaledTileID(5, 0, 5, 17, 11);
         const tile = new Tile(tileID, 256);
-        tile.dem = {} as DEMData;
+        tile.dem = {} as unknown as DEMData;
         tsc.tileManager._inViewTiles.setTile(tileID.key, tile);
         expect(tsc.deltaZoom).toBe(1);
         expect(tsc.getSourceTile(tileID)).toBeFalsy();
@@ -87,7 +87,7 @@ describe('TerrainTileManager', () => {
         tsc.tileManager._outOfViewCache.setMaxSize(1);
         tsc.tileManager._outOfViewCache.add(underzoomTileID, tile);
         expect(tsc.tileManager._inViewTiles.getTileById(underzoomTileID.key)).toBeUndefined();
-        expect(tsc.getSourceTile(tileID, true).tileID.key).toBe(underzoomTileID.key);
+        expect(tsc.getSourceTile(tileID, true)!.tileID.key).toBe(underzoomTileID.key);
     });
 
     describe('getTerrainCoords', () => {

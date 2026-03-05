@@ -1,4 +1,4 @@
-import {uniqueId, parseCacheControl} from '../util/util';
+import {uniqueId, parseCacheControl, assertedNotNullish} from '../util/util';
 import {deserialize as deserializeBucket} from '../data/bucket';
 import {GEOJSON_TILE_LAYER_NAME, type FeatureIndex, type QueryResults} from '../data/feature_index';
 import {GeoJSONFeature} from '../util/vectortile_to_geojson';
@@ -71,48 +71,48 @@ export class Tile {
     uses: number;
     tileSize: number;
     buckets: {[_: string]: Bucket};
-    latestFeatureIndex: FeatureIndex | null;
-    latestRawTileData: ArrayBuffer;
-    latestEncoding: string;
-    imageAtlas: ImageAtlas;
-    imageAtlasTexture: Texture;
-    dashPositions: {[_: string]: DashEntry};
-    glyphAtlasImage: AlphaImage;
-    glyphAtlasTexture: Texture;
+    latestFeatureIndex?: FeatureIndex | null;
+    latestRawTileData?: ArrayBuffer;
+    latestEncoding?: string;
+    imageAtlas?: ImageAtlas | null;
+    imageAtlasTexture?: Texture;
+    dashPositions?: {[_: string]: DashEntry} | null;
+    glyphAtlasImage?: AlphaImage | null;
+    glyphAtlasTexture?: Texture;
     etag?: string;
     expirationTime: any;
     expiredRequestCount: number;
     state: TileState;
-    fadingRole: FadingRoles;
-    fadingDirection: FadingDirections;
-    fadingParentID: OverscaledTileID;
-    selfFading: boolean;
+    fadingRole?: FadingRoles | null;
+    fadingDirection?: FadingDirections | null;
+    fadingParentID?: OverscaledTileID | null;
+    selfFading?: boolean;
     timeAdded: number = 0;
     fadeEndTime: number = 0;
     fadeOpacity: number = 1;
-    collisionBoxArray: CollisionBoxArray;
-    redoWhenDone: boolean;
-    showCollisionBoxes: boolean;
-    placementSource: any;
-    actor: Actor;
-    vtLayers: {[_: string]: VectorTileLayerLike};
+    collisionBoxArray?: CollisionBoxArray;
+    redoWhenDone?: boolean;
+    showCollisionBoxes?: boolean;
+    placementSource?: any;
+    actor?: Actor;
+    vtLayers?: {[_: string]: VectorTileLayerLike};
 
-    neighboringTiles: Record<string, {backfilled: boolean}>;
-    dem: DEMData;
-    demMatrix: mat4;
-    aborted: boolean;
-    needsHillshadePrepare: boolean;
-    needsTerrainPrepare: boolean;
-    abortController: AbortController;
-    texture: any;
-    fbo: Framebuffer;
-    demTexture: Texture;
-    refreshedUponExpiration: boolean;
-    reloadPromise: {resolve: () => void; reject: () => void};
-    resourceTiming: Array<PerformanceResourceTiming>;
+    neighboringTiles?: Record<string, {backfilled: boolean}>;
+    dem?: DEMData;
+    demMatrix?: mat4;
+    aborted?: boolean;
+    needsHillshadePrepare?: boolean;
+    needsTerrainPrepare?: boolean;
+    abortController?: AbortController;
+    texture?: any;
+    fbo?: Framebuffer;
+    demTexture?: Texture | null;
+    refreshedUponExpiration?: boolean;
+    reloadPromise?: {resolve: () => void; reject: () => void};
+    resourceTiming?: Array<PerformanceResourceTiming>;
     queryPadding: number;
 
-    symbolFadeHoldUntil: number;
+    symbolFadeHoldUntil?: number;
     hasSymbolBuckets: boolean;
     hasRTLText: boolean;
     dependencies: any;
@@ -205,7 +205,7 @@ export class Tile {
      * @param painter - the painter
      * @param justReloaded - `true` to just reload
      */
-    loadVectorData(data: WorkerTileResult, painter: Painter, justReloaded?: boolean | null) {
+    loadVectorData(data: WorkerTileResult | null | undefined, painter: Painter, justReloaded?: boolean | null) {
         if (data?.etagUnmodified === true) {
             this.state = 'loaded';
             return;
@@ -271,6 +271,7 @@ export class Tile {
         this.queryPadding = 0;
         for (const id in this.buckets) {
             const bucket = this.buckets[id];
+            // @ts-expect-error - original code accessed painter.style.getLayer(id).queryRadius(bucket) directly
             this.queryPadding = Math.max(this.queryPadding, painter.style.getLayer(id).queryRadius(bucket));
         }
 
@@ -338,7 +339,7 @@ export class Tile {
 
     prepare(imageManager: ImageManager) {
         if (this.imageAtlas) {
-            this.imageAtlas.patchUpdatedImages(imageManager, this.imageAtlasTexture);
+            this.imageAtlas.patchUpdatedImages(imageManager, assertedNotNullish(this.imageAtlasTexture));
         }
     }
 
@@ -515,7 +516,7 @@ export class Tile {
     }
 
     setDependencies(namespace: string, dependencies: Array<string>) {
-        const index = {};
+        const index: Record<string, true> = {};
         for (const dep of dependencies) {
             index[dep] = true;
         }

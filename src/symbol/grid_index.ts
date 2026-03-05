@@ -1,8 +1,9 @@
 import type {OverlapMode} from '../style/style_layer/overlap_mode';
+import {assertedNotNullish, assertNotNullish} from '../util/util';
 
 type QueryArgs = {
     hitTest: boolean;
-    overlapMode?: OverlapMode;
+    overlapMode?: OverlapMode | null;
     circle?: {
         x: number;
         y: number;
@@ -19,7 +20,7 @@ type QueryArgs = {
 };
 
 type QueryResult<T> = {
-    key: T;
+    key: T | null;
     x1: number;
     y1: number;
     x2: number;
@@ -33,7 +34,7 @@ export type GridKey = {
     overlapMode?: OverlapMode;
 };
 
-function overlapAllowed(overlapA: OverlapMode, overlapB: OverlapMode): boolean {
+function overlapAllowed(overlapA: OverlapMode, overlapB: OverlapMode | undefined): boolean {
     let allowed = true;
 
     if (overlapA === 'always') {
@@ -76,8 +77,8 @@ export class GridIndex<T extends GridKey> {
     circleUid: number;
 
     constructor (width: number, height: number, cellSize: number) {
-        const boxCells = this.boxCells = [];
-        const circleCells = this.circleCells = [];
+        this.boxCells = [];
+        this.circleCells = [];
 
         // More cells -> fewer geometries to check per cell, but items tend
         // to be split across more cells.
@@ -86,8 +87,8 @@ export class GridIndex<T extends GridKey> {
         this.yCellCount = Math.ceil(height / cellSize);
 
         for (let i = 0; i < this.xCellCount * this.yCellCount; i++) {
-            boxCells.push([]);
-            circleCells.push([]);
+            this.boxCells.push([]);
+            this.circleCells.push([]);
         }
         this.circleKeys = [];
         this.boxKeys = [];
@@ -133,7 +134,7 @@ export class GridIndex<T extends GridKey> {
         this.circleCells[cellIndex].push(uid);
     }
 
-    private _query(x1: number, y1: number, x2: number, y2: number, hitTest: boolean, overlapMode: OverlapMode, predicate?: (key: T) => boolean): Array<QueryResult<T>> {
+    private _query(x1: number, y1: number, x2: number, y2: number, hitTest: boolean, overlapMode: OverlapMode | null, predicate?: (key: T) => boolean): Array<QueryResult<T>> {
         if (x2 < 0 || x1 > this.width || y2 < 0 || y1 > this.height) {
             return [];
         }
@@ -176,7 +177,7 @@ export class GridIndex<T extends GridKey> {
                 overlapMode,
                 seenUids: {box: {}, circle: {}}
             };
-            this._forEachCell(x1, y1, x2, y2, this._queryCell, result, queryArgs, predicate);
+            this._forEachCell(x1, y1, x2, y2, assertedNotNullish(this._queryCell), result, queryArgs, predicate);
         }
 
         return result;
@@ -211,12 +212,12 @@ export class GridIndex<T extends GridKey> {
             circle: {x, y, radius},
             seenUids: {box: {}, circle: {}}
         };
-        this._forEachCell(x1, y1, x2, y2, this._queryCellCircle, result, queryArgs, predicate);
+        this._forEachCell(x1, y1, x2, y2, assertedNotNullish(this._queryCellCircle), result, queryArgs, predicate);
         return result.length > 0;
     }
 
-    private _queryCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, result: Array<QueryResult<T>>, queryArgs: QueryArgs, predicate?: (key: T) => boolean): boolean {
-        const {seenUids, hitTest, overlapMode} = queryArgs;
+    private _queryCell(x1: number, y1: number, x2: number, y2: number, cellIndex: number, result: Array<QueryResult<T>>, queryArgs?: QueryArgs, predicate?: (key: T) => boolean): boolean {
+        const {seenUids, hitTest, overlapMode} = assertedNotNullish(queryArgs);
         const boxCell = this.boxCells[cellIndex];
 
         if (boxCell !== null) {
@@ -232,7 +233,7 @@ export class GridIndex<T extends GridKey> {
                         (x2 >= bboxes[offset + 0]) &&
                         (y2 >= bboxes[offset + 1]) &&
                         (!predicate || predicate(key))) {
-                        if (!hitTest || !overlapAllowed(overlapMode, key.overlapMode)) {
+                        if (!hitTest || !overlapAllowed(assertedNotNullish(overlapMode), key.overlapMode)) {
                             result.push({
                                 key,
                                 x1: bboxes[offset],
@@ -267,7 +268,7 @@ export class GridIndex<T extends GridKey> {
                         x2,
                         y2) &&
                         (!predicate || predicate(key))) {
-                        if (!hitTest || !overlapAllowed(overlapMode, key.overlapMode)) {
+                        if (!hitTest || !overlapAllowed(assertedNotNullish(overlapMode), key.overlapMode)) {
                             const x = circles[offset];
                             const y = circles[offset + 1];
                             const radius = circles[offset + 2];
@@ -292,8 +293,9 @@ export class GridIndex<T extends GridKey> {
         return false;
     }
 
-    private _queryCellCircle(x1: number, y1: number, x2: number, y2: number, cellIndex: number, result: Array<boolean>, queryArgs: QueryArgs, predicate?: (key: T) => boolean): boolean {
-        const {circle, seenUids, overlapMode} = queryArgs;
+    private _queryCellCircle(x1: number, y1: number, x2: number, y2: number, cellIndex: number, result: Array<boolean>, queryArgs?: QueryArgs, predicate?: (key: T) => boolean): boolean {
+        const {circle, seenUids, overlapMode} = assertedNotNullish(queryArgs);
+        assertNotNullish(circle, 'circle is required for _queryCellCircle');
         const boxCell = this.boxCells[cellIndex];
 
         if (boxCell !== null) {
@@ -312,7 +314,7 @@ export class GridIndex<T extends GridKey> {
                         bboxes[offset + 2],
                         bboxes[offset + 3]) &&
                         (!predicate || predicate(key)) &&
-                        !overlapAllowed(overlapMode, key.overlapMode)) {
+                        !overlapAllowed(assertedNotNullish(overlapMode), key.overlapMode)) {
                         result.push(true);
                         return true;
                     }
@@ -336,13 +338,14 @@ export class GridIndex<T extends GridKey> {
                         circle.y,
                         circle.radius) &&
                         (!predicate || predicate(key)) &&
-                        !overlapAllowed(overlapMode, key.overlapMode)) {
+                        !overlapAllowed(assertedNotNullish(overlapMode), key.overlapMode)) {
                         result.push(true);
                         return true;
                     }
                 }
             }
         }
+        return false;
     }
 
     private _forEachCell<TArg>(

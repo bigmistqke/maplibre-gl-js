@@ -11,6 +11,7 @@ import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {type CirclePaintProps, type CirclePaintPropsPossiblyEvaluated} from '../style/style_layer/circle_style_layer_properties.g';
 import {type SymbolLayoutProps, type SymbolLayoutPropsPossiblyEvaluated} from '../style/style_layer/symbol_style_layer_properties.g';
 import {MessageType} from '../util/actor_messages';
+import {assertedNotNullish} from '../util/util';
 
 function createWorkerTile(params?: {globalState?: Record<string, any>}): WorkerTile {
     return new WorkerTile({
@@ -22,7 +23,7 @@ function createWorkerTile(params?: {globalState?: Record<string, any>}): WorkerT
         tileID: new OverscaledTileID(1, 0, 1, 1, 1),
         overscaling: 1,
         globalState: params?.globalState
-    } as any as WorkerTileParameters);
+    } as unknown as WorkerTileParameters);
 }
 
 function createWrapper() {
@@ -30,7 +31,7 @@ function createWrapper() {
         type: 1,
         geometry: [0, 0],
         tags: {}
-    } as any as Feature]);
+    } as unknown as Feature]);
 }
 
 function createLineWrapper() {
@@ -38,7 +39,7 @@ function createLineWrapper() {
         type: 2,
         geometry: [[0, 0], [1, 1]],
         tags: {}
-    } as any as Feature]);
+    } as unknown as Feature]);
 }
 
 describe('worker tile', () => {
@@ -325,8 +326,8 @@ describe('worker tile', () => {
 
         const tile = createWorkerTile({globalState});
         globalState.size = 12;
-        await tile.parse(createLineWrapper(), layerIndex, [], {} as any, SubdivisionGranularitySetting.noSubdivision);
-        const layer = layerIndex._layers['layer-id'];
+        await tile.parse(createLineWrapper() as any as VectorTileLike, layerIndex, [], {} as any, SubdivisionGranularitySetting.noSubdivision);
+        const layer = assertedNotNullish(layerIndex._layers)['layer-id'];
         layer.recalculate({} as EvaluationParameters, []);
         const layout = layer.layout as PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>;
         expect(layout.get('text-size').evaluate({} as any, {})).toBe(12);
@@ -346,8 +347,8 @@ describe('worker tile', () => {
         ], {radius: 15, color: '#FF0000'});
 
         const tile = createWorkerTile({});
-        await tile.parse(createLineWrapper(), layerIndex, [], {} as any, SubdivisionGranularitySetting.noSubdivision);
-        const layer = layerIndex._layers['circle'];
+        await tile.parse(createLineWrapper() as any as VectorTileLike, layerIndex, [], {} as any, SubdivisionGranularitySetting.noSubdivision);
+        const layer = assertedNotNullish(layerIndex._layers)['circle'];
         layer.recalculate({zoom: 0} as EvaluationParameters, []);
         const paint = layer.paint as PossiblyEvaluated<CirclePaintProps, CirclePaintPropsPossiblyEvaluated>;
         expect(paint.get('circle-color').evaluate({} as any, {})).toEqual(new Color(1, 0, 0, 1));

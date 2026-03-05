@@ -8,8 +8,11 @@ describe('Value classes', () => {
 
     const gl = document.createElement('canvas').getContext('webgl') as WebGL2RenderingContext;
     // Remove when https://github.com/Adamfsk/jest-webgl-canvas-mock/pull/5 is merged
-    gl.createVertexArray = gl.getExtension('OES_vertex_array_object')?.createVertexArrayOES;
-    gl.bindVertexArray = gl.getExtension('OES_vertex_array_object')?.bindVertexArrayOES;
+    const ext = gl.getExtension('OES_vertex_array_object');
+    if (ext) {
+        gl.createVertexArray = ext.createVertexArrayOES;
+        gl.bindVertexArray = ext.bindVertexArrayOES;
+    }
     const context = new Context(gl);
 
     const valueTest = <T>(Constructor: new (...args:any[]) => IValue<T>,

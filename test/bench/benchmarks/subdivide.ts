@@ -5,9 +5,9 @@ import {subdividePolygon} from '../../../src/render/subdivision';
 import Point from '@mapbox/point-geometry';
 
 export default class Subdivide extends Benchmark {
-    tileID: CanonicalTileID;
-    granularity: number;
-    polygon: Array<Array<Point>>;
+    tileID!: CanonicalTileID;
+    granularity!: number;
+    polygon!: Array<Array<Point>>;
 
     async setup(): Promise<void> {
         await super.setup();

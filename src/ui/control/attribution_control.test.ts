@@ -5,6 +5,7 @@ import simulate from '../../../test/unit/lib/simulate_interaction';
 import {fakeServer} from 'nise';
 import {type Map} from '../../ui/map';
 import {type MapSourceDataEvent} from '../events';
+import {assertedNotNullish} from '../../util/util';
 
 function createMap() {
 
@@ -14,8 +15,6 @@ function createMap() {
             version: 8,
             sources: {},
             layers: [],
-            owner: 'maplibre',
-            id: 'demotiles',
         },
         hash: true
     });
@@ -130,7 +129,7 @@ describe('AttributionControl', () => {
         }));
 
         const container = map.getContainer();
-        const toggle = container.querySelector('.maplibregl-ctrl-attrib-button');
+        const toggle = assertedNotNullish(container.querySelector('.maplibregl-ctrl-attrib-button'));
 
         expect(container.querySelectorAll('.maplibregl-compact-show')).toHaveLength(1);
 
@@ -167,7 +166,7 @@ describe('AttributionControl', () => {
 
         await sleep(100);
 
-        expect(attribution._innerContainer.innerHTML).toBe(`Hello World | Another Source | GeoJSON Source | ${defaultAttributionControlOptions.customAttribution}`);
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe(`Hello World | Another Source | GeoJSON Source | ${defaultAttributionControlOptions.customAttribution}`);
         expect(spy.mock.calls.filter((call) => call[0].dataType === 'source' && call[0].sourceDataType === 'visibility')).toHaveLength(7);
 
     });
@@ -184,7 +183,7 @@ describe('AttributionControl', () => {
 
         await sleep(100);
         expect(spy.mock.calls.filter((call) => call[0].dataType === 'source' && call[0].sourceDataType === 'visibility')).toHaveLength(1);
-        expect(attribution._innerContainer.innerHTML).toBe('');
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe('');
         expect(container.querySelectorAll('.maplibregl-attrib-empty')).toHaveLength(1);
     });
 
@@ -205,7 +204,7 @@ describe('AttributionControl', () => {
         await sleep(100);
 
         expect(spy.mock.calls.filter((call) => call[0].dataType === 'source' && call[0].sourceDataType === 'visibility')).toHaveLength(2);
-        expect(attribution._innerContainer.innerHTML).toBe('Hello World');
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe('Hello World');
         expect(container.querySelectorAll('.maplibregl-attrib-empty')).toHaveLength(0);
     });
 
@@ -215,7 +214,7 @@ describe('AttributionControl', () => {
         });
         map.addControl(attributionControl);
 
-        expect(attributionControl._innerContainer.innerHTML).toBe('Custom string');
+        expect(assertedNotNullish(attributionControl._innerContainer).innerHTML).toBe('Custom string');
     });
 
     test('shows custom attribution if customAttribution option is provided, control is removed and added back', () => {
@@ -226,7 +225,7 @@ describe('AttributionControl', () => {
         map.removeControl(attributionControl);
         map.addControl(attributionControl);
 
-        expect(attributionControl._innerContainer.innerHTML).toBe('Custom string');
+        expect(assertedNotNullish(attributionControl._innerContainer).innerHTML).toBe('Custom string');
     });
 
     test('in compact mode shows custom attribution if customAttribution option is provided', () => {
@@ -236,7 +235,7 @@ describe('AttributionControl', () => {
         });
         map.addControl(attributionControl);
 
-        expect(attributionControl._innerContainer.innerHTML).toBe('Custom string');
+        expect(assertedNotNullish(attributionControl._innerContainer).innerHTML).toBe('Custom string');
     });
 
     test('shows all custom attributions if customAttribution array of strings is provided', () => {
@@ -245,7 +244,7 @@ describe('AttributionControl', () => {
         });
         map.addControl(attributionControl);
 
-        expect(attributionControl._innerContainer.innerHTML).toBe('Custom string | Another custom string | Some very long custom string');
+        expect(assertedNotNullish(attributionControl._innerContainer).innerHTML).toBe('Custom string | Another custom string | Some very long custom string');
     });
 
     test('hides attributions for sources that are not currently visible', async () => {
@@ -273,11 +272,11 @@ describe('AttributionControl', () => {
                    mapDataEvent.sourceId === '1';
         })).toHaveLength(1);
 
-        expect(attribution._innerContainer.innerHTML).toBe(`Used | ${defaultAttributionControlOptions.customAttribution}`);
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe(`Used | ${defaultAttributionControlOptions.customAttribution}`);
     });
 
     test('does not show attributions for sources that are used for terrain when they are not in use', async () => {
-        global.fetch = null;
+        global.fetch = null as any; // Test mock
         const server = fakeServer.create();
         server.respondWith('/source.json', JSON.stringify({
             minzoom: 5,
@@ -305,11 +304,11 @@ describe('AttributionControl', () => {
                    mapDataEvent.sourceDataType === 'visibility';
         })).toHaveLength(0);
 
-        expect(attribution._innerContainer.innerHTML).toBe(defaultAttributionControlOptions.customAttribution);
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe(defaultAttributionControlOptions.customAttribution);
     });
 
     test('shows attributions for sources that are used for terrain', async () => {
-        global.fetch = null;
+        global.fetch = null as any; // Test mock
         const server = fakeServer.create();
         server.respondWith('/source.json', JSON.stringify({
             minzoom: 5,
@@ -337,7 +336,7 @@ describe('AttributionControl', () => {
                    mapDataEvent.sourceDataType === 'visibility';
         })).toHaveLength(0);
 
-        expect(attribution._innerContainer.innerHTML).toBe(`Terrain | ${defaultAttributionControlOptions.customAttribution}`);
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe(`Terrain | ${defaultAttributionControlOptions.customAttribution}`);
     });
 
     test('toggles attributions for sources whose visibility changes when zooming', async () => {
@@ -356,7 +355,7 @@ describe('AttributionControl', () => {
 
         await sleep(100);
         expect(map.getZoom()).toBe(13);
-        expect(attribution._innerContainer.innerHTML).toBe('Used');
+        expect(assertedNotNullish(attribution._innerContainer).innerHTML).toBe('Used');
     });
 
     test('sanitizes html content in attributions', async () => {
@@ -366,7 +365,7 @@ describe('AttributionControl', () => {
         map.addControl(attributionControl);
         await map.once('load');
 
-        expect(attributionControl._innerContainer.innerHTML).toBe('MapLibre');
+        expect(assertedNotNullish(attributionControl._innerContainer).innerHTML).toBe('MapLibre');
     });
 
     test('only recreates attributions if sanitized attribution content changes', async () => {
@@ -377,12 +376,12 @@ describe('AttributionControl', () => {
         await map.once('load');
 
         // this will be overwritten if the attribution control re-renders for any reason
-        attributionControl._innerContainer.innerHTML = 'unchanged';
+        assertedNotNullish(attributionControl._innerContainer).innerHTML = 'unchanged';
         map.addSource('1', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
 
         await sleep(100);
 
-        expect(attributionControl._innerContainer.innerHTML).toBe('unchanged');
+        expect(assertedNotNullish(attributionControl._innerContainer).innerHTML).toBe('unchanged');
     });
 });
 
@@ -403,7 +402,7 @@ describe('AttributionControl test regarding the HTML elements details and summar
             });
             map.addControl(attributionControl);
             const container = map.getContainer();
-            const toggle = container.querySelector('.maplibregl-ctrl-attrib-button');
+            const toggle = assertedNotNullish(container.querySelector('.maplibregl-ctrl-attrib-button'));
 
             simulate.click(toggle);
 
@@ -416,7 +415,7 @@ describe('AttributionControl test regarding the HTML elements details and summar
             });
             map.addControl(attributionControl);
             const container = map.getContainer();
-            const toggle = container.querySelector('.maplibregl-ctrl-attrib-button');
+            const toggle = assertedNotNullish(container.querySelector('.maplibregl-ctrl-attrib-button'));
 
             simulate.click(toggle);
             expect(map.getContainer().querySelectorAll('.maplibregl-ctrl-attrib')[0].getAttribute('open')).toBe('');
@@ -508,7 +507,7 @@ describe('AttributionControl test regarding the HTML elements details and summar
             Object.defineProperty(map.getCanvasContainer(), 'offsetWidth', {value: 640, configurable: true});
             const attributionControl = new AttributionControl({});
             map.addControl(attributionControl);
-            const toggle = map.getContainer().querySelector('.maplibregl-ctrl-attrib-button');
+            const toggle = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-attrib-button'));
             simulate.click(toggle);
 
             expect(map.getContainer().querySelectorAll('.maplibregl-ctrl-attrib')[0].getAttribute('open')).toBe('');
@@ -589,7 +588,7 @@ describe('AttributionControl test regarding the HTML elements details and summar
 
             await sleep(100);
 
-            const innerContainer = map.getContainer().querySelector('.maplibregl-ctrl-attrib-inner');
+            const innerContainer = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-attrib-inner'));
             expect(innerContainer.innerHTML).toBe('Valid Attribution');
         });
 
@@ -597,7 +596,7 @@ describe('AttributionControl test regarding the HTML elements details and summar
             map.addControl(new AttributionControl({customAttribution: ''}));
 
             const container = map.getContainer();
-            const attrib = container.querySelector('.maplibregl-ctrl-attrib-inner');
+            const attrib = assertedNotNullish(container.querySelector('.maplibregl-ctrl-attrib-inner'));
             expect(attrib.innerHTML).toBe('');
             expect(container.querySelectorAll('.maplibregl-attrib-empty')).toHaveLength(1);
         });
@@ -620,7 +619,7 @@ describe('AttributionControl test regarding the HTML elements details and summar
             }));
 
             const container = map.getContainer();
-            const toggle = container.querySelector('.maplibregl-ctrl-attrib-button');
+            const toggle = assertedNotNullish(container.querySelector('.maplibregl-ctrl-attrib-button'));
             simulate.click(toggle);
             simulate.click(toggle);
             expect(container.querySelectorAll('.maplibregl-compact-show')).toHaveLength(1);

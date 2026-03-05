@@ -1,6 +1,7 @@
 import {describe, beforeAll, afterAll, test, expect} from 'vitest';
 import {globSync} from 'glob';
 import {CoverageReport} from 'monocart-coverage-reports';
+// @ts-expect-error - no type declarations available
 import st from 'st';
 import http from 'node:http';
 import path from 'node:path/posix';
@@ -12,15 +13,20 @@ import type {AddressInfo} from 'node:net';
 import {deepEqual} from '../lib/json-diff';
 import {localizeURLs} from '../lib/localize-urls';
 import {launchPuppeteer} from '../lib/puppeteer_config';
+// @ts-expect-error - dist types not available during type checking
 import type {default as MapLibreGL} from '../../../dist/maplibre-gl';
 
 let maplibregl: typeof MapLibreGL;
 
-async function performQueryOnFixture(fixture)  {
+declare namespace maplibregl {
+    type Map = any;
+}
 
-    async function handleOperation(map: maplibregl.Map, operation) {
+async function performQueryOnFixture(fixture: any)  {
+
+    async function handleOperation(map: maplibregl.Map, operation: any[]) {
         const opName = operation[0];
-        
+
         switch (opName) {
             case 'wait':
                 while (!map.loaded()) {
@@ -33,12 +39,14 @@ async function performQueryOnFixture(fixture)  {
                 }
                 break;
             default:
-                map[opName](...operation.slice(1));
+                if (typeof map[opName] === 'function') {
+                    map[opName](...operation.slice(1));
+                }
                 break;
         }
     }
 
-    async function applyOperations(map, operations) {
+    async function applyOperations(map: maplibregl.Map, operations?: any[]) {
         // No operations specified, end immediately and invoke done.
         if (!operations || operations.length === 0) {
             return;
@@ -53,8 +61,12 @@ async function performQueryOnFixture(fixture)  {
     const options = style.metadata.test;
     const skipLayerDelete = style.metadata.skipLayerDelete;
 
-    document.getElementById('map').style.width = `${options.width}px`;
-    document.getElementById('map').style.height = `${options.height}px`;
+    const mapEl = document.getElementById('map');
+    if (!mapEl) {
+        throw new Error('Map container element not found');
+    }
+    mapEl.style.width = `${options.width}px`;
+    mapEl.style.height = `${options.height}px`;
 
     const map =  new maplibregl.Map({
         container: 'map',
@@ -81,7 +93,7 @@ async function performQueryOnFixture(fixture)  {
         [];
     console.log('results', results);
 
-    const actual = results.map((feature) => {
+    const actual = results.map((feature: any) => {
         const featureJson = JSON.parse(JSON.stringify(feature.toJSON()));
         if (!skipLayerDelete) delete featureJson.layer;
         return featureJson;
@@ -213,7 +225,8 @@ async function dirToJson(dir: string, port: number) {
                 console.warn(`Ignoring file with unexpected extension. ${pp.ext}`);
             }
         } catch (e) {
-            console.warn(`Error parsing file: ${file} ${e.message}`);
+            const error = e as Error;
+            console.warn(`Error parsing file: ${file} ${error.message}`);
             throw e;
         }
     }

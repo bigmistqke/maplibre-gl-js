@@ -14,6 +14,7 @@ import type {UniformValues, UniformLocations} from '../uniform_binding';
 import type {Painter} from '../painter';
 import type {HeatmapStyleLayer} from '../../style/style_layer/heatmap_style_layer';
 import {EXTENT} from '../../data/extent';
+import {assertedNotNullish} from '../../util/util';
 
 export type HeatmapUniformsType = {
     'u_extrude_scale': Uniform1f;
@@ -70,7 +71,7 @@ const heatmapTextureUniformValues = (
         'u_world': [gl.drawingBufferWidth, gl.drawingBufferHeight],
         'u_image': textureUnit,
         'u_color_ramp': colorRampUnit,
-        'u_opacity': layer.paint.get('heatmap-opacity')
+        'u_opacity': assertedNotNullish(layer.paint).get('heatmap-opacity')
     };
 };
 

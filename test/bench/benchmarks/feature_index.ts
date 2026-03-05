@@ -5,8 +5,8 @@ import {FeatureFilter} from '@maplibre/maplibre-gl-style-spec';
 import type {VectorTileFeatureLike, VectorTileLayerLike} from '@maplibre/vt-pbf';
 
 export default class LoadMatchingFeature extends Benchmark {
-    featureIndex: FeatureIndex;
-    layerIdsToTest: Set<string>;
+    featureIndex!: FeatureIndex;
+    layerIdsToTest!: Set<string>;
 
     async setup(): Promise<void> {
         await super.setup();

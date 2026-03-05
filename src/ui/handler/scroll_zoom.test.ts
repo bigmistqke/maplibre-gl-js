@@ -4,6 +4,7 @@ import {Map, type MapOptions} from '../../ui/map';
 import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {setPerformance, beforeMapTest, createTerrain} from '../../util/test/util';
+import {assertedNotNullish} from '../../util/util';
 
 function createMap(options: Partial<MapOptions> = {}) {
     return new Map({
@@ -427,7 +428,7 @@ describe('ScrollZoomHandler', () => {
             now += 1;
             timeControlNow.mockReturnValue(now);
             if (events.length && lastWheelEvent + events[0][0] === now) {
-                const [, event] = events.shift();
+                const [, event] = assertedNotNullish(events.shift());
                 simulate.wheel(map.getCanvas(), event);
                 lastWheelEvent = now;
             }
@@ -477,7 +478,7 @@ describe('ScrollZoomHandler', () => {
             now += 1;
             timeControlNow.mockReturnValue(now);
             if (events.length && lastWheelEvent + events[0][0] === now) {
-                const [, event] = events.shift();
+                const [, event] = assertedNotNullish(events.shift());
                 simulate.wheel(map.getCanvas(), event);
                 lastWheelEvent = now;
             }

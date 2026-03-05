@@ -23,7 +23,7 @@ export type Summary = {
     max: number;
 }
 
-export function probabilitiesOfSuperiority(before, after) {
+export function probabilitiesOfSuperiority(before: number[], after: number[]) {
     const timerPrecision = 0.005;
 
     let superiorCount = 0;
@@ -45,13 +45,13 @@ export function probabilitiesOfSuperiority(before, after) {
     };
 }
 
-export function summaryStatistics(data): Summary {
+export function summaryStatistics(data: number[]): Summary {
     const variance = d3.variance(data);
     const sorted = data.slice().sort(d3.ascending);
-    const [q1, q2, q3] = [.25, .5, .75].map((d) => d3.quantile(sorted, d));
+    const [q1, q2, q3] = [.25, .5, .75].map((d) => d3.quantile(sorted, d)) as [number, number, number];
     const mean = d3.mean(sorted);
-    let min = [NaN, Infinity];
-    let max = [NaN, -Infinity];
+    let min = [NaN, Infinity] as [number, number];
+    let max = [NaN, -Infinity] as [number, number];
     for (let i = 0; i < data.length; i++) {
         const s = data[i];
         if (s < min[1]) min = [i, s];
@@ -59,7 +59,7 @@ export function summaryStatistics(data): Summary {
     }
 
     // 20% trimmed mean
-    const [lowerQuintile, upperQuintile] = [.2, .8].map(d => d3.quantile(sorted, d));
+    const [lowerQuintile, upperQuintile] = [.2, .8].map(d => d3.quantile(sorted, d)) as [number, number];
     const trimmedMean = d3.mean(data.filter(d => d >= lowerQuintile && d <= upperQuintile));
     const windsorizedDeviation = d3.deviation(data.map(d =>
         d < lowerQuintile ? lowerQuintile :
@@ -68,11 +68,11 @@ export function summaryStatistics(data): Summary {
     ));
 
     return {
-        mean,
-        trimmedMean,
-        variance,
-        deviation: Math.sqrt(variance),
-        windsorizedDeviation,
+        mean: mean ?? 0,
+        trimmedMean: trimmedMean ?? 0,
+        variance: variance ?? 0,
+        deviation: Math.sqrt(variance ?? 0),
+        windsorizedDeviation: windsorizedDeviation ?? 0,
         q1,
         q2,
         q3,
@@ -84,8 +84,8 @@ export function summaryStatistics(data): Summary {
     };
 }
 
-export function regression(measurements) {
-    const result = [];
+export function regression(measurements: {iterations: number; time: number}[]) {
+    const result: [number, number][] = [];
     for (let i = 0, n = 1; i + n < measurements.length; i += n, n++) {
         const subset = measurements.slice(i, i + n);
         result.push([
@@ -96,12 +96,12 @@ export function regression(measurements) {
     return leastSquaresRegression(result);
 }
 
-function leastSquaresRegression(data): RegressionResults {
+function leastSquaresRegression(data: [number, number][]): RegressionResults {
     const meanX = d3.sum(data, d => d[0]) / data.length;
     const meanY = d3.sum(data, d => d[1]) / data.length;
-    const varianceX = d3.variance(data, d => d[0]);
+    const varianceX = d3.variance(data, d => d[0]) ?? 0;
     const sdX = Math.sqrt(varianceX);
-    const sdY = d3.deviation(data, d => d[1]);
+    const sdY = d3.deviation(data, d => d[1]) ?? 0;
     const covariance = d3.sum(data, ([x, y]) =>
         (x - meanX) * (y - meanY)
     ) / (data.length - 1);
@@ -113,7 +113,7 @@ function leastSquaresRegression(data): RegressionResults {
     return {correlation, slope, intercept, data};
 }
 
-export function kde(samples, summary, ticks): [number, number][] {
+export function kde(samples: number[], summary: Summary, ticks: number[]): [number, number][] {
     const kernel = kernelEpanechnikov;
 
     if (samples.length === 0) {
@@ -122,11 +122,11 @@ export function kde(samples, summary, ticks): [number, number][] {
     // https://en.wikipedia.org/wiki/Kernel_density_estimation#A_rule-of-thumb_bandwidth_estimator
     const bandwidth = 1.06 * summary.windsorizedDeviation * Math.pow(samples.length, -0.2);
     return ticks.map((x) => {
-        return [x, d3.mean(samples, (v: any) => kernel((x - v) / bandwidth)) / bandwidth];
+        return [x, (d3.mean(samples, (v: number) => kernel((x - v) / bandwidth)) ?? 0) / bandwidth];
     });
 }
 
-function kernelEpanechnikov(v) {
+function kernelEpanechnikov(v: number): number {
     return Math.abs(v) <= 1 ? 0.75 * (1 - v * v) : 0;
 }
 

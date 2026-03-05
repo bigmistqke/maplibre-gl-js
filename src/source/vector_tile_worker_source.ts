@@ -4,7 +4,7 @@ import {type ExpiryData, getArrayBuffer} from '../util/ajax';
 import {WorkerTile} from './worker_tile';
 import {WorkerTileState, type ParsingState} from './worker_tile_state';
 import {BoundedLRUCache} from '../tile/tile_cache';
-import {extend} from '../util/util';
+import {extend, assertedNotNullish} from '../util/util';
 import {RequestPerformance} from '../util/performance';
 import {VectorTileOverzoomed, sliceVectorTileLayer, toVirtualVectorTile} from './vector_tile_overzoomed';
 import {MLTVectorTile} from './vector_tile_mlt';
@@ -56,11 +56,11 @@ export class VectorTileWorkerSource implements WorkerSource {
         } catch (ex) {
             const bytes = new Uint8Array(rawData);
             const isGzipped = bytes[0] === 0x1f && bytes[1] === 0x8b;
-            let errorMessage = `Unable to parse the tile at ${params.request.url}, `;
+            let errorMessage = `Unable to parse the tile at ${assertedNotNullish(params.request).url}, `;
             if (isGzipped) {
                 errorMessage += 'please make sure the data is not gzipped and that you have configured the relevant header in the server';
             } else {
-                errorMessage += `got error: ${ex.message}`;
+                errorMessage += `got error: ${ex instanceof Error ? ex.message : String(ex)}`;
             }
             throw new Error(errorMessage);
         }
@@ -84,7 +84,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         workerTile.abort = abortController;
         try {
             // Download the tile data from the network.
-            const tileResponse = await getArrayBuffer(params.request, abortController);
+            const tileResponse = await getArrayBuffer(assertedNotNullish(params.request), abortController);
 
             // Tile data hasn't changed (etag support) - return an unmodified result
             if (params.etag && params.etag === tileResponse.etag) {
@@ -122,14 +122,14 @@ export class VectorTileWorkerSource implements WorkerSource {
         }
     }
 
-    _getEtagUnmodifiedResult(response: ExpiryData, timing: RequestPerformance): WorkerTileResult {
+    _getEtagUnmodifiedResult(response: ExpiryData, timing: RequestPerformance | undefined): WorkerTileResult {
         const cacheControl = this._getExpiryData(response);
         const resourceTiming = this._finishRequestTiming(timing);
         return extend({etagUnmodified: true as const}, cacheControl, resourceTiming);
     }
 
     async _parseWorkerTile(workerTile: WorkerTile, params: WorkerTileParameters, parseState?: ParsingState): Promise<WorkerTileResult> {
-        let result = await workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+        let result = await workerTile.parse(assertedNotNullish(workerTile.vectorTile), this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
 
         if (parseState) {
             const {rawData, cacheControl, resourceTiming} = parseState;
@@ -153,7 +153,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         return new RequestPerformance(params.request.url);
     }
 
-    _finishRequestTiming(timing: RequestPerformance): {resourceTiming?: any} {
+    _finishRequestTiming(timing: RequestPerformance | undefined): {resourceTiming?: any} {
         const timingData = timing?.finish();
         if (!timingData) return {};
 
@@ -170,7 +170,7 @@ export class VectorTileWorkerSource implements WorkerSource {
      */
     private _getOverzoomTile(params: WorkerTileParameters, maxZoomVectorTile: VectorTileLike): LoadVectorTileResult {
         const {tileID, source, overzoomParameters} = params;
-        const {maxZoomTileID} = overzoomParameters;
+        const {maxZoomTileID} = assertedNotNullish(overzoomParameters);
 
         const cacheKey = `${maxZoomTileID.key}_${tileID.key}`;
         const cachedOverzoomTile = this.overzoomedTileResultCache.get(cacheKey);
@@ -180,7 +180,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         }
 
         const overzoomedVectorTile = new VectorTileOverzoomed();
-        const layerFamilies: Record<string, StyleLayer[][]> = this.layerIndex.familiesBySource[source];
+        const layerFamilies: Record<string, StyleLayer[][]> = assertedNotNullish(this.layerIndex.familiesBySource)[source];
 
         for (const sourceLayerId in layerFamilies) {
             const sourceLayer: VectorTileLayerLike = maxZoomVectorTile.layers[sourceLayerId];
@@ -202,7 +202,7 @@ export class VectorTileWorkerSource implements WorkerSource {
     /**
      * Implements {@link WorkerSource.reloadTile}.
      */
-    async reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult> {
+    async reloadTile(params: WorkerTileParameters): Promise<WorkerTileResult | null> {
         const uid = params.uid;
 
         const workerTile = this.tileState.getLoaded(uid);
@@ -221,6 +221,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         if (workerTile.status === 'done' && workerTile.vectorTile) {
             return await this._parseWorkerTile(workerTile, params);
         }
+        return null;
     }
 
     /**

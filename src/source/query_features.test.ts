@@ -11,7 +11,7 @@ describe('QueryFeatures.rendered', () => {
     test('returns empty object if source returns no tiles', () => {
         const mockTileManager = {tilesIn () { return []; }} as any as TileManager;
         const transform = new MercatorTransform();
-        const result = queryRenderedFeatures(mockTileManager, {}, undefined, [] as Point[], undefined, transform, undefined);
+        const result = queryRenderedFeatures(mockTileManager, {}, {}, [] as Point[], undefined, transform, undefined);
         expect(result).toEqual({});
     });
 

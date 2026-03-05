@@ -20,7 +20,8 @@ import {DepthMode} from '../gl/depth_mode';
 
 describe('render to texture', () => {
     const gl = document.createElement('canvas').getContext('webgl');
-    vi.spyOn(gl, 'checkFramebufferStatus').mockReturnValue(gl.FRAMEBUFFER_COMPLETE);
+    const glNotNull = gl as WebGLRenderingContext;
+    vi.spyOn(glNotNull, 'checkFramebufferStatus').mockReturnValue(glNotNull.FRAMEBUFFER_COMPLETE);
     const backgroundLayer = {
         id: 'maine-background',
         type: 'background',
@@ -65,8 +66,8 @@ describe('render to texture', () => {
     let layersDrawn = 0;
     const painter = {
         layersDrawn: 0,
-        context: new Context(gl),
-        transform: {zoom: 10, calculatePosMatrix: () => {}, getProjectionData(_a) {}, calculateFogMatrix: () => {}},
+        context: new Context(glNotNull),
+        transform: {zoom: 10, calculatePosMatrix: () => {}, getProjectionData(_a: any) {}, calculateFogMatrix: () => {}},
         colorModeForRenderPass: () => ColorMode.alphaBlended,
         getDepthModeFor3D: () => DepthMode.disabled,
         useProgram: () => { return {draw: () => { layersDrawn++; }}; },

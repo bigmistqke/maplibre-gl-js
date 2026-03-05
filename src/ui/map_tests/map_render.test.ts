@@ -1,12 +1,13 @@
 import {beforeEach, afterEach, test, expect, vi} from 'vitest';
 import {createMap, beforeMapTest, createStyle, sleep} from '../../util/test/util';
 import {fakeServer, type FakeServer} from 'nise';
+import {assertedNotNullish} from '../../util/util';
 
 let server: FakeServer;
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    global.fetch = undefined as unknown as typeof global.fetch;
     server = fakeServer.create();
 });
 
@@ -29,13 +30,13 @@ test('render stabilizes', async () => {
         'source-layer': 'sourceLayer'
     });
 
-    let timer;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const map = createMap({style});
     const spy = vi.fn();
     map.on('render', () => {
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
-            map.off('render', undefined);
+            map.off('render', () => {});
             map.on('render', () => {
                 throw new Error('test failed');
             });
@@ -62,14 +63,14 @@ test('no render before style loaded', async () => {
     const map = createMap({style: '/styleUrl'});
 
     vi.spyOn(map, 'triggerRepaint').mockImplementationOnce(() => {
-        if (!map.style._loaded) {
+        if (!assertedNotNullish(map.style)._loaded) {
             throw new Error('test failed');
         }
     });
 
     let loaded = true;
     map.on('render', () => {
-        loaded = map.style._loaded;
+        loaded = assertedNotNullish(map.style)._loaded;
     });
 
     // Force a update should not call triggerRepaint till style is loaded.

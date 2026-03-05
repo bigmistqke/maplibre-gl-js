@@ -3,7 +3,7 @@ import {type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {createStyleLayer} from '../create_style_layer';
 import {extend} from '../../util/util';
 
-function createLayerSpec(properties?): LayerSpecification {
+function createLayerSpec(properties?: Partial<LayerSpecification>): LayerSpecification {
     return extend({
         type: 'raster',
         id: 'raster',

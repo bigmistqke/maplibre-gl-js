@@ -1,3 +1,5 @@
+import {assertedNotNullish} from '../util/util';
+
 /**
  * A way to identify a feature, either by string or by number
  */
@@ -56,7 +58,7 @@ export type GeoJSONFeatureDiff = {
 export type UpdateableGeoJSON = GeoJSON.Feature | GeoJSON.FeatureCollection | undefined;
 
 function getFeatureId(feature: GeoJSON.Feature, promoteId?: string): GeoJSONFeatureId | undefined {
-    return promoteId ? feature.properties[promoteId] : feature.id;
+    return promoteId ? assertedNotNullish(feature.properties)[promoteId] : feature.id;
 }
 
 /**
@@ -156,7 +158,9 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
 
             const changeProps =
                 update.removeAllProperties ||
+                // @ts-expect-error - UNEXPECTED BEHAVIOR: original code accesses .length directly, which is undefined > 0 = false when property is missing
                 update.removeProperties?.length > 0 ||
+                // @ts-expect-error - UNEXPECTED BEHAVIOR: original code accesses .length directly, which is undefined > 0 = false when property is missing
                 update.addOrUpdateProperties?.length > 0;
 
             // nothing to do
@@ -168,8 +172,8 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
             updateable.set(update.id, feature);
 
             if (changeGeometry) {
-                affectedGeometries.push(update.newGeometry);
-                feature.geometry = update.newGeometry;
+                affectedGeometries.push(update.newGeometry!);
+                feature.geometry = update.newGeometry!;
             }
 
             if (changeProps) {
@@ -181,13 +185,13 @@ export function applySourceDiff(updateable: Map<GeoJSONFeatureId, GeoJSON.Featur
 
                 if (update.removeProperties) {
                     for (const key of update.removeProperties) {
-                        delete feature.properties[key];
+                        delete feature.properties![key];
                     }
                 }
 
                 if (update.addOrUpdateProperties) {
                     for (const {key, value} of update.addOrUpdateProperties) {
-                        feature.properties[key] = value;
+                        feature.properties![key] = value;
                     }
                 }
             }
@@ -225,11 +229,12 @@ export function mergeSourceDiffs(
     resolveMergeConflicts(prev, next);
 
     // Simply merge the two diffs now that conflicts have been resolved
-    const merged: GeoJSONSourceDiffHashed = {};
+    const merged: GeoJSONSourceDiffHashed = {
+        remove: new Set([...prev.remove , ...next.remove]),
+        add: new Map([...prev.add    , ...next.add]),
+        update: new Map([...prev.update , ...next.update]),
+    };
     if (prev.removeAll || next.removeAll) merged.removeAll = true;
-    merged.remove = new Set([...prev.remove , ...next.remove]);
-    merged.add    = new Map([...prev.add    , ...next.add]);
-    merged.update = new Map([...prev.update , ...next.update]);
 
     // Squash the merge - removing then adding the same feature
     if (merged.remove.size && merged.add.size) {
@@ -295,7 +300,9 @@ function mergeFeatureDiffs(prev: GeoJSONFeatureDiff, next: GeoJSONFeatureDiff): 
     // Removing properties that were added or updated in previous
     if (next.removeProperties) {
         for (const key of next.removeProperties) {
+            // @ts-expect-error - original code accessed .addOrUpdateProperties directly without null check
             const index = prev.addOrUpdateProperties.findIndex(prop => prop.key === key);
+            // @ts-expect-error - original code accessed .addOrUpdateProperties directly without null check
             if (index > -1) prev.addOrUpdateProperties.splice(index, 1);
         }
     }
@@ -320,7 +327,7 @@ function mergeFeatureDiffs(prev: GeoJSONFeatureDiff, next: GeoJSONFeatureDiff): 
 /**
  * Mutates diff.add and applies a feature id using the promoteId property
  */
-function promoteFeatureIds(add: Array<GeoJSON.Feature>, promoteId: string) {
+function promoteFeatureIds(add: Array<GeoJSON.Feature> | undefined, promoteId: string) {
     if (!add) return;
 
     for (const feature of add) {
@@ -332,7 +339,7 @@ function promoteFeatureIds(add: Array<GeoJSON.Feature>, promoteId: string) {
 /**
  * Mutates diff.add and removes the feature id if using the promoteId property
  */
-function demoteFeatureIds(add: Array<GeoJSON.Feature>, promoteId: string) {
+function demoteFeatureIds(add: Array<GeoJSON.Feature> | undefined, promoteId: string) {
     if (!add) return;
 
     for (const feature of add) {
@@ -347,9 +354,9 @@ function demoteFeatureIds(add: Array<GeoJSON.Feature>, promoteId: string) {
  */
 type GeoJSONSourceDiffHashed = {
     removeAll?: boolean;
-    remove?: Set<GeoJSONFeatureId>;
-    add?: Map<GeoJSONFeatureId, GeoJSON.Feature>;
-    update?: Map<GeoJSONFeatureId, GeoJSONFeatureDiff>;
+    remove: Set<GeoJSONFeatureId>;
+    add: Map<GeoJSONFeatureId, GeoJSON.Feature>;
+    update: Map<GeoJSONFeatureId, GeoJSONFeatureDiff>;
 };
 
 /**
@@ -357,14 +364,16 @@ type GeoJSONSourceDiffHashed = {
  * Convert a GeoJSONSourceDiff to an idempotent hashed representation using Sets and Maps
  */
 function diffToHashed(diff: GeoJSONSourceDiff | undefined): GeoJSONSourceDiffHashed {
-    if (!diff) return {};
+    if (!diff) return {remove: new Set(), add: new Map(), update: new Map()};
 
-    const hashed: GeoJSONSourceDiffHashed = {};
+    const hashed: GeoJSONSourceDiffHashed = {
+        remove: new Set(diff.remove || []),
+        // @ts-expect-error - UNEXPECTED BEHAVIOR: original code passes undefined to Map constructor when diff.add/update?.map returns undefined
+        add: new Map(diff.add?.map(feature => [feature.id, feature])),
+        update: new Map(diff.update?.map(update => [update.id, update])),
+    };
 
     hashed.removeAll = diff.removeAll;
-    hashed.remove = new Set(diff.remove || []);
-    hashed.add    = new Map(diff.add?.map(feature => [feature.id, feature]));
-    hashed.update = new Map(diff.update?.map(update => [update.id, update]));
 
     return hashed;
 }

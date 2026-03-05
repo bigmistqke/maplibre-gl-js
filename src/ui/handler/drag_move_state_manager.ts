@@ -1,10 +1,11 @@
 import {DOM} from '../../util/dom';
+import {assertedNotNullish} from '../../util/util';
 
 const LEFT_BUTTON = 0;
 const RIGHT_BUTTON = 2;
 
 // the values for each button in MouseEvent.buttons
-const BUTTONS_FLAGS = {
+const BUTTONS_FLAGS: Record<number, number> = {
     [LEFT_BUTTON]: 1,
     [RIGHT_BUTTON]: 2
 };
@@ -68,11 +69,11 @@ export class MouseMoveStateManager implements DragMoveStateManager<MouseEvent> {
         //
         // If the button is no longer pressed during this `mousemove` it may have
         // been released outside of the window or iframe.
-        return !buttonNoLongerPressed(e, this._eventButton);
+        return !buttonNoLongerPressed(e, assertedNotNullish(this._eventButton));
     }
 
-    isValidEndEvent(e: MouseEvent) {
-        const eventButton = DOM.mouseButton(e);
+    isValidEndEvent(e?: MouseEvent) {
+        const eventButton = DOM.mouseButton(assertedNotNullish(e));
         return eventButton === this._eventButton;
     }
 }
@@ -109,18 +110,19 @@ export class OneFingerTouchMoveStateManager implements DragMoveStateManager<Touc
         return this._isOneFingerTouch(e) && this._isSameTouchEvent(e);
     }
 
-    isValidEndEvent(e: TouchEvent) {
+    isValidEndEvent(e?: TouchEvent) {
+        if (!e) return false;
         return this._isOneFingerTouch(e) && this._isSameTouchEvent(e);
     }
 }
 
 export class MouseOrTouchMoveStateManager implements DragMoveStateManager<MouseEvent | TouchEvent> {
     constructor(
-        private mouseMoveStateManager = new MouseMoveStateManager({checkCorrectEvent: () => true}), 
+        private mouseMoveStateManager = new MouseMoveStateManager({checkCorrectEvent: () => true}),
         private oneFingerTouchMoveStateManager = new OneFingerTouchMoveStateManager()
     ) {}
 
-    _executeRelevantHandler(e: MouseEvent | TouchEvent, onMouseEvent: (MouseEvent) => any, onTouchEvent: (TouchEvent) => any) {
+    _executeRelevantHandler(e: MouseEvent | TouchEvent, onMouseEvent: (e: MouseEvent) => any, onTouchEvent: (e: TouchEvent) => any) {
         if (e instanceof MouseEvent) return onMouseEvent(e);
         if (typeof TouchEvent !== 'undefined' && e instanceof TouchEvent) return onTouchEvent(e);
     }
@@ -132,7 +134,7 @@ export class MouseOrTouchMoveStateManager implements DragMoveStateManager<MouseE
     }
 
     endMove(e?: MouseEvent | TouchEvent) {
-        this._executeRelevantHandler(e,
+        this._executeRelevantHandler(assertedNotNullish(e),
             e => this.mouseMoveStateManager.endMove(e),
             e => this.oneFingerTouchMoveStateManager.endMove(e));
     }
@@ -150,7 +152,7 @@ export class MouseOrTouchMoveStateManager implements DragMoveStateManager<MouseE
     }
 
     isValidEndEvent(e?: MouseEvent | TouchEvent) {
-        return this._executeRelevantHandler(e,
+        return this._executeRelevantHandler(assertedNotNullish(e),
             e => this.mouseMoveStateManager.isValidEndEvent(e),
             e => this.oneFingerTouchMoveStateManager.isValidEndEvent(e));
     }

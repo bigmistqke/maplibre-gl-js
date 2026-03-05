@@ -91,8 +91,8 @@ describe('SymbolBucket', () => {
 
         crossTileSymbolIndex.addLayer(bucketA.layers[0], [tileA, tileB], undefined as any);
 
-        const place = (layer, tile) => {
-            const parts = [];
+        const place = (layer: any, tile: any) => {
+            const parts: any[] = [];
             placement.getBucketParts(parts, layer, tile, false);
             for (const part of parts) {
                 placement.placeLayerBucketPart(part, {}, false);

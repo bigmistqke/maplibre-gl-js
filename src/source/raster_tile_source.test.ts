@@ -1,21 +1,24 @@
 import {describe, beforeEach, afterEach, test, expect, vi, it} from 'vitest';
 import {RasterTileSource} from './raster_tile_source';
 import {OverscaledTileID} from '../tile/tile_id';
-import {RequestManager} from '../util/request_manager';
+import {RequestManager, type RequestTransformFunction} from '../util/request_manager';
 import {type Dispatcher} from '../util/dispatcher';
 import {fakeServer, type FakeServer} from 'nise';
 import {type Tile} from '../tile/tile';
 import {stubAjaxGetImage, waitForEvent} from '../util/test/util';
 import {type MapSourceDataEvent} from '../ui/events';
+import {assertedNotNullish} from '../util/util';
+import type {RasterSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {Map} from '../ui/map';
 
-function createSource(options, transformCallback?) {
-    const source = new RasterTileSource('id', options, {send() {}} as any as Dispatcher, options.eventedParent);
+function createSource(options: Partial<RasterSourceSpecification> & Record<string, unknown>, transformCallback?: RequestTransformFunction) {
+    const source = new RasterTileSource('id', options as any, {send() {}} as unknown as Dispatcher, (options as any).eventedParent);
     source.onAdd({
         transform: {angle: 0, pitch: 0, showCollisionBoxes: false},
         _getMapId: () => 1,
         _requestManager: new RequestManager(transformCallback),
         getPixelRatio() { return 1; }
-    } as any);
+    } as any as Map);
 
     source.on('error', () => { }); // to prevent console log of errors
 
@@ -25,7 +28,7 @@ function createSource(options, transformCallback?) {
 describe('RasterTileSource', () => {
     let server: FakeServer;
     beforeEach(() => {
-        global.fetch = null;
+        global.fetch = undefined as unknown as typeof global.fetch; // test setup: force undefined to simulate missing fetch
         server = fakeServer.create();
     });
 
@@ -89,7 +92,7 @@ describe('RasterTileSource', () => {
 
         await waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
 
-        expect(source.tileBounds.bounds).toEqual({_sw: {lng: -47, lat: -7}, _ne: {lng: -45, lat: 90}});
+        expect(assertedNotNullish(source.tileBounds).bounds).toEqual({_sw: {lng: -47, lat: -7}, _ne: {lng: -45, lat: 90}});
     });
 
     test('respects TileJSON.bounds when loaded from TileJSON', async () => {
@@ -119,7 +122,7 @@ describe('RasterTileSource', () => {
             bounds: [-47, -7, -45, -5]
         }));
         const source = createSource({url: '/source.json'});
-        const transformSpy = vi.spyOn(source.map._requestManager, 'transformRequest');
+        const transformSpy = vi.spyOn(assertedNotNullish(source.map)._requestManager, 'transformRequest');
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
         server.respond();
         await promise;
@@ -128,7 +131,7 @@ describe('RasterTileSource', () => {
             state: 'loading',
             loadVectorData () {},
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         source.loadTile(tile);
         expect(transformSpy).toHaveBeenCalledTimes(1);
         expect(transformSpy.mock.calls[0][0]).toBe('http://example.com/10/5/5.png');
@@ -145,8 +148,8 @@ describe('RasterTileSource', () => {
             bounds: [-47, -7, -45, -5]
         }));
         const source = createSource({url: '/source.json'});
-        source.map.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
-        source.map._refreshExpiredTiles = false;
+        assertedNotNullish(source.map).painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
+        assertedNotNullish(source.map)._refreshExpiredTiles = false;
 
         const imageConstructorSpy = vi.spyOn(global, 'Image');
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
@@ -155,7 +158,7 @@ describe('RasterTileSource', () => {
         const tile = {
             tileID: new OverscaledTileID(10, 0, 10, 5, 5),
             state: 'loading'
-        } as any as Tile;
+        } as unknown as Tile;
         await source.loadTile(tile);
         expect(imageConstructorSpy).toHaveBeenCalledTimes(1);
         expect(tile.state).toBe('loaded');
@@ -167,7 +170,7 @@ describe('RasterTileSource', () => {
 
         source.on('data', (e) => {
             if (e.sourceDataType === 'metadata') {
-                expect(source.tiles[0]).toBe('http://example.com/{z}/{x}/{y}.png?updated=true');
+                expect(source.tiles?.[0]).toBe('http://example.com/{z}/{x}/{y}.png?updated=true');
             }
         });
     });
@@ -175,7 +178,7 @@ describe('RasterTileSource', () => {
     test('cancels TileJSON request if removed', () => {
         const source = createSource({url: '/source.json'});
         source.onRemove();
-        expect((server.lastRequest as any).aborted).toBe(true);
+        expect((server.lastRequest as unknown as {aborted?: boolean}).aborted).toBe(true);
     });
 
     test('supports url property updates', async () => {
@@ -233,8 +236,8 @@ describe('RasterTileSource', () => {
             [200, {'Content-Type': 'image/png', 'Content-Length': 1, 'Cache-Control': 'max-age=100'}, '0']
         );
         const source = createSource({url: '/source.json'});
-        source.map.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
-        source.map._refreshExpiredTiles = true;
+        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
+        source.map!._refreshExpiredTiles = true;
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
         server.respond();
@@ -243,7 +246,7 @@ describe('RasterTileSource', () => {
             tileID: new OverscaledTileID(10, 0, 10, 5, 5),
             state: 'loading',
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         const expiryDataSpy = vi.spyOn(tile, 'setExpiryData');
         const tilePromise = source.loadTile(tile);
         server.respond();
@@ -264,8 +267,8 @@ describe('RasterTileSource', () => {
             [200, {'Content-Type': 'image/png', 'Content-Length': 1, 'Expires': 'Wed, 21 Oct 2015 07:28:00 GMT'}, '0']
         );
         const source = createSource({url: '/source.json'});
-        source.map.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
-        source.map._refreshExpiredTiles = true;
+        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
+        source.map!._refreshExpiredTiles = true;
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
         server.respond();
@@ -274,7 +277,7 @@ describe('RasterTileSource', () => {
             tileID: new OverscaledTileID(10, 0, 10, 5, 5),
             state: 'loading',
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         const expiryDataSpy = vi.spyOn(tile, 'setExpiryData');
         const tilePromise = source.loadTile(tile);
         server.respond();
@@ -295,8 +298,8 @@ describe('RasterTileSource', () => {
             [200, {'Content-Type': 'image/png', 'Content-Length': 1, 'Cache-Control': '', 'Expires': 'Wed, 21 Oct 2015 07:28:00 GMT'}, '0']
         );
         const source = createSource({url: '/source.json'});
-        source.map.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
-        source.map._refreshExpiredTiles = true;
+        source.map!.painter = {context: {}, getTileTexture: () => { return {update: () => {}}; }} as any;
+        source.map!._refreshExpiredTiles = true;
 
         const promise = waitForEvent(source, 'data', (e: MapSourceDataEvent) => e.sourceDataType === 'metadata');
         server.respond();
@@ -305,7 +308,7 @@ describe('RasterTileSource', () => {
             tileID: new OverscaledTileID(10, 0, 10, 5, 5),
             state: 'loading',
             setExpiryData() {}
-        } as any as Tile;
+        } as unknown as Tile;
         const expiryDataSpy = vi.spyOn(tile, 'setExpiryData');
         const tilePromise = source.loadTile(tile);
         server.respond();
@@ -333,7 +336,7 @@ describe('RasterTileSource', () => {
         } as any as Tile;
         const loadPromise = source.loadTile(tile);
 
-        tile.abortController.abort();
+        assertedNotNullish(tile.abortController).abort();
         tile.aborted = true;
 
         await expect(loadPromise).resolves.toBeUndefined();

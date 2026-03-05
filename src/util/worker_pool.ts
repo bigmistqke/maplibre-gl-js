@@ -1,6 +1,6 @@
 import {workerFactory} from './web_worker';
 import {browser} from './browser';
-import {isSafari} from './util';
+import {isSafari, assertedNotNullish} from './util';
 import {type ActorTarget} from './actor';
 
 export const PRELOAD_POOL_ID = 'maplibre_preloaded_worker_pool';
@@ -14,7 +14,7 @@ export class WorkerPool {
     active: {
         [_ in number | string]: boolean;
     };
-    workers: Array<ActorTarget>;
+    workers?: Array<ActorTarget>;
 
     constructor() {
         this.active = {};
@@ -37,10 +37,11 @@ export class WorkerPool {
     release(mapId: number | string) {
         delete this.active[mapId];
         if (this.numActive() === 0) {
-            this.workers.forEach((w) => {
+            assertedNotNullish(this.workers).forEach((w) => {
+                // @ts-expect-error - original code called w.terminate() directly
                 w.terminate();
             });
-            this.workers = null;
+            this.workers = undefined;
         }
     }
 

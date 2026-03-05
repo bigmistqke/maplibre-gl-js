@@ -3,21 +3,22 @@ import type {Program} from './program';
 import type {VertexBuffer} from '../gl/vertex_buffer';
 import type {IndexBuffer} from '../gl/index_buffer';
 import type {Context} from '../gl/context';
+import {assertedNotNullish} from '../util/util';
 
 /**
  * @internal
  * A vertex array object used to pass data to the webgl code
  */
 export class VertexArrayObject {
-    context: Context;
-    boundProgram: Program<any>;
-    boundLayoutVertexBuffer: VertexBuffer;
+    context?: Context;
+    boundProgram: Program<any> | null;
+    boundLayoutVertexBuffer: VertexBuffer | null;
     boundPaintVertexBuffers: Array<VertexBuffer>;
-    boundIndexBuffer: IndexBuffer;
-    boundVertexOffset: number;
-    boundDynamicVertexBuffer: VertexBuffer;
-    boundDynamicVertexBuffer2: VertexBuffer;
-    boundDynamicVertexBuffer3: VertexBuffer;
+    boundIndexBuffer: IndexBuffer | null;
+    boundVertexOffset: number | null;
+    boundDynamicVertexBuffer: VertexBuffer | null;
+    boundDynamicVertexBuffer2?: VertexBuffer | null;
+    boundDynamicVertexBuffer3?: VertexBuffer | null;
     vao: any;
 
     constructor() {
@@ -32,7 +33,7 @@ export class VertexArrayObject {
 
     bind(context: Context,
         program: Program<any>,
-        layoutVertexBuffer: VertexBuffer,
+        layoutVertexBuffer: VertexBuffer | null,
         paintVertexBuffers: Array<VertexBuffer>,
         indexBuffer?: IndexBuffer | null,
         vertexOffset?: number | null,
@@ -62,7 +63,7 @@ export class VertexArrayObject {
         );
 
         if (isFreshBindRequired) {
-            this.freshBind(program, layoutVertexBuffer, paintVertexBuffers, indexBuffer, vertexOffset, dynamicVertexBuffer, dynamicVertexBuffer2, dynamicVertexBuffer3);
+            this.freshBind(program, assertedNotNullish(layoutVertexBuffer), paintVertexBuffers, indexBuffer, vertexOffset, dynamicVertexBuffer, dynamicVertexBuffer2, dynamicVertexBuffer3);
         } else {
             context.bindVertexArray.set(this.vao);
 
@@ -96,7 +97,7 @@ export class VertexArrayObject {
 
         const numNextAttributes = program.numAttributes;
 
-        const context = this.context;
+        const context = assertedNotNullish(this.context);
         const gl = context.gl;
 
         if (this.vao) this.destroy();
@@ -107,9 +108,9 @@ export class VertexArrayObject {
         this.boundProgram = program;
         this.boundLayoutVertexBuffer = layoutVertexBuffer;
         this.boundPaintVertexBuffers = paintVertexBuffers;
-        this.boundIndexBuffer = indexBuffer;
-        this.boundVertexOffset = vertexOffset;
-        this.boundDynamicVertexBuffer = dynamicVertexBuffer;
+        this.boundIndexBuffer = indexBuffer ?? null;
+        this.boundVertexOffset = vertexOffset ?? null;
+        this.boundDynamicVertexBuffer = dynamicVertexBuffer ?? null;
         this.boundDynamicVertexBuffer2 = dynamicVertexBuffer2;
         this.boundDynamicVertexBuffer3 = dynamicVertexBuffer3;
 
@@ -156,7 +157,7 @@ export class VertexArrayObject {
 
     destroy() {
         if (this.vao) {
-            this.context.deleteVertexArray(this.vao);
+            assertedNotNullish(this.context).deleteVertexArray(this.vao);
             this.vao = null;
         }
     }

@@ -20,9 +20,9 @@ describe('FeatureIndex', () => {
                 id: 0,
                 properties: {
                     cluster: true,
-                    cluster_id: '123',
+                    cluster_id: 123,
                     promoteId: 'someProperty',
-                    someProperty: undefined
+                    someProperty: undefined as any
                 },
                 extent: 4096,
                 type: 1,
@@ -55,7 +55,7 @@ describe('FeatureIndex', () => {
             const featureIndex = new FeatureIndex(tileID);
             featureIndex.rawTileData = rawTileData as any as ArrayBuffer;
             featureIndex.bucketLayerIDs = [['layer']];
-            featureIndex.insert(geojsonWrapper.feature(0), [[new Point(1, 1)]], 0, 0, 0);
+            featureIndex.insert(geojsonWrapper.feature(0) as any as VectorTileFeatureLike, [[new Point(1, 1)]], 0, 0, 0);
 
             const result = featureIndex.query({
                 queryPadding: 0,
@@ -70,7 +70,7 @@ describe('FeatureIndex', () => {
                 transform
             } as any, {
                 layer: layer,
-            }, [], undefined);
+            }, [], {} as any);
             expect(result.layer[0].feature.properties).toEqual(features[0].tags);
         });
 
@@ -93,7 +93,7 @@ describe('FeatureIndex', () => {
                 transform
             } as any, {
                 layer: layer,
-            }, [], undefined);
+            }, [], undefined as any);
             expect(result.layer[0].feature.properties.admin_level).toBeDefined();
             expect(result.layer[0].feature.geometry.type).toBe('LineString');
         });

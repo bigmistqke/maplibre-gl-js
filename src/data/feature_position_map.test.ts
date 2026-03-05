@@ -14,7 +14,7 @@ describe('FeaturePositionMap', () => {
 
         const featureMap2 = deserialize(serialize(featureMap, [])) as FeaturePositionMap;
 
-        const compareIndex = (a, b) => a.index - b.index;
+        const compareIndex = (a: any, b: any) => a.index - b.index;
 
         expect(featureMap2.getPositions(7).sort(compareIndex)).toEqual([
             {index: 1, start: 0, end: 1},

@@ -17,16 +17,17 @@ import {terrainPreludeUniforms, type TerrainPreludeUniformsType} from './program
 import type {TerrainData} from '../render/terrain';
 import {projectionObjectToUniformMap, type ProjectionPreludeUniformsType, projectionUniforms} from './program/projection_program';
 import type {ProjectionData} from '../geo/projection/projection_data';
+import {assertedNotNullish} from '../util/util';
 
 export type DrawMode = WebGLRenderingContextBase['LINES'] | WebGLRenderingContextBase['TRIANGLES'] | WebGL2RenderingContext['LINE_STRIP'];
 
 function getTokenizedAttributesAndUniforms(array: Array<string>): Array<string> {
-    const result = [];
+    const result: Array<string> = [];
 
     for (let i = 0; i < array.length; i++) {
         if (array[i] === null) continue;
         const token = array[i].split(' ');
-        result.push(token.pop());
+        result.push(token[token.length - 1]);
     }
     return result;
 }
@@ -37,17 +38,17 @@ function getTokenizedAttributesAndUniforms(array: Array<string>): Array<string> 
  */
 export class Program<Us extends UniformBindings> {
     program: WebGLProgram;
-    attributes: {[_: string]: number};
-    numAttributes: number;
-    fixedUniforms: Us;
-    terrainUniforms: TerrainPreludeUniformsType;
-    projectionUniforms: ProjectionPreludeUniformsType;
-    binderUniforms: Array<BinderUniform>;
-    failedToCreate: boolean;
+    attributes?: {[_: string]: number};
+    numAttributes?: number;
+    fixedUniforms?: Us;
+    terrainUniforms?: TerrainPreludeUniformsType;
+    projectionUniforms?: ProjectionPreludeUniformsType;
+    binderUniforms?: Array<BinderUniform>;
+    failedToCreate?: boolean;
 
     constructor(context: Context,
         source: PreparedShader,
-        configuration: ProgramConfiguration,
+        configuration: ProgramConfiguration | null | undefined,
         fixedUniforms: (b: Context, a: UniformLocations) => Us,
         showOverdrawInspector: boolean,
         hasTerrain: boolean,
@@ -98,7 +99,7 @@ export class Program<Us extends UniformBindings> {
             vertexSource = transpileVertexShaderToWebGL1(vertexSource);
         }
 
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        const fragmentShader = assertedNotNullish(gl.createShader(gl.FRAGMENT_SHADER), `Could not compile fragment shader: ${gl.getShaderInfoLog(gl.FRAGMENT_SHADER)}`);
         if (gl.isContextLost()) {
             this.failedToCreate = true;
             return;
@@ -112,7 +113,7 @@ export class Program<Us extends UniformBindings> {
 
         gl.attachShader(this.program, fragmentShader);
 
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        const vertexShader = assertedNotNullish(gl.createShader(gl.VERTEX_SHADER), `Could not compile vertex shader: ${gl.getShaderInfoLog(gl.VERTEX_SHADER)}`);
         if (gl.isContextLost()) {
             this.failedToCreate = true;
             return;
@@ -127,7 +128,7 @@ export class Program<Us extends UniformBindings> {
         gl.attachShader(this.program, vertexShader);
 
         this.attributes = {};
-        const uniformLocations = {};
+        const uniformLocations: Record<string, WebGLUniformLocation> = {};
 
         this.numAttributes = allAttrInfo.length;
 
@@ -149,7 +150,7 @@ export class Program<Us extends UniformBindings> {
 
         for (let it = 0; it < allUniformsInfo.length; it++) {
             const uniform = allUniformsInfo[it];
-            if (uniform && !uniformLocations[uniform]) {
+            if (uniform && !uniformLocations[uniform as keyof typeof uniformLocations]) {
                 const uniformLocation = gl.getUniformLocation(this.program, uniform);
                 if (uniformLocation) {
                     uniformLocations[uniform] = uniformLocation;
@@ -169,19 +170,19 @@ export class Program<Us extends UniformBindings> {
         stencilMode: Readonly<StencilMode>,
         colorMode: Readonly<ColorMode>,
         cullFaceMode: Readonly<CullFaceMode>,
-        uniformValues: UniformValues<Us>,
-        terrain: TerrainData,
-        projectionData: ProjectionData,
+        uniformValues: UniformValues<Us> | null,
+        terrain: TerrainData | null | undefined,
+        projectionData: ProjectionData | null | undefined ,
         layerID: string,
-        layoutVertexBuffer: VertexBuffer,
-        indexBuffer: IndexBuffer,
-        segments: SegmentVector,
+        layoutVertexBuffer: VertexBuffer | null | undefined ,
+        indexBuffer: IndexBuffer | null | undefined ,
+        segments: SegmentVector | null | undefined ,
         currentProperties?: any,
-        zoom?: number | null,
-        configuration?: ProgramConfiguration | null,
-        dynamicLayoutBuffer?: VertexBuffer | null,
-        dynamicLayoutBuffer2?: VertexBuffer | null,
-        dynamicLayoutBuffer3?: VertexBuffer | null) {
+        zoom?: number | null | undefined ,
+        configuration?: ProgramConfiguration | null | undefined ,
+        dynamicLayoutBuffer?: VertexBuffer | null | undefined ,
+        dynamicLayoutBuffer2?: VertexBuffer | null | undefined ,
+        dynamicLayoutBuffer3?: VertexBuffer | null | undefined ) {
 
         const gl = context.gl;
 
@@ -199,26 +200,46 @@ export class Program<Us extends UniformBindings> {
             gl.bindTexture(gl.TEXTURE_2D, terrain.depthTexture);
             context.activeTexture.set(gl.TEXTURE3);
             gl.bindTexture(gl.TEXTURE_2D, terrain.texture);
+            // Dynamic dispatch: loop iterates terrainUniforms keys which map 1:1 to TerrainData properties.
+            // TypeScript can't prove per-key type correspondence in dynamic loops.
+            const terrainUnifs = assertedNotNullish(this.terrainUniforms);
             for (const name in this.terrainUniforms) {
-                this.terrainUniforms[name].set(terrain[name]);
+                const data = assertedNotNullish(terrain[name as keyof typeof terrain]);
+
+                terrainUnifs[name as keyof TerrainPreludeUniformsType].set(
+                    // @ts-expect-error UNEXPECTED BEHAVIOR: this pattern relies on terrainUnifs and terrain to have matching value-types
+                    //                                       expect error as typescript will always complain due to non-matching overloads
+                    data
+                );
             }
         }
 
         if (projectionData) {
+            // Dynamic dispatch: projectionObjectToUniformMap maps projection fields to uniform names.
+            // TypeScript can't prove per-key type correspondence in dynamic loops.
+            const projUnifs = assertedNotNullish(this.projectionUniforms);
             for (const fieldName in projectionData) {
-                const uniformName = projectionObjectToUniformMap[fieldName];
-                this.projectionUniforms[uniformName].set(projectionData[fieldName]);
+                const uniformName = projectionObjectToUniformMap[fieldName as keyof typeof projectionData];
+                const data = assertedNotNullish(projectionData[fieldName as keyof typeof projectionData]);
+
+                projUnifs[uniformName].set(
+                    // @ts-expect-error UNEXPECTED BEHAVIOR: this pattern relies on terrainUnifs and terrain to have matching value-types
+                    //                                       expect error as typescript will always complain due to non-matching overloads
+                    data
+                );
             }
         }
 
-        if (uniformValues) {
-            for (const name in this.fixedUniforms) {
-                this.fixedUniforms[name].set(uniformValues[name]);
-            }
+        for (const name in assertedNotNullish(this.fixedUniforms)) {
+            assertedNotNullish(this.fixedUniforms)[name].set(assertedNotNullish(uniformValues)[name]);
         }
 
         if (configuration) {
-            configuration.setUniforms(context, this.binderUniforms, currentProperties, {zoom: (zoom as any)});
+            configuration.setUniforms(context, assertedNotNullish(this.binderUniforms), currentProperties,
+                // NOTE:    globals are mostly ignored in classes implementing UniformBinder
+                //          except for CompositeExpressionBinder which does assume that it is defined.
+                {zoom: assertedNotNullish(zoom)}
+            );
         }
 
         let primitiveSize = 0;
@@ -234,14 +255,14 @@ export class Program<Us extends UniformBindings> {
                 break;
         }
 
-        for (const segment of segments.get()) {
+        for (const segment of assertedNotNullish(segments).get()) {
             const vaos = segment.vaos || (segment.vaos = {});
             const vao: VertexArrayObject = vaos[layerID] || (vaos[layerID] = new VertexArrayObject());
 
             vao.bind(
                 context,
                 this,
-                layoutVertexBuffer,
+                layoutVertexBuffer ?? null,
                 configuration ? configuration.getPaintVertexBuffers() : [],
                 indexBuffer,
                 segment.vertexOffset,

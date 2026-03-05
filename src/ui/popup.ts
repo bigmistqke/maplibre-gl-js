@@ -1,4 +1,4 @@
-import {extend} from '../util/util';
+import {extend, assertedNotNullish, assertNotNullish } from '../util/util';
 import {Event, Evented} from '../util/evented';
 import {type MapMouseEvent} from './events';
 import {DOM} from '../util/dom';
@@ -175,16 +175,16 @@ const focusQuerySelector = [
  * **Event** `close` of type {@link Event} will be fired when the popup is closed manually or programmatically.
  */
 export class Popup extends Evented {
-    _map: Map;
+    _map: Map | undefined;
     options: PopupOptions;
-    _content: HTMLElement;
-    _container: HTMLElement;
-    _closeButton: HTMLButtonElement;
-    _tip: HTMLElement;
-    _lngLat: LngLat;
-    _trackPointer: boolean;
-    _pos: Point;
-    _flatPos: Point;
+    _content: HTMLElement | undefined;
+    _container: HTMLElement | undefined;
+    _closeButton: HTMLButtonElement | undefined;
+    _tip: HTMLElement | undefined;
+    _lngLat: LngLat | undefined;
+    _trackPointer: boolean | undefined;
+    _pos: Point | undefined | null;
+    _flatPos: Point | undefined | null;
 
     /**
      * @param options - the options
@@ -232,7 +232,7 @@ export class Popup extends Evented {
             if (this._container) {
                 this._container.classList.add('maplibregl-popup-track-pointer');
             }
-            this._map._canvasContainer.classList.add('maplibregl-track-pointer');
+            assertedNotNullish(this._map._canvasContainer).classList.add('maplibregl-track-pointer');
         } else {
             this._map.on('move', this._update);
         }
@@ -249,10 +249,10 @@ export class Popup extends Evented {
         if (this.options.locationOccludedOpacity === undefined) {
             return;
         }
-        if (this._map.transform.isLocationOccluded(this.getLngLat())) {
-            this._container.style.opacity = `${this.options.locationOccludedOpacity}`;
+        if (assertedNotNullish(this._map).transform.isLocationOccluded(assertedNotNullish(this.getLngLat()))) {
+            assertedNotNullish(this._container).style.opacity = `${this.options.locationOccludedOpacity}`;
         } else {
-            this._container.style.opacity = '';
+            assertedNotNullish(this._container).style.opacity = '';
         }
     };
 
@@ -290,7 +290,7 @@ export class Popup extends Evented {
             this._map.off('mousemove', this._onMouseMove);
             this._map.off('mouseup', this._onMouseUp);
             this._map.off('drag', this._onDrag);
-            this._map._canvasContainer.classList.remove('maplibregl-track-pointer');
+            assertedNotNullish(this._map._canvasContainer).classList.remove('maplibregl-track-pointer');
             delete this._map;
             this.fire(new Event('close'));
         }
@@ -307,7 +307,7 @@ export class Popup extends Evented {
      *
      * @returns The geographical location of the popup's anchor.
      */
-    getLngLat(): LngLat {
+    getLngLat(): LngLat | undefined {
         return this._lngLat;
     }
 
@@ -331,7 +331,7 @@ export class Popup extends Evented {
             if (this._container) {
                 this._container.classList.remove('maplibregl-popup-track-pointer');
             }
-            this._map._canvasContainer.classList.remove('maplibregl-track-pointer');
+            assertedNotNullish(this._map._canvasContainer).classList.remove('maplibregl-track-pointer');
         }
 
         return this;
@@ -360,7 +360,7 @@ export class Popup extends Evented {
             if (this._container) {
                 this._container.classList.add('maplibregl-popup-track-pointer');
             }
-            this._map._canvasContainer.classList.add('maplibregl-track-pointer');
+            assertedNotNullish(this._map._canvasContainer).classList.add('maplibregl-track-pointer');
         }
 
         return this;
@@ -381,7 +381,7 @@ export class Popup extends Evented {
      * ```
      * @returns element
      */
-    getElement(): HTMLElement {
+    getElement(): HTMLElement | undefined {
         return this._container;
     }
 
@@ -428,7 +428,7 @@ export class Popup extends Evented {
     setHTML(html: string): this {
         const frag = document.createDocumentFragment();
         const temp = document.createElement('body');
-        let child: ChildNode;
+        let child: ChildNode | null;
         temp.innerHTML = html;
         while (true) {
             child = temp.firstChild;
@@ -444,7 +444,7 @@ export class Popup extends Evented {
      *
      * @returns The maximum width of the popup.
      */
-    getMaxWidth(): string {
+    getMaxWidth(): string | undefined {
         return this._container?.style.maxWidth;
     }
 
@@ -639,7 +639,7 @@ export class Popup extends Evented {
             this._container.style.maxWidth = this.options.maxWidth;
         }
 
-        this._lngLat = smartWrap(this._lngLat, this._flatPos, this._map.transform, this._trackPointer);
+        this._lngLat = smartWrap(assertedNotNullish(this._lngLat), assertedNotNullish(this._flatPos), this._map.transform, this._trackPointer);
 
         if (this._trackPointer && !cursor) return;
 
@@ -656,7 +656,7 @@ export class Popup extends Evented {
             const width = this._container.offsetWidth;
             const height = this._container.offsetHeight;
             const padding = normalizePadding(this.options.padding);
-            let anchorComponents: string[];
+            let anchorComponents: Array<'top' | 'bottom'| 'left' | 'right'>;
 
             if (pos.y + offset.bottom.y < height + padding.top) {
                 anchorComponents = ['top'];
@@ -679,6 +679,8 @@ export class Popup extends Evented {
             }
         }
 
+        assertNotNullish(anchor);
+
         let offsetedPos = pos.add(offset[anchor]);
 
         if (!this.options.subpixelPositioning) {
@@ -686,7 +688,7 @@ export class Popup extends Evented {
         }
 
         DOM.setTransform(this._container, `${anchorTranslate[anchor]} translate(${offsetedPos.x}px,${offsetedPos.y}px)`);
-        applyAnchorClass(this._container, anchor, 'popup');
+        applyAnchorClass(this._container, assertedNotNullish(anchor), 'popup');
 
         this._updateOpacity();
     };

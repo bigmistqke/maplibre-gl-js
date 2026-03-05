@@ -7,6 +7,8 @@ import {type ZoomHistory} from '../../style/zoom_history';
 import {type BucketParameters} from '../bucket';
 import {type CreateBucketParameters, createPopulateOptions, getFeaturesFromLayer, loadVectorTile} from '../../../test/unit/lib/tile';
 import {type VectorTileLayerLike} from '@maplibre/vt-pbf';
+import {assertedNotNullish} from '../../util/util';
+import {CanonicalTileID} from '../../tile/tile_id';
 
 function createFillExtrusionBucket({id, layout, paint, globalState, availableImages}: CreateBucketParameters): FillExtrusionBucket {
     const layer = new FillExtrusionStyleLayer({
@@ -14,9 +16,9 @@ function createFillExtrusionBucket({id, layout, paint, globalState, availableIma
         type: 'fill-extrusion',
         layout,
         paint
-    } as LayerSpecification, globalState);
+    } as LayerSpecification, assertedNotNullish(globalState, 'globalState must be defined'));
     layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters,
-        availableImages as Array<string>);
+        assertedNotNullish(availableImages, 'availableImages must be defined'));
 
     return new FillExtrusionBucket({layers: [layer]} as BucketParameters<FillExtrusionStyleLayer>);
 }
@@ -29,17 +31,17 @@ describe('FillExtrusionBucket', () => {
     });
 
     test('FillExtrusionBucket fill-pattern with global-state', () => {
-        const availableImages = [];
+        const availableImages: string[] = [];
         const bucket = createFillExtrusionBucket({id: 'test',
             paint: {'fill-extrusion-pattern': ['coalesce', ['get', 'pattern'], ['global-state', 'pattern']]},
             globalState: {pattern: 'test-pattern'},
             availableImages
         });
 
-        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), undefined);
+        bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), new CanonicalTileID(0, 0, 0));
 
-        expect(bucket.features.length).toBeGreaterThan(0);
-        expect(bucket.features[0].patterns).toEqual({
+        expect(assertedNotNullish(bucket.features, 'bucket.features must be defined').length).toBeGreaterThan(0);
+        expect(assertedNotNullish(bucket.features, 'bucket.features must be defined')[0].patterns).toEqual({
             test: {min: 'test-pattern', mid: 'test-pattern', max: 'test-pattern'}
         });
     });

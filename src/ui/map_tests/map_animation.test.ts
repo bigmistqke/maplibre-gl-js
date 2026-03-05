@@ -4,7 +4,8 @@ import simulate from '../../../test/unit/lib/simulate_interaction';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 test('stops camera animation on touchstart when interactive', () => {

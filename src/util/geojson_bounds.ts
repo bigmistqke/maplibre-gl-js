@@ -2,11 +2,15 @@ import {LngLatBounds} from '../geo/lng_lat_bounds';
 
 type DeepCoordinates = GeoJSON.Position | DeepCoordinates[];
 
+function isPosition(coords: DeepCoordinates): coords is GeoJSON.Position {
+    return coords.length > 0 && typeof coords[0] === 'number';
+}
+
 function extractCoordinates(coords: DeepCoordinates): number[][] {
     if (!coords || coords.length === 0) return [];
 
-    if (typeof coords[0] === 'number') {
-        return [coords as number[]];
+    if (isPosition(coords)) {
+        return [coords];
     }
 
     return coords.flatMap(c => extractCoordinates(c));

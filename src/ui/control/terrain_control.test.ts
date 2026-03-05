@@ -10,6 +10,7 @@ function createMap() {
             version: 8,
             sources: {
                 terrain: {
+                    type: 'raster-dem',
                     minzoom: 5,
                     maxzoom: 12,
                     attribution: 'MapLibre',
@@ -18,14 +19,12 @@ function createMap() {
                 },
             },
             layers: [],
-            owner: 'maplibre',
-            id: 'demotiles',
         },
         hash: true
     });
 }
 
-let map;
+let map: ReturnType<typeof createMap>;
 
 beforeEach(() => {
     beforeMapTest();
@@ -33,7 +32,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    map.remove();
+    map?.remove();
 });
 
 describe('TerrainControl', () => {

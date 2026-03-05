@@ -1,6 +1,6 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import {RequestManager} from '../util/request_manager';
 import {loadSprite, normalizeSpriteURL} from './load_sprite';
 import {type FakeServer, fakeServer} from 'nise';
@@ -49,16 +49,17 @@ describe('loadSprite', () => {
             try {
                 const img = await createImageBitmap(new ImageData(1024, 824));
                 return img;
-            } catch (e) {
-                throw new Error(`Could not load image because of ${e.message}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
+            } catch (e: unknown) {
+                const errorMessage = e instanceof Error ? e.message : String(e);
+                throw new Error(`Could not load image because of ${errorMessage}. Please make sure to use a supported image type such as PNG or JPEG. Note that SVGs are not supported.`);
             }
         });
-        global.fetch = null;
+        global.fetch = undefined as any; // Test mock
         server = fakeServer.create();
     });
 
     test('backwards compatibility: single string is treated as a URL for the default sprite', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -82,7 +83,7 @@ describe('loadSprite', () => {
 
         Object.values(result['default']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         expect(server.requests[0].url).toBe('http://localhost:9966/test/unit/assets/sprite1.json');
@@ -90,7 +91,7 @@ describe('loadSprite', () => {
     });
 
     test('array of objects support', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -118,12 +119,12 @@ describe('loadSprite', () => {
 
         Object.values(result['sprite1']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         Object.values(result['sprite2']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         expect(server.requests[0].url).toBe('http://localhost:9966/test/unit/assets/sprite1.json');
@@ -133,13 +134,13 @@ describe('loadSprite', () => {
     });
 
     test('server returns error', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
         const manager = new RequestManager(transform);
 
-        server.respondWith((xhr) => xhr.respond(500));
+        server.respondWith((xhr: any) => xhr.respond(500));
         const promise = loadSprite([{id: 'sprite1', url: 'http://localhost:9966/test/unit/assets/sprite1'}], manager, 1, new AbortController());
         server.respond();
 
@@ -148,7 +149,7 @@ describe('loadSprite', () => {
     });
 
     test('request canceling', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -171,7 +172,7 @@ describe('loadSprite', () => {
     });
 
     test('pixelRatio is respected', async () => {
-        const transform = vi.fn().mockImplementation((url, type) => {
+        const transform = vi.fn().mockImplementation((url: string, type: string) => {
             return {url, type};
         });
 
@@ -193,7 +194,7 @@ describe('loadSprite', () => {
 
         Object.values(result['default']).forEach(styleImage => {
             expect(styleImage.spriteData).toBeTruthy();
-            expect(styleImage.spriteData.context).toBeInstanceOf(CanvasRenderingContext2D);
+            expect(styleImage.spriteData?.context).toBeInstanceOf(CanvasRenderingContext2D);
         });
 
         expect(server.requests[0].url).toBe('http://localhost:9966/test/unit/assets/sprite1@2x.json');

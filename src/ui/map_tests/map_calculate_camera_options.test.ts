@@ -5,10 +5,12 @@ import {type OverscaledTileID} from '../../tile/tile_id';
 import {type CameraOptions} from '../camera';
 import {type Terrain} from '../../render/terrain';
 import {mercatorZfromAltitude} from '../../geo/mercator_coordinate';
+import {assertedNotNullish} from '../../util/util';
 
 beforeEach(() => {
     beforeMapTest();
-    global.fetch = null;
+    // Cast needed: intentionally clearing global.fetch for test isolation; global type doesn't allow null
+    global.fetch = null as any as typeof global.fetch;
 });
 
 describe('calculateCameraOptionsFromTo', () => {
@@ -74,7 +76,7 @@ describe('calculateCameraOptionsFromTo', () => {
         terrainStub.getElevationForLngLat = mockedGetElevation;
         map.terrain = terrainStub;
 
-        const expectedZoom = Math.log2(map.transform.cameraToCenterDistance / mercatorZfromAltitude(1000, 0) / map.transform.tileSize);
+        const expectedZoom = Math.log2(assertedNotNullish(map.transform.cameraToCenterDistance) / mercatorZfromAltitude(1000, 0) / map.transform.tileSize);
         const cameraOptions = map.calculateCameraOptionsFromTo(new LngLat(0, 0), 0, new LngLat(0, 0));
 
         expect(cameraOptions).toBeDefined();

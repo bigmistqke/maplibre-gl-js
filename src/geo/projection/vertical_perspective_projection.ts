@@ -2,7 +2,7 @@ import type {Context} from '../../gl/context';
 import type {CanonicalTileID} from '../../tile/tile_id';
 import {type Mesh} from '../../render/mesh';
 import {now} from '../../util/time_control';
-import {easeCubicInOut, lerp} from '../../util/util';
+import {assertedNotNullish, easeCubicInOut, lerp} from '../../util/util';
 import {mercatorYfromLat} from '../mercator_coordinate';
 import {SubdivisionGranularityExpression, SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings';
 import type {Projection, ProjectionGPUContext, TileMeshUsage} from './projection';
@@ -37,8 +37,8 @@ export class VerticalPerspectiveProjection implements Projection {
     private _tileMeshCache: {[_: string]: Mesh} = {};
 
     // GPU atan() error correction
-    private _errorMeasurement: ProjectionErrorMeasurement;
-    private _errorQueryLatitudeDegrees: number;
+    private _errorMeasurement: ProjectionErrorMeasurement | undefined;
+    private _errorQueryLatitudeDegrees: number | undefined;
     private _errorCorrectionUsable: number = 0.0;
     private _errorMeasurementLastValue: number = 0.0;
     private _errorCorrectionPreviousValue: number = 0.0;
@@ -99,7 +99,7 @@ export class VerticalPerspectiveProjection implements Projection {
         if (!this._errorMeasurement) {
             this._errorMeasurement = new ProjectionErrorMeasurement(renderContext);
         }
-        const mercatorY = mercatorYfromLat(this._errorQueryLatitudeDegrees);
+        const mercatorY = mercatorYfromLat(assertedNotNullish(this._errorQueryLatitudeDegrees));
         const expectedResult = 2.0 * Math.atan(Math.exp(Math.PI - (mercatorY * Math.PI * 2.0))) - Math.PI * 0.5;
         const newValue = this._errorMeasurement.updateErrorLoop(mercatorY, expectedResult);
 
@@ -118,7 +118,7 @@ export class VerticalPerspectiveProjection implements Projection {
     }
 
     private _getMeshKey(options: CreateTileMeshOptions): string {
-        return `${options.granularity.toString(36)}_${options.generateBorders ? 'b' : ''}${options.extendToNorthPole ? 'n' : ''}${options.extendToSouthPole ? 's' : ''}`;
+        return `${assertedNotNullish(options.granularity).toString(36)}_${options.generateBorders ? 'b' : ''}${options.extendToNorthPole ? 'n' : ''}${options.extendToSouthPole ? 's' : ''}`;
     }
 
     public getMeshFromTileID(context: Context, canonical: CanonicalTileID, hasBorder: boolean, allowPoles: boolean, usage: TileMeshUsage): Mesh {
@@ -157,7 +157,7 @@ export class VerticalPerspectiveProjection implements Projection {
         // Error correction transition
         dirty = dirty || (currentTime - this._errorMeasurementLastChangeTime) / 1000.0 < (globeConstants.errorTransitionTimeSeconds + 0.2);
         // Error correction query in flight
-        dirty = dirty || (this._errorMeasurement && this._errorMeasurement.awaitingQuery);
+        dirty = dirty || !!(this._errorMeasurement && this._errorMeasurement.awaitingQuery);
         return dirty;
     }
 

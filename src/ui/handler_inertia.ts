@@ -1,6 +1,6 @@
 import {now} from '../util/time_control';
 import type {Map} from './map';
-import {bezier, clamp, extend, evaluateZoomSnap} from '../util/util';
+import {bezier, clamp, extend, evaluateZoomSnap, assertedNotNullish, assertNotNullish} from '../util/util';
 import Point from '@mapbox/point-geometry';
 import type {DragPanOptions} from './handler/shim/drag_pan';
 import {type EaseToOptions} from './camera';
@@ -47,7 +47,7 @@ export class HandlerInertia {
     _inertiaBuffer: Array<{
         time: number;
         settings: any;
-    }>;
+    }> | undefined;
 
     constructor(map: Map) {
         this._map = map;
@@ -60,21 +60,22 @@ export class HandlerInertia {
 
     record(settings: any) {
         this._drainInertiaBuffer();
-        this._inertiaBuffer.push({time: now(), settings});
+        assertedNotNullish(this._inertiaBuffer).push({time: now(), settings});
     }
 
     _drainInertiaBuffer() {
-        const inertia = this._inertiaBuffer,
-            currentTime = now(),
-            cutoff = 160;   //msec
+        const inertia = this._inertiaBuffer;
+        assertNotNullish(inertia);
+        const currentTime = now();
+        const cutoff = 160;   //msec
 
         while (inertia.length > 0 && currentTime - inertia[0].time > cutoff)
             inertia.shift();
     }
 
-    _onMoveEnd(panInertiaOptions?: DragPanOptions | boolean): EaseToOptions {
+    _onMoveEnd(panInertiaOptions?: DragPanOptions | boolean): EaseToOptions | undefined {
         this._drainInertiaBuffer();
-        if (this._inertiaBuffer.length < 2) {
+        if (assertedNotNullish(this._inertiaBuffer).length < 2) {
             return;
         }
 
@@ -88,7 +89,7 @@ export class HandlerInertia {
             around: undefined
         };
 
-        for (const {settings} of this._inertiaBuffer) {
+        for (const {settings} of assertedNotNullish(this._inertiaBuffer)) {
             deltas.zoom += settings.zoomDelta || 0;
             deltas.bearing += settings.bearingDelta || 0;
             deltas.pitch += settings.pitchDelta || 0;
@@ -98,8 +99,8 @@ export class HandlerInertia {
             if (settings.pinchAround) deltas.pinchAround = settings.pinchAround;
         }
 
-        const lastEntry = this._inertiaBuffer[this._inertiaBuffer.length - 1];
-        const duration = (lastEntry.time - this._inertiaBuffer[0].time);
+        const lastEntry = assertedNotNullish(this._inertiaBuffer)[assertedNotNullish(this._inertiaBuffer).length - 1];
+        const duration = (lastEntry.time - assertedNotNullish(this._inertiaBuffer)[0].time);
 
         const easeOptions = {} as any;
 
@@ -152,14 +153,14 @@ export class HandlerInertia {
 
 // Unfortunately zoom, bearing, etc can't have different durations and easings so
 // we need to choose one. We use the longest duration and it's corresponding easing.
-function extendDuration(easeOptions, result) {
+function extendDuration(easeOptions: {duration?: number; easing?: (t: number) => number}, result: {duration: number; easing: (t: number) => number}) {
     if (!easeOptions.duration || easeOptions.duration < result.duration) {
         easeOptions.duration = result.duration;
         easeOptions.easing = result.easing;
     }
 }
 
-function calculateEasing(amount, inertiaDuration: number, inertiaOptions) {
+function calculateEasing(amount: number, inertiaDuration: number, inertiaOptions: InertiaOptions) {
     const {maxSpeed, linearity, deceleration} = inertiaOptions;
     const speed = clamp(
         amount * linearity / (inertiaDuration / 1000),
