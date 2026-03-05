@@ -64,6 +64,22 @@
 #### Test files migrated (Phase 2)
 - `src/render/render_to_texture.test.ts` — `painter.renderToTexture = rtt` → creates `TerrainSurface` and sets `painter.surface`
 
+### Phase 3: Render strategy on Surface
+
+#### Surface interface extended with render strategy
+- `src/core/surface.ts` — added `prepareFrame()`, `renderLayer()`, `ensureFrameBuffers()`, `markDirty()`, `skipOpaquePass` to interface; `FlatSurface` implements all as no-ops/false
+
+#### TerrainSurface owns render loop orchestration
+- `src/render/terrain_surface.ts` — implements `prepareFrame()` (depth/coords FBO update + RTT prepare), `renderLayer()` (delegates to RTT), `ensureFrameBuffers()` (force FBO update), `markDirty()`, `skipOpaquePass`; absorbed `terrainFacilitator` state from Painter
+
+#### Painter simplified
+- `src/render/painter.ts` — removed `terrainFacilitator` field and `maybeDrawDepthAndCoords()` method; `render()` calls `surface.prepareFrame()`/`surface.renderLayer()`/`surface.skipOpaquePass` instead of checking `surface.renderToTexture` directly; no more `drawDepth`/`drawCoords` imports
+
+#### Remaining references updated
+- `src/render/terrain.ts` — `painter.maybeDrawDepthAndCoords(true)` → `painter.surface.ensureFrameBuffers(painter)`
+- `src/ui/map.ts` — `painter.terrainFacilitator.dirty = true` → `surface.markDirty()`
+- `src/render/terrain.test.ts` — mocks updated from `maybeDrawDepthAndCoords` to `surface.ensureFrameBuffers`
+
 ## Deliberately left using `Terrain` directly (by design, not in scope)
 - `src/ui/map.ts` `setTerrain()` / `getTerrain()` / `_terrainDataCallback` — terrain lifecycle management
 - `src/render/terrain.ts` — the Terrain class itself
@@ -74,4 +90,4 @@
 - `src/source/image_source.ts` — `terrainTileRanges`
 
 ## Status
-All Surface-related type errors are resolved. `style.map.terrain` no longer appears in source code (only in design docs). `painter.renderToTexture` is eliminated — RTT is owned by Surface. Remaining type errors in the codebase are from the feature registry refactoring (TileManager constructor arity, MapOptions `_featureRegistry` required), not from Surface.
+All Surface-related type errors are resolved. `style.map.terrain` no longer appears in source code (only in design docs). `painter.renderToTexture` is eliminated — RTT is owned by Surface. The render loop in `painter.render()` no longer references RTT or terrain directly — it calls `surface.prepareFrame()`, `surface.renderLayer()`, and checks `surface.skipOpaquePass`. The `terrainFacilitator` state has moved from Painter to TerrainSurface. Remaining type errors in the codebase are from the feature registry refactoring (TileManager constructor arity, MapOptions `_featureRegistry` required), not from Surface.

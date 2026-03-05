@@ -34,13 +34,14 @@ describe('Terrain', () => {
 
     test('pointCoordinate should not return null', () => {
         expect.assertions(2);
+        const ensureFrameBuffers = vi.fn();
         const painter = {
             context: new Context(gl),
             width: 1,
             height: 1,
             pixelRatio: 1,
             transform: {center: {lng: 0}},
-            maybeDrawDepthAndCoords: vi.fn(),
+            surface: {ensureFrameBuffers},
         } as any as Painter;
         const tileManager = {_source: {tileSize: 512}} as TileManager;
         const getTileByID = (tileID) : Tile => {
@@ -64,7 +65,7 @@ describe('Terrain', () => {
         const coordinate = terrain.pointCoordinate(new Point(0, 0));
 
         expect(coordinate).not.toBeNull();
-        expect(painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
+        expect(ensureFrameBuffers).toHaveBeenCalled();
 
     });
 
@@ -74,7 +75,7 @@ describe('Terrain', () => {
             context: new Context(gl),
             width: WORLD_WIDTH,
             height: 1,
-            maybeDrawDepthAndCoords: vi.fn(),
+            surface: {ensureFrameBuffers: vi.fn()},
             pixelRatio,
         } as any as Painter;
         const tileManager = {_source: {tileSize: 512}} as TileManager;
@@ -109,7 +110,7 @@ describe('Terrain', () => {
             const coordinate = terrain.pointCoordinate(new Point(pointX, 0));
 
             expect(coordinate.x).toBe(-1);
-            expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
+            expect(terrain.painter.surface.ensureFrameBuffers).toHaveBeenCalled();
         });
 
     test(
@@ -122,7 +123,7 @@ describe('Terrain', () => {
             const coordinate = terrain.pointCoordinate(new Point(pointX, 0));
 
             expect(coordinate.x).toBe(2);
-            expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
+            expect(terrain.painter.surface.ensureFrameBuffers).toHaveBeenCalled();
         });
 
     test(
@@ -133,12 +134,12 @@ describe('Terrain', () => {
             let pointX = 0;
             let coordinate = terrain.pointCoordinate(new Point(pointX, 0));
             expect(coordinate.x).toBe(-1);
-            expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
+            expect(terrain.painter.surface.ensureFrameBuffers).toHaveBeenCalled();
 
             pointX = 3;
             coordinate = terrain.pointCoordinate(new Point(pointX, 0));
             expect(coordinate.x).toBe(2);
-            expect(terrain.painter.maybeDrawDepthAndCoords).toHaveBeenCalled();
+            expect(terrain.painter.surface.ensureFrameBuffers).toHaveBeenCalled();
         });
 
     test('Calculate tile minimum and maximum elevation', () => {

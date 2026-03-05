@@ -19,7 +19,6 @@ import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
 import {drawCustom} from './draw_custom';
-import {drawDepth, drawCoords} from './draw_terrain';
 import {type OverscaledTileID} from '../tile/tile_id';
 import {Mesh} from './mesh';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection';
@@ -107,17 +106,12 @@ export class Painter {
     symbolFadeChange: number;
     debugOverlayTexture: Texture;
     debugOverlayCanvas: HTMLCanvasElement;
-    // this object stores the current camera-matrix and the last render time
-    // of the terrain-facilitators. e.g. depth & coords framebuffers
-    // every time the camera-matrix changes the terrain-facilitators will be redrawn.
-    terrainFacilitator: {dirty: boolean; matrix: mat4; renderTime: number};
     surface: Surface = FLAT_SURFACE;
 
     constructor(gl: WebGLRenderingContext | WebGL2RenderingContext, transform: IReadonlyTransform) {
         this.context = new Context(gl);
         this.transform = transform;
         this._tileTextures = {};
-        this.terrainFacilitator = {dirty: true, matrix: mat4.identity(new Float64Array(16) as any), renderTime: 0};
 
         this.setup();
 
@@ -496,11 +490,9 @@ export class Painter {
             }
         }
 
-        this.maybeDrawDepthAndCoords(false);
-
-        if (this.surface.renderToTexture) {
-            this.surface.renderToTexture.prepareForRender(this.style, this.transform.zoom);
-            // this is disabled, because render-to-texture is rendering all layers from bottom to top.
+        this.surface.prepareFrame(this, this.style);
+        if (this.surface.skipOpaquePass) {
+            // render-to-texture renders all layers from bottom to top in the translucent pass.
             this.opaquePassCutoff = 0;
         }
 
@@ -544,7 +536,7 @@ export class Painter {
 
         // Opaque pass ===============================================
         // Draw opaque layers top-to-bottom first.
-        if (!this.surface.renderToTexture) {
+        if (!this.surface.skipOpaquePass) {
             this.renderPass = 'opaque';
 
             for (this.currentLayer = layerIds.length - 1; this.currentLayer >= 0; this.currentLayer--) {
@@ -567,7 +559,7 @@ export class Painter {
             const layer = this.style._layers[layerIds[this.currentLayer]];
             const tileManager = tileManagers[layer.source];
 
-            if (this.surface.renderToTexture && this.surface.renderToTexture.renderLayer(layer, renderOptions)) continue;
+            if (this.surface.renderLayer(layer, renderOptions)) continue;
 
             if (!this.opaquePassEnabledForLayer() && !globeDepthRendered) {
                 globeDepthRendered = true;
@@ -583,7 +575,7 @@ export class Painter {
             // separate clipping masks
             const coords = (layer.type === 'symbol' ? coordsDescendingSymbol : coordsDescending)[layer.source];
 
-            this._renderTileClippingMasks(layer, coordsAscending[layer.source], !!this.surface.renderToTexture);
+            this._renderTileClippingMasks(layer, coordsAscending[layer.source], this.surface.skipOpaquePass);
             this.renderLayer(this, tileManager, layer, coords, renderOptions);
         }
 
@@ -606,35 +598,6 @@ export class Painter {
         // Set defaults for most GL values so that anyone using the state after the render
         // encounters more expected values.
         this.context.setDefault();
-    }
-
-    /**
-     * Update the depth and coords framebuffers, if the contents of those frame buffers is out of date.
-     * If requireExact is false, then the contents of those frame buffers is not updated if it is close
-     * to accurate (that is, the camera has not moved much since it was updated last).
-     */
-    maybeDrawDepthAndCoords(requireExact: boolean) {
-        const terrain = this.surface.terrain;
-        if (!terrain) {
-            return;
-        }
-        const prevMatrix = this.terrainFacilitator.matrix;
-        const currMatrix = this.transform.modelViewProjectionMatrix;
-
-        // Update coords/depth-framebuffer on camera movement, or tile reloading
-        let doUpdate = this.terrainFacilitator.dirty;
-        doUpdate ||= requireExact ? !mat4.exactEquals(prevMatrix, currMatrix) : !mat4.equals(prevMatrix, currMatrix);
-        doUpdate ||= terrain.tileManager.anyTilesAfterTime(this.terrainFacilitator.renderTime);
-
-        if (!doUpdate) {
-            return;
-        }
-
-        mat4.copy(prevMatrix, currMatrix);
-        this.terrainFacilitator.renderTime = Date.now();
-        this.terrainFacilitator.dirty = false;
-        drawDepth(this, terrain);
-        drawCoords(this, terrain);
     }
 
     renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {

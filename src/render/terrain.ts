@@ -345,7 +345,7 @@ export class Terrain {
      */
     pointCoordinate(p: Point): MercatorCoordinate {
         // First, ensure the coords framebuffer is up to date.
-        this.painter.maybeDrawDepthAndCoords(true);
+        this.painter.surface.ensureFrameBuffers(this.painter);
 
         const rgba = new Uint8Array(4);
         const context = this.painter.context, gl = context.gl;

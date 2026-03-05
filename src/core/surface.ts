@@ -4,6 +4,9 @@ import type {OverscaledTileID} from '../tile/tile_id';
 import type {TerrainData, Terrain} from '../render/terrain';
 import type {RenderToTexture} from '../render/render_to_texture';
 import type {IReadonlyTransform} from '../geo/transform_interface';
+import type {Painter, RenderOptions} from '../render/painter';
+import type {Style} from '../style/style';
+import type {StyleLayer} from '../style/style_layer';
 import type Point from '@mapbox/point-geometry';
 
 /**
@@ -51,6 +54,23 @@ export interface Surface {
 
     /** Called once per frame to cache the current transform. */
     update(transform: IReadonlyTransform): void;
+
+    // === Render strategy ===
+
+    /** Whether the opaque pass should be skipped (e.g. when rendering to texture). */
+    readonly skipOpaquePass: boolean;
+
+    /** Called at the start of each frame. Handles FBO updates and RTT preparation. */
+    prepareFrame(painter: Painter, style: Style): void;
+
+    /** Returns true if this surface handled rendering the layer (e.g. via RTT). */
+    renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean;
+
+    /** Force-update depth/coords FBOs (e.g. before reading coords pixel). */
+    ensureFrameBuffers(painter: Painter): void;
+
+    /** Mark depth/coords FBOs as needing a redraw (e.g. after terrain data change). */
+    markDirty(): void;
 }
 
 /**
@@ -61,6 +81,7 @@ export class FlatSurface implements Surface {
     readonly hasTerrain = false;
     readonly renderToTexture: RenderToTexture | null = null;
     readonly terrain: Terrain | null = null;
+    readonly skipOpaquePass = false;
 
     getElevation(_lnglat: LngLat): number { return 0; }
     getElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }
@@ -72,6 +93,10 @@ export class FlatSurface implements Surface {
     isPointOnSurface(_point: Point): boolean { return false; }
     getBindings(_tileID: OverscaledTileID): TerrainData | null { return null; }
     update(_transform: IReadonlyTransform): void {}
+    prepareFrame(_painter: Painter, _style: Style): void {}
+    renderLayer(_layer: StyleLayer, _renderOptions: RenderOptions): boolean { return false; }
+    ensureFrameBuffers(_painter: Painter): void {}
+    markDirty(): void {}
 }
 
 /** Singleton flat surface — avoids allocation. */
