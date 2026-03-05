@@ -17,9 +17,9 @@ import {merge, ImageManager} from '../core/feature';
 const fillBase: Feature = {
     layers: {
         fill: {
-            StyleLayer: FillStyleLayer as any,
+            StyleLayer: FillStyleLayer,
             Bucket: FillBucket,
-            draw: drawFill as any,
+            draw: drawFill,
         }
     },
     programs: {
@@ -31,6 +31,6 @@ const fillBase: Feature = {
     singletons: {ImageManager},
 };
 
-export function fill(...capabilities: Feature[]): Feature {
-    return merge(fillBase, ...capabilities);
+export function fill(...features: Feature[]): Feature {
+    return merge(fillBase, ...features);
 }

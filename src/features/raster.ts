@@ -13,12 +13,12 @@ import {CanvasSource} from '../source/canvas_source';
 
 const rasterBase: Feature = {
     sources: {
-        raster: {Source: RasterTileSource as any},
+        raster: {Source: RasterTileSource},
     },
     layers: {
         raster: {
-            StyleLayer: RasterStyleLayer as any,
-            draw: drawRaster as any,
+            StyleLayer: RasterStyleLayer,
+            draw: drawRaster,
         }
     },
     programs: {
@@ -26,18 +26,18 @@ const rasterBase: Feature = {
     },
 };
 
-export function raster(...capabilities: Feature[]): Feature {
-    return merge(rasterBase, ...capabilities);
+export function raster(...features: Feature[]): Feature {
+    return merge(rasterBase, ...features);
 }
 
 export const image: Feature = {
-    sources: {image: {Source: ImageSource as any}},
+    sources: {image: {Source: ImageSource}},
 };
 
 export const video: Feature = {
-    sources: {video: {Source: VideoSource as any}},
+    sources: {video: {Source: VideoSource}},
 };
 
 export const canvas: Feature = {
-    sources: {canvas: {Source: CanvasSource as any}},
+    sources: {canvas: {Source: CanvasSource}},
 };

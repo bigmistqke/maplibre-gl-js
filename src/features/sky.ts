@@ -32,6 +32,6 @@ const skyBase: Feature = {
     ]
 };
 
-export function sky(...capabilities: Feature[]): Feature {
-    return merge(skyBase, ...capabilities);
+export function sky(...features: Feature[]): Feature {
+    return merge(skyBase, ...features);
 }

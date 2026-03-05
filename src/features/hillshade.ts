@@ -12,8 +12,8 @@ import {merge} from '../core/feature';
 const hillshadeBase: Feature = {
     layers: {
         hillshade: {
-            StyleLayer: HillshadeStyleLayer as any,
-            draw: drawHillshade as any,
+            StyleLayer: HillshadeStyleLayer,
+            draw: drawHillshade,
         }
     },
     programs: {
@@ -22,6 +22,6 @@ const hillshadeBase: Feature = {
     },
 };
 
-export function hillshade(...capabilities: Feature[]): Feature {
-    return merge(hillshadeBase, ...capabilities);
+export function hillshade(...features: Feature[]): Feature {
+    return merge(hillshadeBase, ...features);
 }

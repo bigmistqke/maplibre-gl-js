@@ -11,9 +11,9 @@ import {merge} from '../core/feature';
 const circleBase: Feature = {
     layers: {
         circle: {
-            StyleLayer: CircleStyleLayer as any,
+            StyleLayer: CircleStyleLayer,
             Bucket: CircleBucket,
-            draw: drawCircles as any,
+            draw: drawCircles,
         }
     },
     programs: {
@@ -21,6 +21,6 @@ const circleBase: Feature = {
     },
 };
 
-export function circle(...capabilities: Feature[]): Feature {
-    return merge(circleBase, ...capabilities);
+export function circle(...features: Feature[]): Feature {
+    return merge(circleBase, ...features);
 }

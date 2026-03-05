@@ -13,9 +13,9 @@ import {merge, ImageManager} from '../core/feature';
 const fillExtrusionBase: Feature = {
     layers: {
         'fill-extrusion': {
-            StyleLayer: FillExtrusionStyleLayer as any,
+            StyleLayer: FillExtrusionStyleLayer,
             Bucket: FillExtrusionBucket,
-            draw: drawFillExtrusion as any,
+            draw: drawFillExtrusion,
         }
     },
     programs: {
@@ -25,6 +25,6 @@ const fillExtrusionBase: Feature = {
     singletons: {ImageManager},
 };
 
-export function fillExtrusion(...capabilities: Feature[]): Feature {
-    return merge(fillExtrusionBase, ...capabilities);
+export function fillExtrusion(...features: Feature[]): Feature {
+    return merge(fillExtrusionBase, ...features);
 }

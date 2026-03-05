@@ -19,9 +19,9 @@ import {merge, ImageManager, LineAtlas} from '../core/feature';
 const lineBase: Feature = {
     layers: {
         line: {
-            StyleLayer: LineStyleLayer as any,
+            StyleLayer: LineStyleLayer,
             Bucket: LineBucket,
-            draw: drawLine as any,
+            draw: drawLine,
         }
     },
     programs: {
@@ -34,6 +34,6 @@ const lineBase: Feature = {
     singletons: {ImageManager, LineAtlas},
 };
 
-export function line(...capabilities: Feature[]): Feature {
-    return merge(lineBase, ...capabilities);
+export function line(...features: Feature[]): Feature {
+    return merge(lineBase, ...features);
 }

@@ -5,13 +5,13 @@ import {merge} from '../core/feature';
 
 const geojsonBase: Feature = {
     sources: {
-        geojson: {Source: GeoJSONSource as any},
+        geojson: {Source: GeoJSONSource},
     },
     workerSources: {
         geojson: {WorkerSource: GeoJSONWorkerSource},
     },
 };
 
-export function geojson(...capabilities: Feature[]): Feature {
-    return merge(geojsonBase, ...capabilities);
+export function geojson(...features: Feature[]): Feature {
+    return merge(geojsonBase, ...features);
 }

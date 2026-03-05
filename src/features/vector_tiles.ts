@@ -5,13 +5,13 @@ import {merge} from '../core/feature';
 
 const vectorTilesBase: Feature = {
     sources: {
-        vector: {Source: VectorTileSource as any},
+        vector: {Source: VectorTileSource},
     },
     workerSources: {
         vector: {WorkerSource: VectorTileWorkerSource},
     },
 };
 
-export function vectorTiles(...capabilities: Feature[]): Feature {
-    return merge(vectorTilesBase, ...capabilities);
+export function vectorTiles(...features: Feature[]): Feature {
+    return merge(vectorTilesBase, ...features);
 }

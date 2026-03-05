@@ -13,9 +13,9 @@ import {merge} from '../core/feature';
 const heatmapBase: Feature = {
     layers: {
         heatmap: {
-            StyleLayer: HeatmapStyleLayer as any,
+            StyleLayer: HeatmapStyleLayer,
             Bucket: HeatmapBucket,
-            draw: drawHeatmap as any,
+            draw: drawHeatmap,
         }
     },
     programs: {
@@ -24,6 +24,6 @@ const heatmapBase: Feature = {
     },
 };
 
-export function heatmap(...capabilities: Feature[]): Feature {
-    return merge(heatmapBase, ...capabilities);
+export function heatmap(...features: Feature[]): Feature {
+    return merge(heatmapBase, ...features);
 }

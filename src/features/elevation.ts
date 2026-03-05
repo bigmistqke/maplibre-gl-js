@@ -5,15 +5,15 @@ import {merge} from '../core/feature';
 
 const elevationBase: Feature = {
     sources: {
-        'raster-dem': {Source: RasterDEMTileSource as any},
+        'raster-dem': {Source: RasterDEMTileSource},
     },
     workerSources: {
         'raster-dem': {WorkerSource: RasterDEMTileWorkerSource},
     },
 };
 
-export function elevation(...capabilities: Feature[]): Feature {
-    return merge(elevationBase, ...capabilities);
+export function elevation(...features: Feature[]): Feature {
+    return merge(elevationBase, ...features);
 }
 
 // Re-export sub-features for convenience

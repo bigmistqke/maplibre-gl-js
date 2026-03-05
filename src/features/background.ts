@@ -12,8 +12,8 @@ import {merge, ImageManager} from '../core/feature';
 const backgroundBase: Feature = {
     layers: {
         background: {
-            StyleLayer: BackgroundStyleLayer as any,
-            draw: drawBackground as any,
+            StyleLayer: BackgroundStyleLayer,
+            draw: drawBackground,
         }
     },
     programs: {
@@ -23,6 +23,6 @@ const backgroundBase: Feature = {
     singletons: {ImageManager},
 };
 
-export function background(...capabilities: Feature[]): Feature {
-    return merge(backgroundBase, ...capabilities);
+export function background(...features: Feature[]): Feature {
+    return merge(backgroundBase, ...features);
 }

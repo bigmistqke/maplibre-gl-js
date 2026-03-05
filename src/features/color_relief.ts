@@ -10,8 +10,8 @@ import {merge} from '../core/feature';
 const colorReliefBase: Feature = {
     layers: {
         'color-relief': {
-            StyleLayer: ColorReliefStyleLayer as any,
-            draw: drawColorRelief as any,
+            StyleLayer: ColorReliefStyleLayer,
+            draw: drawColorRelief,
         }
     },
     programs: {
@@ -19,6 +19,6 @@ const colorReliefBase: Feature = {
     },
 };
 
-export function colorRelief(...capabilities: Feature[]): Feature {
-    return merge(colorReliefBase, ...capabilities);
+export function colorRelief(...features: Feature[]): Feature {
+    return merge(colorReliefBase, ...features);
 }

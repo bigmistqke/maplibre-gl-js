@@ -24,7 +24,7 @@ const draw: DrawFunction = (painter, tileManager, layer, coords, renderOptions) 
 const symbolBase: Feature = {
     layers: {
         symbol: {
-            StyleLayer: SymbolStyleLayer as any,
+            StyleLayer: SymbolStyleLayer,
             Bucket: SymbolBucket,
             draw,
         }
@@ -39,6 +39,6 @@ const symbolBase: Feature = {
     singletons: {ImageManager, GlyphManager, CrossTileSymbolIndex},
 };
 
-export function labels(...capabilities: Feature[]): Feature {
-    return merge(symbolBase, ...capabilities);
+export function labels(...features: Feature[]): Feature {
+    return merge(symbolBase, ...features);
 }
