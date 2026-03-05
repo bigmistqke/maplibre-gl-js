@@ -8,6 +8,7 @@ import type {UniformLocations} from '../render/uniform_binding';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {PreparedShader} from '../shaders/shaders';
 import type {Style} from '../style/style';
+import type {IActor} from '../util/actor';
 import {ImageManager} from '../render/image_manager';
 import {GlyphManager} from '../render/glyph_manager';
 import {LineAtlas} from '../render/line_atlas';
@@ -48,8 +49,41 @@ export interface WorkerSourceDefinition {
     WorkerSource: any;
 }
 
+/**
+ * Context passed to tile processors during WorkerTile.parse().
+ * Processors can read dependencies collected during bucket.populate()
+ * and contribute to the result via the mutable `result` object.
+ */
+export interface TileProcessorContext {
+    /** The OverscaledTileID of the tile being parsed. */
+    readonly tileID: OverscaledTileID;
+    readonly zoom: number;
+    readonly pixelRatio: number;
+    readonly overscaling: number;
+    readonly showCollisionBoxes: boolean;
+    readonly source: string;
+    readonly returnDependencies: boolean;
+    readonly collisionBoxArray: any;
+    /** All buckets created during populate, keyed by layer ID. */
+    readonly buckets: {[_: string]: any};
+    /** Actor for sending messages to the main thread (e.g. fetching glyphs/images). */
+    readonly actor: IActor;
+    /** Dependencies collected during bucket.populate(). */
+    readonly options: {
+        readonly featureIndex: any;
+        readonly glyphDependencies: {[_: string]: {[_: number]: boolean}};
+        readonly iconDependencies: {[_: string]: boolean};
+        readonly patternDependencies: {[_: string]: boolean};
+        readonly dashDependencies: {[_: string]: any};
+        readonly availableImages: readonly string[];
+        readonly subdivisionGranularity: any;
+    };
+    /** Mutable — processors contribute here, later processors can read earlier results. */
+    result: Record<string, any>;
+}
+
 export interface TileProcessorDefinition {
-    process: (workerTile: any, buckets: any, actor: any) => Promise<any>;
+    process(context: TileProcessorContext): Promise<void>;
 }
 
 // ============================================================================

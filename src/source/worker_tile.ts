@@ -24,6 +24,7 @@ import type {PromoteIdSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {VectorTileLike} from '@maplibre/vt-pbf';
 import {type GetDashesResponse, MessageType, type GetGlyphsResponse, type GetImagesResponse} from '../util/actor_messages';
 import type {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings';
+import type {TileProcessorDefinition} from '../core/feature';
 export class WorkerTile {
     tileID: OverscaledTileID;
     uid: string | number;
@@ -60,7 +61,7 @@ export class WorkerTile {
         this.inFlightDependencies = [];
     }
 
-    async parse(data: VectorTileLike, layerIndex: StyleLayerIndex, availableImages: Array<string>, actor: IActor, subdivisionGranularity: SubdivisionGranularitySetting): Promise<WorkerTileResult> {
+    async parse(data: VectorTileLike, layerIndex: StyleLayerIndex, availableImages: Array<string>, actor: IActor, subdivisionGranularity: SubdivisionGranularitySetting, tileProcessors: TileProcessorDefinition[] = []): Promise<WorkerTileResult> {
         this.status = 'parsing';
         this.data = data;
 
@@ -190,6 +191,28 @@ export class WorkerTile {
             }
         }
 
+        // Run tile processors (extension point for features)
+        const processorResult: Record<string, any> = {};
+        if (tileProcessors.length > 0) {
+            const processorContext = {
+                tileID: this.tileID,
+                zoom: this.zoom,
+                pixelRatio: this.pixelRatio,
+                overscaling: this.overscaling,
+                showCollisionBoxes: this.showCollisionBoxes,
+                source: this.source,
+                returnDependencies: this.returnDependencies,
+                collisionBoxArray: this.collisionBoxArray,
+                buckets,
+                actor,
+                options,
+                result: processorResult,
+            };
+            for (const processor of tileProcessors) {
+                await processor.process(processorContext);
+            }
+        }
+
         this.status = 'done';
         return {
             buckets: Object.values(buckets).filter(b => !b.isEmpty()),
@@ -201,7 +224,8 @@ export class WorkerTile {
             // Only used for benchmarking:
             glyphMap: this.returnDependencies ? glyphMap : null,
             iconMap: this.returnDependencies ? iconMap : null,
-            glyphPositions: this.returnDependencies ? glyphAtlas.positions : null
+            glyphPositions: this.returnDependencies ? glyphAtlas.positions : null,
+            ...processorResult,
         };
     }
 }

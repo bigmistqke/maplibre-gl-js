@@ -16,6 +16,8 @@ import type {
 import type {IActor} from '../util/actor';
 import type {StyleLayer} from '../style/style_layer';
 import type {StyleLayerIndex} from '../style/style_layer_index';
+import type {TileProcessorDefinition} from '../core/feature';
+import {getWorkerRegistry} from '../core/create_worker';
 import type {VectorTileLayerLike, VectorTileLike} from '@maplibre/vt-pbf';
 
 export type LoadVectorTileResult = {
@@ -54,6 +56,8 @@ export class VectorTileWorkerSource implements WorkerSource {
      * {@link VectorTileWorkerSource.loadTile}. The default implementation simply
      * loads the pbf at `params.url`.
      */
+    private _tileProcessors: TileProcessorDefinition[];
+
     constructor(actor: IActor, layerIndex: StyleLayerIndex, availableImages: Array<string>) {
         this.actor = actor;
         this.layerIndex = layerIndex;
@@ -62,6 +66,12 @@ export class VectorTileWorkerSource implements WorkerSource {
         this.loading = {};
         this.loaded = {};
         this.overzoomedTileResultCache = new BoundedLRUCache<string, LoadVectorTileResult>(1000);
+
+        try {
+            this._tileProcessors = getWorkerRegistry().tileProcessors;
+        } catch {
+            this._tileProcessors = [];
+        }
     }
 
     /**
@@ -140,7 +150,7 @@ export class VectorTileWorkerSource implements WorkerSource {
             }
 
             workerTile.vectorTile = response.vectorTile;
-            const parsePromise = workerTile.parse(response.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+            const parsePromise = workerTile.parse(response.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity, this._tileProcessors);
             this.loaded[tileUid] = workerTile;
             // keep the original fetching state so that reload tile can pick it up if the original parse is cancelled by reloads' parse
             this.fetching[tileUid] = {rawTileData, cacheControl, resourceTiming};
@@ -208,7 +218,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         const workerTile = this.loaded[uid];
         workerTile.showCollisionBoxes = params.showCollisionBoxes;
         if (workerTile.status === 'parsing') {
-            const result = await workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+            const result = await workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity, this._tileProcessors);
             // if we have cancelled the original parse, make sure to pass the rawTileData from the original fetch
             let parseResult: WorkerTileResult;
             if (this.fetching[uid]) {
@@ -224,7 +234,7 @@ export class VectorTileWorkerSource implements WorkerSource {
         // if there was no vector tile data on the initial load, don't try and re-parse tile
         if (workerTile.status === 'done' && workerTile.vectorTile) {
             // this seems like a missing case where cache control is lost? see #3309
-            return workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity);
+            return workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, params.subdivisionGranularity, this._tileProcessors);
         }
     }
 
