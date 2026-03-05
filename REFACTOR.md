@@ -11,7 +11,7 @@ Beyond the tree-shaking problem, `Map` is a monolith that accumulates all respon
 1. **Three core primitives.** The rendering engine has three composable primitives: **Transform** (camera state), **Surface** (world geometry + render strategy), **Renderer** (executes frames). Everything else — Style, Map, handlers — is convenience built on top.
 2. **Features are vertical slices.** A feature bundles everything it needs: source, layer, bucket, draw function, programs, shaders, services. The consumer doesn't know or care about these internals.
 3. **Surface is the composition point for world geometry.** Surface describes both what the world looks like (elevation queries) and how to render onto it (render strategy). FlatSurface renders directly. TerrainSurface renders via RTT and drapes onto a mesh. The renderer asks the surface — no `if (terrain)` anywhere.
-4. **Explicit opt-in, no implicit bundling.** `feature()` gives you the minimal core of that feature. Sub-features add capabilities. Nothing is imported unless the consumer asks for it. Tree-shaking works because unused exports aren't referenced.
+4. **Explicit opt-in, no implicit bundling.** `feature()` gives you the minimal core of that feature. Sub-features add features. Nothing is imported unless the consumer asks for it. Tree-shaking works because unused exports aren't referenced.
 5. **Style and Map are convenience layers.** Style reads JSON and produces layers + tile managers. Map adds DOM, input handlers, animation loop, public API. Neither is a core primitive — the engine works without them.
 6. **Shared services are lazy and de-duped.** If multiple features need ImageManager, the first one to initialize creates it. Others reuse it.
 7. **No generics leak internally.** Type inference for feature-provided APIs happens only at the `createMap` boundary. Internally, everything uses concrete types (`Surface`, `Map`, etc.).
@@ -74,7 +74,7 @@ Style and Map build on the core primitives. The engine works without them.
 ### Feature Composition
 
 ```
-                    ┌─────────────────────────────┐
+                    ┌──────────────────────────────┐
                     │     features.ts              │
                     │                              │
                     │  Shared feature config —     │
@@ -93,16 +93,16 @@ Style and Map build on the core primitives. The engine works without them.
                     ┌──────────┼───────────────┐
                     │                          │
                     ▼                          ▼
-    ┌───────────────────────┐  ┌───────────────────────┐
-    │      main.ts          │  │     worker.ts          │
-    │                       │  │                        │
+    ┌───────────────────────┐  ┌─────────────────────────┐
+    │      main.ts          │  │     worker.ts           │
+    │                       │  │                         │
     │  createMap({          │  │  createWorker(features) │
-    │    use: features,     │  │                        │
-    │    worker: workerUrl, │  │  Uses: Buckets,        │
-    │    ...                │  │  WorkerSources,        │
-    │  })                   │  │  TileProcessors        │
-    │                       │  │                        │
-    │  Uses: draw funcs,    │  └───────────────────────┘
+    │    use: features,     │  │                         │
+    │    worker: workerUrl, │  │  Uses: Buckets,         │
+    │    ...                │  │  WorkerSources,         │
+    │  })                   │  │  TileProcessors         │
+    │                       │  │                         │
+    │  Uses: draw funcs,    │  └─────────────────────────┘
     │  programs, shaders,   │
     │  surface, services    │
     └───────────────────────┘
@@ -149,9 +149,9 @@ interface LayerDefinition {
 Features are created by **factory functions**. The factory takes optional sub-features as arguments for granular tree-shaking:
 
 ```typescript
-// feature() = minimal core, sub-features add capabilities
-export function fill(...capabilities: Feature[]): Feature {
-    return merge(fillBase, ...capabilities);
+// feature() = minimal core, sub-features add features
+export function fill(...features: Feature[]): Feature {
+    return merge(fillBase, ...features);
 }
 
 // Sub-features are also Features
@@ -221,7 +221,7 @@ Features that depend on DEM (digital elevation model) data.
 
 | Feature | Factory | What it provides |
 |---|---|---|
-| **`elevation`** | `elevation(hillshade?, colorRelief?, terrain?)` | RasterDEM source + worker. Sub-features add rendering capabilities. |
+| **`elevation`** | `elevation(hillshade?, colorRelief?, terrain?)` | RasterDEM source + worker. Sub-features add rendering features. |
 | `hillshade` | sub-feature of elevation | Hillshade layer + draw + programs. |
 | `colorRelief` | sub-feature of elevation | Color relief layer + draw + programs. |
 | `terrain` | sub-feature of elevation | 3D terrain (render-to-texture, depth buffer). Deeply integrated with Painter. |
@@ -262,7 +262,7 @@ export function circle(): Feature {
 
 ### Feature with sub-features: `fill`
 
-Sub-features are optional capabilities that add service dependencies:
+Sub-features are optional features that add service dependencies:
 
 ```typescript
 // maplibre-mini/fill/index.ts
@@ -290,8 +290,8 @@ const fillBase: Feature = {
     },
 };
 
-export function fill(...capabilities: Feature[]): Feature {
-    return merge(fillBase, ...capabilities);
+export function fill(...features: Feature[]): Feature {
+    return merge(fillBase, ...features);
 }
 
 // --- Sub-feature: patterns (separate export, tree-shakeable) ---
@@ -346,8 +346,8 @@ const rasterBase: Feature = {
     },
 };
 
-export function raster(...capabilities: Feature[]): Feature {
-    return merge(rasterBase, ...capabilities);
+export function raster(...features: Feature[]): Feature {
+    return merge(rasterBase, ...features);
 }
 
 // --- Sub-features: additional source types ---
@@ -385,8 +385,8 @@ const labelsBase: Feature = {
     },
 };
 
-export function labels(...capabilities: Feature[]): Feature {
-    return merge(labelsBase, ...capabilities);
+export function labels(...features: Feature[]): Feature {
+    return merge(labelsBase, ...features);
 }
 
 // --- Sub-features (separate exports, tree-shakeable) ---
@@ -511,63 +511,6 @@ class Painter {
     }
 }
 ```
-
-### MapContext: shared state via upsert
-
-No service container, no service definitions. Features create shared dependencies via `context.ensure()` — an upsert: create if first, reuse if exists.
-
-```typescript
-class MapContext {
-    private _instances = new Map<any, any>();
-
-    // Upsert: return existing instance or create new one
-    ensure<T>(key: new (...args: any[]) => T, factory: () => T): T {
-        if (!this._instances.has(key)) {
-            this._instances.set(key, factory());
-        }
-        return this._instances.get(key);
-    }
-
-    // Lifecycle: call beginFrame on all created instances
-    beginFrame(): void {
-        for (const instance of this._instances.values()) {
-            if (typeof instance.beginFrame === 'function') instance.beginFrame();
-        }
-    }
-
-    destroy(): void {
-        for (const instance of this._instances.values()) {
-            if (typeof instance.destroy === 'function') instance.destroy();
-        }
-    }
-}
-```
-
-Features use it during initialization via `createDraw`:
-
-```typescript
-export function fill(): Feature {
-    return {
-        layers: {
-            fill: {
-                StyleLayer: FillStyleLayer,
-                Bucket: FillBucket,
-                createDraw: (context: MapContext) => {
-                    const imageManager = context.ensure(ImageManager, () => new ImageManager());
-                    return (painter, tm, layer, coords) => {
-                        drawFill(painter, tm, layer, coords, imageManager);
-                    };
-                },
-            }
-        },
-        programs: { ... },
-    };
-}
-```
-
-When `labels()` also calls `context.ensure(ImageManager, ...)`, it gets the same instance. First feature creates, rest reuse. Class constructor is the key — no strings.
-
----
 
 ## 5. Worker Architecture
 
@@ -857,7 +800,7 @@ maplibre-mini/presets
 ## 8. Migration Path
 
 ### MVP Approach
-Features are complete units (no sub-features yet). The architecture supports sub-features via the `merge()` pattern, but for the MVP each feature factory returns a full feature with all capabilities included. Sub-feature splitting is a later optimization.
+Features are complete units (no sub-features yet). The architecture supports sub-features via the `merge()` pattern, but for the MVP each feature factory returns a full feature with all features included. Sub-feature splitting is a later optimization.
 
 ### Phase 1: Feature infrastructure
 Create `Feature` type, `merge()`, `createMap()`, `createWorker()`. Wire up `Map` to accept merged config.
@@ -1152,23 +1095,10 @@ const draw = (painter, tileManager, layer, coords) => {
 
 ### What's not done yet
 
-1. ~~**`useProgram` not wired through registry.**~~ ✅ DONE. `painter.useProgram()` now uses `registry.hasProgram(name)` and `registry.getProgram(name)` to get shader source and uniforms from features. Core shaders (clippingMask, debug, depth, terrain*) fall back to the static `shaders` object.
+1. **Sub-feature splitting not started.** All features include all their programs (e.g., fill includes fillPattern programs). The `merge()` pattern supports sub-features but no feature uses it yet.
 
-2. ~~**Source features not extracted.**~~ ✅ DONE. `vectorTiles()`, `geojson()`, `elevation()` features created. Raster feature extended with `image`, `video`, `canvas` sub-features.
 
-3. ~~**Worker not wired.**~~ ✅ DONE. `createWorker()` creates a global registry, bootstraps the Worker instance, and registers message handlers — all inside `createWorker()` (no side-effects at module scope). Worker source resolution goes through `FeatureRegistry` exclusively — hardcoded imports of `RasterDEMTileWorkerSource` and `GeoJSONWorkerSource` removed. Uses global state (see Open Question #3).
-
-4. **Services still hardcoded in Style.** ✅ DONE. ImageManager, GlyphManager, LineAtlas, CrossTileSymbolIndex now conditional via `singletons` API.
-
-   **Dead code cleanup:** `Painter.crossTileSymbolIndex` was dead code since Dec 2017 (commit `4cf7a48` "port CrossTileSymbolIndex changes back from -native"). The original usage in `source_cache.js` (`tile.added(painter.crossTileSymbolIndex)`) was removed when logic moved to Style, but nobody removed the field from Painter. Only `Style.crossTileSymbolIndex` is actually used. Removed the dead Painter field.
-
-5. ~~**`Bucket` not used.**~~ ✅ DONE. All layer features with buckets now include `Bucket` in their layer definition (fill, line, circle, symbol, heatmap, fill_extrusion). `FeatureRegistry.getBucket()` method added.
-
-6. **Sub-feature splitting not started.** All features include all their programs (e.g., fill includes fillPattern programs). The `merge()` pattern supports sub-features but no feature uses it yet.
-
-7. ~~**Sky is programs-only.**~~ ✅ DONE. Sky feature now includes `renderHooks` with `beforeLayers` and `afterTranslucent` phases. `Painter.render()` uses `registry.getRenderHooks(phase)` instead of hardcoded `drawSky`/`drawAtmosphere` calls.
-
-8. **Terrain decoupled via Surface abstraction.** ✅ DONE (Phase 1 + 2). The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files. Surface also owns `renderToTexture` and exposes `terrain` for FBO management. No `style.map.terrain` or `painter.renderToTexture` references remain in core. See `SURFACE.md` for full migration details.
+2. **Terrain decoupled via Surface abstraction.** ✅ DONE (Phase 1 + 2). The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files. Surface also owns `renderToTexture` and exposes `terrain` for FBO management. No `style.map.terrain` or `painter.renderToTexture` references remain in core. See `SURFACE.md` for full migration details.
 
    **What's left for full terrain featurization (Surface as render strategy):**
    - ~~Surface should own the **render strategy**~~ ✅ Done — `prepareFrame()`, `renderLayer()`, `skipOpaquePass` on Surface. Painter delegates polymorphically
@@ -1177,7 +1107,6 @@ const draw = (painter, tileManager, layer, coords) => {
    - `map.setTerrain()` / `map.getTerrain()` are terrain-specific API on the Map convenience layer — terrain lifecycle should be owned by the terrain feature, not Map
    - Terrain-specific files (`terrain.ts`, `draw_terrain.ts`, `terrain_tile_manager.ts`, `render_to_texture.ts`) remain as-is
 
-9. ~~**Shaders not in features.**~~ ✅ DONE. All 11 feature files now import their shaders and use `prepare()` to create `shaderSource` in program definitions. `prepare()` exported from `shaders.ts`.
 
 ---
 
@@ -1236,12 +1165,12 @@ this._renderTileClippingMasks(layer, coords, !!this.renderToTexture);
 
 This is exactly what Surface's render strategy methods would handle — the knowledge of HOW to render moves from the renderer into the surface.
 
-### Remaining Capabilities (beyond Surface)
+### Remaining Features (beyond Surface)
 
 Surface handles elevation and render strategy. Other cross-cutting concerns need their own extension points:
 
 ```typescript
-interface Capabilities {
+interface Features {
     // Shader modifications (defines, uniforms, textures)
     shaderExtensions?: ShaderExtension[];
 
@@ -1250,7 +1179,7 @@ interface Capabilities {
 }
 ```
 
-### Capability: ShaderExtensions
+### Feature: ShaderExtensions
 
 Instead of hardcoding `/terrain` suffix in `useProgram()`:
 
@@ -1268,11 +1197,11 @@ const terrainShaderExtension: ShaderExtension = {
 };
 ```
 
-`useProgram()` becomes generic — it composes extensions from all active capabilities:
+`useProgram()` becomes generic — it composes extensions from all active features:
 
 ```typescript
 useProgram(name: string) {
-    const extensions = this.capabilities.shaderExtensions
+    const extensions = this.features.shaderExtensions
         .filter(ext => ext.isActive());
     const key = name + extensions.map(e => '/' + e.key).join('');
     const defines = extensions.flatMap(e => e.defines);
@@ -1280,7 +1209,7 @@ useProgram(name: string) {
 }
 ```
 
-### Capability: TileDataLayers
+### Feature: TileDataLayers
 
 Instead of `usedForTerrain` flag mutation:
 
@@ -1308,7 +1237,7 @@ export function terrain(): Feature {
         sources: { 'raster-dem': RasterDEMSource },
         programs: { terrain: { ... }, terrainDepth: { ... } },
         surface: TerrainSurface,  // provides Surface implementation
-        capabilities: {
+        features: {
             shaderExtensions: [terrainShaderExtension],
             tileDataLayers: [demDataLayer],
         },
@@ -1318,7 +1247,7 @@ export function terrain(): Feature {
 
 **Core becomes capability-agnostic.** Painter doesn't know about terrain, RTT, or depth FBOs. It just calls `surface.prepareFrame()` / `surface.renderLayer()` / `surface.finalizeFrame()`.
 
-### Capability 3: ShaderExtensions
+### Feature 3: ShaderExtensions
 
 Instead of `/terrain` suffix hack in `useProgram()`:
 
@@ -1353,7 +1282,7 @@ const terrainShaderExtension: ShaderExtension = {
 
 ```typescript
 useProgram(name: string, context: DrawContext): Program {
-    const extensions = this.capabilities.shaderExtensions
+    const extensions = this.features.shaderExtensions
         .filter(ext => ext.isActive(context));
 
     const key = name + extensions.map(e => '/' + e.key).join('');
@@ -1365,7 +1294,7 @@ useProgram(name: string, context: DrawContext): Program {
 
 No hardcoded terrain check. Extensions compose. This also enables globe, fog, and other shader variants.
 
-### Capability 4: TileDataLayers
+### Feature 4: TileDataLayers
 
 Instead of `usedForTerrain` flag mutation:
 
@@ -1401,14 +1330,14 @@ const demDataLayer: TileDataLayer = {
 ```typescript
 class TileManager {
     getTileSize() {
-        for (const layer of this.capabilities.tileDataLayers) {
+        for (const layer of this.features.tileDataLayers) {
             if (layer.tileSize) return layer.tileSize;
         }
         return 512;
     }
 
     shouldLoadParentTiles() {
-        return this.capabilities.tileDataLayers
+        return this.features.tileDataLayers
             .some(layer => layer.loadParentTiles);
     }
 }
@@ -1425,8 +1354,8 @@ interface DrawContext {
     painter: Painter;
     tileID: OverscaledTileID;
 
-    // Capabilities available for this draw
-    capabilities: Capabilities;
+    // Features available for this draw
+    features: Features;
 
     // Accumulated GPU bindings from all extensions
     bindings: GPUBindings;
@@ -1458,7 +1387,7 @@ export function terrain(): Feature {
             'raster-dem': RasterDEMSource,
         },
 
-        capabilities: {
+        features: {
             elevation: provider,
             renderStrategy: new DrapeRenderStrategy(provider),
             shaderExtensions: [terrainShaderExtension(provider)],
@@ -1478,7 +1407,7 @@ export function terrain(): Feature {
 
 | Before | After |
 |--------|-------|
-| `if (map.terrain)` checks everywhere | Capabilities queried uniformly |
+| `if (map.terrain)` checks everywhere | Features queried uniformly |
 | `/terrain` suffix hardcoded | Shader extensions compose |
 | `usedForTerrain` flag mutation | Data layers declare behavior |
 | RenderToTexture holds Terrain ref | Strategy pattern, injected |
@@ -1512,12 +1441,12 @@ This capability system could also handle:
 ### Implementation Path
 
 1. ~~**Define capability interfaces**~~ ✅ Done — Surface, ShaderExtension, TileDataLayer
-2. ~~**Add Capabilities to FeatureRegistry**~~ ✅ Done — Surface on map, extensions on surface, data layers on tile manager
+2. ~~**Add Features to FeatureRegistry**~~ ✅ Done — Surface on map, extensions on surface, data layers on tile manager
 3. ~~**Create DirectRenderStrategy**~~ ✅ Done — FlatSurface is the direct strategy, TerrainSurface is RTT strategy
 4. **Implement DrawContext** — Replace parameter passing
 5. ~~**Refactor useProgram()** — Use ShaderExtension system~~ ✅ Done
 6. ~~**Refactor TileManager** — Use TileDataLayer for behavior~~ ✅ Done
-7. **Extract terrain to feature** — Implement all capabilities
+7. **Extract terrain to feature** — Implement all features
 8. **Remove terrain checks from core** — Core becomes capability-agnostic
 
 ---
@@ -1536,7 +1465,7 @@ A frame requires exactly three things:
 |-----------|---------------|-----------------|
 | **Transform** | Camera state: center, zoom, bearing, pitch, projection | Elevation clamping (via Surface) |
 | **Surface** | World geometry + render strategy | FlatSurface, TerrainSurface, future OceanSurface... |
-| **Renderer** | Executes a frame: setup GPU, draw layers, present | Shader extensions, capabilities |
+| **Renderer** | Executes a frame: setup GPU, draw layers, present | Shader extensions, features |
 
 These compose without knowing about each other's internals:
 
@@ -1631,7 +1560,7 @@ The pattern scales because the abstraction is correct — each concern plugs int
 
 ### 1. Tree-Shakeable Sub-Features
 
-✅ **Architecture DONE.** All feature factories accept `(...capabilities: Feature[])` via the `merge()` pattern (e.g. `fill(patterns)`). However, no features are actually split yet — each base feature still bundles all shader variants and singletons. The plumbing is ready; the actual splitting work (extracting `patterns`, `dashes`, `gradients`, `text`, `icons`, `collision` into separate `Feature` objects) hasn't been done.
+✅ **Architecture DONE.** All feature factories accept `(...features: Feature[])` via the `merge()` pattern (e.g. `fill(patterns)`). However, no features are actually split yet — each base feature still bundles all shader variants and singletons. The plumbing is ready; the actual splitting work (extracting `patterns`, `dashes`, `gradients`, `text`, `icons`, `collision` into separate `Feature` objects) hasn't been done.
 
 ### ~~2. MapContext / createDraw Factory Pattern~~
 
