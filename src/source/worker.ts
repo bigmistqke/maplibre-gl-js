@@ -2,7 +2,6 @@ import {Actor, type ActorTarget, type IActor} from '../util/actor';
 import {StyleLayerIndex} from '../style/style_layer_index';
 import {rtlWorkerPlugin, type RTLTextPlugin} from './rtl_text_plugin_worker';
 import type {GeoJSONWorkerSource, LoadGeoJSONParameters} from './geojson_worker_source';
-import {isWorker} from '../util/util';
 import {addProtocol, removeProtocol} from './protocol_crud';
 import {type PluginState} from './rtl_text_plugin_status';
 import {getWorkerRegistry} from '../core/create_worker';
@@ -295,8 +294,4 @@ export default class Worker {
 
         return this.demWorkerSources[mapId][sourceType];
     }
-}
-
-if (isWorker(self)) {
-    self.worker = new Worker(self);
 }

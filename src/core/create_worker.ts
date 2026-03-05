@@ -1,13 +1,22 @@
 import {type Feature, FeatureRegistry} from './feature';
+import Worker from '../source/worker';
+import {isWorker} from '../util/util';
+import type {ActorTarget} from '../util/actor';
+import type {WorkerGlobalScopeInterface} from '../util/web_worker';
 
 let workerRegistry: FeatureRegistry | null = null;
 
 /**
  * Initialize the worker runtime with the given features.
- * The worker uses the registry for worker source resolution and tile processing.
+ * Creates the registry and, when running in a worker context,
+ * instantiates the Worker and assigns it to `self.worker`.
  */
 export function createWorker(features: Feature[]): FeatureRegistry {
     workerRegistry = new FeatureRegistry(features);
+    if (isWorker(self)) {
+        const workerSelf = self as unknown as WorkerGlobalScopeInterface & ActorTarget;
+        workerSelf.worker = new Worker(workerSelf);
+    }
     return workerRegistry;
 }
 
