@@ -41,7 +41,7 @@ describe('drawFill', () => {
 
         const mockTile = constructMockTile(layer);
 
-        const tileManagerMock = new TileManager(null as any, null as any, null as any);
+        const tileManagerMock = new TileManager(null as any, null as any, null as any, null as any);
         (tileManagerMock.getTile as Mock).mockReturnValue(mockTile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 

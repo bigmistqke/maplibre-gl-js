@@ -4,6 +4,8 @@ import {Map} from '../map';
 import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest, sleep} from '../../util/test/util';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
 
 function createMap(cooperativeGestures) {
     return new Map({
@@ -13,7 +15,8 @@ function createMap(cooperativeGestures) {
             'sources': {},
             'layers': []
         },
-        cooperativeGestures
+        cooperativeGestures,
+        _featureRegistry: new FeatureRegistry(allFeatures()),
     });
 }
 

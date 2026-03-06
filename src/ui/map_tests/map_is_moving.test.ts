@@ -4,11 +4,13 @@ import {Map} from '../map';
 import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {beforeMapTest} from '../../util/test/util';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
 
 let map;
 
 function createMap() {
-    return new Map({style: '', container: DOM.create('div', '', window.document.body)});
+    return new Map({style: '', container: DOM.create('div', '', window.document.body), _featureRegistry: new FeatureRegistry(allFeatures())});
 }
 
 beforeEach(() => {

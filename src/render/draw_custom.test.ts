@@ -49,7 +49,7 @@ describe('drawCustomTranslucent', () => {
         tile.imageAtlasTexture = {
             bind: () => { }
         } as any;
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null, null, null, null);
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 

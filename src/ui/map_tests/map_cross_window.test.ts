@@ -1,6 +1,8 @@
 import {describe, beforeEach, afterEach, test, expect} from 'vitest';
 import {Map} from '../map';
 import {beforeMapTest} from '../../util/test/util';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
 
 beforeEach(() => {
     beforeMapTest();
@@ -45,6 +47,7 @@ describe('Map cross-window support', () => {
                 container,
                 interactive: false,
                 attributionControl: false,
+                _featureRegistry: new FeatureRegistry(allFeatures()),
                 style: {
                     version: 8,
                     sources: {},
@@ -61,6 +64,7 @@ describe('Map cross-window support', () => {
                 container,
                 interactive: false,
                 attributionControl: false,
+                _featureRegistry: new FeatureRegistry(allFeatures()),
                 style: {
                     version: 8,
                     sources: {},

@@ -105,7 +105,7 @@ describe('drawSymbol', () => {
         } as any;
         tile.getBucket = () => bucketMock;
         tile.tileID = tileId;
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null, null, null, null);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
         tileManagerMock.getTile = (_a) => tile;
 
@@ -185,7 +185,7 @@ describe('drawSymbol', () => {
             bind: () => { }
         } as any;
         (tile.getBucket as Mock).mockReturnValue(bucketMock);
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null, null, null, null);
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
         painterMock.style = {
@@ -253,7 +253,7 @@ describe('drawSymbol', () => {
             bind: () => { }
         } as any;
         (tile.getBucket as Mock).mockReturnValue(bucketMock);
-        const tileManagerMock = new TileManager(null, null, null);
+        const tileManagerMock = new TileManager(null, null, null, null);
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 
