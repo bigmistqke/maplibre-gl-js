@@ -1737,3 +1737,14 @@ Map directly constructs `Terrain`, `TerrainSurface`, `RenderToTexture`, wires up
 
 **5. `bounding_volume_cache.ts:37` — covering tiles checks `surface.terrain`.**
 Cache key includes `options?.surface?.terrain ? 't' : ''` to differentiate terrain vs flat bounding volumes. Still an open question (see above). The covering tiles system reaches into surface to check type — the cache should ideally not know about surfaces at all.
+
+### Open concerns
+
+**A. `surface.terrain` on the Surface interface.**
+`Surface.terrain: Terrain | null` is the biggest remaining leak. It exposes a concrete implementation type on what should be an abstract interface. Currently only consumed by `handler_manager.ts:597` (terrain-specific drag panning). Every other former consumer has been replaced by polymorphic Surface methods. Removing it requires fixing the handler_manager case — either by adding a Surface method that abstracts the behavior, or by making standard panning handle elevation correctly so the terrain branch isn't needed.
+
+**B. `isRenderingToTexture` on the Surface interface — questionable.**
+`Surface.isRenderingToTexture` is only consumed by `tile_manager.ts:589` (to disable raster fading when RTT is active). All draw functions get it from `renderOptions`, which RTT sets to `true` when it calls through. So the Surface property exists for a single consumer. Options:
+- **Move to `renderOptions` only**: tile_manager could receive the flag from the caller rather than reaching into Surface. This removes the property from the interface entirely.
+- **Replace with a method like `allowRasterFading()`**: more abstract, but it's still a single-purpose query that describes an RTT implementation detail.
+- **Keep as-is**: it's a boolean, not a type leak. Low priority compared to `surface.terrain`.

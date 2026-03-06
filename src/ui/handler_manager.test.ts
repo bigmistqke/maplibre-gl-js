@@ -14,7 +14,7 @@ import {beforeMapTest, createMap} from '../util/test/util';
 function mockTerrainSurface(): Surface {
     let frozen = false;
     return {
-        terrain: {},
+        tileKey: (t) => `${t.z}_${t.x}_${t.y}_t`,
         get isElevationFrozen() { return frozen; },
         freezeElevation() { frozen = true; },
         unfreezeElevation() { frozen = false; },

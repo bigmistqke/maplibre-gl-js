@@ -1,7 +1,7 @@
 import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
-import type {TerrainData, Terrain} from '../render/terrain';
+import type {TerrainData} from '../render/terrain';
 import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
 import type {Painter} from '../render/painter';
 import type {ShaderExtension} from './shader_extension';
@@ -16,6 +16,9 @@ import type Point from '@mapbox/point-geometry';
 export interface Surface {
     /** Shader extensions provided by this surface (e.g. terrain defines). */
     readonly shaderExtensions: readonly ShaderExtension[];
+
+    /** Cache key for a tile's bounding volume. Surfaces with elevation include a discriminator so cached volumes differ from flat. */
+    tileKey(tileID: {x: number; y: number; z: number}): string;
 
     /** Elevation at a point, using the current zoom level. Returns 0 for flat. */
     getElevation(lnglat: LngLat): number;
@@ -56,9 +59,6 @@ export interface Surface {
 
     /** Whether this surface renders layers into per-tile textures (for raster fade control). */
     readonly isRenderingToTexture: boolean;
-
-    /** Direct access to the underlying Terrain object (for FBO management). Null for flat. */
-    readonly terrain: Terrain | null;
 
     /** Called once per frame to sync elevation with the transform. */
     update(transform: ITransform, centerClampedToGround: boolean): void;
@@ -106,7 +106,7 @@ export interface Surface {
 export class FlatSurface implements Surface {
     readonly shaderExtensions: readonly ShaderExtension[] = [];
     readonly isRenderingToTexture = false;
-    readonly terrain: Terrain | null = null;
+    tileKey(tileID: {x: number; y: number; z: number}): string { return `${tileID.z}_${tileID.x}_${tileID.y}`; }
 
     getElevation(_lnglat: LngLat): number { return 0; }
     getElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }

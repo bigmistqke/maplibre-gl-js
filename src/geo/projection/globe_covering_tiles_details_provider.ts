@@ -42,7 +42,10 @@ function distanceToTileWrapX(pointX: number, pointY: number, tileCornerX: number
 }
 
 export class GlobeCoveringTilesDetailsProvider implements CoveringTilesDetailsProvider {
-    private _boundingVolumeCache: BoundingVolumeCache<ConvexVolume> = new BoundingVolumeCache(this._computeTileBoundingVolume);
+    private _boundingVolumeCache: BoundingVolumeCache<ConvexVolume, CoveringTilesOptionsInternal> = new BoundingVolumeCache(
+        this._computeTileBoundingVolume,
+        (tileID, options) => options?.surface?.tileKey(tileID) ?? `${tileID.z}_${tileID.x}_${tileID.y}`
+    );
 
     /**
      * Prepares the internal bounding volume cache for the next frame.

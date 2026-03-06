@@ -1,16 +1,18 @@
-import {type CoveringTilesOptionsInternal} from '../../geo/projection/covering_tiles';
 import {type IBoundingVolume} from './bounding_volume';
 
-type BoundingVolumeFactory<T extends IBoundingVolume> = (tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal) => T;
+type BoundingVolumeFactory<T extends IBoundingVolume, O> = (tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: O) => T;
+type TileKeyFn<O> = (tileID: {x: number; y: number; z: number}, options: O) => string;
 
-export class BoundingVolumeCache<T extends IBoundingVolume> {
+export class BoundingVolumeCache<T extends IBoundingVolume, O = unknown> {
     private _cachePrevious: Map<string, T> = new Map();
     private _cache: Map<string, T> = new Map();
     private _hadAnyChanges = false;
-    private _boundingVolumeFactory: BoundingVolumeFactory<T>;
+    private _boundingVolumeFactory: BoundingVolumeFactory<T, O>;
+    private _tileKey: TileKeyFn<O>;
 
-    constructor(boundingVolumeFactory: BoundingVolumeFactory<T>) {
+    constructor(boundingVolumeFactory: BoundingVolumeFactory<T, O>, tileKey?: TileKeyFn<O>) {
         this._boundingVolumeFactory = boundingVolumeFactory;
+        this._tileKey = tileKey ?? ((tileID) => `${tileID.z}_${tileID.x}_${tileID.y}`);
     }
 
     /**
@@ -33,8 +35,8 @@ export class BoundingVolumeCache<T extends IBoundingVolume> {
      * Returns the bounding volume of the specified tile, fetching it from cache or creating it using the factory function if needed.
      * @param tileID - Tile x, y and z for zoom.
      */
-    getTileBoundingVolume(tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal): T {
-        const key = `${tileID.z}_${tileID.x}_${tileID.y}_${options?.surface?.terrain ? 't' : ''}`;
+    getTileBoundingVolume(tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: O): T {
+        const key = this._tileKey(tileID, options);
         const cached = this._cache.get(key);
         if (cached) {
             return cached;

@@ -22,6 +22,7 @@ const TERRAIN_SHADER_EXTENSION: ShaderExtension = {
  */
 export class TerrainSurface implements Surface {
     readonly shaderExtensions: readonly ShaderExtension[] = [TERRAIN_SHADER_EXTENSION];
+    tileKey(tileID: {x: number; y: number; z: number}): string { return `${tileID.z}_${tileID.x}_${tileID.y}_t`; }
     renderToTexture: RenderToTexture | null = null;
     private _terrain: Terrain;
     private _transform: IReadonlyTransform;

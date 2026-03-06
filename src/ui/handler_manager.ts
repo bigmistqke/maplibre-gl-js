@@ -594,11 +594,6 @@ export class HandlerManager {
 
         cameraHelper.handleMapControlsRollPitchBearingZoom(deltasForHelper, tr);
 
-        if (!surface.terrain) {
-            cameraHelper.handleMapControlsPan(deltasForHelper, tr, preZoomAroundLoc);
-            return;
-        }
-
         if (cameraHelper.useGlobeControls) {
             if (!this._terrainMovement && (combinedEventsInProgress.drag || combinedEventsInProgress.zoom)) {
                 this._terrainMovement = true;
