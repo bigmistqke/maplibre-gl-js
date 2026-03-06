@@ -1700,6 +1700,6 @@ FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest
 |------|-------------|-------------|
 | `handler_manager.ts:597` | Terrain-specific drag panning | Fix standard pan to handle elevation (see above) |
 | `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | Dispatch via `surface.renderLayer()`, or heatmap feature provides both draw functions |
-| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — may be redundant since `getMinMaxElevation()` already bakes elevation into AABBs |
+| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — the `_t` suffix prevents stale flat AABBs from being reused for terrain frames during terrain toggle (cache survives up to 2 frames via `swapBuffers`). Replacing with `allowVariableZoom()` or similar is just `isTerrain` with extra steps. Removing it entirely may be safe (stale AABBs only affect frustum culling for 2 frames) but needs verification. |
 | `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Factory code — inherently knows about terrain |
 | `map.ts:2303,3601` | Checks `_elevationFreeze` to skip elevation updates | Replace with `surface.isElevationFrozen` |
