@@ -90,7 +90,6 @@ describe('drawFill', () => {
                 set: () => {}
             }
         } as any;
-        painterMock.renderPass = 'translucent';
         painterMock.transform = {
             pitch: 0,
             labelPlaneMatrix: mat4.create(),

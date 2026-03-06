@@ -20,7 +20,7 @@ vi.mock('../data/bucket/symbol_bucket', () => {
 });
 vi.mock('../symbol/projection');
 
-describe('drawCustom', () => {
+describe('drawCustomTranslucent', () => {
     test('should return custom render method inputs', () => {
         // same transform setup as in transform.test.ts 'creates a transform', so matrices of transform should be the same
         const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
@@ -31,7 +31,6 @@ describe('drawCustom', () => {
         mockPainter.style = {
             projection: new MercatorProjection(),
         } as any;
-        mockPainter.renderPass = 'translucent';
         mockPainter.transform = transform;
         mockPainter.context = {
             gl: {},

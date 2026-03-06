@@ -52,16 +52,6 @@ function createMockTransform() {
 }
 
 describe('drawSymbol', () => {
-    test('should not do anything', () => {
-        const mockPainter = new Painter(null, null);
-        mockPainter.renderPass = 'opaque';
-
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
-        drawSymbols(mockPainter, null, null, null, null, renderOptions);
-
-        expect(mockPainter.colorModeForRenderPass).not.toHaveBeenCalled();
-    });
-
     test('should call program.draw', () => {
         const painterMock = new Painter(null, null);
         painterMock.context = {
@@ -70,7 +60,7 @@ describe('drawSymbol', () => {
                 set: () => { }
             }
         } as any;
-        painterMock.renderPass = 'translucent';
+
         painterMock.transform = createMockTransform();
         painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
@@ -134,7 +124,7 @@ describe('drawSymbol', () => {
                 set: () => { }
             }
         } as any;
-        painterMock.renderPass = 'translucent';
+
         painterMock.transform = createMockTransform();
         painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
@@ -219,7 +209,7 @@ describe('drawSymbol', () => {
                 set: () => { }
             }
         } as any;
-        painterMock.renderPass = 'translucent';
+
         painterMock.transform = createMockTransform();
         painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
