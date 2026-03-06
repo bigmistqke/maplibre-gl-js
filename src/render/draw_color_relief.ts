@@ -13,7 +13,6 @@ import type {ColorReliefStyleLayer} from '../style/style_layer/color_relief_styl
 import type {OverscaledTileID} from '../tile/tile_id';
 
 export function drawColorRelief(painter: Painter, tileManager: TileManager, layer: ColorReliefStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    if (painter.renderPass !== 'translucent') return;
     if (!tileIDs.length) return;
 
     const {isRenderingToTexture} = renderOptions;

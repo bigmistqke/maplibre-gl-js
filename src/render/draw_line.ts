@@ -139,8 +139,6 @@ function bindGradientAndDashTextures(
 }
 
 export function drawLine(painter: Painter, tileManager: TileManager, layer: LineStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    if (painter.renderPass !== 'translucent') return;
-
     const {isRenderingToTexture} = renderOptions;
 
     const opacity = layer.paint.get('line-opacity');

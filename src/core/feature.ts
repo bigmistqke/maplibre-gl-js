@@ -26,7 +26,12 @@ export type DrawFunction = (painter: Painter, tileManager: TileManager, layer: S
 export interface LayerDefinition {
     StyleLayer: new (layer: LayerSpecification | any, globalState: Record<string, any>) => StyleLayer;
     Bucket?: any;
+    /** Main draw — called during translucent pass. */
     draw: DrawFunction;
+    /** Called during offscreen pass (e.g. DEM prep, kernel accumulation). */
+    drawOffscreen?: DrawFunction;
+    /** Called during opaque pass (e.g. solid fills). */
+    drawOpaque?: DrawFunction;
 }
 
 export interface SourceDefinition {

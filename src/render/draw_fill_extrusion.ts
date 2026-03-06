@@ -23,27 +23,25 @@ export function drawFillExtrusion(painter: Painter, tileManager: TileManager, la
     }
 
     const {isRenderingToTexture} = renderOptions;
-    if (painter.renderPass === 'translucent') {
-        const depthMode = new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, painter.depthRangeFor3D);
+    const depthMode = new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, painter.depthRangeFor3D);
 
-        if (opacity === 1 && !layer.paint.get('fill-extrusion-pattern').constantOr(1 as any)) {
-            const colorMode = painter.colorModeForRenderPass();
-            drawExtrusionTiles(painter, tileManager, layer, coords, depthMode, StencilMode.disabled, colorMode, isRenderingToTexture);
+    if (opacity === 1 && !layer.paint.get('fill-extrusion-pattern').constantOr(1 as any)) {
+        const colorMode = painter.colorModeForRenderPass();
+        drawExtrusionTiles(painter, tileManager, layer, coords, depthMode, StencilMode.disabled, colorMode, isRenderingToTexture);
 
-        } else {
-            // Draw transparent buildings in two passes so that only the closest surface is drawn.
-            // First draw all the extrusions into only the depth buffer. No colors are drawn.
-            drawExtrusionTiles(painter, tileManager, layer, coords, depthMode,
-                StencilMode.disabled,
-                ColorMode.disabled, isRenderingToTexture);
+    } else {
+        // Draw transparent buildings in two passes so that only the closest surface is drawn.
+        // First draw all the extrusions into only the depth buffer. No colors are drawn.
+        drawExtrusionTiles(painter, tileManager, layer, coords, depthMode,
+            StencilMode.disabled,
+            ColorMode.disabled, isRenderingToTexture);
 
-            // Then draw all the extrusions a second type, only coloring fragments if they have the
-            // same depth value as the closest fragment in the previous pass. Use the stencil buffer
-            // to prevent the second draw in cases where we have coincident polygons.
-            drawExtrusionTiles(painter, tileManager, layer, coords, depthMode,
-                painter.stencilModeFor3D(),
-                painter.colorModeForRenderPass(), isRenderingToTexture);
-        }
+        // Then draw all the extrusions a second type, only coloring fragments if they have the
+        // same depth value as the closest fragment in the previous pass. Use the stencil buffer
+        // to prevent the second draw in cases where we have coincident polygons.
+        drawExtrusionTiles(painter, tileManager, layer, coords, depthMode,
+            painter.stencilModeFor3D(),
+            painter.colorModeForRenderPass(), isRenderingToTexture);
     }
 }
 

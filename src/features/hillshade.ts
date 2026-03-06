@@ -1,5 +1,5 @@
 import {HillshadeStyleLayer} from '../style/style_layer/hillshade_style_layer';
-import {drawHillshade} from '../render/draw_hillshade';
+import {drawHillshade, drawHillshadeOffscreen} from '../render/draw_hillshade';
 import {hillshadeUniforms, hillshadePrepareUniforms} from '../render/program/hillshade_program';
 import {prepare} from '../shaders/shaders';
 import hillshadeFrag from '../shaders/hillshade.fragment.glsl.g';
@@ -14,6 +14,7 @@ const hillshadeBase: Feature = {
         hillshade: {
             StyleLayer: HillshadeStyleLayer,
             draw: drawHillshade,
+            drawOffscreen: drawHillshadeOffscreen,
         }
     },
     programs: {

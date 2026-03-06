@@ -4,7 +4,7 @@ import {TileManager} from '../tile/tile_manager';
 import {Tile} from '../tile/tile';
 import {Painter, type RenderOptions} from './painter';
 import type {Map} from '../ui/map';
-import {drawCustom} from './draw_custom';
+import {drawCustomTranslucent} from './draw_custom';
 import {CustomStyleLayer} from '../style/style_layer/custom_style_layer';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
 import {MercatorProjection} from '../geo/projection/mercator_projection';
@@ -66,7 +66,7 @@ describe('drawCustom', () => {
             },
         }, {});
         const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
-        drawCustom(mockPainter, tileManagerMock, mockLayer, renderOptions);
+        drawCustomTranslucent(mockPainter, tileManagerMock, mockLayer, renderOptions);
         expect(result.gl).toBeDefined();
         expect(result.args.farZ).toBeCloseTo(804.8028169246645, 6);
         expect(result.args.farZ).toBe(mockPainter.transform.farZ);

@@ -63,8 +63,6 @@ const identityMat4 = mat4.identity(new Float32Array(16));
 export function drawSymbols(painter: Painter, tileManager: TileManager, layer: SymbolStyleLayer, coords: Array<OverscaledTileID>, variableOffsets: {
     [_ in CrossTileID]: VariableOffset;
 }, renderOptions: RenderOptions) {
-    if (painter.renderPass !== 'translucent') return;
-
     const {isRenderingToTexture} = renderOptions;
     // Disable the stencil test so that labels aren't clipped to tile boundaries.
     const stencilMode = StencilMode.disabled;

@@ -1,6 +1,6 @@
 import {FillStyleLayer} from '../style/style_layer/fill_style_layer';
 import {FillBucket} from '../data/bucket/fill_bucket';
-import {drawFill} from '../render/draw_fill';
+import {drawFill, drawFillOpaque} from '../render/draw_fill';
 import {fillUniforms, fillOutlineUniforms, fillPatternUniforms, fillOutlinePatternUniforms} from '../render/program/fill_program';
 import {prepare} from '../shaders/shaders';
 import fillFrag from '../shaders/fill.fragment.glsl.g';
@@ -20,6 +20,7 @@ const fillBase: Feature = {
             StyleLayer: FillStyleLayer,
             Bucket: FillBucket,
             draw: drawFill,
+            drawOpaque: drawFillOpaque,
         }
     },
     programs: {

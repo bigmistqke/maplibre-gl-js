@@ -5,20 +5,16 @@ import type {Painter, RenderOptions} from './painter';
 import type {TileManager} from '../tile/tile_manager';
 import type {CustomRenderMethodInput, CustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
-export function drawCustom(painter: Painter, tileManager: TileManager, layer: CustomStyleLayer, renderOptions: RenderOptions) {
-
+function getCustomLayerArgs(painter: Painter, renderOptions: RenderOptions): CustomRenderMethodInput {
     const {isRenderingGlobe} = renderOptions;
-    const context = painter.context;
-    const implementation = layer.implementation;
     const projection = painter.style.projection;
     const transform = painter.transform;
-
     const projectionData = transform.getProjectionDataForCustomLayer(isRenderingGlobe);
 
-    const customLayerArgs: CustomRenderMethodInput = {
+    return {
         farZ: transform.farZ,
         nearZ: transform.nearZ,
-        fov: transform.fov * Math.PI / 180, // fov converted to radians
+        fov: transform.fov * Math.PI / 180,
         modelViewProjectionMatrix: transform.modelViewProjectionMatrix,
         projectionMatrix: transform.projectionMatrix,
         shaderData: {
@@ -28,37 +24,45 @@ export function drawCustom(painter: Painter, tileManager: TileManager, layer: Cu
         },
         defaultProjectionData: projectionData,
     };
+}
 
+export function drawCustomOffscreen(painter: Painter, layer: CustomStyleLayer, renderOptions: RenderOptions) {
+    const context = painter.context;
+    const implementation = layer.implementation;
+    const prerender = implementation.prerender;
+    if (!prerender) return;
+
+    const customLayerArgs = getCustomLayerArgs(painter, renderOptions);
+
+    painter.setCustomLayerDefaults();
+    context.setColorMode(painter.colorModeForRenderPass());
+
+    prerender.call(implementation, context.gl, customLayerArgs);
+
+    context.setDirty();
+    painter.setBaseState();
+}
+
+export function drawCustomTranslucent(painter: Painter, _tileManager: TileManager, layer: CustomStyleLayer, renderOptions: RenderOptions) {
+    const context = painter.context;
+    const implementation = layer.implementation;
     const renderingMode = implementation.renderingMode ? implementation.renderingMode : '2d';
+    const customLayerArgs = getCustomLayerArgs(painter, renderOptions);
 
-    if (painter.renderPass === 'offscreen') {
-        const prerender = implementation.prerender;
-        if (prerender) {
-            painter.setCustomLayerDefaults();
-            context.setColorMode(painter.colorModeForRenderPass());
+    painter.setCustomLayerDefaults();
 
-            prerender.call(implementation, context.gl, customLayerArgs);
+    context.setColorMode(painter.colorModeForRenderPass());
+    context.setStencilMode(StencilMode.disabled);
 
-            context.setDirty();
-            painter.setBaseState();
-        }
-    } else if (painter.renderPass === 'translucent') {
+    const depthMode = renderingMode === '3d' ?
+        painter.getDepthModeFor3D() :
+        painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
 
-        painter.setCustomLayerDefaults();
+    context.setDepthMode(depthMode);
 
-        context.setColorMode(painter.colorModeForRenderPass());
-        context.setStencilMode(StencilMode.disabled);
+    implementation.render(context.gl, customLayerArgs);
 
-        const depthMode = renderingMode === '3d' ?
-            painter.getDepthModeFor3D() :
-            painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
-
-        context.setDepthMode(depthMode);
-
-        implementation.render(context.gl, customLayerArgs);
-
-        context.setDirty();
-        painter.setBaseState();
-        context.bindFramebuffer.set(null);
-    }
+    context.setDirty();
+    painter.setBaseState();
+    context.bindFramebuffer.set(null);
 }

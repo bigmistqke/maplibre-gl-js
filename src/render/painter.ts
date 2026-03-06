@@ -18,7 +18,7 @@ import {CullFaceMode} from '../gl/cull_face_mode';
 import {Texture} from './texture';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {drawDebug, drawDebugPadding, selectDebugSource} from './draw_debug';
-import {drawCustom} from './draw_custom';
+import {drawCustomOffscreen, drawCustomTranslucent} from './draw_custom';
 import {type OverscaledTileID} from '../tile/tile_id';
 import {Mesh} from './mesh';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection';
@@ -561,7 +561,7 @@ export class Painter {
             const coords = this._coordsDescending[layer.source];
             if (layer.type !== 'custom' && !coords.length) continue;
 
-            this.renderLayer(this, tileManagers[layer.source], layer, coords, this._renderOptions);
+            this.renderLayer(this, tileManagers[layer.source], layer, coords, this._renderOptions, 'offscreen');
         }
 
         this._prepareMainFramebuffer();
@@ -574,7 +574,7 @@ export class Painter {
             const coords = this._coordsAscending[layer.source];
 
             this._renderTileClippingMasks(layer, coords, false);
-            this.renderLayer(this, tileManager, layer, coords, this._renderOptions);
+            this.renderLayer(this, tileManager, layer, coords, this._renderOptions, 'opaque');
         }
 
         // Translucent pass — draw all layers bottom-to-top
@@ -595,25 +595,36 @@ export class Painter {
             const coords = (layer.type === 'symbol' ? this._coordsDescendingSymbol : this._coordsDescending)[layer.source];
 
             this._renderTileClippingMasks(layer, this._coordsAscending[layer.source], false);
-            this.renderLayer(this, tileManager, layer, coords, this._renderOptions);
+            this.renderLayer(this, tileManager, layer, coords, this._renderOptions, 'translucent');
         }
 
         this._finalizeMainPass();
     }
 
-    renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+    renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions, phase: RenderPass = 'translucent') {
         if (layer.isHidden(this.transform.zoom)) return;
         if (layer.type !== 'background' && layer.type !== 'custom' && !(coords || []).length) return;
         this.id = layer.id;
 
         // Custom layers are user-provided, not from the feature config
         if (isCustomStyleLayer(layer)) {
-            drawCustom(painter, tileManager, layer, renderOptions);
+            if (phase === 'offscreen') {
+                drawCustomOffscreen(painter, layer, renderOptions);
+            } else if (phase === 'translucent') {
+                drawCustomTranslucent(painter, tileManager, layer, renderOptions);
+            }
             return;
         }
 
         // All registered layers dispatch through the feature registry
-        this.style._featureRegistry.getLayer(layer.type as LayerName).draw(painter, tileManager, layer, coords, renderOptions);
+        const layerDef = this.style._featureRegistry.getLayer(layer.type as LayerName);
+        if (phase === 'offscreen') {
+            layerDef.drawOffscreen?.(painter, tileManager, layer, coords, renderOptions);
+        } else if (phase === 'opaque') {
+            layerDef.drawOpaque?.(painter, tileManager, layer, coords, renderOptions);
+        } else {
+            layerDef.draw(painter, tileManager, layer, coords, renderOptions);
+        }
     }
 
     saveTileTexture(texture: Texture) {

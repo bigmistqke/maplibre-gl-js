@@ -12,12 +12,30 @@ import type {BackgroundStyleLayer} from '../style/style_layer/background_style_l
 import {type OverscaledTileID} from '../tile/tile_id';
 import {coveringTiles} from '../geo/projection/covering_tiles';
 
-export function drawBackground(painter: Painter, tileManager: TileManager, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+function isBackgroundOpaque(painter: Painter, layer: BackgroundStyleLayer): boolean {
     const color = layer.paint.get('background-color');
     const opacity = layer.paint.get('background-opacity');
+    const image = layer.paint.get('background-pattern');
+    return !image && color.a === 1 && opacity === 1 && painter.opaquePassEnabledForLayer();
+}
 
-    if (opacity === 0) return;
+export function drawBackgroundOpaque(painter: Painter, tileManager: TileManager, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+    if (layer.paint.get('background-opacity') === 0) return;
+    if (painter.isPatternMissing(layer.paint.get('background-pattern'))) return;
+    if (!isBackgroundOpaque(painter, layer)) return;
 
+    drawBackgroundTiles(painter, layer, coords, renderOptions, DepthMode.ReadWrite);
+}
+
+export function drawBackground(painter: Painter, tileManager: TileManager, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+    if (layer.paint.get('background-opacity') === 0) return;
+    if (painter.isPatternMissing(layer.paint.get('background-pattern'))) return;
+    if (isBackgroundOpaque(painter, layer)) return;
+
+    drawBackgroundTiles(painter, layer, coords, renderOptions, DepthMode.ReadOnly);
+}
+
+function drawBackgroundTiles(painter: Painter, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions, depthMask: typeof DepthMode.ReadWrite | typeof DepthMode.ReadOnly) {
     const {isRenderingToTexture} = renderOptions;
     const context = painter.context;
     const gl = context.gl;
@@ -25,14 +43,11 @@ export function drawBackground(painter: Painter, tileManager: TileManager, layer
     const transform = painter.transform;
     const tileSize = transform.tileSize;
     const image = layer.paint.get('background-pattern');
-
-    if (painter.isPatternMissing(image)) return;
-
-    const pass = (!image && color.a === 1 && opacity === 1 && painter.opaquePassEnabledForLayer()) ? 'opaque' : 'translucent';
-    if (painter.renderPass !== pass) return;
+    const color = layer.paint.get('background-color');
+    const opacity = layer.paint.get('background-opacity');
 
     const stencilMode = StencilMode.disabled;
-    const depthMode = painter.getDepthModeForSublayer(0, pass === 'opaque' ? DepthMode.ReadWrite : DepthMode.ReadOnly);
+    const depthMode = painter.getDepthModeForSublayer(0, depthMask);
     const colorMode = painter.colorModeForRenderPass();
     const program = painter.useProgram(image ? 'backgroundPattern' : 'background');
     const tileIDs = coords ? coords : coveringTiles(transform, {tileSize, surface: painter.surface});
@@ -43,7 +58,7 @@ export function drawBackground(painter: Painter, tileManager: TileManager, layer
     }
 
     const crossfade = layer.getCrossfadeParameters();
-    
+
     for (const tileID of tileIDs) {
         const projectionData = transform.getProjectionData({
             overscaledTileID: tileID,
@@ -55,15 +70,6 @@ export function drawBackground(painter: Painter, tileManager: TileManager, layer
             backgroundPatternUniformValues(opacity, painter, image, {tileID, tileSize}, crossfade) :
             backgroundUniformValues(opacity, color);
         const terrainData = painter.surface.getBindings(tileID);
-
-        // For globe rendering, background uses tile meshes *without* borders and no stencil clipping.
-        // This works assuming the tileIDs list contains only tiles of the same zoom level.
-        // This seems to always be the case for background layers, but I'm leaving this comment
-        // here in case this assumption is false in the future.
-
-        // In case background starts having tiny holes at tile boundaries, switch to meshes with borders
-        // and also enable stencil clipping. Make sure to render a proper tile clipping mask into stencil
-        // first though, as that doesn't seem to happen for background layers as of writing this.
 
         const mesh = projection.getMeshFromTileID(context, tileID.canonical, false, true, 'raster');
         program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.backCCW,

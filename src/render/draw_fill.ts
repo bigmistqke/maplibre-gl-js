@@ -17,40 +17,40 @@ import type {OverscaledTileID} from '../tile/tile_id';
 import {updatePatternPositionsInProgram} from './update_pattern_positions_in_program';
 import {translatePosition} from '../util/util';
 
-export function drawFill(painter: Painter, tileManager: TileManager, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+function isFillOpaque(painter: Painter, layer: FillStyleLayer): boolean {
+    const pattern = layer.paint.get('fill-pattern');
     const color = layer.paint.get('fill-color');
     const opacity = layer.paint.get('fill-opacity');
+    return painter.opaquePassEnabledForLayer() &&
+        !pattern.constantOr(1 as any) &&
+        color.constantOr(Color.transparent).a === 1 &&
+        opacity.constantOr(0) === 1;
+}
 
-    if (opacity.constantOr(1) === 0) {
-        return;
-    }
+export function drawFillOpaque(painter: Painter, tileManager: TileManager, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+    if (layer.paint.get('fill-opacity').constantOr(1) === 0) return;
+    if (!isFillOpaque(painter, layer)) return;
 
     const {isRenderingToTexture} = renderOptions;
     const colorMode = painter.colorModeForRenderPass();
-    const pattern = layer.paint.get('fill-pattern');
-    const pass = painter.opaquePassEnabledForLayer() &&
-        (!pattern.constantOr(1 as any) &&
-            color.constantOr(Color.transparent).a === 1 &&
-            opacity.constantOr(0) === 1) ? 'opaque' : 'translucent';
+    const depthMode = painter.getDepthModeForSublayer(1, DepthMode.ReadWrite);
+    drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false, isRenderingToTexture);
+}
 
-    // Draw fill
-    if (painter.renderPass === pass) {
-        const depthMode = painter.getDepthModeForSublayer(
-            1, painter.renderPass === 'opaque' ? DepthMode.ReadWrite : DepthMode.ReadOnly);
+export function drawFill(painter: Painter, tileManager: TileManager, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
+    if (layer.paint.get('fill-opacity').constantOr(1) === 0) return;
+
+    const {isRenderingToTexture} = renderOptions;
+    const colorMode = painter.colorModeForRenderPass();
+
+    // Draw fill body (only if not already drawn in opaque pass)
+    if (!isFillOpaque(painter, layer)) {
+        const depthMode = painter.getDepthModeForSublayer(1, DepthMode.ReadOnly);
         drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false, isRenderingToTexture);
     }
 
-    // Draw stroke
-    if (painter.renderPass === 'translucent' && layer.paint.get('fill-antialias')) {
-
-        // If we defined a different color for the fill outline, we are
-        // going to ignore the bits in 0x07 and just care about the global
-        // clipping mask.
-        // Otherwise, we only want to drawFill the antialiased parts that are
-        // *outside* the current shape. This is important in case the fill
-        // or stroke color is translucent. If we wouldn't clip to outside
-        // the current shape, some pixels from the outline stroke overlapped
-        // the (non-antialiased) fill.
+    // Draw antialias stroke
+    if (layer.paint.get('fill-antialias')) {
         const depthMode = painter.getDepthModeForSublayer(
             layer.getPaintProperty('fill-outline-color') ? 2 : 0, DepthMode.ReadOnly);
         drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, true, isRenderingToTexture);

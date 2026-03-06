@@ -1,5 +1,5 @@
 import {BackgroundStyleLayer} from '../style/style_layer/background_style_layer';
-import {drawBackground} from '../render/draw_background';
+import {drawBackground, drawBackgroundOpaque} from '../render/draw_background';
 import {backgroundUniforms, backgroundPatternUniforms} from '../render/program/background_program';
 import {prepare} from '../shaders/shaders';
 import backgroundFrag from '../shaders/background.fragment.glsl.g';
@@ -14,6 +14,7 @@ const backgroundBase: Feature = {
         background: {
             StyleLayer: BackgroundStyleLayer,
             draw: drawBackground,
+            drawOpaque: drawBackgroundOpaque,
         }
     },
     programs: {

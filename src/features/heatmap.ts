@@ -1,6 +1,6 @@
 import {HeatmapStyleLayer} from '../style/style_layer/heatmap_style_layer';
 import {HeatmapBucket} from '../data/bucket/heatmap_bucket';
-import {drawHeatmap} from '../render/draw_heatmap';
+import {drawHeatmap, drawHeatmapOffscreen} from '../render/draw_heatmap';
 import {heatmapUniforms, heatmapTextureUniforms} from '../render/program/heatmap_program';
 import {prepare} from '../shaders/shaders';
 import heatmapFrag from '../shaders/heatmap.fragment.glsl.g';
@@ -16,6 +16,7 @@ const heatmapBase: Feature = {
             StyleLayer: HeatmapStyleLayer,
             Bucket: HeatmapBucket,
             draw: drawHeatmap,
+            drawOffscreen: drawHeatmapOffscreen,
         }
     },
     programs: {

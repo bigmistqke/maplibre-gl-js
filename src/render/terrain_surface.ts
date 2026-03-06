@@ -118,7 +118,7 @@ export class TerrainSurface implements Surface {
                 const coords = painter._coordsDescending[layer.source];
                 if (layer.type !== 'custom' && !coords.length) continue;
 
-                painter.renderLayer(painter, tileManagers[layer.source], layer, coords, renderOptions);
+                painter.renderLayer(painter, tileManagers[layer.source], layer, coords, renderOptions, 'offscreen');
             }
 
             painter._prepareMainFramebuffer();
@@ -136,7 +136,7 @@ export class TerrainSurface implements Surface {
                 // Non-RTT layers (symbols, custom) render directly
                 const coords = (layer.type === 'symbol' ? painter._coordsDescendingSymbol : painter._coordsDescending)[layer.source];
                 painter._renderTileClippingMasks(layer, painter._coordsAscending[layer.source], true);
-                painter.renderLayer(painter, tileManagers[layer.source], layer, coords, renderOptions);
+                painter.renderLayer(painter, tileManagers[layer.source], layer, coords, renderOptions, 'translucent');
             }
 
             painter._finalizeMainPass();

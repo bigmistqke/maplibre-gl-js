@@ -19,16 +19,20 @@ import type {HeatmapStyleLayer} from '../style/style_layer/heatmap_style_layer';
 import type {HeatmapBucket} from '../data/bucket/heatmap_bucket';
 import type {OverscaledTileID} from '../tile/tile_id';
 
+export function drawHeatmapOffscreen(painter: Painter, tileManager: TileManager, layer: HeatmapStyleLayer, tileIDs: Array<OverscaledTileID>, _renderOptions: RenderOptions) {
+    if (layer.paint.get('heatmap-opacity') === 0) return;
+    prepareHeatmapFlat(painter, tileManager, layer, tileIDs);
+}
+
 export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: HeatmapStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    if (layer.paint.get('heatmap-opacity') === 0) {
-        return;
-    }
-    const context = painter.context;
+    if (layer.paint.get('heatmap-opacity') === 0) return;
+
     const {isRenderingToTexture, isRenderingGlobe} = renderOptions;
 
     if (isRenderingToTexture) {
         // RTT calls us once per terrain tile with mapped source coords.
         // Do both passes (kernel accumulation + color ramp composite) inline.
+        const context = painter.context;
         for (const coord of tileIDs) {
             const tile = tileManager.getTile(coord);
             if (tileManager.hasRenderableParent(coord)) continue;
@@ -37,11 +41,7 @@ export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: H
         }
         context.viewport.set([0, 0, painter.width, painter.height]);
     } else {
-        if (painter.renderPass === 'offscreen') {
-            prepareHeatmapFlat(painter, tileManager, layer, tileIDs);
-        } else if (painter.renderPass === 'translucent') {
-            renderHeatmapFlat(painter, layer);
-        }
+        renderHeatmapFlat(painter, layer);
     }
 }
 
