@@ -1733,7 +1733,7 @@ Map directly constructs `Terrain`, `TerrainSurface`, `RenderToTexture`, wires up
 `surface.update(transform, centerClampedToGround)` now handles all elevation sync: `setMinElevationForCurrentTile` and `setElevation`. Map's render tick is one call. The data callback in `setTerrain` also delegates to `surface.update()` instead of inline elevation reads. Surface respects `isElevationFrozen` and `centerClampedToGround` internally.
 
 **4. `draw_terrain.ts:86` — compositor reaches into RTT for textures — ✅ Done.**
-`drawTerrain` now receives the `RenderToTexture` instance directly from its caller (RTT's `renderLayer`) instead of reaching through `painter.surface.renderToTexture`.
+`drawTerrain` now receives the `RenderToTexture` instance directly from its caller (RTT's `renderLayer`) instead of reaching through `painter.surface.renderToTexture`. Additionally, `renderToTexture` has been removed from the Surface interface entirely — it's now an internal detail of TerrainSurface. The Surface interface exposes `isRenderingToTexture` (boolean, for raster fade control) and `destroy()` (for cleanup) instead.
 
 **5. `bounding_volume_cache.ts:37` — covering tiles checks `surface.terrain`.**
 Cache key includes `options?.surface?.terrain ? 't' : ''` to differentiate terrain vs flat bounding volumes. Still an open question (see above). The covering tiles system reaches into surface to check type — the cache should ideally not know about surfaces at all.
