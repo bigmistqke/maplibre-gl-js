@@ -34,26 +34,26 @@ export function drawFillOpaque(painter: Painter, tileManager: TileManager, layer
     
     const colorMode = painter.colorModeForRenderPass();
     const depthMode = painter.getDepthModeForSublayer(1, DepthMode.ReadWrite);
-    drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false, isRenderingToTexture);
+    drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false);
 }
 
 export function drawFill(painter: Painter, tileManager: TileManager, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (layer.paint.get('fill-opacity').constantOr(1) === 0) return;
 
-    
+
     const colorMode = painter.colorModeForRenderPass();
 
     // Draw fill body (only if not already drawn in opaque pass)
     if (!isFillOpaque(painter, layer)) {
         const depthMode = painter.getDepthModeForSublayer(1, DepthMode.ReadOnly);
-        drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false, isRenderingToTexture);
+        drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false);
     }
 
     // Draw antialias stroke
     if (layer.paint.get('fill-antialias')) {
         const depthMode = painter.getDepthModeForSublayer(
             layer.getPaintProperty('fill-outline-color') ? 2 : 0, DepthMode.ReadOnly);
-        drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, true, isRenderingToTexture);
+        drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, true);
     }
 }
 
@@ -64,8 +64,7 @@ function drawFillTiles(
     coords: Array<OverscaledTileID>,
     depthMode: Readonly<DepthMode>,
     colorMode: Readonly<ColorMode>,
-    isOutline: boolean,
-    isRenderingToTexture: boolean) {
+    isOutline: boolean) {
     const gl = painter.context.gl;
     const fillPropertyName = 'fill-pattern';
     const patternProperty = layer.paint.get(fillPropertyName);
@@ -109,8 +108,6 @@ function drawFillTiles(
 
         const projectionData = transform.getProjectionData({
             overscaledTileID: coord,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
         });
 
         const translateForUniforms = translatePosition(transform, tile, propertyFillTranslate, propertyFillTranslateAnchor);

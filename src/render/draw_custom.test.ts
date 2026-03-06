@@ -64,7 +64,7 @@ describe('drawCustomTranslucent', () => {
                 };
             },
         }, {});
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        const renderOptions: RenderOptions = {isRenderingGlobe: false};
         drawCustomTranslucent(mockPainter, tileManagerMock, mockLayer, renderOptions);
         expect(result.gl).toBeDefined();
         expect(result.args.farZ).toBeCloseTo(804.8028169246645, 6);

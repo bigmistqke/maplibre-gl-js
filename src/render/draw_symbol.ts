@@ -88,7 +88,7 @@ export function drawSymbols(painter: Painter, tileManager: TileManager, layer: S
             layer.layout.get('icon-rotation-alignment'),
             layer.layout.get('icon-pitch-alignment'),
             layer.layout.get('icon-keep-upright'),
-            stencilMode, colorMode, isRenderingToTexture
+            stencilMode, colorMode
         );
     }
 
@@ -99,7 +99,7 @@ export function drawSymbols(painter: Painter, tileManager: TileManager, layer: S
             layer.layout.get('text-rotation-alignment'),
             layer.layout.get('text-pitch-alignment'),
             layer.layout.get('text-keep-upright'),
-            stencilMode, colorMode, isRenderingToTexture
+            stencilMode, colorMode
         );
     }
 
@@ -302,8 +302,7 @@ function drawLayerSymbols(
     pitchAlignment: SymbolLayerSpecification['layout']['text-pitch-alignment'],
     keepUpright: boolean,
     stencilMode: StencilMode,
-    colorMode: Readonly<ColorMode>, 
-    isRenderingToTexture: boolean) {
+    colorMode: Readonly<ColorMode>) {
 
     const context = painter.context;
     const gl = context.gl;

@@ -82,7 +82,6 @@ describe('drawSymbol', () => {
         layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters, []);
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
-        tileId.terrainRttPosMatrix32f = mat4.create();
         const programMock = new Program(null, null, null, null, null, null, null);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
         const bucketMock = new SymbolBucket(null);
@@ -109,7 +108,7 @@ describe('drawSymbol', () => {
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
         tileManagerMock.getTile = (_a) => tile;
 
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        const renderOptions: RenderOptions = {isRenderingGlobe: false};
         drawSymbols(painterMock, tileManagerMock, layer, [tileId], null, renderOptions);
 
         expect(programMock.draw).toHaveBeenCalledTimes(1);
@@ -146,7 +145,6 @@ describe('drawSymbol', () => {
         layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters, []);
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
-        tileId.terrainRttPosMatrix32f = mat4.create();
         const programMock = new Program(null, null, null, null, null, null, null);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
         const bucketMock = new SymbolBucket(null);
@@ -194,7 +192,7 @@ describe('drawSymbol', () => {
         } as any as Style;
 
         const spy = vi.spyOn(symbolProjection, 'updateLineLabels');
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        const renderOptions: RenderOptions = {isRenderingGlobe: false};
         drawSymbols(painterMock, tileManagerMock, layer, [tileId], null, renderOptions);
 
         expect(spy.mock.calls[0][7]).toBeFalsy(); // rotateToLine === false
@@ -230,7 +228,6 @@ describe('drawSymbol', () => {
         layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters, []);
 
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
-        tileId.terrainRttPosMatrix32f = mat4.create();
         const programMock = new Program(null, null, null, null, null, null, null);
         (painterMock.useProgram as Mock).mockReturnValue(programMock);
         const bucketMock = new SymbolBucket(null);
@@ -257,7 +254,7 @@ describe('drawSymbol', () => {
         (tileManagerMock.getTile as Mock).mockReturnValue(tile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        const renderOptions: RenderOptions = {isRenderingGlobe: false};
         drawSymbols(painterMock, tileManagerMock, layer, [tileId], null, renderOptions);
 
         expect(programMock.draw).toHaveBeenCalledTimes(0);

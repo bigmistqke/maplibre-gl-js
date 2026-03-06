@@ -27,21 +27,21 @@ export function drawFillExtrusion(painter: Painter, tileManager: TileManager, la
 
     if (opacity === 1 && !layer.paint.get('fill-extrusion-pattern').constantOr(1 as any)) {
         const colorMode = painter.colorModeForRenderPass();
-        drawExtrusionTiles(painter, tileManager, layer, coords, depthMode, StencilMode.disabled, colorMode, isRenderingToTexture);
+        drawExtrusionTiles(painter, tileManager, layer, coords, depthMode, StencilMode.disabled, colorMode);
 
     } else {
         // Draw transparent buildings in two passes so that only the closest surface is drawn.
         // First draw all the extrusions into only the depth buffer. No colors are drawn.
         drawExtrusionTiles(painter, tileManager, layer, coords, depthMode,
             StencilMode.disabled,
-            ColorMode.disabled, isRenderingToTexture);
+            ColorMode.disabled);
 
         // Then draw all the extrusions a second type, only coloring fragments if they have the
         // same depth value as the closest fragment in the previous pass. Use the stencil buffer
         // to prevent the second draw in cases where we have coincident polygons.
         drawExtrusionTiles(painter, tileManager, layer, coords, depthMode,
             painter.stencilModeFor3D(),
-            painter.colorModeForRenderPass(), isRenderingToTexture);
+            painter.colorModeForRenderPass());
     }
 }
 
@@ -52,8 +52,7 @@ function drawExtrusionTiles(
     coords: OverscaledTileID[],
     depthMode: DepthMode,
     stencilMode: Readonly<StencilMode>,
-    colorMode: Readonly<ColorMode>,
-    isRenderingToTexture: boolean) {
+    colorMode: Readonly<ColorMode>) {
     const context = painter.context;
     const gl = context.gl;
     const fillPropertyName = 'fill-extrusion-pattern';

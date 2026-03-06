@@ -29,7 +29,7 @@ export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: H
 
     const {isRenderingGlobe} = renderOptions;
 
-    if (isRenderingToTexture) {
+    if (painter.surface.isRenderingToTexture) {
         // RTT calls us once per terrain tile with mapped source coords.
         // Do both passes (kernel accumulation + color ramp composite) inline.
         const context = painter.context;
@@ -37,7 +37,7 @@ export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: H
             const tile = tileManager.getTile(coord);
             if (tileManager.hasRenderableParent(coord)) continue;
             prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe);
-            renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe);
+            renderHeatmapTerrain(painter, layer, coord, isRenderingGlobe);
         }
         context.viewport.set([0, 0, painter.width, painter.height]);
     } else {
@@ -151,7 +151,7 @@ function prepareHeatmapTerrain(painter: Painter, tile: Tile, layer: HeatmapStyle
         programConfiguration);
 }
 
-function renderHeatmapTerrain(painter: Painter, layer: HeatmapStyleLayer, coord: OverscaledTileID, isRenderingToTexture: boolean, isRenderingGlobe: boolean) {
+function renderHeatmapTerrain(painter: Painter, layer: HeatmapStyleLayer, coord: OverscaledTileID, isRenderingGlobe: boolean) {
     const context = painter.context;
     const gl = context.gl;
     const transform = painter.transform;

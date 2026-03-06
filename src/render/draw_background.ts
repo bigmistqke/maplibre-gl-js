@@ -62,8 +62,6 @@ function drawBackgroundTiles(painter: Painter, layer: BackgroundStyleLayer, coor
     for (const tileID of tileIDs) {
         const projectionData = transform.getProjectionData({
             overscaledTileID: tileID,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
         });
 
         const uniformValues = image ?

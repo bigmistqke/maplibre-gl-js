@@ -27,12 +27,12 @@ export function drawColorRelief(painter: Painter, tileManager: TileManager, laye
     if (useSubdivision) {
         // Two-pass rendering
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
-        renderColorRelief(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture); // draw without borders
-        renderColorRelief(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture); // draw with borders
+        renderColorRelief(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false); // draw without borders
+        renderColorRelief(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true); // draw with borders
     } else {
         // Simple rendering
         const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
-        renderColorRelief(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
+        renderColorRelief(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false);
     }
 }
 
@@ -45,7 +45,6 @@ function renderColorRelief(
     depthMode: Readonly<DepthMode>,
     colorMode: Readonly<ColorMode>,
     useBorder: boolean,
-    isRenderingToTexture: boolean
 ) {
     const projection = painter.style.projection;
     const context = painter.context;
@@ -98,8 +97,6 @@ function renderColorRelief(
         const projectionData = transform.getProjectionData({
             overscaledTileID: coord,
             aligned: align,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
         });
 
         program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW,

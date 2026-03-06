@@ -32,11 +32,11 @@ export function drawHillshade(painter: Painter, tileManager: TileManager, layer:
 
     if (useSubdivision) {
         const [stencilBorderless, stencilBorders, coords] = painter.stencilConfigForOverlapTwoPass(tileIDs);
-        renderHillshade(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false, isRenderingToTexture);
-        renderHillshade(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true, isRenderingToTexture);
+        renderHillshade(painter, tileManager, layer, coords, stencilBorderless, depthMode, colorMode, false);
+        renderHillshade(painter, tileManager, layer, coords, stencilBorders, depthMode, colorMode, true);
     } else {
         const [stencil, coords] = painter.getStencilConfigForOverlapAndUpdateStencilID(tileIDs);
-        renderHillshade(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false, isRenderingToTexture);
+        renderHillshade(painter, tileManager, layer, coords, stencil, depthMode, colorMode, false);
     }
 }
 
@@ -49,7 +49,6 @@ function renderHillshade(
     depthMode: Readonly<DepthMode>,
     colorMode: Readonly<ColorMode>,
     useBorder: boolean,
-    isRenderingToTexture: boolean
 ) {
     const projection = painter.style.projection;
     const context = painter.context;
@@ -76,8 +75,6 @@ function renderHillshade(
         const projectionData = transform.getProjectionData({
             overscaledTileID: coord,
             aligned: align,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
         });
 
         program.draw(context, gl.TRIANGLES, depthMode, stencilModes[coord.overscaledZ], colorMode, CullFaceMode.backCCW,

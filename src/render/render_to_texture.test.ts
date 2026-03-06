@@ -106,7 +106,7 @@ describe('render to texture', () => {
 
     const terrain = new Terrain(painter, tileManager, {} as any as TerrainSpecification);
     terrain.tileManager.getRenderableTiles = () => [tile];
-    terrain.tileManager.getTerrainCoords = () => { return {[tile.tileID.key]: tile.tileID}; };
+    terrain.tileManager.getTerrainCoords = () => { return {[tile.tileID.key]: {tileID: tile.tileID, rttPosMatrix: new Float32Array(16) as any}}; };
     map.terrain = terrain;
 
     const rtt = new RenderToTexture(painter, terrain);

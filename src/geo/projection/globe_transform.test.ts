@@ -50,8 +50,8 @@ describe('GlobeTransform', () => {
             expect(projectionData.projectionTransition).toBe(0);
         });
 
-        test('Applying the globe matrix sets transition to something different than 0', () => {
-            const projectionData = globeTransform.getProjectionData({overscaledTileID: new OverscaledTileID(1, 0, 1, 1, 0), applyGlobeMatrix: true});
+        test('Globe projection sets transition to something different than 0', () => {
+            const projectionData = globeTransform.getProjectionData({overscaledTileID: new OverscaledTileID(1, 0, 1, 1, 0)});
             expect(projectionData.projectionTransition).not.toBe(0);
         });
     });

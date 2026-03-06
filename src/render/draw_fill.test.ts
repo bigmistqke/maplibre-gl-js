@@ -45,7 +45,7 @@ describe('drawFill', () => {
         (tileManagerMock.getTile as Mock).mockReturnValue(mockTile);
         tileManagerMock.map = {showCollisionBoxes: false} as any as Map;
 
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: false};
+        const renderOptions: RenderOptions = {isRenderingGlobe: false};
         drawFill(painterMock, tileManagerMock, layer, [mockTile.tileID], renderOptions);
 
         // twice: first for fill, second for stroke
@@ -118,7 +118,6 @@ describe('drawFill', () => {
 
     function constructMockTile(layer: FillStyleLayer): Tile {
         const tileId = new OverscaledTileID(1, 0, 1, 0, 0);
-        tileId.terrainRttPosMatrix32f = mat4.create();
 
         const tile = new Tile(tileId, 256);
         tile.tileID = tileId;

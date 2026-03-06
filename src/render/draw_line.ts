@@ -201,8 +201,6 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
 
         const projectionData = transform.getProjectionData({
             overscaledTileID: coord,
-            applyGlobeMatrix: !isRenderingToTexture,
-            applyTerrainMatrix: true
         });
 
         const pixelRatio = transform.getPixelScale();

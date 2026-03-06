@@ -266,9 +266,9 @@ export class Painter {
         // However, we use a simpler approach because we don't care about overdraw here.
 
         // First pass - draw tiles with borders and with GL_ALWAYS
-        this._renderTileMasks(stencilRefs, tileIDs, renderToTexture, true);
+        this._renderTileMasks(stencilRefs, tileIDs, this.surface.isRenderingToTexture, true);
         // Second pass - draw borderless tiles with GL_ALWAYS
-        this._renderTileMasks(stencilRefs, tileIDs, renderToTexture, false);
+        this._renderTileMasks(stencilRefs, tileIDs, this.surface.isRenderingToTexture, false);
 
         this._tileClippingMaskIDs = stencilRefs;
     }
