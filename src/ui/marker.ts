@@ -560,7 +560,7 @@ export class Marker extends Evented {
     _updateOpacity(force: boolean = false) {
         const surface = this._map?.surface;
         const occluded = this._map.transform.isLocationOccluded(this._lngLat);
-        if (!surface?.hasTerrain || occluded) {
+        if (!surface?.terrain || occluded) {
             const targetOpacity = occluded ? this._opacityWhenCovered : this._opacity;
             if (this._element.style.opacity !== targetOpacity) { this._element.style.opacity = targetOpacity; }
             return;
@@ -609,7 +609,7 @@ export class Marker extends Evented {
         this._lngLat = smartWrap(this._lngLat, this._flatPos, this._map.transform);
 
         this._flatPos = this._pos = this._map.project(this._lngLat)._add(this._offset);
-        if (this._map.surface.hasTerrain) {
+        if (this._map.surface.terrain) {
             // flat position is saved because smartWrap needs non-elevated points
             this._flatPos = this._map.transform.locationToScreenPoint(this._lngLat)._add(this._offset);
         }

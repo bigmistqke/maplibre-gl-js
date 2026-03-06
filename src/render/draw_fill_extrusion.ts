@@ -99,6 +99,6 @@ function drawExtrusionTiles(
         program.draw(context, context.gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.backCCW,
             uniformValues, terrainData, projectionData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer,
             bucket.segments, layer.paint, painter.transform.zoom,
-            programConfiguration, painter.surface.hasTerrain ? bucket.centroidVertexBuffer : undefined);
+            programConfiguration, painter.surface.terrain ? bucket.centroidVertexBuffer : undefined);
     }
 }

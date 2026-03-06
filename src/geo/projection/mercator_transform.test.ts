@@ -378,7 +378,7 @@ describe('transform', () => {
         const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
         transform.resize(500, 500);
         const surface = {
-            hasTerrain: true,
+            terrain: {},
             screenToCoordinate: () => null
         } as any as Surface;
         const coordinate = transform.screenPointToMercatorCoordinate(new Point(0, 0), surface);

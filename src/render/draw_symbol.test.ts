@@ -167,12 +167,28 @@ describe('drawSymbol', () => {
             segments: {
                 get: () => [1]
             },
-            hasVisibleVertices: true
+            hasVisibleVertices: true,
+            dynamicLayoutVertexArray: {clear() {}},
+            dynamicLayoutVertexBuffer: {updateData() {}},
+            placedSymbolArray: {length: 0}
+        } as any;
+        bucketMock.text = {
+            programConfigurations: {
+                get: () => { }
+            },
+            segments: {
+                get: () => []
+            },
+            hasVisibleVertices: false,
+            dynamicLayoutVertexArray: {clear() {}},
+            dynamicLayoutVertexBuffer: {updateData() {}},
+            placedSymbolArray: {length: 0}
         } as any;
         bucketMock.iconSizeData = {
             kind: 'constant',
             layoutSize: 1
         };
+        bucketMock.lineVertexArray = [] as any;
         const tile = new Tile(tileId, 256);
         tile.tileID = tileId;
         tile.imageAtlasTexture = {

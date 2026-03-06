@@ -565,7 +565,7 @@ export class Painter {
                 globeDepthRendered = true;
                 // Render the globe sphere into the depth buffer - but only if globe is enabled and terrain is disabled.
                 // There should be no need for explicitly writing tile depths when terrain is enabled.
-                if (renderOptions.isRenderingGlobe && !this.surface.hasTerrain) {
+                if (renderOptions.isRenderingGlobe && !this.surface.terrain) {
                     this._renderTilesDepthBuffer();
                 }
             }

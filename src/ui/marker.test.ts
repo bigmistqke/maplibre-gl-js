@@ -1,5 +1,6 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
-import {createMap as globalCreateMap, beforeMapTest, sleep, createTerrain} from '../util/test/util';
+import {createMap as globalCreateMap, beforeMapTest, sleep, createTerrain, createTerrainSurface} from '../util/test/util';
+import {FLAT_SURFACE} from '../core/surface';
 import {Marker} from './marker';
 import {Popup} from './popup';
 import {LngLat} from '../geo/lng_lat';
@@ -899,6 +900,7 @@ describe('marker', () => {
             .setLngLat([0, 0])
             .addTo(map);
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.transform.lngLatToCameraDepth = () => .95;
 
         marker.setOffset([10, 10]);
@@ -987,6 +989,7 @@ describe('marker', () => {
 
         // Add terrain, not blocking marker
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.terrain.depthAtPoint = () => .95;
         map.fire('terrain');
         await sleep(100);
@@ -1002,6 +1005,7 @@ describe('marker', () => {
 
         // Remove terrain
         map.terrain = null;
+        map.surface = FLAT_SURFACE;
         map.fire('terrain');
         await sleep(100);
         expect(marker.getElement().style.opacity).toMatch('1');
@@ -1017,6 +1021,7 @@ describe('marker', () => {
             .addTo(map);
 
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.terrain.depthAtPoint = () => .95;
         await sleep(100);
         map.fire('terrain');
@@ -1033,6 +1038,7 @@ describe('marker', () => {
             .addTo(map);
 
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.terrain.depthAtPoint = (p) => p.y === 256 ? .95 : .92;
         await sleep(100);
         map.fire('terrain');
@@ -1049,6 +1055,7 @@ describe('marker', () => {
             .addTo(map);
 
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         await sleep(100);
         map.fire('terrain');
 
@@ -1064,6 +1071,7 @@ describe('marker', () => {
             .addTo(map);
 
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.fire('terrain');
 
         marker.setOpacity(undefined, '0.35');
@@ -1115,6 +1123,7 @@ describe('marker', () => {
         map.transform.lngLatToCameraDepth = () => .95; // Mocking distance to marker
 
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.fire('terrain');
 
         await sleep(100);
@@ -1133,6 +1142,7 @@ describe('marker', () => {
         map.transform.lngLatToCameraDepth = () => .95;
 
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.fire('terrain');
 
         await sleep(100);

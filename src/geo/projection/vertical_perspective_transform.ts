@@ -532,7 +532,7 @@ export class VerticalPerspectiveTransform implements ITransform {
     }
 
     recalculateZoomAndCenter(surface?: Surface): void {
-        if (surface?.hasTerrain) {
+        if (surface?.terrain) {
             warnOnce('terrain is not fully supported on vertical perspective projection.');
         }
         this._helper.recalculateZoomAndCenter(0);
@@ -768,7 +768,7 @@ export class VerticalPerspectiveTransform implements ITransform {
     locationToScreenPoint(lnglat: LngLat, surface?: Surface): Point {
         const pos = angularCoordinatesToSurfaceVector(lnglat);
 
-        if (surface?.hasTerrain) {
+        if (surface?.terrain) {
             const elevation = surface.getElevationForZoom(lnglat, this._helper._tileZoom);
             vec3.scale(pos, pos, 1.0 + elevation / earthRadius);
         }

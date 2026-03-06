@@ -10,7 +10,7 @@ import {heatmap} from './heatmap';
 import {hillshade} from './hillshade';
 import {labels} from './symbol';
 import {line} from './line';
-import {raster} from './raster';
+import {raster, image, video, canvas} from './raster';
 import {sky} from './sky';
 import {vectorTiles} from './vector_tiles';
 
@@ -21,6 +21,9 @@ export function allFeatures(): Feature[] {
         geojson(),
         elevation(),
         raster(),
+        image,
+        video,
+        canvas,
         fill(),
         line(),
         circle(),

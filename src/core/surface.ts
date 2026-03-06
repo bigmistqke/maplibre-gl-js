@@ -17,9 +17,6 @@ import type Point from '@mapbox/point-geometry';
  * implementation is active.
  */
 export interface Surface {
-    /** Whether this surface provides 3D terrain elevation. */
-    readonly hasTerrain: boolean;
-
     /** Shader extensions provided by this surface (e.g. terrain defines). */
     readonly shaderExtensions: readonly ShaderExtension[];
 
@@ -34,6 +31,9 @@ export interface Surface {
 
     /** Tile-space elevation (for symbol placement). */
     getElevationForTile(tileID: OverscaledTileID, x: number, y: number, extent?: number): number;
+
+    /** Returns an elevation callback for the given tile, or null for flat surfaces. */
+    getElevationCallback(tileID: OverscaledTileID): ((x: number, y: number) => number) | null;
 
     /** Min/max elevation in a tile (for frustum culling). */
     getMinMaxElevation(tileID: OverscaledTileID): {min: number; max: number};
@@ -82,7 +82,6 @@ export interface Surface {
  * returns null, no GPU bindings.
  */
 export class FlatSurface implements Surface {
-    readonly hasTerrain = false;
     readonly shaderExtensions: readonly ShaderExtension[] = [];
     readonly renderToTexture: RenderToTexture | null = null;
     readonly terrain: Terrain | null = null;
@@ -92,6 +91,7 @@ export class FlatSurface implements Surface {
     getElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }
     getMinElevationForZoom(_lnglat: LngLat, _zoom: number): number { return 0; }
     getElevationForTile(_tileID: OverscaledTileID, _x: number, _y: number, _extent?: number): number { return 0; }
+    getElevationCallback(_tileID: OverscaledTileID): ((x: number, y: number) => number) | null { return null; }
     getMinMaxElevation(_tileID: OverscaledTileID): {min: number; max: number} { return {min: 0, max: 0}; }
     screenToCoordinate(_point: Point): MercatorCoordinate | null { return null; }
     depthAtPoint(_point: Point): number { return 0; }

@@ -1,5 +1,5 @@
 import {describe, beforeEach, afterEach, test, expect, vi} from 'vitest';
-import {createMap, beforeMapTest} from '../../util/test/util';
+import {createMap, beforeMapTest, createTerrainSurface} from '../../util/test/util';
 import {LngLat} from '../../geo/lng_lat';
 import {fakeServer, type FakeServer} from 'nise';
 import {type Terrain} from '../../render/terrain';
@@ -57,6 +57,7 @@ describe('getCameraTargetElevation', () => {
 
         const terrainStub = {} as Terrain;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
         transform.setElevation(200);
@@ -78,6 +79,7 @@ describe('Keep camera outside terrain', () => {
             (_lngLat: LngLat, _zoom: number) => terrainElevation
         );
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         // Terrain elevation is 10 everywhere, we are above it at zoom level 15
         // with pitch 45 deg.

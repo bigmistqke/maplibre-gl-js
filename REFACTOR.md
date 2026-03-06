@@ -1606,7 +1606,50 @@ See sections 12-13 of this doc for the full architecture.
 
 ### 8. Fix Broken Tests
 
-111 of 199 test files are failing. Many tests construct `Map`, `Style`, `TileManager`, or `Worker` directly without a `FeatureRegistry`, or rely on the old `createStyleLayer` switch, hardcoded source types, or other patterns that the refactor replaced. Tests need to be updated to:
-- Provide a `FeatureRegistry` (or a minimal mock) when constructing `Map`/`Style`/`TileManager`
-- Use `createMap()` instead of `new Map()` where appropriate
-- Remove reliance on `addSourceType` / `registeredSources` (replaced by registry)
+~~111 of 199 test files are failing.~~ Down to 2 failing tests (draw_symbol mock incompleteness + scroll_zoom terrain behavior change). See `TEST_REFACTOR.md` for details.
+
+### 9. Eliminate `surface.terrain` Checks (Pending Design)
+
+`hasTerrain` was removed from the Surface interface, but many call sites now use `surface.terrain` as a truthiness check — which is the same anti-pattern with a different name. The goal is **zero** terrain branching outside of Surface implementations. Each site needs a polymorphic replacement.
+
+**Done — already polymorphic:**
+- `getElevationCallback(tileID)` on Surface replaces the `hasTerrain ? (x,y) => ... : null` pattern (draw_symbol, placement, style query)
+- `draw_raster` fade: removed `isTerrain` param from `getFadeProperties`; tile_manager already skips fade setup for terrain
+
+**Render code — needs Surface render strategy:**
+
+| File | Check | What it does | Polymorphic solution |
+|------|-------|-------------|---------------------|
+| `draw_heatmap.ts:29` | `surface.terrain` | Two entirely different render paths (per-tile FBO vs screen-space FBO) | Should be two draw functions dispatched by `surface.renderLayer()` or the layer's draw function itself |
+| `draw_fill_extrusion.ts:102` | `surface.terrain` | Passes `centroidVertexBuffer` only with terrain | Buffer is only populated when terrain is active — just always pass it (null when flat, ignored by shader) |
+| `painter.ts:568` | `surface.terrain` | Skip globe depth rendering when terrain writes its own depth | Move into `surface.prepareFrame()` or add `surface.writesDepth` |
+| `tile_manager.ts:589` | `surface.terrain` | Disable raster fade with terrain | Surface could expose `disableRasterFade` or tile_manager could check if RTT is active |
+
+**Camera code — needs elevation strategy on Surface:**
+
+| File | Check | What it does | Polymorphic solution |
+|------|-------|-------------|---------------------|
+| `camera.ts:1169,1544` | `surface.terrain` | Guard `_prepareElevation` | Elevation methods are harmless on flat (returns 0) — remove guard |
+| `camera.ts:1176,1181,1569,1573` | `surface.terrain` | Guard `_updateElevation`/`_finalizeElevation` | Same — remove guard, flat elevation is a no-op |
+| `camera.ts:1250` | `surface.terrain` | Use cloned transform for camera updates | Performance opt — could always clone, or Surface exposes `needsTransformClone` |
+| `camera.ts:1270` | `surface.terrain` | Early return from `_elevateCameraIfInsideTerrain` | Remaining conditions (`elevation >= 0 && pitch <= 90`) are sufficient without terrain check |
+| `camera.ts:1662` | `surface.terrain` | `queryTerrainElevation` returns null | Public API contract — replace with `surface === FLAT_SURFACE` or always return elevation (0 for flat) |
+
+**UI code — needs position/occlusion strategy:**
+
+| File | Check | What it does | Polymorphic solution |
+|------|-------|-------------|---------------------|
+| `marker.ts:563` | `surface.terrain` | Skip depth-based occlusion on flat | On flat, `depthAtPoint` returns 0 and math is meaningless. Could add `surface.occludesAt(pos, lngLat): boolean` |
+| `marker.ts:612` | `surface.terrain` | Use elevated screen position | Could add `surface.projectToScreen(lngLat, transform)` that returns flat or elevated position |
+| `popup.ts:647` | `surface.terrain` | Same elevated position pattern | Same solution as marker |
+| `map.ts:985` | `surface.terrain` | Fill `altitudeTo` from terrain elevation | Always call `surface.getElevation()` — returns 0 for flat, which is correct |
+
+**Projection/geometry code:**
+
+| File | Check | What it does | Polymorphic solution |
+|------|-------|-------------|---------------------|
+| `mercator_covering_tiles_details_provider.ts:45` | `surface.terrain` | Allow variable zoom for terrain tiles | Tile covering should ask Surface for min/max elevation per tile (already has `getMinMaxElevation`) |
+| `vertical_perspective_transform.ts:535` | `surface.terrain` | Warn about unsupported terrain | Move warning into TerrainSurface constructor or setTerrain |
+| `vertical_perspective_transform.ts:771` | `surface.terrain` | Adjust position by elevation | `getElevationForZoom` returns 0 for flat — remove guard |
+| `bounding_volume_cache.ts:37` | `surface.terrain` | Include terrain flag in cache key | Use `getMinMaxElevation` result (non-zero = terrain) or elevation hash |
+| `handler_manager.ts:530,545,597` | `surface.terrain` | Terrain-specific pan/gesture handling | Surface could expose `handlePan()` or handler checks `_terrainMovement` (already only true during terrain) |

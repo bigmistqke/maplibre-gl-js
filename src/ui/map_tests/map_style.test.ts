@@ -1,6 +1,8 @@
 import {describe, beforeEach, afterEach, test, expect, vi} from 'vitest';
 import {Map, type MapOptions} from '../map';
 import {createMap, beforeMapTest, createStyle, createStyleSource, sleep} from '../../util/test/util';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
 import {Event as EventedEvent} from '../../util/evented';
 import {fixedLngLat, fixedNum} from '../../../test/unit/lib/fixed';
 import {extend} from '../../util/util';
@@ -23,7 +25,7 @@ afterEach(() => {
 
 describe('setStyle', () => {
     test('returns self', () => {
-        const map = new Map({container: window.document.createElement('div')} as any as MapOptions);
+        const map = new Map({container: window.document.createElement('div'), _featureRegistry: new FeatureRegistry(allFeatures())} as any as MapOptions);
         expect(map.setStyle({
             version: 8,
             sources: {},
@@ -110,7 +112,7 @@ describe('setStyle', () => {
     });
 
     test('style transform overrides unmodified map transform', async () => {
-        const map = new Map({container: window.document.createElement('div')} as any as MapOptions);
+        const map = new Map({container: window.document.createElement('div'), _featureRegistry: new FeatureRegistry(allFeatures())} as any as MapOptions);
         map.transform.setMaxBounds(new LngLatBounds([-120, -60], [140, 80]));
         map.transform.resize(600, 400, true);
         expect(map.transform.zoom).toBe(0.6983039737971013);
@@ -124,7 +126,7 @@ describe('setStyle', () => {
     });
 
     test('style transform does not override map transform modified via options', async () => {
-        const map = new Map({container: window.document.createElement('div'), zoom: 10, center: [-77.0186, 38.8888]} as any as MapOptions);
+        const map = new Map({container: window.document.createElement('div'), zoom: 10, center: [-77.0186, 38.8888], _featureRegistry: new FeatureRegistry(allFeatures())} as any as MapOptions);
         expect(map.transform.unmodified).toBeFalsy();
         map.setStyle(createStyle());
         await map.once('style.load');
@@ -135,7 +137,7 @@ describe('setStyle', () => {
     });
 
     test('style transform does not override map transform modified via setters', async () => {
-        const map = new Map({container: window.document.createElement('div')} as any as MapOptions);
+        const map = new Map({container: window.document.createElement('div'), _featureRegistry: new FeatureRegistry(allFeatures())} as any as MapOptions);
         expect(map.transform.unmodified).toBeTruthy();
         map.setZoom(10);
         map.setCenter([-77.0186, 38.8888]);

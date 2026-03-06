@@ -250,6 +250,34 @@ export function createTerrain(): Terrain {
     } as any as Terrain;
 }
 
+/**
+ * Creates a mock Surface backed by the given terrain.
+ * Delegates elevation/depth calls to the terrain object so test stubs work.
+ */
+export function createTerrainSurface(terrain: Terrain): Surface {
+    return {
+        shaderExtensions: [],
+        renderToTexture: null,
+        terrain,
+        skipOpaquePass: false,
+        getElevation: (lnglat) => terrain.getElevationForLngLat(lnglat, null),
+        getElevationForZoom: (lnglat, zoom) => terrain.getElevationForLngLatZoom(lnglat, zoom),
+        getMinElevationForZoom: (lnglat, zoom) => terrain.getMinTileElevationForLngLatZoom(lnglat, zoom),
+        getElevationForTile: () => 0,
+        getElevationCallback: () => null,
+        getMinMaxElevation: () => ({min: 0, max: 0}),
+        screenToCoordinate: () => null,
+        depthAtPoint: (p) => terrain.depthAtPoint(p),
+        isPointOnSurface: () => true,
+        getBindings: () => null,
+        update: () => {},
+        prepareFrame: () => {},
+        renderLayer: () => false,
+        ensureFrameBuffers: () => {},
+        markDirty: () => {},
+    } as Surface;
+}
+
 export function createFramebuffer() {
     return {
         colorAttachment: {

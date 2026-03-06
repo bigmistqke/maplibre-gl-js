@@ -238,7 +238,7 @@ export class Placement {
 
     private _getTerrainElevationFunc(tileID: OverscaledTileID) {
         const surface = this.surface;
-        return surface.hasTerrain ? (x: number, y: number) => surface.getElevationForTile(tileID, x, y) : null;
+        return surface.getElevationCallback(tileID);
     }
 
     getBucketParts(results: Array<BucketPart>, styleLayer: StyleLayer, tile: Tile, sortAcrossTiles: boolean) {

@@ -1641,7 +1641,7 @@ export class Style extends Evented {
                     queryGeometry,
                     paramsStrict,
                     transform,
-                    this.map.surface.hasTerrain ?
+                    this.map.surface.terrain ?
                         (id: OverscaledTileID, x: number, y: number) =>
                             this.map.surface.getElevationForTile(id, x, y) :
                         undefined)

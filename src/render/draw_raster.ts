@@ -97,8 +97,6 @@ function drawTiles(
     const rasterOpacity = layer.paint.get('raster-opacity');
     const rasterResampling = layer.paint.get('raster-resampling');
     const fadeDuration = layer.paint.get('raster-fade-duration');
-    const isTerrain = painter.surface.hasTerrain;
-
     // Draw all tiles
     for (const coord of coords) {
         // Set the lower zoom level to sublayer 0, and higher zoom levels to higher sublayers
@@ -115,7 +113,7 @@ function drawTiles(
 
         // create second texture - use either the current tile or fade tile to bind second texture below
         context.activeTexture.set(gl.TEXTURE1);
-        const {parentTile, parentScaleBy, parentTopLeft, fadeValues} = getFadeProperties(tile, tileManager, fadeDuration, isTerrain);
+        const {parentTile, parentScaleBy, parentTopLeft, fadeValues} = getFadeProperties(tile, tileManager, fadeDuration);
         tile.fadeOpacity = fadeValues.tileOpacity;
         if (parentTile) {
             parentTile.fadeOpacity = fadeValues.parentTileOpacity;
@@ -147,7 +145,7 @@ function drawTiles(
 /**
  * Get fade properties for current tile - either cross-fading or self-fading properties.
  */
-function getFadeProperties(tile: Tile, tileManager: TileManager, fadeDuration: number, isTerrain: boolean): FadeProperties {
+function getFadeProperties(tile: Tile, tileManager: TileManager, fadeDuration: number): FadeProperties {
     const defaults: FadeProperties = {
         parentTile: null,
         parentScaleBy: 1,
@@ -155,7 +153,7 @@ function getFadeProperties(tile: Tile, tileManager: TileManager, fadeDuration: n
         fadeValues: {tileOpacity: 1, parentTileOpacity: 1, fadeMix: {opacity: 1, mix: 0}}
     };
 
-    if (fadeDuration === 0 || isTerrain) return defaults;
+    if (fadeDuration === 0) return defaults;
 
     // cross-fade with parent first if available
     if (tile.fadingParentID) {

@@ -90,7 +90,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            surface: {hasTerrain: true} as Surface,
+            surface: {terrain: {}} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(1, 1),
@@ -131,7 +131,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            surface: {hasTerrain: true} as Surface,
+            surface: {terrain: {}} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(0, 0),
@@ -181,7 +181,7 @@ describe('HandlerManager terrain scenarios', () => {
             around: new Point(0, 0),
         };
         const options: MapControlsScenarioOptions = {
-            surface: {hasTerrain: true} as Surface,
+            surface: {terrain: {}} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: deltas,
             preZoomAroundLoc: new LngLat(0, 0),
@@ -218,7 +218,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: setCenterMock,
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            surface: {hasTerrain: true} as Surface,
+            surface: {terrain: {}} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(4, 6),
@@ -262,7 +262,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            surface: {hasTerrain: true} as Surface,
+            surface: {terrain: {}} as Surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(0, 0),

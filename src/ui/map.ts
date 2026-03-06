@@ -982,7 +982,7 @@ export class Map extends Camera {
     }
 
     calculateCameraOptionsFromTo(from: LngLat, altitudeFrom: number, to: LngLat, altitudeTo?: number): CameraOptions {
-        if (altitudeTo == null && this.surface.hasTerrain) {
+        if (altitudeTo == null && this.surface.terrain) {
             altitudeTo = this.surface.getElevation(to);
         }
         return super.calculateCameraOptionsFromTo(from, altitudeFrom, to, altitudeTo);

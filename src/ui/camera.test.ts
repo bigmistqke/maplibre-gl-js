@@ -4,7 +4,7 @@ import {TaskQueue, type TaskID} from '../util/task_queue';
 import * as timeControl from '../util/time_control';
 import {browser} from '../util/browser';
 import {fixedLngLat, fixedNum} from '../../test/unit/lib/fixed';
-import {setMatchMedia} from '../util/test/util';
+import {setMatchMedia, createTerrain, createTerrainSurface} from '../util/test/util';
 import {mercatorZfromAltitude} from '../geo/mercator_coordinate';
 import {LngLat, type LngLatLike} from '../geo/lng_lat';
 import {LngLatBounds} from '../geo/lng_lat_bounds';
@@ -2047,7 +2047,9 @@ describe('flyTo', () => {
         const stub = vi.spyOn(timeControl, 'now');
 
         const terrainCallbacks = {prepare: 0, update: 0, finalize: 0} as any;
-        camera.terrain = {} as Terrain;
+        const terrain = createTerrain();
+        camera.terrain = terrain;
+        camera.surface = createTerrainSurface(terrain);
         camera._prepareElevation = () => { terrainCallbacks.prepare++; };
         camera._updateElevation = () => { terrainCallbacks.update++; };
         camera._finalizeElevation = () => { terrainCallbacks.finalize++; };
@@ -2071,7 +2073,9 @@ describe('flyTo', () => {
         const stub = vi.spyOn(timeControl, 'now');
 
         const terrainCallbacks = {prepare: 0, update: 0, finalize: 0} as any;
-        camera.terrain = {} as Terrain;
+        const terrain = createTerrain();
+        camera.terrain = terrain;
+        camera.surface = createTerrainSurface(terrain);
         camera._prepareElevation = () => { terrainCallbacks.prepare++; };
         camera._updateElevation = () => { terrainCallbacks.update++; };
         camera._finalizeElevation = () => { terrainCallbacks.finalize++; };
@@ -2092,10 +2096,13 @@ describe('flyTo', () => {
 
     test('check elevation callbacks', () => {
         const camera = createCamera();
-        camera.terrain = {
+        const terrain = {
             getElevationForLngLatZoom: () => 100,
-            getMinTileElevationForLngLatZoom: () => 200
+            getMinTileElevationForLngLatZoom: () => 200,
+            getElevationForLngLat: () => 100,
         } as any;
+        camera.terrain = terrain;
+        camera.surface = createTerrainSurface(terrain);
         camera.transform = {
             elevation: 0,
             recalculateZoomAndCenter: () => true,
@@ -2109,7 +2116,7 @@ describe('flyTo', () => {
         expect(camera._elevationTarget).toBe(100);
         expect(camera._elevationFreeze).toBeTruthy();
 
-        camera.terrain.getElevationForLngLatZoom = () => 200;
+        terrain.getElevationForLngLatZoom = () => 200;
         camera._updateElevation(0.5);
         expect(camera._elevationStart).toBe(-100);
         expect(camera._elevationTarget).toBe(200);
@@ -2487,17 +2494,21 @@ describe('queryTerrainElevation', () => {
         expect(result).toBeNull();
     });
 
-    test('Calls getElevationForLngLatZoom with correct arguments', () => {
-        const getElevationForLngLat = vi.fn();
-        camera.terrain = {getElevationForLngLat} as any as Terrain;
-        camera.transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
+    test('Calls surface.getElevation with correct arguments', () => {
+        const getElevation = vi.fn().mockReturnValue(42);
+        const terrain = createTerrain();
+        camera.terrain = terrain;
+        camera.surface = {
+            ...createTerrainSurface(terrain),
+            getElevation,
+        };
 
-        camera.queryTerrainElevation([1, 2]);
+        const result = camera.queryTerrainElevation([1, 2]);
 
-        expect(camera.terrain.getElevationForLngLat).toHaveBeenCalledWith(
-            expect.objectContaining({lng: 1, lat: 2,}),
-            camera.transform
+        expect(getElevation).toHaveBeenCalledWith(
+            expect.objectContaining({lng: 1, lat: 2}),
         );
+        expect(result).toBe(42);
     });
 });
 

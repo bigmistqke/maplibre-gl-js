@@ -1,5 +1,5 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
-import {createMap, beforeMapTest} from '../../util/test/util';
+import {createMap, beforeMapTest, createTerrainSurface} from '../../util/test/util';
 import {LngLat} from '../../geo/lng_lat';
 import {type OverscaledTileID} from '../../tile/tile_id';
 import {type CameraOptions} from '../camera';
@@ -21,6 +21,7 @@ describe('calculateCameraOptionsFromTo', () => {
         const terrainStub = {} as Terrain;
         terrainStub.getElevationForLngLat = mockedGetElevation;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         // distance between lng x and lng x+1 is 111.2km at same lat
         // altitude same as center elevation => 90° pitch
@@ -38,6 +39,7 @@ describe('calculateCameraOptionsFromTo', () => {
         const terrainStub = {} as Terrain;
         terrainStub.getElevationForLngLat = mockedGetElevation;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
         // distance between lng x and lng x+1 is 111.2km at same lat
         // (elevation difference of cam and center) / 2 = grounddistance =>
         // acos(111.2 / sqrt(111.2² + (111.2 * 2)²)) = acos(1/sqrt(5)) => 63.435 + 90 = 153.435
@@ -55,6 +57,7 @@ describe('calculateCameraOptionsFromTo', () => {
         const terrainStub = {} as Terrain;
         terrainStub.getElevationForLngLat = mockedGetElevation;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         // distance between lng x and lng x+1 is 111.2km at same lat
         // (elevation difference of cam and center) * 2 = grounddistance =>
@@ -73,6 +76,7 @@ describe('calculateCameraOptionsFromTo', () => {
         const terrainStub = {} as Terrain;
         terrainStub.getElevationForLngLat = mockedGetElevation;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         const expectedZoom = Math.log2(map.transform.cameraToCenterDistance / mercatorZfromAltitude(1000, 0) / map.transform.tileSize);
         const cameraOptions = map.calculateCameraOptionsFromTo(new LngLat(0, 0), 0, new LngLat(0, 0));
@@ -90,6 +94,7 @@ describe('calculateCameraOptionsFromTo', () => {
         const terrainStub = {} as Terrain;
         terrainStub.getElevation = mockedGetElevation;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         const cameraOptions = map.calculateCameraOptionsFromTo(new LngLat(0, 0), 0, new LngLat(0, 0), 1000);
 
@@ -105,6 +110,7 @@ describe('calculateCameraOptionsFromTo', () => {
         const terrainStub = {} as Terrain;
         terrainStub.getElevation = mockedGetElevation;
         map.terrain = terrainStub;
+        map.surface = createTerrainSurface(terrainStub);
 
         const cameraOptions = map.calculateCameraOptionsFromTo(new LngLat(0, 0), 0, new LngLat(1, 0), 0);
 

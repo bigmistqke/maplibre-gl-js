@@ -527,7 +527,7 @@ export class HandlerManager {
         const tr = map._getTransformForUpdate();
         const surface = map.surface;
 
-        if (!hasChange(combinedResult) && !(surface.hasTerrain && this._terrainMovement)) {
+        if (!hasChange(combinedResult) && !(surface.terrain && this._terrainMovement)) {
             return this._fireEvents(combinedEventsInProgress, deactivatedHandlers, true);
         }
 
@@ -542,7 +542,7 @@ export class HandlerManager {
 
         around = around || map.transform.centerPoint;
 
-        if (surface.hasTerrain && !tr.isPointOnMapSurface(around, surface)) {
+        if (surface.terrain && !tr.isPointOnMapSurface(around, surface)) {
             around = tr.centerPoint;
         }
 
@@ -594,7 +594,7 @@ export class HandlerManager {
 
         cameraHelper.handleMapControlsRollPitchBearingZoom(deltasForHelper, tr);
 
-        if (!surface.hasTerrain) {
+        if (!surface.terrain) {
             cameraHelper.handleMapControlsPan(deltasForHelper, tr, preZoomAroundLoc);
             return;
         }

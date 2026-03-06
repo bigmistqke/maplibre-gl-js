@@ -1,7 +1,9 @@
 import {describe, beforeEach, test, expect, vi} from 'vitest';
 import simulate from '../../../test/unit/lib/simulate_interaction';
 import {type StyleLayer} from '../../style/style_layer';
-import {createMap, beforeMapTest, createStyle, sleep, createTerrain} from '../../util/test/util';
+import {createMap, beforeMapTest, createStyle, sleep, createTerrain, createTerrainSurface} from '../../util/test/util';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
 import {type MapGeoJSONFeature} from '../../util/vectortile_to_geojson';
 import {type MapLayerEventType, type MapLibreEvent} from '../events';
 import {Map, type MapOptions} from '../map';
@@ -946,7 +948,7 @@ describe('map events', () => {
     });
 
     test('emits load event after a style is set', async () => {
-        const map = new Map({container: window.document.createElement('div')} as any as MapOptions);
+        const map = new Map({container: window.document.createElement('div'), _featureRegistry: new FeatureRegistry(allFeatures())} as any as MapOptions);
 
         const failSpy = vi.fn();
 
@@ -961,7 +963,7 @@ describe('map events', () => {
     });
 
     test('errors inside load event are not suppressed', async () => {
-        const map = new Map({container: window.document.createElement('div')} as any as MapOptions);
+        const map = new Map({container: window.document.createElement('div'), _featureRegistry: new FeatureRegistry(allFeatures())} as any as MapOptions);
 
         const loadHandler = vi.fn(() => {
             throw new Error('Error in load handler');
@@ -994,6 +996,7 @@ describe('map events', () => {
         const map = createMap({interactive: true, clickTolerance: 4});
         await map.once('style.load');
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         let actualZoom: number;
         map.on('moveend', () => {
             // this can't use a promise due to race condition

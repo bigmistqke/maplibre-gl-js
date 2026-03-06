@@ -3,7 +3,9 @@ import * as timeControl from '../../util/time_control';
 import {Map, type MapOptions} from '../../ui/map';
 import {DOM} from '../../util/dom';
 import simulate from '../../../test/unit/lib/simulate_interaction';
-import {setPerformance, beforeMapTest, createTerrain} from '../../util/test/util';
+import {setPerformance, beforeMapTest, createTerrain, createTerrainSurface} from '../../util/test/util';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
 
 function createMap(options: Partial<MapOptions> = {}) {
     return new Map({
@@ -13,8 +15,9 @@ function createMap(options: Partial<MapOptions> = {}) {
             'sources': {},
             'layers': []
         },
+        _featureRegistry: new FeatureRegistry(allFeatures()),
         ...options
-    });
+    } as any);
 }
 
 function scrollOutAtLat(map: Map, lat: number, timeControlNow: MockInstance<() => number>, deltaY: number = 5) {
@@ -529,6 +532,7 @@ describe('ScrollZoomHandler', () => {
         map._elevateCameraIfInsideTerrain = (_tr : any) => ({});
         map._renderTaskQueue.run();
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
 
         // simulate a single 'wheel' event
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -simulate.magicWheelZoomDelta, clientX: 1000, clientY: 1000});
@@ -554,6 +558,7 @@ describe('ScrollZoomHandler', () => {
         map._elevateCameraIfInsideTerrain = (_tr : any) => ({});
         map._renderTaskQueue.run();
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
 
         // simulate a single 'wheel' event
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -simulate.magicWheelZoomDelta, clientX: 1000, clientY: 1000});
@@ -579,6 +584,7 @@ describe('ScrollZoomHandler', () => {
         map._elevateCameraIfInsideTerrain = (_tr : any) => ({});
         map._renderTaskQueue.run();
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.setZoom(5);
         map.setMaxPitch(85);
         map.setPitch(80);
@@ -603,6 +609,7 @@ describe('ScrollZoomHandler', () => {
         map._elevateCameraIfInsideTerrain = (_tr : any) => ({});
         map._renderTaskQueue.run();
         map.terrain = createTerrain();
+        map.surface = createTerrainSurface(map.terrain);
         map.setZoom(5);
         map.setMaxPitch(85);
         map.setPitch(80);

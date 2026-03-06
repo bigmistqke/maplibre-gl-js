@@ -23,7 +23,6 @@ const TERRAIN_SHADER_EXTENSION: ShaderExtension = {
  * Wraps the existing {@link Terrain} class, delegating all calls.
  */
 export class TerrainSurface implements Surface {
-    readonly hasTerrain = true;
     readonly shaderExtensions: readonly ShaderExtension[] = [TERRAIN_SHADER_EXTENSION];
     renderToTexture: RenderToTexture | null = null;
     private _terrain: Terrain;
@@ -57,6 +56,10 @@ export class TerrainSurface implements Surface {
 
     getElevationForTile(tileID: OverscaledTileID, x: number, y: number, extent?: number): number {
         return this._terrain.getElevation(tileID, x, y, extent);
+    }
+
+    getElevationCallback(tileID: OverscaledTileID): ((x: number, y: number) => number) | null {
+        return (x: number, y: number) => this._terrain.getElevation(tileID, x, y);
     }
 
     getMinMaxElevation(tileID: OverscaledTileID): {min: number; max: number} {
