@@ -1698,9 +1698,9 @@ FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest
 
 | File | What it does | Path forward |
 |------|-------------|-------------|
-| `handler_manager.ts:597` | Terrain-specific drag panning | Fix standard pan to handle elevation (see above) |
+| `handler_manager.ts:597` | Terrain-specific drag panning | ✅ Done — removed early return, elevation-aware path works for flat |
 | `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | ✅ Done — branches on `isRenderingToTexture` instead of `surface.terrain`. Heatmap added to RTT LAYERS. |
-| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — the `_t` suffix prevents stale flat AABBs from being reused for terrain frames during terrain toggle (cache survives up to 2 frames via `swapBuffers`). Replacing with `allowVariableZoom()` or similar is just `isTerrain` with extra steps. Removing it entirely may be safe (stale AABBs only affect frustum culling for 2 frames) but needs verification. |
+| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | ✅ Done — Surface owns the full tile key via `tileKey(tileID)`, cache is generic |
 | `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Factory code — inherently knows about terrain |
 | `map.ts:2303,3601` | Checks `_elevationFreeze` to skip elevation updates | ✅ Done — uses `surface.isElevationFrozen` |
 
@@ -1735,16 +1735,16 @@ Map directly constructs `Terrain`, `TerrainSurface`, `RenderToTexture`, wires up
 **4. `draw_terrain.ts:86` — compositor reaches into RTT for textures — ✅ Done.**
 `drawTerrain` now receives the `RenderToTexture` instance directly from its caller (RTT's `renderLayer`) instead of reaching through `painter.surface.renderToTexture`. Additionally, `renderToTexture` has been removed from the Surface interface entirely — it's now an internal detail of TerrainSurface. The Surface interface exposes `isRenderingToTexture` (boolean, for raster fade control) and `destroy()` (for cleanup) instead.
 
-**5. `bounding_volume_cache.ts:37` — covering tiles checks `surface.terrain`.**
-Cache key includes `options?.surface?.terrain ? 't' : ''` to differentiate terrain vs flat bounding volumes. Still an open question (see above). The covering tiles system reaches into surface to check type — the cache should ideally not know about surfaces at all.
+**5. `bounding_volume_cache.ts:37` — covering tiles checks `surface.terrain` — ✅ Done.**
+`surface.terrain` removed from the Surface interface entirely. Bounding volume cache is now generic over its options type with a caller-provided key function. Surface owns the full tile key via `tileKey(tileID)` — TerrainSurface appends `_t` to differentiate terrain bounding volumes from flat ones. The cache no longer imports or knows about surfaces.
+
+**6. `handler_manager.ts:597` — terrain-specific drag panning — ✅ Done.**
+Removed the `!surface.terrain` early return. The elevation-aware pan path works correctly for flat surfaces: `freezeElevation()` is a no-op, `screenPointToLocation` works with 0 elevation, and `recalculateZoomAndCenter` is a no-op when elevation hasn't changed.
 
 ### Open concerns
 
-**A. `surface.terrain` on the Surface interface.**
-`Surface.terrain: Terrain | null` is the biggest remaining leak. It exposes a concrete implementation type on what should be an abstract interface. Currently only consumed by `handler_manager.ts:597` (terrain-specific drag panning). Every other former consumer has been replaced by polymorphic Surface methods. Removing it requires fixing the handler_manager case — either by adding a Surface method that abstracts the behavior, or by making standard panning handle elevation correctly so the terrain branch isn't needed.
-
-**B. `isRenderingToTexture` on the Surface interface — questionable.**
-`Surface.isRenderingToTexture` is only consumed by `tile_manager.ts:589` (to disable raster fading when RTT is active). All draw functions get it from `renderOptions`, which RTT sets to `true` when it calls through. So the Surface property exists for a single consumer. Options:
+**A. `isRenderingToTexture` on the Surface interface — questionable.**
+Only consumed by `tile_manager.ts:589` (to disable raster fading when RTT is active). All draw functions get it from `renderOptions`, which RTT sets to `true` when it calls through. So the Surface property exists for a single consumer. Options:
 - **Move to `renderOptions` only**: tile_manager could receive the flag from the caller rather than reaching into Surface. This removes the property from the interface entirely.
 - **Replace with a method like `allowRasterFading()`**: more abstract, but it's still a single-purpose query that describes an RTT implementation detail.
-- **Keep as-is**: it's a boolean, not a type leak. Low priority compared to `surface.terrain`.
+- **Keep as-is**: it's a boolean, not a type leak. Low priority.

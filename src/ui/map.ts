@@ -26,9 +26,7 @@ import {webpSupported} from '../util/webp_supported';
 import {PerformanceMarkers, PerformanceUtils} from '../util/performance';
 import {type Source} from '../source/source';
 import {type StyleLayer} from '../style/style_layer';
-import {Terrain} from '../render/terrain';
 import {TerrainSurface} from '../render/terrain_surface';
-import {RenderToTexture} from '../render/render_to_texture';
 import {FLAT_SURFACE} from '../core/surface';
 import {config} from '../util/config';
 import {defaultLocale} from './default_locale';
@@ -586,7 +584,6 @@ export class Map extends Camera {
     _clickTolerance: number;
     _overridePixelRatio: number | null | undefined;
     _maxCanvasSize: [number, number];
-    _terrainDataCallback: (e: MapStyleDataEvent | MapSourceDataEvent) => void;
     /** @internal */
     _zoomLevelsToOverscale: number | undefined;
 
@@ -2261,13 +2258,10 @@ export class Map extends Camera {
     setTerrain(options: TerrainSpecification | null): this {
         this.style._checkLoaded();
 
-        // clear event handlers
-        if (this._terrainDataCallback) this.style.off('data', this._terrainDataCallback);
+        const hadTerrain = this.surface !== FLAT_SURFACE;
+        this.surface.destroy();
 
         if (!options) {
-            // remove terrain
-            if (this.terrain) this.terrain.tileManager.destruct();
-            this.surface.destroy();
             this.terrain = null;
             this.surface = FLAT_SURFACE;
             this.transform.setMinElevationForCurrentTile(0);
@@ -2275,11 +2269,6 @@ export class Map extends Camera {
                 this.transform.setElevation(0);
             }
         } else {
-            // add terrain
-            const tileManager = this.style.tileManagers[options.source];
-            if (!tileManager) throw new Error(`cannot load terrain, because there exists no source with ID: ${options.source}`);
-            // Update terrain tiles when adding new terrain
-            if (this.terrain === null) tileManager.reload();
             // Warn once if user is using the same source for hillshade/color-relief and terrain
             for (const index in this.style._layers) {
                 const thisLayer = this.style._layers[index];
@@ -2290,27 +2279,18 @@ export class Map extends Camera {
                     warnOnce('You are using the same source for a color-relief layer and for 3D terrain. Please consider using two separate sources to improve rendering quality.');
                 }
             }
-            this.terrain = new Terrain(this.painter, tileManager, options);
-            const terrainSurface = new TerrainSurface(this.terrain);
-            terrainSurface.renderToTexture = new RenderToTexture(this.painter, this.terrain);
-            this.surface = terrainSurface;
-            this.surface.update(this.transform, true);
-            this._terrainDataCallback = e => {
-                if (e.dataType === 'style') {
-                    this.terrain.tileManager.freeRtt();
-                } else if (e.dataType === 'source' && e.tile) {
-                    if (e.sourceId === options.source) {
-                        this.surface.update(this.transform, this._centerClampedToGround);
-                    }
-
-                    if (e.source?.type === 'image') {
-                        this.terrain.tileManager.freeRtt();
-                    } else {
-                        this.terrain.tileManager.freeRtt(e.tile.tileID);
-                    }
-                }
-            };
-            this.style.on('data', this._terrainDataCallback);
+            // Reload tiles when first enabling terrain
+            if (!hadTerrain) {
+                this.style.tileManagers[options.source]?.reload();
+            }
+            const surface = TerrainSurface.create(
+                this.painter,
+                this.style,
+                options,
+                () => ({transform: this.transform, centerClampedToGround: this._centerClampedToGround}),
+            );
+            this.terrain = surface.terrain;
+            this.surface = surface;
         }
 
         this.fire(new Event('terrain', {terrain: options}));

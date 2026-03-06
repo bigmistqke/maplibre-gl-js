@@ -1,14 +1,17 @@
 import {mat4} from 'gl-matrix';
 import {drawDepth, drawCoords} from './draw_terrain';
+import {Terrain} from './terrain';
+import {RenderToTexture} from './render_to_texture';
 import type {Surface} from '../core/surface';
 import type {ShaderExtension} from '../core/shader_extension';
-import type {Terrain, TerrainData} from './terrain';
-import type {RenderToTexture} from './render_to_texture';
+import type {TerrainData} from './terrain';
 import type {Painter} from './painter';
 import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
 import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
+import type {Style} from '../style/style';
+import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
 import Point from '@mapbox/point-geometry';
 
 const TERRAIN_SHADER_EXTENSION: ShaderExtension = {
@@ -27,15 +30,69 @@ export class TerrainSurface implements Surface {
     private _terrain: Terrain;
     private _transform: IReadonlyTransform;
     private _facilitator = {dirty: true, matrix: mat4.identity(new Float64Array(16) as any), renderTime: 0};
+    private _style: Style | null = null;
+    private _dataCallback: ((e: any) => void) | null = null;
+
+    /**
+     * Create a fully-wired TerrainSurface: constructs Terrain, RTT,
+     * subscribes to style data events for cache invalidation and elevation updates.
+     */
+    /**
+     * Create a fully-wired TerrainSurface: constructs Terrain, RTT,
+     * subscribes to style data events for cache invalidation and elevation updates.
+     * @param getUpdateContext - called when source data arrives to get the current transform and centerClampedToGround
+     */
+    static create(
+        painter: Painter,
+        style: Style,
+        options: TerrainSpecification,
+        getUpdateContext: () => {transform: ITransform; centerClampedToGround: boolean},
+    ): TerrainSurface {
+        const tileManager = style.tileManagers[options.source];
+        if (!tileManager) throw new Error(`cannot load terrain, because there exists no source with ID: ${options.source}`);
+
+        const terrain = new Terrain(painter, tileManager, options);
+        const surface = new TerrainSurface(terrain);
+        surface.renderToTexture = new RenderToTexture(painter, terrain);
+        surface._style = style;
+
+        const {transform, centerClampedToGround} = getUpdateContext();
+        surface.update(transform, centerClampedToGround);
+
+        surface._dataCallback = e => {
+            if (e.dataType === 'style') {
+                terrain.tileManager.freeRtt();
+            } else if (e.dataType === 'source' && e.tile) {
+                if (e.sourceId === options.source) {
+                    const ctx = getUpdateContext();
+                    surface.update(ctx.transform, ctx.centerClampedToGround);
+                }
+                if (e.source?.type === 'image') {
+                    terrain.tileManager.freeRtt();
+                } else {
+                    terrain.tileManager.freeRtt(e.tile.tileID);
+                }
+            }
+        };
+        style.on('data', surface._dataCallback);
+
+        return surface;
+    }
 
     constructor(terrain: Terrain) {
         this._terrain = terrain;
     }
 
     get terrain(): Terrain { return this._terrain; }
+    get options(): TerrainSpecification { return this._terrain.options; }
     get isRenderingToTexture(): boolean { return this.renderToTexture != null; }
 
     destroy(): void {
+        if (this._dataCallback && this._style) {
+            this._style.off('data', this._dataCallback);
+            this._dataCallback = null;
+        }
+        this._terrain.tileManager.destruct();
         this.renderToTexture?.destruct();
     }
 
