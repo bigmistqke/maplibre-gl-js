@@ -14,6 +14,11 @@ import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {DEMData} from '../data/dem_data';
 import type {Painter} from './painter';
 
+/** Create a mock TileManager with addTileDataLayer/removeTileDataLayer stubs */
+function mockTileManager(props: Record<string, any> = {}): TileManager {
+    return {addTileDataLayer() {}, removeTileDataLayer() {}, ...props} as any as TileManager;
+}
+
 describe('Terrain', () => {
     let gl: WebGLRenderingContext;
 
@@ -43,7 +48,7 @@ describe('Terrain', () => {
             transform: {center: {lng: 0}},
             surface: {ensureFrameBuffers},
         } as any as Painter;
-        const tileManager = {_source: {tileSize: 512}} as TileManager;
+        const tileManager = mockTileManager({_source: {tileSize: 512}});
         const getTileByID = (tileID) : Tile => {
             if (tileID !== 'abcd') {
                 return null as any as Tile;
@@ -78,7 +83,7 @@ describe('Terrain', () => {
             surface: {ensureFrameBuffers: vi.fn()},
             pixelRatio,
         } as any as Painter;
-        const tileManager = {_source: {tileSize: 512}} as TileManager;
+        const tileManager = mockTileManager({_source: {tileSize: 512}});
         const terrain = new Terrain(painter, tileManager, {} as any as TerrainSpecification);
         const tileIdsToWraps = {a: -1, b: 0, c: 1, d: 2};
         terrain.tileManager.getTileByID = (id) => {
@@ -157,13 +162,13 @@ describe('Terrain', () => {
             height: 1,
             getTileTexture: () => null
         } as any as Painter;
-        const tileManager = {
+        const tileManager = mockTileManager({
             _source: {maxzoom: 12, tileSize: 512},
             _cache: {max: 10},
             getTileByID: () => {
                 return tile;
             },
-        } as any as TileManager;
+        });
         const terrain = new Terrain(
             painter,
             tileManager,
@@ -185,14 +190,14 @@ describe('Terrain', () => {
             height: 1,
             getTileTexture: () => null
         } as any as Painter;
-        const tileManager = {
+        const tileManager = mockTileManager({
             _source: {maxzoom: 12, tileSize: 512},
             _cache: {max: 10},
             getTileByID: () => null,
             _outOfViewCache: {
                 getByKey: () => null,
             },
-        } as any as TileManager;
+        });
         const terrain = new Terrain(
             painter,
             tileManager,
@@ -215,13 +220,13 @@ describe('Terrain', () => {
             height: 1,
             getTileTexture: () => null
         } as any as Painter;
-        const tileManager = {
+        const tileManager = mockTileManager({
             _source: {maxzoom: 12, tileSize: 512},
             _cache: {max: 10},
             getTileByID: () => {
                 return tile;
             },
-        } as any as TileManager;
+        });
         const terrain = new Terrain(
             painter,
             tileManager,
@@ -249,10 +254,10 @@ describe('Terrain', () => {
                 }
             }
         } as any as Painter;
-        const tileManager = {
+        const tileManager = mockTileManager({
             _source: {maxzoom: 12, tileSize: 512},
             _cache: {max: 10}
-        } as any as TileManager;
+        });
         const terrain = new Terrain(
             painter,
             tileManager,
@@ -301,13 +306,13 @@ describe('Terrain', () => {
             height: 1,
             getTileTexture: () => null
         } as any as Painter;
-        const tileManager = {
+        const tileManager = mockTileManager({
             _source: {minzoom: 3, maxzoom: 22, tileSize: 512},
             _cache: {max: 10},
             getTileByID: () => {
                 return new Tile(new OverscaledTileID(zoom, 0, 0, 0, 0), 256);
             },
-        } as any as TileManager;
+        });
         const terrain = new Terrain(
             painter,
             tileManager,
@@ -326,21 +331,21 @@ describe('Terrain', () => {
     });
 
     test('getElevationForLngLatZoom with lng less than -180 wraps correctly', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null, mockTileManager({_source: {tileSize: 512}}), {} as any);
 
         terrain.getElevation = () => 1;
         expect(terrain.getElevationForLngLatZoom(new LngLat(-183, 40), 0)).toBe(1);
     });
 
     test('getMinTileElevationForLngLatZoom with lng less than -180 wraps correctly', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null, mockTileManager({_source: {tileSize: 512}}), {} as any);
 
         terrain.getMinMaxElevation = () => ({minElevation: 1, maxElevation: 42});
         expect(terrain.getMinTileElevationForLngLatZoom(new LngLat(-183, 40), 0)).toBe(1);
     });
 
     describe('getElevationForLngLatZoom returns 0 for out of bounds', () => {
-        const terrain = new Terrain(null, {_source: {tileSize: 512}} as any, {} as any);
+        const terrain = new Terrain(null, mockTileManager({_source: {tileSize: 512}}), {} as any);
 
         test('lng', () => {
             expect(terrain.getElevationForLngLatZoom(new LngLat(180, 0), 0)).toBe(0);

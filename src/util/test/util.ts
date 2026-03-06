@@ -12,10 +12,16 @@ import {type Style} from '../../style/style';
 import {type Terrain} from '../../render/terrain';
 import {Frustum} from '../primitives/frustum';
 import {mat4} from 'gl-matrix';
+import {FeatureRegistry} from '../../core/feature';
+import {allFeatures} from '../../features/all';
+import {FLAT_SURFACE} from '../../core/surface';
+import type {Surface} from '../../core/surface';
 
 export class StubMap extends Evented {
     style: Style;
     transform: IReadonlyTransform;
+    surface: Surface;
+    _featureRegistry: FeatureRegistry;
     private _requestManager: RequestManager;
     _terrain: TerrainSpecification;
 
@@ -23,6 +29,8 @@ export class StubMap extends Evented {
         super();
         this.transform = new MercatorTransform();
         this._requestManager = new RequestManager();
+        this._featureRegistry = new FeatureRegistry(allFeatures());
+        this.surface = FLAT_SURFACE;
     }
 
     _getMapId() {
@@ -50,6 +58,7 @@ export function createMap(options?) {
         attributionControl: false,
         maplibreLogo: false,
         trackResize: true,
+        _featureRegistry: new FeatureRegistry(allFeatures()),
         style: {
             'version': 8,
             'sources': {},

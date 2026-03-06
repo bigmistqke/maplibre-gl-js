@@ -1,6 +1,8 @@
 import MapLibreWorker from '../../../src/source/worker';
 import type {WorkerGlobalScopeInterface} from '../../../src/util/web_worker';
 import type {ActorTarget} from '../../../src/util/actor';
+import {createWorker} from '../../../src/core/create_worker';
+import {allFeatures} from '../../../src/features/all';
 
 export class MessageBus implements WorkerGlobalScopeInterface, ActorTarget {
     addListeners: Array<EventListener>;
@@ -67,6 +69,9 @@ function setGlobalWorker(MockWorker: { new(...args: any): any}) {
         return parentBus;
     };
 }
+
+// Initialize the worker registry so getWorkerRegistry() doesn't throw.
+createWorker(allFeatures());
 
 setGlobalWorker(MapLibreWorker);
 

@@ -3,6 +3,7 @@ import {SymbolBucket} from './symbol_bucket';
 import {CollisionBoxArray} from '../../data/array_types.g';
 import {performSymbolLayout} from '../../symbol/symbol_layout';
 import {Placement} from '../../symbol/placement';
+import {FLAT_SURFACE} from '../../core/surface';
 import {type CanonicalTileID, OverscaledTileID} from '../../tile/tile_id';
 import {Tile} from '../../tile/tile';
 import {CrossTileSymbolIndex} from '../../symbol/cross_tile_symbol_index';
@@ -62,7 +63,7 @@ describe('SymbolBucket', () => {
         const bucketA = bucketSetup();
         const bucketB = bucketSetup();
         const options = createPopulateOptions([]);
-        const placement = new Placement(transform, undefined as any, 0, true);
+        const placement = new Placement(transform, FLAT_SURFACE, 0, true);
         const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
         const crossTileSymbolIndex = new CrossTileSymbolIndex();
 

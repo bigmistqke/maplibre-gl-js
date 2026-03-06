@@ -12,6 +12,7 @@ import type {EvaluationParameters} from '../style/evaluation_parameters';
 import type {FillLayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {type Style} from '../style/style';
 import {FillStyleLayer} from '../style/style_layer/fill_style_layer';
+import {FLAT_SURFACE} from '../core/surface';
 import {drawFill} from './draw_fill';
 import {FillBucket} from '../data/bucket/fill_bucket';
 import {type ProgramConfiguration, type ProgramConfigurationSet} from '../data/program_configuration';
@@ -105,6 +106,7 @@ describe('drawFill', () => {
                 };
             },
         } as any as IReadonlyTransform;
+        painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
         painterMock.style = {
             map: {

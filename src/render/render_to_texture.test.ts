@@ -80,8 +80,10 @@ describe('render to texture', () => {
     const tileManager = {
         _source: {minzoom: 0, maxzoom: 2},
         getTileByID: (_id) => tile,
-        getVisibleCoordinates: () => [tile.tileID]
-    } as TileManager;
+        getVisibleCoordinates: () => [tile.tileID],
+        addTileDataLayer: () => {},
+        removeTileDataLayer: () => {},
+    } as any as TileManager;
 
     const style = {
         tileManagers: {'maine': {getVisibleCoordinates: () => [tile.tileID], getSource: () => ({})}},

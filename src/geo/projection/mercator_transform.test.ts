@@ -254,11 +254,11 @@ describe('transform', () => {
         expect(expectedCamLngLat.lat).toBeCloseTo(49.9850171656428, 10);
 
         // expect same values because of no elevation change
-        const terrain = {
-            getElevationForLngLatZoom: () => 200,
-            pointCoordinate: () => null
+        const surface: Partial<Surface> = {
+            getElevationForZoom: () => 200,
+            screenToCoordinate: () => null,
         };
-        transform.recalculateZoomAndCenter(terrain as any);
+        transform.recalculateZoomAndCenter(surface as Surface);
         expect(transform.getCameraAltitude()).toBeCloseTo(expectedAltitude, 10);
         expect(transform.zoom).toBe(14);
     });
@@ -273,11 +273,11 @@ describe('transform', () => {
 
         expect(transform.center.lat).toBeCloseTo(82, 10);
 
-        const terrain = {
-            getElevationForLngLatZoom: () => 200 + 1,
-            pointCoordinate: () => null
+        const surface: Partial<Surface> = {
+            getElevationForZoom: () => 201,
+            screenToCoordinate: () => null,
         };
-        transform.recalculateZoomAndCenter(terrain as any);
+        transform.recalculateZoomAndCenter(surface as Surface);
         expect(transform.center.lat).toBeCloseTo(82, 4);
     });
 
@@ -299,11 +299,11 @@ describe('transform', () => {
         expect(expectedCamLngLat.lat).toBeCloseTo(49.9850171656428, 10);
 
         // expect new zoom and center because of elevation change
-        const terrain = {
-            getElevationForLngLatZoom: () => 400,
-            pointCoordinate: () => null
+        const surface: Partial<Surface> = {
+            getElevationForZoom: () => 400,
+            screenToCoordinate: () => null,
         };
-        transform.recalculateZoomAndCenter(terrain as any);
+        transform.recalculateZoomAndCenter(surface as Surface);
         expect(transform.elevation).toBe(400);
         expect(transform.center.lng).toBeCloseTo(10, 10);
         expect(transform.center.lat).toBeCloseTo(49.998201325627264, 10);
@@ -332,11 +332,11 @@ describe('transform', () => {
         expect(expectedCamLngLat.lat).toBeCloseTo(49.9850171656428, 10);
 
         // expect new zoom because of elevation change to point below sea level
-        const terrain = {
-            getElevationForLngLatZoom: () => -200,
-            pointCoordinate: () => null
+        const surface: Partial<Surface> = {
+            getElevationForZoom: () => -200,
+            screenToCoordinate: () => null,
         };
-        transform.recalculateZoomAndCenter(terrain as any);
+        transform.recalculateZoomAndCenter(surface as Surface);
         expect(transform.elevation).toBe(-200);
         expect(transform.getCameraLngLat().lng).toBeCloseTo(expectedCamLngLat.lng, 10);
         // Latitude precision is lower as a compromise to a stable recalculateZoomAndCenter at extreme latitudes

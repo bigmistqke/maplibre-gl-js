@@ -15,6 +15,7 @@ import {type IReadonlyTransform} from '../geo/transform_interface';
 import type {EvaluationParameters} from '../style/evaluation_parameters';
 import type {SymbolLayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {type Style} from '../style/style';
+import {FLAT_SURFACE} from '../core/surface';
 import {MercatorProjection} from '../geo/projection/mercator_projection';
 import type {ProjectionData} from '../geo/projection/projection_data';
 
@@ -71,6 +72,7 @@ describe('drawSymbol', () => {
         } as any;
         painterMock.renderPass = 'translucent';
         painterMock.transform = createMockTransform();
+        painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
         painterMock.style = {
             map: {},
@@ -134,6 +136,7 @@ describe('drawSymbol', () => {
         } as any;
         painterMock.renderPass = 'translucent';
         painterMock.transform = createMockTransform();
+        painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
 
         const layerSpec = {
@@ -202,6 +205,7 @@ describe('drawSymbol', () => {
         } as any;
         painterMock.renderPass = 'translucent';
         painterMock.transform = createMockTransform();
+        painterMock.surface = FLAT_SURFACE;
         painterMock.options = {} as any;
         painterMock.style = {
             projection: new MercatorProjection()

@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, test} from 'vitest';
 import {Placement, RetainedQueryData} from './placement';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
+import {FLAT_SURFACE} from '../core/surface';
 import {SymbolStyleLayer} from '../style/style_layer/symbol_style_layer';
 import {type EvaluationParameters} from '../style/evaluation_parameters';
 import {CollisionBoxArray, SymbolInstanceArray} from '../data/array_types.g';
@@ -13,7 +14,7 @@ describe('placement', () => {
     beforeEach(() => {
         transform = new MercatorTransform();
         transform.resize(512, 512);
-        placement = new Placement(transform, undefined as any, 0, true);
+        placement = new Placement(transform, FLAT_SURFACE, 0, true);
     });
 
     test('should not throw on integer overflow', () => {

@@ -1805,7 +1805,7 @@ export class Style extends Evented {
             tileManager.setEventedParent(null);
             tileManager.onRemove(this.map);
         }
-        this.imageManager.setEventedParent(null);
+        this.imageManager?.setEventedParent(null);
         this.setEventedParent(null);
         if (mapRemoved) {
             this.dispatcher.broadcast(MessageType.removeMap, undefined);

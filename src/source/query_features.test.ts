@@ -6,6 +6,8 @@ import {
 import {TileManager} from '../tile/tile_manager';
 import type Point from '@mapbox/point-geometry';
 import {MercatorTransform} from '../geo/projection/mercator_transform';
+import {FeatureRegistry} from '../core/feature';
+import {geojson} from '../features/geojson';
 
 describe('QueryFeatures.rendered', () => {
     test('returns empty object if source returns no tiles', () => {
@@ -24,7 +26,7 @@ describe('QueryFeatures.source', () => {
             data: {type: 'FeatureCollection', features: []}
         }, {
             getActor() {}
-        } as any);
+        } as any, new FeatureRegistry([geojson()]));
         const result = querySourceFeatures(tileManager, {});
         expect(result).toEqual([]);
     });

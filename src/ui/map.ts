@@ -71,7 +71,7 @@ import type {ControlPosition, IControl} from './control/control';
 import type {QueryRenderedFeaturesOptions, QuerySourceFeatureOptions} from '../source/query_features';
 import type {ITransform, TransformConstrainFunction} from '../geo/transform_interface';
 import type {ICameraHelper} from '../geo/projection/camera_helper';
-import type {FeatureRegistry} from '../core/feature';
+import {FeatureRegistry} from '../core/feature';
 
 const version = packageJSON.version;
 
@@ -738,7 +738,7 @@ export class Map extends Camera {
             zoomSnap: resolvedOptions.zoomSnap
         });
 
-        this._featureRegistry = options._featureRegistry;
+        this._featureRegistry = options._featureRegistry ?? new FeatureRegistry([]);
         this._interactive = resolvedOptions.interactive;
         this._maxTileCacheSize = resolvedOptions.maxTileCacheSize;
         this._maxTileCacheZoomLevels = resolvedOptions.maxTileCacheZoomLevels;
