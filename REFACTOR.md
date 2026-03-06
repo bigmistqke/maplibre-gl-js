@@ -1680,20 +1680,15 @@ FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest
 
 ##### Handler_manager terrain panning
 
-`_terrainMovement` and the terrain-specific drag panning lifecycle should move to Surface:
+`_terrainMovement` and the terrain-specific drag panning lifecycle:
 
 1. Drag starts → freeze elevation, do initial pan normally
 2. Drag continues → screen-space pan (`setCenter(screenPointToLocation(centerPoint.sub(panDelta)))`) instead of standard `setLocationAtPoint(preZoomAroundLoc, around)`
 3. Drag ends → unfreeze elevation, `recalculateZoomAndCenter`
 
-Surface methods:
-```
-onPanStart(): void           — FlatSurface: no-op. TerrainSurface: freeze elevation
-handlePan(tr, panDelta): bool — FlatSurface: false (use default). TerrainSurface: screen-space pan, return true
-onPanEnd(tr): void           — FlatSurface: no-op. TerrainSurface: unfreeze, recalculateZoomAndCenter
-```
+**Option A: Surface pan methods.** Move `onPanStart`/`handlePan`/`onPanEnd` onto Surface. Handler_manager becomes surface-agnostic. Downside: Surface shouldn't know about pan gestures — that's UI interaction, not world geometry.
 
-Handler_manager becomes surface-agnostic — no `_terrainMovement`, no `_elevationFreeze`.
+**Option B (preferred): Fix the standard pan to handle elevation.** The terrain pan branch exists because `setLocationAtPoint` is unstable when elevation varies across the viewport. The screen-space pan is a workaround. If `setLocationAtPoint` (or `handleMapControlsPan` in `cameraHelper`) correctly accounted for elevation, there'd be one pan path for both flat and terrain — no branch needed. Similarly, `_elevationFreeze` exists because elevation updates during a gesture cause jitter. If elevation updates were deferred until gesture end as a general policy (or the pan math was stable under elevation changes), the freeze flag disappears. This turns a terrain-specific workaround into a general improvement.
 
 ##### `terrainRttPosMatrix32f` on OverscaledTileID
 
@@ -1703,7 +1698,7 @@ Handler_manager becomes surface-agnostic — no `_terrainMovement`, no `_elevati
 
 | File | What it does | Path forward |
 |------|-------------|-------------|
-| `handler_manager.ts:597` | Terrain-specific drag panning | Move to Surface pan methods (see above) |
+| `handler_manager.ts:597` | Terrain-specific drag panning | Fix standard pan to handle elevation (see above) |
 | `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | Dispatch via `surface.renderLayer()`, or heatmap feature provides both draw functions |
 | `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — may be redundant since `getMinMaxElevation()` already bakes elevation into AABBs |
 | `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Factory code — inherently knows about terrain |
