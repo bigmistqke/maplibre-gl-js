@@ -26,18 +26,14 @@ export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: H
     const context = painter.context;
     const {isRenderingToTexture, isRenderingGlobe} = renderOptions;
 
-    if (painter.surface.terrain) {
+    if (isRenderingToTexture) {
+        // RTT calls us once per terrain tile with mapped source coords.
+        // Do both passes (kernel accumulation + color ramp composite) inline.
         for (const coord of tileIDs) {
             const tile = tileManager.getTile(coord);
-            // Skip tiles that have uncovered parents to avoid flickering; we don't need
-            // to use complex tile masking here because the change between zoom levels is subtle,
-            // so it's fine to simply render the parent until all its 4 children are loaded
             if (tileManager.hasRenderableParent(coord)) continue;
-            if (painter.renderPass === 'offscreen') {
-                prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe);
-            } else if (painter.renderPass === 'translucent') {
-                renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe);
-            }
+            prepareHeatmapTerrain(painter, tile, layer, coord, isRenderingGlobe);
+            renderHeatmapTerrain(painter, layer, coord, isRenderingToTexture, isRenderingGlobe);
         }
         context.viewport.set([0, 0, painter.width, painter.height]);
     } else {
@@ -46,7 +42,6 @@ export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: H
         } else if (painter.renderPass === 'translucent') {
             renderHeatmapFlat(painter, layer);
         }
-
     }
 }
 

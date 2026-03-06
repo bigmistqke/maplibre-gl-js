@@ -505,6 +505,8 @@ export class Painter {
         for (const layerId of layerIds) {
             const layer = this.style._layers[layerId];
             if (!layer.hasOffscreenPass() || layer.isHidden(this.transform.zoom)) continue;
+            // RTT handles offscreen work for its layers inline during the translucent pass
+            if (this.surface.renderToTexture && this.surface.renderToTexture.handlesLayer(layer.type)) continue;
 
             const coords = coordsDescending[layer.source];
             if (layer.type !== 'custom' && !coords.length) continue;

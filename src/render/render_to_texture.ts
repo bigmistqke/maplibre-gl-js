@@ -18,6 +18,7 @@ const LAYERS: { [keyof in StyleLayer['type']]?: boolean } = {
     fill: true,
     line: true,
     raster: true,
+    heatmap: true,
     hillshade: true,
     'color-relief': true
 };
@@ -72,6 +73,13 @@ export class RenderToTexture {
 
     destruct() {
         this.pool.destruct();
+    }
+
+    /**
+     * Whether this layer type is rendered to texture (and thus handled entirely by RTT).
+     */
+    handlesLayer(type: string): boolean {
+        return !!LAYERS[type as keyof typeof LAYERS];
     }
 
     getTexture(tile: Tile): Texture {
