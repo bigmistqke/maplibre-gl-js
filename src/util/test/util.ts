@@ -291,6 +291,10 @@ export function createTerrainSurface(terrain: Terrain): Surface {
             return {base: true, center: centerOccluded};
         },
         allowVariableZoom: () => true,
+        _elevationFrozen: false,
+        get isElevationFrozen() { return this._elevationFrozen; },
+        freezeElevation() { this._elevationFrozen = true; },
+        unfreezeElevation() { this._elevationFrozen = false; },
     } as Surface;
 }
 

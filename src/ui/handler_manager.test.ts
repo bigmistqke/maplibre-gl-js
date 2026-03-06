@@ -11,6 +11,16 @@ import type {ITransform} from '../geo/transform_interface';
 import {Event as MapEvent} from '../util/evented';
 import {beforeMapTest, createMap} from '../util/test/util';
 
+function mockTerrainSurface(): Surface {
+    let frozen = false;
+    return {
+        terrain: {},
+        get isElevationFrozen() { return frozen; },
+        freezeElevation() { frozen = true; },
+        unfreezeElevation() { frozen = false; },
+    } as Surface;
+}
+
 let map: Map;
 let manager: HandlerManager;
 
@@ -63,13 +73,12 @@ describe('HandlerManager terrain scenarios', () => {
         };
 
         manager._terrainMovement = false;
-        map._elevationFreeze = false;
 
         manager._handleMapControls(options);
 
         expect(handleZoom).toHaveBeenCalledWith(options.deltasForHelper, options.tr);
         expect(handlePan).toHaveBeenCalledWith(options.deltasForHelper, options.tr, options.preZoomAroundLoc);
-        expect(map._elevationFreeze).toBe(false);
+        expect(options.surface.isElevationFrozen).toBe(false);
         expect(manager._terrainMovement).toBe(false);
         expect(setCenterMock).not.toHaveBeenCalled();
     });
@@ -89,8 +98,9 @@ describe('HandlerManager terrain scenarios', () => {
             screenPointToLocation: vi.fn(() => new LngLat(0, 0)),
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
+        const surface = mockTerrainSurface();
         const options: MapControlsScenarioOptions = {
-            surface: {terrain: {}} as Surface,
+            surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(1, 1),
@@ -106,12 +116,11 @@ describe('HandlerManager terrain scenarios', () => {
         };
 
         manager._terrainMovement = false;
-        map._elevationFreeze = false;
 
         manager._handleMapControls(options);
 
         expect(manager._terrainMovement).toBe(true);
-        expect(map._elevationFreeze).toBe(true);
+        expect(surface.isElevationFrozen).toBe(true);
         expect(handlePan).toHaveBeenCalledWith(options.deltasForHelper, options.tr, options.preZoomAroundLoc);
     });
 
@@ -131,7 +140,7 @@ describe('HandlerManager terrain scenarios', () => {
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
         const options: MapControlsScenarioOptions = {
-            surface: {terrain: {}} as Surface,
+            surface: mockTerrainSurface(),
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(0, 0),
@@ -147,12 +156,12 @@ describe('HandlerManager terrain scenarios', () => {
         };
 
         manager._terrainMovement = true;
-        map._elevationFreeze = true;
+        options.surface.freezeElevation();
 
         manager._handleMapControls(options);
 
         expect(manager._terrainMovement).toBe(true);
-        expect(map._elevationFreeze).toBe(true);
+        expect(options.surface.isElevationFrozen).toBe(true);
         expect(handlePan).toHaveBeenCalledWith(options.deltasForHelper, options.tr, options.preZoomAroundLoc);
     });
 
@@ -180,8 +189,9 @@ describe('HandlerManager terrain scenarios', () => {
             bearingDelta: 0,
             around: new Point(0, 0),
         };
+        const surface = mockTerrainSurface();
         const options: MapControlsScenarioOptions = {
-            surface: {terrain: {}} as Surface,
+            surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: deltas,
             preZoomAroundLoc: new LngLat(0, 0),
@@ -190,12 +200,11 @@ describe('HandlerManager terrain scenarios', () => {
         };
 
         manager._terrainMovement = false;
-        map._elevationFreeze = false;
 
         manager._handleMapControls(options);
 
         expect(manager._terrainMovement).toBe(true);
-        expect(map._elevationFreeze).toBe(true);
+        expect(surface.isElevationFrozen).toBe(true);
         expect(handlePan).toHaveBeenCalledTimes(1);
         expect(setCenterMock).not.toHaveBeenCalled();
     });
@@ -217,8 +226,10 @@ describe('HandlerManager terrain scenarios', () => {
             screenPointToLocation,
             setCenter: setCenterMock,
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
+        const surface = mockTerrainSurface();
+        surface.freezeElevation();
         const options: MapControlsScenarioOptions = {
-            surface: {terrain: {}} as Surface,
+            surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(4, 6),
@@ -234,7 +245,6 @@ describe('HandlerManager terrain scenarios', () => {
         };
 
         manager._terrainMovement = true;
-        map._elevationFreeze = true;
 
         manager._handleMapControls(options);
 
@@ -261,8 +271,10 @@ describe('HandlerManager terrain scenarios', () => {
             screenPointToLocation: vi.fn(() => new LngLat(0, 0)),
             setCenter: vi.fn(),
         } satisfies Pick<ITransform, 'centerPoint' | 'center' | 'screenPointToLocation' | 'setCenter'>;
+        const surface = mockTerrainSurface();
+        surface.freezeElevation();
         const options: MapControlsScenarioOptions = {
-            surface: {terrain: {}} as Surface,
+            surface,
             tr: transform as unknown as ITransform,
             deltasForHelper: {
                 panDelta: new Point(0, 0),
@@ -278,7 +290,6 @@ describe('HandlerManager terrain scenarios', () => {
         };
 
         manager._terrainMovement = true;
-        map._elevationFreeze = true;
 
         manager._handleMapControls(options);
 

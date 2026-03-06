@@ -301,11 +301,6 @@ export abstract class Camera extends Evented {
     _elevationStart: number;
     /**
      * @internal
-     * Saves the current state of the elevation freeze - this is used during map movement to prevent "rocky" camera movement.
-     */
-    _elevationFreeze: boolean;
-    /**
-     * @internal
      * Used to track accumulated changes during continuous interaction
      */
     _requestedCameraState?: ITransform;
@@ -1207,7 +1202,7 @@ export abstract class Camera extends Evented {
         this._elevationCenter = center;
         this._elevationStart = this.transform.elevation;
         this._elevationTarget = this.surface.getElevationForZoom(center, this.transform.tileZoom);
-        this._elevationFreeze = true;
+        this.surface.freezeElevation();
     }
 
     _updateElevation(k: number) {
@@ -1229,7 +1224,7 @@ export abstract class Camera extends Evented {
     }
 
     _finalizeElevation() {
-        this._elevationFreeze = false;
+        this.surface.unfreezeElevation();
         if (this.getCenterClampedToGround()) {
             this.transform.recalculateZoomAndCenter(this.surface);
         }

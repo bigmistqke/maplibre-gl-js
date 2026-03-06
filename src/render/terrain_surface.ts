@@ -113,6 +113,11 @@ export class TerrainSurface implements Surface {
 
     allowVariableZoom(): boolean { return true; }
 
+    private _elevationFrozen = false;
+    get isElevationFrozen(): boolean { return this._elevationFrozen; }
+    freezeElevation(): void { this._elevationFrozen = true; }
+    unfreezeElevation(): void { this._elevationFrozen = false; }
+
     ensureFrameBuffers(painter: Painter): void {
         this._updateDepthAndCoords(painter, true);
     }

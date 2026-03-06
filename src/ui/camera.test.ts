@@ -2114,7 +2114,7 @@ describe('flyTo', () => {
         // expect(camera._elevationCenter).toBe([10, 0]);
         expect(camera._elevationStart).toBe(0);
         expect(camera._elevationTarget).toBe(100);
-        expect(camera._elevationFreeze).toBeTruthy();
+        expect(camera.surface.isElevationFrozen).toBeTruthy();
 
         terrain.getElevationForLngLatZoom = () => 200;
         camera._updateElevation(0.5);
@@ -2122,7 +2122,7 @@ describe('flyTo', () => {
         expect(camera._elevationTarget).toBe(200);
 
         camera._finalizeElevation();
-        expect(camera._elevationFreeze).toBeFalsy();
+        expect(camera.surface.isElevationFrozen).toBeFalsy();
     });
 });
 

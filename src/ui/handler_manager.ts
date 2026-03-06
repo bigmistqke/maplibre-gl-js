@@ -602,7 +602,7 @@ export class HandlerManager {
         if (cameraHelper.useGlobeControls) {
             if (!this._terrainMovement && (combinedEventsInProgress.drag || combinedEventsInProgress.zoom)) {
                 this._terrainMovement = true;
-                this._map._elevationFreeze = true;
+                surface.freezeElevation();
             }
             cameraHelper.handleMapControlsPan(deltasForHelper, tr, preZoomAroundLoc);
             return;
@@ -610,7 +610,7 @@ export class HandlerManager {
 
         if (!this._terrainMovement && (combinedEventsInProgress.drag || combinedEventsInProgress.zoom)) {
             this._terrainMovement = true;
-            this._map._elevationFreeze = true;
+            surface.freezeElevation();
             cameraHelper.handleMapControlsPan(deltasForHelper, tr, preZoomAroundLoc);
             return;
         }
@@ -675,7 +675,7 @@ export class HandlerManager {
         const stillMoving = isMoving(this._eventsInProgress);
         const finishedMoving = (wasMoving || nowMoving) && !stillMoving;
         if (finishedMoving && this._terrainMovement) {
-            this._map._elevationFreeze = false;
+            this._map.surface.unfreezeElevation();
             this._terrainMovement = false;
             const tr = this._map._getTransformForUpdate();
             if (this._map.getCenterClampedToGround()) {

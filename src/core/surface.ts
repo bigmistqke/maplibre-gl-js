@@ -85,6 +85,20 @@ export interface Surface {
 
     /** Whether tile covering should use variable zoom levels across the viewport. */
     allowVariableZoom(): boolean;
+
+    // === Elevation controller ===
+
+    /**
+     * Freeze elevation updates (e.g. during drag gestures or camera animations).
+     * Prevents elevation jitter from terrain data arriving mid-interaction.
+     */
+    freezeElevation(): void;
+
+    /** Resume elevation updates after a gesture or animation completes. */
+    unfreezeElevation(): void;
+
+    /** Whether elevation updates are currently frozen. */
+    readonly isElevationFrozen: boolean;
 }
 
 /**
@@ -114,6 +128,9 @@ export class FlatSurface implements Surface {
     ensureFrameBuffers(_painter: Painter): void {}
     markDirty(): void {}
     allowVariableZoom(): boolean { return false; }
+    freezeElevation(): void {}
+    unfreezeElevation(): void {}
+    readonly isElevationFrozen = false;
 }
 
 /** Singleton flat surface — avoids allocation. */
