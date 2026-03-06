@@ -4,9 +4,7 @@ import type {Surface} from '../core/surface';
 import type {ShaderExtension} from '../core/shader_extension';
 import type {Terrain, TerrainData} from './terrain';
 import type {RenderToTexture} from './render_to_texture';
-import type {Painter, RenderOptions} from './painter';
-import type {Style} from '../style/style';
-import type {StyleLayer} from '../style/style_layer';
+import type {Painter} from './painter';
 import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
@@ -34,7 +32,6 @@ export class TerrainSurface implements Surface {
     }
 
     get terrain(): Terrain { return this._terrain; }
-    get skipOpaquePass(): boolean { return this.renderToTexture != null; }
 
     markDirty(): void { this._facilitator.dirty = true; }
 
@@ -100,15 +97,53 @@ export class TerrainSurface implements Surface {
         return this._terrain.getTerrainData(tileID);
     }
 
-    prepareFrame(painter: Painter, style: Style): void {
+    renderFrame(painter: Painter): void {
         this._updateDepthAndCoords(painter, false);
+
+        const style = painter.style;
+        const layerIds = style._order;
+        const tileManagers = style.tileManagers;
+        const renderOptions = painter._renderOptions;
+
         if (this.renderToTexture) {
             this.renderToTexture.prepareForRender(style, painter.transform.zoom);
-        }
-    }
 
-    renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean {
-        return this.renderToTexture?.renderLayer(layer, renderOptions) ?? false;
+            // Offscreen pass — only for layers RTT doesn't handle (e.g. custom)
+            painter.renderPass = 'offscreen';
+            for (const layerId of layerIds) {
+                const layer = style._layers[layerId];
+                if (!layer.hasOffscreenPass() || layer.isHidden(painter.transform.zoom)) continue;
+                if (this.renderToTexture.handlesLayer(layer.type)) continue;
+
+                const coords = painter._coordsDescending[layer.source];
+                if (layer.type !== 'custom' && !coords.length) continue;
+
+                painter.renderLayer(painter, tileManagers[layer.source], layer, coords, renderOptions);
+            }
+
+            painter._prepareMainFramebuffer();
+
+            // No opaque pass — RTT renders all layers bottom-to-top in translucent
+            painter.renderPass = 'translucent';
+            painter.opaquePassCutoff = 0;
+
+            for (painter.currentLayer = 0; painter.currentLayer < layerIds.length; painter.currentLayer++) {
+                const layer = style._layers[layerIds[painter.currentLayer]];
+
+                // RTT intercepts layers it handles (fill, line, raster, heatmap, etc.)
+                if (this.renderToTexture.renderLayer(layer, renderOptions)) continue;
+
+                // Non-RTT layers (symbols, custom) render directly
+                const coords = (layer.type === 'symbol' ? painter._coordsDescendingSymbol : painter._coordsDescending)[layer.source];
+                painter._renderTileClippingMasks(layer, painter._coordsAscending[layer.source], true);
+                painter.renderLayer(painter, tileManagers[layer.source], layer, coords, renderOptions);
+            }
+
+            painter._finalizeMainPass();
+        } else {
+            // No RTT — use default flat passes
+            painter._renderPasses();
+        }
     }
 
     allowVariableZoom(): boolean { return true; }

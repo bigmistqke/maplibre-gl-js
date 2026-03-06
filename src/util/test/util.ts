@@ -260,7 +260,6 @@ export function createTerrainSurface(terrain: Terrain): Surface {
         shaderExtensions: [],
         renderToTexture: null,
         terrain,
-        skipOpaquePass: false,
         getElevation: (lnglat) => terrain.getElevationForLngLat(lnglat, null),
         getElevationForZoom: (lnglat, zoom) => terrain.getElevationForLngLatZoom(lnglat, zoom),
         getMinElevationForZoom: (lnglat, zoom) => terrain.getMinTileElevationForLngLatZoom(lnglat, zoom),
@@ -272,8 +271,7 @@ export function createTerrainSurface(terrain: Terrain): Surface {
         isPointOnSurface: () => true,
         getBindings: () => null,
         update: () => {},
-        prepareFrame: () => {},
-        renderLayer: () => false,
+        renderFrame: () => {},
         ensureFrameBuffers: () => {},
         markDirty: () => {},
         isOccluded: (screenPos, lngLat, offset, transform) => {

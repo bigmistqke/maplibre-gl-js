@@ -107,6 +107,10 @@ export class Painter {
     debugOverlayTexture: Texture;
     debugOverlayCanvas: HTMLCanvasElement;
     surface: Surface = FLAT_SURFACE;
+    _coordsAscending: {[_: string]: Array<OverscaledTileID>};
+    _coordsDescending: {[_: string]: Array<OverscaledTileID>};
+    _coordsDescendingSymbol: {[_: string]: Array<OverscaledTileID>};
+    _renderOptions: RenderOptions;
 
     constructor(gl: WebGLRenderingContext | WebGL2RenderingContext, transform: IReadonlyTransform) {
         this.context = new Context(gl);
@@ -462,13 +466,12 @@ export class Painter {
             this.imageManager.beginFrame();
         }
 
-        const layerIds = this.style._order;
         const tileManagers = this.style.tileManagers;
 
-        const coordsAscending: {[_: string]: Array<OverscaledTileID>} = {};
-        const coordsDescending: {[_: string]: Array<OverscaledTileID>} = {};
-        const coordsDescendingSymbol: {[_: string]: Array<OverscaledTileID>} = {};
-        const renderOptions: RenderOptions = {isRenderingToTexture: false, isRenderingGlobe: style.projection?.transitionState > 0};
+        this._coordsAscending = {};
+        this._coordsDescending = {};
+        this._coordsDescendingSymbol = {};
+        this._renderOptions = {isRenderingToTexture: false, isRenderingGlobe: style.projection?.transitionState > 0};
 
         for (const id in tileManagers) {
             const tileManager = tileManagers[id];
@@ -476,115 +479,21 @@ export class Painter {
                 tileManager.prepare(this.context);
             }
 
-            coordsAscending[id] = tileManager.getVisibleCoordinates(false);
-            coordsDescending[id] = coordsAscending[id].slice().reverse();
-            coordsDescendingSymbol[id] = tileManager.getVisibleCoordinates(true).reverse();
+            this._coordsAscending[id] = tileManager.getVisibleCoordinates(false);
+            this._coordsDescending[id] = this._coordsAscending[id].slice().reverse();
+            this._coordsDescendingSymbol[id] = tileManager.getVisibleCoordinates(true).reverse();
         }
 
         this.opaquePassCutoff = Infinity;
-        for (let i = 0; i < layerIds.length; i++) {
-            const layerId = layerIds[i];
-            if (this.style._layers[layerId].is3D()) {
+        for (let i = 0; i < style._order.length; i++) {
+            if (this.style._layers[style._order[i]].is3D()) {
                 this.opaquePassCutoff = i;
                 break;
             }
         }
 
-        this.surface.prepareFrame(this, this.style);
-        if (this.surface.skipOpaquePass) {
-            // render-to-texture renders all layers from bottom to top in the translucent pass.
-            this.opaquePassCutoff = 0;
-        }
-
-        // Offscreen pass ===============================================
-        // We first do all rendering that requires rendering to a separate
-        // framebuffer, and then save those for rendering back to the map
-        // later: in doing this we avoid doing expensive framebuffer restores.
-        this.renderPass = 'offscreen';
-
-        for (const layerId of layerIds) {
-            const layer = this.style._layers[layerId];
-            if (!layer.hasOffscreenPass() || layer.isHidden(this.transform.zoom)) continue;
-            // RTT handles offscreen work for its layers inline during the translucent pass
-            if (this.surface.renderToTexture && this.surface.renderToTexture.handlesLayer(layer.type)) continue;
-
-            const coords = coordsDescending[layer.source];
-            if (layer.type !== 'custom' && !coords.length) continue;
-
-            this.renderLayer(this, tileManagers[layer.source], layer, coords, renderOptions);
-        }
-
-        // Execute offscreen GPU tasks of the projection manager
-        this.style.projection?.updateGPUdependent({
-            context: this.context,
-            useProgram: (name: string) => this.useProgram(name)
-        });
-
-        // Rebind the main framebuffer now that all offscreen layers have been rendered:
-        this.context.viewport.set([0, 0, this.width, this.height]);
-        this.context.bindFramebuffer.set(null);
-
-        // Clear buffers in preparation for drawing to the main framebuffer
-        this.context.clear({color: options.showOverdrawInspector ? Color.black : Color.transparent, depth: 1});
-        this.clearStencil();
-
-        // Execute beforeLayers render hooks (e.g., sky)
-        for (const hook of this.style._featureRegistry.getRenderHooks('beforeLayers')) {
-            hook.render(this, this.style);
-        }
-
-        this._showOverdrawInspector = options.showOverdrawInspector;
-        this.depthRangeFor3D = [0, 1 - ((style._order.length + 2) * this.numSublayers * this.depthEpsilon)];
-
-        // Opaque pass ===============================================
-        // Draw opaque layers top-to-bottom first.
-        if (!this.surface.skipOpaquePass) {
-            this.renderPass = 'opaque';
-
-            for (this.currentLayer = layerIds.length - 1; this.currentLayer >= 0; this.currentLayer--) {
-                const layer = this.style._layers[layerIds[this.currentLayer]];
-                const tileManager = tileManagers[layer.source];
-                const coords = coordsAscending[layer.source];
-
-                this._renderTileClippingMasks(layer, coords, false);
-                this.renderLayer(this, tileManager, layer, coords, renderOptions);
-            }
-        }
-
-        // Translucent pass ===============================================
-        // Draw all other layers bottom-to-top.
-        this.renderPass = 'translucent';
-
-        let globeDepthRendered = false;
-
-        for (this.currentLayer = 0; this.currentLayer < layerIds.length; this.currentLayer++) {
-            const layer = this.style._layers[layerIds[this.currentLayer]];
-            const tileManager = tileManagers[layer.source];
-
-            if (this.surface.renderLayer(layer, renderOptions)) continue;
-
-            if (!this.opaquePassEnabledForLayer() && !globeDepthRendered) {
-                globeDepthRendered = true;
-                // Render the globe sphere into the depth buffer - but only if globe is enabled and terrain is disabled.
-                // There should be no need for explicitly writing tile depths when terrain is enabled.
-                if (renderOptions.isRenderingGlobe && !this.surface.renderToTexture) {
-                    this._renderTilesDepthBuffer();
-                }
-            }
-
-            // For symbol layers in the translucent pass, we add extra tiles to the renderable set
-            // for cross-tile symbol fading. Symbol layers don't use tile clipping, so no need to render
-            // separate clipping masks
-            const coords = (layer.type === 'symbol' ? coordsDescendingSymbol : coordsDescending)[layer.source];
-
-            this._renderTileClippingMasks(layer, coordsAscending[layer.source], this.surface.skipOpaquePass);
-            this.renderLayer(this, tileManager, layer, coords, renderOptions);
-        }
-
-        // Execute afterTranslucent render hooks (e.g., atmosphere)
-        for (const hook of this.style._featureRegistry.getRenderHooks('afterTranslucent')) {
-            hook.render(this, this.style);
-        }
+        // Surface drives the render loop
+        this.surface.renderFrame(this);
 
         if (this.options.showTileBoundaries) {
             const selectedSource = selectDebugSource(this.style, this.transform.zoom);
@@ -600,6 +509,96 @@ export class Painter {
         // Set defaults for most GL values so that anyone using the state after the render
         // encounters more expected values.
         this.context.setDefault();
+    }
+
+    /**
+     * Prepare the main framebuffer for drawing: run projection GPU tasks,
+     * bind and clear the main FBO, execute beforeLayers hooks, set up state.
+     */
+    _prepareMainFramebuffer() {
+        this.style.projection?.updateGPUdependent({
+            context: this.context,
+            useProgram: (name: string) => this.useProgram(name)
+        });
+
+        this.context.viewport.set([0, 0, this.width, this.height]);
+        this.context.bindFramebuffer.set(null);
+
+        this.context.clear({color: this.options.showOverdrawInspector ? Color.black : Color.transparent, depth: 1});
+        this.clearStencil();
+
+        for (const hook of this.style._featureRegistry.getRenderHooks('beforeLayers')) {
+            hook.render(this, this.style);
+        }
+
+        this._showOverdrawInspector = this.options.showOverdrawInspector;
+        this.depthRangeFor3D = [0, 1 - ((this.style._order.length + 2) * this.numSublayers * this.depthEpsilon)];
+    }
+
+    /**
+     * Execute afterTranslucent render hooks.
+     */
+    _finalizeMainPass() {
+        for (const hook of this.style._featureRegistry.getRenderHooks('afterTranslucent')) {
+            hook.render(this, this.style);
+        }
+    }
+
+    /**
+     * Default flat render strategy: offscreen → opaque → translucent passes.
+     * Called by FlatSurface.renderFrame().
+     */
+    _renderPasses() {
+        const layerIds = this.style._order;
+        const tileManagers = this.style.tileManagers;
+
+        // Offscreen pass
+        this.renderPass = 'offscreen';
+        for (const layerId of layerIds) {
+            const layer = this.style._layers[layerId];
+            if (!layer.hasOffscreenPass() || layer.isHidden(this.transform.zoom)) continue;
+
+            const coords = this._coordsDescending[layer.source];
+            if (layer.type !== 'custom' && !coords.length) continue;
+
+            this.renderLayer(this, tileManagers[layer.source], layer, coords, this._renderOptions);
+        }
+
+        this._prepareMainFramebuffer();
+
+        // Opaque pass — draw opaque layers top-to-bottom
+        this.renderPass = 'opaque';
+        for (this.currentLayer = layerIds.length - 1; this.currentLayer >= 0; this.currentLayer--) {
+            const layer = this.style._layers[layerIds[this.currentLayer]];
+            const tileManager = tileManagers[layer.source];
+            const coords = this._coordsAscending[layer.source];
+
+            this._renderTileClippingMasks(layer, coords, false);
+            this.renderLayer(this, tileManager, layer, coords, this._renderOptions);
+        }
+
+        // Translucent pass — draw all layers bottom-to-top
+        this.renderPass = 'translucent';
+        let globeDepthRendered = false;
+
+        for (this.currentLayer = 0; this.currentLayer < layerIds.length; this.currentLayer++) {
+            const layer = this.style._layers[layerIds[this.currentLayer]];
+            const tileManager = tileManagers[layer.source];
+
+            if (!this.opaquePassEnabledForLayer() && !globeDepthRendered) {
+                globeDepthRendered = true;
+                if (this._renderOptions.isRenderingGlobe) {
+                    this._renderTilesDepthBuffer();
+                }
+            }
+
+            const coords = (layer.type === 'symbol' ? this._coordsDescendingSymbol : this._coordsDescending)[layer.source];
+
+            this._renderTileClippingMasks(layer, this._coordsAscending[layer.source], false);
+            this.renderLayer(this, tileManager, layer, coords, this._renderOptions);
+        }
+
+        this._finalizeMainPass();
     }
 
     renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
