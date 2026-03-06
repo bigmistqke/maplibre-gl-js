@@ -2488,10 +2488,10 @@ describe('queryTerrainElevation', () => {
         camera = createCamera();
     });
 
-    test('should return null if terrain is not set', () => {
+    test('should return 0 if terrain is not set', () => {
         camera.terrain = null;
         const result = camera.queryTerrainElevation([0, 0]);
-        expect(result).toBeNull();
+        expect(result).toBe(0);
     });
 
     test('Calls surface.getElevation with correct arguments', () => {

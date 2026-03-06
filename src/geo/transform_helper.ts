@@ -182,6 +182,7 @@ export class TransformHelper implements ITransformGetters {
         this._edgeInsets = new EdgeInsets();
         this._minElevationForCurrentTile = 0;
         this._autoCalculateNearFarZ = true;
+        this._cameraToCenterDistance = 0;
     }
 
     public apply(thatI: ITransformGetters, constrain: boolean, forceOverrideZ?: boolean): void {

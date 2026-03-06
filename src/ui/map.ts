@@ -982,9 +982,7 @@ export class Map extends Camera {
     }
 
     calculateCameraOptionsFromTo(from: LngLat, altitudeFrom: number, to: LngLat, altitudeTo?: number): CameraOptions {
-        if (altitudeTo == null && this.surface.terrain) {
-            altitudeTo = this.surface.getElevation(to);
-        }
+        altitudeTo ??= this.surface.getElevation(to);
         return super.calculateCameraOptionsFromTo(from, altitudeFrom, to, altitudeTo);
     }
 
@@ -3599,9 +3597,6 @@ export class Map extends Camera {
 
         // update terrain stuff
         this.surface.update(this.transform);
-        if (this.surface.terrain) {
-            this.surface.terrain.tileManager.update(this.transform, this.surface.terrain);
-        }
         this.transform.setMinElevationForCurrentTile(this.surface.getMinElevationForZoom(this.transform.center, this.transform.tileZoom));
         if (!this._elevationFreeze && this._centerClampedToGround) {
             this.transform.setElevation(this.surface.getElevationForZoom(this.transform.center, this.transform.tileZoom));

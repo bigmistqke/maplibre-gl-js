@@ -13,6 +13,7 @@ import {type Terrain} from '../../render/terrain';
 import {Frustum} from '../primitives/frustum';
 import {mat4} from 'gl-matrix';
 import {FeatureRegistry} from '../../core/feature';
+import Point from '@mapbox/point-geometry';
 import {allFeatures} from '../../features/all';
 import {FLAT_SURFACE} from '../../core/surface';
 import type {Surface} from '../../core/surface';
@@ -275,6 +276,21 @@ export function createTerrainSurface(terrain: Terrain): Surface {
         renderLayer: () => false,
         ensureFrameBuffers: () => {},
         markDirty: () => {},
+        isOccluded: (screenPos, lngLat, offset, transform) => {
+            const forgiveness = .006;
+            const elevation = terrain.getElevationForLngLat(lngLat, null);
+            const terrainDistance = terrain.depthAtPoint(screenPos);
+            const markerDistance = transform.lngLatToCameraDepth(lngLat, elevation);
+            const baseOccluded = markerDistance - terrainDistance >= forgiveness;
+            if (!baseOccluded) return {base: false, center: false};
+            const metersToCenter = -offset.y / transform.pixelsPerMeter;
+            const elevationToCenter = Math.sin(transform.pitch * Math.PI / 180) * metersToCenter;
+            const terrainDistanceCenter = terrain.depthAtPoint(new Point(screenPos.x, screenPos.y - offset.y));
+            const markerDistanceCenter = transform.lngLatToCameraDepth(lngLat, elevation + elevationToCenter);
+            const centerOccluded = markerDistanceCenter - terrainDistanceCenter >= forgiveness;
+            return {base: true, center: centerOccluded};
+        },
+        allowVariableZoom: () => true,
     } as Surface;
 }
 

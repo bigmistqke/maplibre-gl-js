@@ -1166,19 +1166,17 @@ export abstract class Camera extends Evented {
         this._easeId = options.easeId;
         this._prepareEase(eventData, options.noMoveStart, currently);
 
-        if (this.surface.terrain) {
-            this._prepareElevation(easeHandler.elevationCenter);
-        }
+        this._prepareElevation(easeHandler.elevationCenter);
 
         this._ease((k) => {
             easeHandler.easeFunc(k);
 
-            if (this.surface.terrain && !options.freezeElevation) this._updateElevation(k);
+            if (!options.freezeElevation) this._updateElevation(k);
             this._applyUpdatedTransform(tr);
             this._fireMoveEvents(eventData);
 
         }, (interruptingEaseId?: string) => {
-            if (this.surface.terrain && options.freezeElevation) this._finalizeElevation();
+            if (options.freezeElevation) this._finalizeElevation();
             this._afterEase(eventData, interruptingEaseId);
         }, options as any);
 
@@ -1247,7 +1245,7 @@ export abstract class Camera extends Evented {
      * @returns Transform to apply changes to
      */
     _getTransformForUpdate(): ITransform {
-        if (!this.transformCameraUpdate && !this.surface.terrain) return this.transform;
+        if (!this.transformCameraUpdate) return this.transform;
 
         if (!this._requestedCameraState) {
             this._requestedCameraState = this.transform.clone();
@@ -1267,9 +1265,6 @@ export abstract class Camera extends Evented {
      * @param tr - The transform to check.
      */
     _elevateCameraIfInsideTerrain(tr: ITransform) : { pitch?: number; zoom?: number } {
-        if (!this.surface.terrain && tr.elevation >= 0 && tr.pitch <= 90) {
-            return {};
-        }
         const cameraLngLat = tr.getCameraLngLat();
         const cameraAltitude = tr.getCameraAltitude();
         const minAltitude = this.surface.getElevationForZoom(cameraLngLat, tr.zoom);
@@ -1541,7 +1536,7 @@ export abstract class Camera extends Evented {
         this._padding = !tr.isPaddingEqual(padding as PaddingOptions);
 
         this._prepareEase(eventData, false);
-        if (this.surface.terrain) this._prepareElevation(flyToHandler.targetCenter);
+        this._prepareElevation(flyToHandler.targetCenter);
 
         this._ease((k) => {
             // s: The distance traveled along the flight path, measured in ρ-screenfulls.
@@ -1566,11 +1561,11 @@ export abstract class Camera extends Evented {
 
             flyToHandler.easeFunc(k, scale, centerFactor, pointAtOffset);
 
-            if (this.surface.terrain && !options.freezeElevation) this._updateElevation(k);
+            if (!options.freezeElevation) this._updateElevation(k);
             this._applyUpdatedTransform(tr);
             this._fireMoveEvents(eventData);
         }, () => {
-            if (this.surface.terrain && options.freezeElevation) this._finalizeElevation();
+            if (options.freezeElevation) this._finalizeElevation();
             this._afterEase(eventData);
         }, options);
 
@@ -1659,9 +1654,6 @@ export abstract class Camera extends Evented {
      * @returns elevation in meters
      */
     queryTerrainElevation(lngLatLike: LngLatLike): number | null {
-        if (!this.surface.terrain) {
-            return null;
-        }
         return this.surface.getElevation(LngLat.convert(lngLatLike));
     }
 }

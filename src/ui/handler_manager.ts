@@ -527,7 +527,7 @@ export class HandlerManager {
         const tr = map._getTransformForUpdate();
         const surface = map.surface;
 
-        if (!hasChange(combinedResult) && !(surface.terrain && this._terrainMovement)) {
+        if (!hasChange(combinedResult) && !this._terrainMovement) {
             return this._fireEvents(combinedEventsInProgress, deactivatedHandlers, true);
         }
 
@@ -542,7 +542,7 @@ export class HandlerManager {
 
         around = around || map.transform.centerPoint;
 
-        if (surface.terrain && !tr.isPointOnMapSurface(around, surface)) {
+        if (!tr.isPointOnMapSurface(around, surface)) {
             around = tr.centerPoint;
         }
 

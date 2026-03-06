@@ -586,7 +586,7 @@ export class TileManager extends Evented {
 
         // enable fading for raster source except when using terrain which doesn't currently support fading
         const isRaster = isRasterType(this._source.type);
-        if (isRaster && this._rasterFadeDuration > 0 && !surface?.terrain) {
+        if (isRaster && this._rasterFadeDuration > 0 && !surface?.renderToTexture) {
             updateFadingTiles(this._inViewTiles, idealTileIDs, retain, this._maxFadingAncestorLevels, this._source.minzoom, this._source.maxzoom, this._rasterFadeDuration);
         }
 

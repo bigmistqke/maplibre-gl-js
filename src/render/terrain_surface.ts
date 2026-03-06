@@ -10,8 +10,8 @@ import type {StyleLayer} from '../style/style_layer';
 import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
-import type {IReadonlyTransform} from '../geo/transform_interface';
-import type Point from '@mapbox/point-geometry';
+import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
+import Point from '@mapbox/point-geometry';
 
 const TERRAIN_SHADER_EXTENSION: ShaderExtension = {
     key: 'terrain',
@@ -38,8 +38,9 @@ export class TerrainSurface implements Surface {
 
     markDirty(): void { this._facilitator.dirty = true; }
 
-    update(transform: IReadonlyTransform): void {
+    update(transform: ITransform): void {
         this._transform = transform;
+        this._terrain.tileManager.update(transform, this._terrain);
     }
 
     getElevation(lnglat: LngLat): number {
@@ -75,6 +76,22 @@ export class TerrainSurface implements Surface {
         return this._terrain.depthAtPoint(point);
     }
 
+    isOccluded(screenPos: Point, lngLat: LngLat, offset: Point, transform: IReadonlyTransform): {base: boolean; center: boolean} {
+        const forgiveness = .006;
+        const elevation = this.getElevation(lngLat);
+        const terrainDistance = this.depthAtPoint(screenPos);
+        const markerDistance = transform.lngLatToCameraDepth(lngLat, elevation);
+        const baseOccluded = markerDistance - terrainDistance >= forgiveness;
+        if (!baseOccluded) return {base: false, center: false};
+
+        const metersToCenter = -offset.y / transform.pixelsPerMeter;
+        const elevationToCenter = Math.sin(transform.pitch * Math.PI / 180) * metersToCenter;
+        const terrainDistanceCenter = this.depthAtPoint(new Point(screenPos.x, screenPos.y - offset.y));
+        const markerDistanceCenter = transform.lngLatToCameraDepth(lngLat, elevation + elevationToCenter);
+        const centerOccluded = markerDistanceCenter - terrainDistanceCenter >= forgiveness;
+        return {base: true, center: centerOccluded};
+    }
+
     isPointOnSurface(point: Point): boolean {
         return this._terrain.pointCoordinate(point) != null;
     }
@@ -93,6 +110,8 @@ export class TerrainSurface implements Surface {
     renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean {
         return this.renderToTexture?.renderLayer(layer, renderOptions) ?? false;
     }
+
+    allowVariableZoom(): boolean { return true; }
 
     ensureFrameBuffers(painter: Painter): void {
         this._updateDepthAndCoords(painter, true);

@@ -396,10 +396,10 @@ export class MercatorTransform implements ITransform {
     }
 
     isPointOnMapSurface(p: Point, surface?: Surface): boolean {
-        if (surface) {
-            return surface.isPointOnSurface(p);
-        }
-        return (p.y > this.height / 2 - getMercatorHorizon(this));
+        const aboveHorizon = p.y <= this.height / 2 - getMercatorHorizon(this);
+        if (aboveHorizon) return false;
+        if (surface) return surface.isPointOnSurface(p);
+        return true;
     }
 
     /**

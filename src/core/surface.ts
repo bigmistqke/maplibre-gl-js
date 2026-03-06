@@ -3,7 +3,7 @@ import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
 import type {TerrainData, Terrain} from '../render/terrain';
 import type {RenderToTexture} from '../render/render_to_texture';
-import type {IReadonlyTransform} from '../geo/transform_interface';
+import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
 import type {Painter, RenderOptions} from '../render/painter';
 import type {Style} from '../style/style';
 import type {StyleLayer} from '../style/style_layer';
@@ -44,6 +44,13 @@ export interface Surface {
     /** Depth value at a screen point (for marker occlusion). */
     depthAtPoint(point: Point): number;
 
+    /**
+     * Check if a marker at the given screen position is occluded by the surface.
+     * Returns `{base: false, center: false}` for flat surfaces.
+     * For terrain, compares depth buffer values against camera depth.
+     */
+    isOccluded(screenPos: Point, lngLat: LngLat, offset: Point, transform: IReadonlyTransform): {base: boolean; center: boolean};
+
     /** Whether a screen point hits the surface (for gesture handling). */
     isPointOnSurface(point: Point): boolean;
 
@@ -56,8 +63,8 @@ export interface Surface {
     /** Direct access to the underlying Terrain object (for FBO management). Null for flat. */
     readonly terrain: Terrain | null;
 
-    /** Called once per frame to cache the current transform. */
-    update(transform: IReadonlyTransform): void;
+    /** Called once per frame to cache the current transform and update terrain tile manager. */
+    update(transform: ITransform): void;
 
     // === Render strategy ===
 
@@ -75,6 +82,9 @@ export interface Surface {
 
     /** Mark depth/coords FBOs as needing a redraw (e.g. after terrain data change). */
     markDirty(): void;
+
+    /** Whether tile covering should use variable zoom levels across the viewport. */
+    allowVariableZoom(): boolean;
 }
 
 /**
@@ -95,13 +105,15 @@ export class FlatSurface implements Surface {
     getMinMaxElevation(_tileID: OverscaledTileID): {min: number; max: number} { return {min: 0, max: 0}; }
     screenToCoordinate(_point: Point): MercatorCoordinate | null { return null; }
     depthAtPoint(_point: Point): number { return 0; }
-    isPointOnSurface(_point: Point): boolean { return false; }
+    isOccluded(_screenPos: Point, _lngLat: LngLat, _offset: Point, _transform: IReadonlyTransform): {base: boolean; center: boolean} { return {base: false, center: false}; }
+    isPointOnSurface(_point: Point): boolean { return true; }
     getBindings(_tileID: OverscaledTileID): TerrainData | null { return null; }
-    update(_transform: IReadonlyTransform): void {}
+    update(_transform: ITransform): void {}
     prepareFrame(_painter: Painter, _style: Style): void {}
     renderLayer(_layer: StyleLayer, _renderOptions: RenderOptions): boolean { return false; }
     ensureFrameBuffers(_painter: Painter): void {}
     markDirty(): void {}
+    allowVariableZoom(): boolean { return false; }
 }
 
 /** Singleton flat surface — avoids allocation. */
