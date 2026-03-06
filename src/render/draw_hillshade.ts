@@ -23,7 +23,7 @@ export function drawHillshadeOffscreen(painter: Painter, tileManager: TileManage
 }
 
 export function drawHillshade(painter: Painter, tileManager: TileManager, layer: HillshadeStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const {isRenderingToTexture} = renderOptions;
+    
     const projection = painter.style.projection;
     const useSubdivision = projection.useSubdivision;
 

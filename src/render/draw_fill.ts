@@ -31,7 +31,7 @@ export function drawFillOpaque(painter: Painter, tileManager: TileManager, layer
     if (layer.paint.get('fill-opacity').constantOr(1) === 0) return;
     if (!isFillOpaque(painter, layer)) return;
 
-    const {isRenderingToTexture} = renderOptions;
+    
     const colorMode = painter.colorModeForRenderPass();
     const depthMode = painter.getDepthModeForSublayer(1, DepthMode.ReadWrite);
     drawFillTiles(painter, tileManager, layer, coords, depthMode, colorMode, false, isRenderingToTexture);
@@ -40,7 +40,7 @@ export function drawFillOpaque(painter: Painter, tileManager: TileManager, layer
 export function drawFill(painter: Painter, tileManager: TileManager, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (layer.paint.get('fill-opacity').constantOr(1) === 0) return;
 
-    const {isRenderingToTexture} = renderOptions;
+    
     const colorMode = painter.colorModeForRenderPass();
 
     // Draw fill body (only if not already drawn in opaque pass)

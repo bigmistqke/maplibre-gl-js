@@ -27,7 +27,7 @@ export function drawHeatmapOffscreen(painter: Painter, tileManager: TileManager,
 export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: HeatmapStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (layer.paint.get('heatmap-opacity') === 0) return;
 
-    const {isRenderingToTexture, isRenderingGlobe} = renderOptions;
+    const {isRenderingGlobe} = renderOptions;
 
     if (isRenderingToTexture) {
         // RTT calls us once per terrain tile with mapped source coords.
@@ -75,7 +75,7 @@ function prepareHeatmapFlat(painter: Painter, tileManager: TileManager, layer: H
         const programConfiguration = bucket.programConfigurations.get(layer.id);
         const program = painter.useProgram('heatmap', programConfiguration);
 
-        const projectionData = transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: false});
+        const projectionData = transform.getProjectionData({overscaledTileID: coord});
 
         const radiusCorrectionFactor = transform.getCircleRadiusCorrection();
 
@@ -141,7 +141,7 @@ function prepareHeatmapTerrain(painter: Painter, tile: Tile, layer: HeatmapStyle
     const programConfiguration = bucket.programConfigurations.get(layer.id);
     const program = painter.useProgram('heatmap', programConfiguration, !isRenderingGlobe);
 
-    const projectionData = painter.transform.getProjectionData({overscaledTileID: tile.tileID, applyGlobeMatrix: true, applyTerrainMatrix: true});
+    const projectionData = painter.transform.getProjectionData({overscaledTileID: tile.tileID});
 
     const terrainData = painter.surface.getBindings(coord);
     program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled,
@@ -173,7 +173,7 @@ function renderHeatmapTerrain(painter: Painter, layer: HeatmapStyleLayer, coord:
     context.activeTexture.set(gl.TEXTURE1);
     colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
 
-    const projectionData = transform.getProjectionData({overscaledTileID: coord, applyTerrainMatrix: isRenderingGlobe, applyGlobeMatrix: !isRenderingToTexture});
+    const projectionData = transform.getProjectionData({overscaledTileID: coord});
 
     painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES,
         DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled,

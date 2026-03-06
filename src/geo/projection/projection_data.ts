@@ -59,12 +59,4 @@ export type ProjectionDataParams = {
      * Set to true if a pixel-aligned matrix should be used, if possible (mostly used for raster tiles under mercator projection)
      */
     aligned?: boolean;
-    /**
-     * Set to true if the terrain matrix should be applied (i.e. when rendering terrain)
-     */
-    applyTerrainMatrix?: boolean;
-    /**
-     * Set to true if the globe matrix should be applied (i.e. when rendering globe)
-     */
-    applyGlobeMatrix?: boolean;
 };

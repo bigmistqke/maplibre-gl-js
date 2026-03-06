@@ -6,10 +6,9 @@ import type {TileManager} from '../tile/tile_manager';
 import type {CustomRenderMethodInput, CustomStyleLayer} from '../style/style_layer/custom_style_layer';
 
 function getCustomLayerArgs(painter: Painter, renderOptions: RenderOptions): CustomRenderMethodInput {
-    const {isRenderingGlobe} = renderOptions;
     const projection = painter.style.projection;
     const transform = painter.transform;
-    const projectionData = transform.getProjectionDataForCustomLayer(isRenderingGlobe);
+    const projectionData = transform.getProjectionDataForCustomLayer();
 
     return {
         farZ: transform.farZ,

@@ -298,13 +298,13 @@ export class VerticalPerspectiveTransform implements ITransform {
     }
 
     getProjectionData(params: ProjectionDataParams): ProjectionData {
-        const {overscaledTileID, applyGlobeMatrix} = params;
+        const {overscaledTileID} = params;
         const mercatorTileCoordinates = this._helper.getMercatorTileCoordinates(overscaledTileID);
         return {
             mainMatrix: this._globeViewProjMatrix32f,
             tileMercatorCoords: mercatorTileCoordinates,
             clippingPlane: this._cachedClippingPlane as [number, number, number, number],
-            projectionTransition: applyGlobeMatrix ? 1 : 0,
+            projectionTransition: 1,
             fallbackMatrix: this._globeViewProjMatrix32f,
         };
     }
@@ -987,8 +987,8 @@ export class VerticalPerspectiveTransform implements ITransform {
         return m;
     }
 
-    getProjectionDataForCustomLayer(applyGlobeMatrix: boolean = true): ProjectionData {
-        const globeData = this.getProjectionData({overscaledTileID: new OverscaledTileID(0, 0, 0, 0, 0), applyGlobeMatrix});
+    getProjectionDataForCustomLayer(): ProjectionData {
+        const globeData = this.getProjectionData({overscaledTileID: new OverscaledTileID(0, 0, 0, 0, 0)});
         globeData.tileMercatorCoords = [0, 0, 1, 1];
         return globeData;
     }

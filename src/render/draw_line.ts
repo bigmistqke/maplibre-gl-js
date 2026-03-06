@@ -139,7 +139,7 @@ function bindGradientAndDashTextures(
 }
 
 export function drawLine(painter: Painter, tileManager: TileManager, layer: LineStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const {isRenderingToTexture} = renderOptions;
+    
 
     const opacity = layer.paint.get('line-opacity');
     const width = layer.paint.get('line-width');

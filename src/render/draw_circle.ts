@@ -36,7 +36,7 @@ type SegmentsTileRenderState = {
 };
 
 export function drawCircles(painter: Painter, tileManager: TileManager, layer: CircleStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const {isRenderingToTexture} = renderOptions;
+    
     const opacity = layer.paint.get('circle-opacity');
     const strokeWidth = layer.paint.get('circle-stroke-width');
     const strokeOpacity = layer.paint.get('circle-stroke-opacity');
@@ -79,7 +79,7 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
         const terrainData = painter.surface.getBindings(coord);
         const uniformValues = circleUniformValues(painter, tile, layer, translateForUniforms, radiusCorrectionFactor);
 
-        const projectionData = transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
+        const projectionData = transform.getProjectionData({overscaledTileID: coord});
 
         const state: TileRenderState = {
             programConfiguration,

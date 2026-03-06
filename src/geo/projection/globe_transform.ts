@@ -293,7 +293,7 @@ export class GlobeTransform implements ITransform {
             mainMatrix: this.isGlobeRendering ? verticalPerspectiveProjectionData.mainMatrix : mercatorProjectionData.mainMatrix,
             clippingPlane: verticalPerspectiveProjectionData.clippingPlane,
             tileMercatorCoords: verticalPerspectiveProjectionData.tileMercatorCoords,
-            projectionTransition: params.applyGlobeMatrix ? this._globeness : 0,
+            projectionTransition: this._globeness,
             fallbackMatrix: mercatorProjectionData.fallbackMatrix,
         };
     }
@@ -453,14 +453,14 @@ export class GlobeTransform implements ITransform {
         return this.currentTransform.getMatrixForModel(location, altitude);
     }
 
-    getProjectionDataForCustomLayer(applyGlobeMatrix: boolean = true): ProjectionData {
-        const mercatorData = this._mercatorTransform.getProjectionDataForCustomLayer(applyGlobeMatrix);
+    getProjectionDataForCustomLayer(): ProjectionData {
+        const mercatorData = this._mercatorTransform.getProjectionDataForCustomLayer();
 
         if (!this.isGlobeRendering) {
             return mercatorData;
         }
 
-        const globeData = this._verticalPerspectiveTransform.getProjectionDataForCustomLayer(applyGlobeMatrix);
+        const globeData = this._verticalPerspectiveTransform.getProjectionDataForCustomLayer();
         globeData.fallbackMatrix = mercatorData.mainMatrix;
         return globeData;
     }

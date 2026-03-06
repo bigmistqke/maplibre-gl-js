@@ -62,7 +62,7 @@ export function drawCollisionDebug(painter: Painter, tileManager: TileManager, l
             CullFaceMode.disabled,
             collisionUniformValues(painter.transform),
             painter.surface.getBindings(coord),
-            transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: true, applyTerrainMatrix: true}),
+            transform.getProjectionData({overscaledTileID: coord}),
             layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer,
             buffers.segments, null, painter.transform.zoom, null, null,
             buffers.collisionVertexBuffer);

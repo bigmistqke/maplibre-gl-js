@@ -15,7 +15,7 @@ import type {OverscaledTileID} from '../tile/tile_id';
 export function drawColorRelief(painter: Painter, tileManager: TileManager, layer: ColorReliefStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (!tileIDs.length) return;
 
-    const {isRenderingToTexture} = renderOptions;
+    
     const projection = painter.style.projection;
     const useSubdivision = projection.useSubdivision;
 

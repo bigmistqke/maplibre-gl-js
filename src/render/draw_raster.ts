@@ -40,7 +40,7 @@ export function drawRaster(painter: Painter, tileManager: TileManager, layer: Ra
     if (layer.paint.get('raster-opacity') === 0) return;
     if (!tileIDs.length) return;
 
-    const {isRenderingToTexture} = renderOptions;
+    
     const source = tileManager.getSource();
 
     const projection = painter.style.projection;
@@ -129,7 +129,7 @@ function drawTiles(
         }
 
         const terrainData = painter.surface.getBindings(coord);
-        const projectionData = transform.getProjectionData({overscaledTileID: coord, aligned: align, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
+        const projectionData = transform.getProjectionData({overscaledTileID: coord, aligned: align});
         const uniformValues = rasterUniformValues(parentTopLeft, parentScaleBy, fadeValues.fadeMix, layer, corners);
 
         const mesh = projection.getMeshFromTileID(context, coord.canonical, useBorder, allowPoles, 'raster');

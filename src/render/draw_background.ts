@@ -36,7 +36,7 @@ export function drawBackground(painter: Painter, tileManager: TileManager, layer
 }
 
 function drawBackgroundTiles(painter: Painter, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions, depthMask: typeof DepthMode.ReadWrite | typeof DepthMode.ReadOnly) {
-    const {isRenderingToTexture} = renderOptions;
+    
     const context = painter.context;
     const gl = context.gl;
     const projection = painter.style.projection;

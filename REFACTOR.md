@@ -1743,7 +1743,47 @@ Removed the `!surface.terrain` early return. The elevation-aware pan path works 
 
 ### Open concerns
 
-**A. `isRenderingToTexture` on the Surface interface — questionable.**
+**A. RTT context leaking into draw functions and the transform.**
+
+Two RTT concerns currently leak through draw functions into the transform:
+
+1. **`terrainRttPosMatrix32f` on OverscaledTileID** (`tile_id.ts:100`). Written by `TerrainTileManager.getTerrainCoords()`, read by `mercator_transform.ts:734` when `applyTerrainMatrix: true`. Every tile ID carries a terrain-specific field. The matrix replaces the normal tile position matrix during RTT rendering.
+
+2. **`isRenderingToTexture` in `RenderOptions`**. Every draw function destructures it and passes `applyGlobeMatrix: !isRenderingToTexture` to `getProjectionData`. This controls `projectionTransition` — RTT always renders in mercator (transition=0), even during globe mode. Draw functions shouldn't know about RTT.
+
+Both are cases where draw functions tell the transform "you're in RTT mode" — classic inverted control flow. The draw function checks context that the caller (RTT) already knows.
+
+##### IoC approach: RTT provides a pre-configured transform
+
+Instead of draw functions adapting `getProjectionData` params based on RTT state, RTT could provide a **transform wrapper** (or configure the existing transform) that already does the right thing:
+
+- `applyGlobeMatrix` is always `true` from the draw function's perspective. The RTT transform wrapper returns `projectionTransition: 0` automatically.
+- `applyTerrainMatrix` disappears. The RTT transform wrapper's `getProjectionData` uses the RTT pos matrix (looked up from an internal map) instead of the normal tile position matrix.
+- Draw functions just call `transform.getProjectionData({overscaledTileID: coord, aligned})` — no RTT flags.
+
+This means:
+- `isRenderingToTexture` removed from `RenderOptions` (and from Surface interface)
+- `applyTerrainMatrix` and `applyGlobeMatrix` removed from `ProjectionDataParams`
+- `terrainRttPosMatrix32f` removed from `OverscaledTileID`
+- RTT creates a lightweight transform wrapper per-frame that intercepts `getProjectionData`
+- Draw functions become completely RTT-agnostic
+
+The transform wrapper could be a proxy, a subclass, or just a plain object implementing the read-only transform interface with `getProjectionData` overridden. RTT passes it to `painter.renderLayer` (which already receives `painter` — the transform is `painter.transform`). RTT could temporarily swap `painter.transform` for the duration of its render calls, similar to how it already temporarily binds FBOs.
+
+##### Risks and considerations
+
+- Draw functions also access `painter.transform` for other things (zoom, pitch, center). The wrapper must delegate everything except `getProjectionData`.
+- Globe transform's `getProjectionData` is complex — the wrapper needs to handle both mercator and globe paths.
+- The per-tile RTT matrix lookup needs the coord key, which `getProjectionData` already receives as `overscaledTileID`.
+- `painter._renderTileClippingMasks` also calls `getProjectionData` with terrain/globe flags — it would also benefit from this.
+
+##### Alternative: explicit threading via RenderOptions
+
+Less ambitious but still an improvement: add `rttPosMatrices: Record<string, mat4>` to `RenderOptions`. Draw functions pass `renderOptions.rttPosMatrices?.[coord.key]` as a new `rttPosMatrix` param on `ProjectionDataParams`. And derive `applyGlobeMatrix` from the absence/presence of RTT matrices rather than a separate boolean. This touches ~15 call sites but doesn't require a transform wrapper.
+
+##### Status: design only — not yet implemented.
+
+**B. `isRenderingToTexture` on the Surface interface — questionable.**
 Only consumed by `tile_manager.ts:589` (to disable raster fading when RTT is active). All draw functions get it from `renderOptions`, which RTT sets to `true` when it calls through. So the Surface property exists for a single consumer. Options:
 - **Move to `renderOptions` only**: tile_manager could receive the flag from the caller rather than reaching into Surface. This removes the property from the interface entirely.
 - **Replace with a method like `allowRasterFading()`**: more abstract, but it's still a single-purpose query that describes an RTT implementation detail.

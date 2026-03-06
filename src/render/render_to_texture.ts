@@ -2,12 +2,16 @@ import {type Painter, type RenderOptions} from './painter';
 import {type Tile} from '../tile/tile';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {type OverscaledTileID} from '../tile/tile_id';
+import {type TerrainCoord} from '../tile/terrain_tile_manager';
 import {drawTerrain} from './draw_terrain';
+import {createRttTransformWrapper} from './rtt_transform_wrapper';
 import {type Style} from '../style/style';
 import {type Terrain} from './terrain';
 import {RenderPool} from '../gl/render_pool';
 import {type Texture} from './texture';
+import type {mat4} from 'gl-matrix';
 import type {StyleLayer} from '../style/style_layer';
+import type {IReadonlyTransform} from '../geo/transform_interface';
 import {ImageSource} from '../source/image_source';
 
 /**
@@ -36,6 +40,8 @@ export class RenderToTexture {
      * e.g. render 4 raster-tiles with size 256px to the 512px render-to-texture tile
      */
     _coordsAscending: {[_: string]: {[_:string]: Array<OverscaledTileID>}};
+    _rttPosMatrices: Record<string, mat4>;
+    _rttTransform: IReadonlyTransform;
     /**
      * create a string representation of all to tiles rendered to render-to-texture tiles
      * this string representation is used to check if tile should be re-rendered.
@@ -94,16 +100,19 @@ export class RenderToTexture {
         this._renderableLayerIds = style._order.filter(id => !style._layers[id].isHidden(zoom));
 
         this._coordsAscending = {};
+        this._rttPosMatrices = {};
         for (const id in style.tileManagers) {
             this._coordsAscending[id] = {};
             const tileIDs = style.tileManagers[id].getVisibleCoordinates();
             const source = style.tileManagers[id].getSource();
             const terrainTileRanges = source instanceof ImageSource ? source.terrainTileRanges : null;
             for (const tileID of tileIDs) {
-                const keys = this.terrain.tileManager.getTerrainCoords(tileID, terrainTileRanges);
-                for (const key in keys) {
+                const terrainCoords = this.terrain.tileManager.getTerrainCoords(tileID, terrainTileRanges);
+                for (const key in terrainCoords) {
+                    const {tileID: coordTileID, rttPosMatrix} = terrainCoords[key];
                     if (!this._coordsAscending[id][key]) this._coordsAscending[id][key] = [];
-                    this._coordsAscending[id][key].push(keys[key]);
+                    this._coordsAscending[id][key].push(coordTileID);
+                    this._rttPosMatrices[coordTileID.key] = rttPosMatrix;
                 }
             }
         }
@@ -128,6 +137,8 @@ export class RenderToTexture {
                 if (coords && coords !== tile.rttCoords[source]) tile.rtt = [];
             }
         }
+
+        this._rttTransform = createRttTransformWrapper(this.painter.transform, this._rttPosMatrices);
     }
 
     /**
@@ -144,7 +155,7 @@ export class RenderToTexture {
     renderLayer(layer: StyleLayer, renderOptions: RenderOptions): boolean {
         if (layer.isHidden(this.painter.transform.zoom)) return false;
 
-        const options: RenderOptions = {...renderOptions, isRenderingToTexture: true};
+        const options: RenderOptions = {...renderOptions};
         const type = layer.type;
         const painter = this.painter;
         const isLastLayer = this._renderableLayerIds[this._renderableLayerIds.length - 1] === layer.id;
@@ -189,6 +200,9 @@ export class RenderToTexture {
                 painter.context.bindFramebuffer.set(obj.fbo.framebuffer);
                 painter.context.clear({color: Color.transparent, stencil: 0});
                 painter.currentStencilSource = undefined;
+                // Swap transform so draw functions get RTT-aware projection data
+                const savedTransform = painter.transform;
+                painter.transform = this._rttTransform;
                 for (let l = 0; l < layers.length; l++) {
                     const layer = painter.style._layers[layers[l]];
                     const coords = layer.source ? this._coordsAscending[layer.source][tile.tileID.key] : [tile.tileID];
@@ -197,6 +211,7 @@ export class RenderToTexture {
                     painter.renderLayer(painter, painter.style.tileManagers[layer.source], layer, coords, options);
                     if (layer.source) tile.rttCoords[layer.source] = this._coordsAscendingStr[layer.source][tile.tileID.key];
                 }
+                painter.transform = savedTransform;
             }
             drawTerrain(this.painter, this.terrain, this, this._rttTiles, options);
             this._rttTiles = [];

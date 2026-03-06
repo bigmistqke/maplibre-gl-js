@@ -22,7 +22,7 @@ export function drawFillExtrusion(painter: Painter, tileManager: TileManager, la
         return;
     }
 
-    const {isRenderingToTexture} = renderOptions;
+    
     const depthMode = new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, painter.depthRangeFor3D);
 
     if (opacity === 1 && !layer.paint.get('fill-extrusion-pattern').constantOr(1 as any)) {
@@ -79,7 +79,7 @@ function drawExtrusionTiles(
             programConfiguration.updatePaintBuffers(crossfade);
         }
 
-        const projectionData = transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
+        const projectionData = transform.getProjectionData({overscaledTileID: coord});
         updatePatternPositionsInProgram(programConfiguration, fillPropertyName, constantPattern, tile, layer);
 
         const translate = translatePosition(

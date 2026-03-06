@@ -13,6 +13,12 @@ import {coveringTiles} from '../geo/projection/covering_tiles';
 import {createMat4f64} from '../util/util';
 import {type CanonicalTileRange} from '../source/image_source';
 
+/** A tile coordinate with its RTT position matrix for terrain rendering. */
+export type TerrainCoord = {
+    tileID: OverscaledTileID;
+    rttPosMatrix: mat4;
+};
+
 /**
  * @internal
  * This class is a helper for the Terrain-class, it:
@@ -113,8 +119,6 @@ export class TerrainTileManager extends Evented {
             keys[tileID.key] = true;
             this._renderableTilesKeys.push(tileID.key);
             if (!this._tiles[tileID.key]) {
-                tileID.terrainRttPosMatrix32f = new Float64Array(16) as any;
-                mat4.ortho(tileID.terrainRttPosMatrix32f, 0, EXTENT, EXTENT, 0, 0, 1);
                 this._tiles[tileID.key] = new Tile(tileID, this.tileSize);
                 this._lastTilesetChange = now();
             }
@@ -162,7 +166,7 @@ export class TerrainTileManager extends Evented {
     getTerrainCoords(
         tileID: OverscaledTileID,
         terrainTileRanges?: {[zoom: string]: CanonicalTileRange}
-    ): Record<string, OverscaledTileID> {
+    ): Record<string, TerrainCoord> {
         if (terrainTileRanges) {
             return this._getTerrainCoordsForTileRanges(tileID, terrainTileRanges);
         } else {
@@ -179,11 +183,10 @@ export class TerrainTileManager extends Evented {
      * @param tileID - the tile to look for
      * @returns the tiles that were found
      */
-    _getTerrainCoordsForRegularTile(tileID: OverscaledTileID): Record<string, OverscaledTileID> {
-        const coords: Record<string, OverscaledTileID> = {};
+    _getTerrainCoordsForRegularTile(tileID: OverscaledTileID): Record<string, TerrainCoord> {
+        const coords: Record<string, TerrainCoord> = {};
         for (const key of this._renderableTilesKeys) {
             const terrainTileID = this._tiles[key].tileID;
-            const coord = tileID.clone();
             const mat = createMat4f64();
             if (terrainTileID.canonical.equals(tileID.canonical)) {
                 mat4.ortho(mat, 0, EXTENT, EXTENT, 0, 0, 1);
@@ -192,7 +195,7 @@ export class TerrainTileManager extends Evented {
                 const dx = terrainTileID.canonical.x - (terrainTileID.canonical.x >> dz << dz);
                 const dy = terrainTileID.canonical.y - (terrainTileID.canonical.y >> dz << dz);
                 const size = EXTENT >> dz;
-                mat4.ortho(mat, 0, size, size, 0, 0, 1); // Note: we are using `size` instead of `EXTENT` here
+                mat4.ortho(mat, 0, size, size, 0, 0, 1);
                 mat4.translate(mat, mat, [-dx * size, -dy * size, 0]);
             } else if (tileID.canonical.isChildOf(terrainTileID.canonical)) {
                 const dz = tileID.canonical.z - terrainTileID.canonical.z;
@@ -205,8 +208,7 @@ export class TerrainTileManager extends Evented {
             } else {
                 continue;
             }
-            coord.terrainRttPosMatrix32f = new Float32Array(mat);
-            coords[key] = coord;
+            coords[key] = {tileID: tileID.clone(), rttPosMatrix: new Float32Array(mat) as any};
         }
         return coords;
     }
@@ -220,15 +222,14 @@ export class TerrainTileManager extends Evented {
     _getTerrainCoordsForTileRanges(
         tileID: OverscaledTileID,
         terrainTileRanges: {[zoom: string]: CanonicalTileRange}
-    ): Record<string, OverscaledTileID> {
-        const coords: Record<string, OverscaledTileID> = {};
+    ): Record<string, TerrainCoord> {
+        const coords: Record<string, TerrainCoord> = {};
         for (const key of this._renderableTilesKeys) {
             const terrainTileID = this._tiles[key].tileID;
             if (!this._isWithinTileRanges(terrainTileID, terrainTileRanges)) {
                 continue;
             }
 
-            const coord = tileID.clone();
             const mat = createMat4f64();
             if (terrainTileID.canonical.z === tileID.canonical.z) {
                 const dx = tileID.canonical.x - terrainTileID.canonical.x
@@ -263,8 +264,7 @@ export class TerrainTileManager extends Evented {
                 mat4.ortho(mat, 0, size, size, 0, 0, 1);
                 mat4.translate(mat, mat, [dx * EXTENT + dx2 * size, dy * EXTENT + dy2 * size, 0]);
             }
-            coord.terrainRttPosMatrix32f = new Float32Array(mat);
-            coords[key] = coord;
+            coords[key] = {tileID: tileID.clone(), rttPosMatrix: new Float32Array(mat) as any};
         }
         return coords;
     }
