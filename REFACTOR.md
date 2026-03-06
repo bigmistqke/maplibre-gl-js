@@ -1642,11 +1642,69 @@ See sections 12-13 of this doc for the full architecture.
 **Terrain lifecycle moved into Surface:**
 - `map.ts` — terrain tile manager update moved into `TerrainSurface.update()`
 
-#### Remaining `surface.terrain` checks
+#### Remaining terrain leaks
 
-| File | What it does | Status |
-|------|-------------|--------|
-| `handler_manager.ts:597` | Terrain-specific drag panning (screen-space center adjustment) | Needs design — involves stateful `_terrainMovement` + `_elevationFreeze` interaction with handler_manager |
-| `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | Needs heatmap Feature to provide terrain draw variant, dispatched via `surface.renderLayer()` |
-| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — may be redundant since `getMinMaxElevation()` already bakes elevation into AABBs. Needs investigation |
-| `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Inherently needs to know about terrain — this is the factory/lifecycle code |
+Surface owns world geometry AND how that geometry affects interaction. Terrain knowledge that leaked into handler_manager, camera, and map should move into Surface — not into features, since features are declarative (they provide dependencies, they don't mutate state).
+
+##### The `_elevationFreeze` problem
+
+`_elevationFreeze` is a single terrain concern ("don't update elevation mid-gesture/animation") scattered across three files:
+
+| File | Role | Lines |
+|------|------|-------|
+| `camera.ts` | Declares `_elevationFreeze` (line 306). Sets it in `_prepareElevation` (1210), clears in `_finalizeElevation` (1232) | Property + animation lifecycle |
+| `handler_manager.ts` | Sets `_elevationFreeze = true` on drag start (605, 613), clears on drag end (678) | Gesture lifecycle |
+| `map.ts` | Reads `_elevationFreeze` to skip elevation updates (2303, 3601) | Render loop guard |
+
+This should be encapsulated in Surface as an **elevation controller**:
+
+```
+surface.freezeElevation(): void    — TerrainSurface: prevents elevation updates. FlatSurface: no-op
+surface.unfreezeElevation(): void  — TerrainSurface: resumes updates. FlatSurface: no-op
+surface.isElevationFrozen: boolean — checked in map.ts render loop instead of _elevationFreeze
+```
+
+Camera and handler_manager call `surface.freezeElevation()` / `surface.unfreezeElevation()` instead of flipping a flag on Map.
+
+##### Elevation animation in Camera
+
+`_prepareElevation`, `_updateElevation`, `_finalizeElevation` in camera.ts (lines 1206-1235) interpolate elevation during `easeTo`/`flyTo`. This is terrain-specific animation logic — on flat, elevation is always 0 and these are no-ops.
+
+These could become Surface methods:
+```
+surface.prepareElevationAnimation(tr): ElevationState | null
+surface.updateElevationAnimation(state, k): void
+surface.finalizeElevationAnimation(state, tr): void
+```
+FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest.
+
+##### Handler_manager terrain panning
+
+`_terrainMovement` and the terrain-specific drag panning lifecycle should move to Surface:
+
+1. Drag starts → freeze elevation, do initial pan normally
+2. Drag continues → screen-space pan (`setCenter(screenPointToLocation(centerPoint.sub(panDelta)))`) instead of standard `setLocationAtPoint(preZoomAroundLoc, around)`
+3. Drag ends → unfreeze elevation, `recalculateZoomAndCenter`
+
+Surface methods:
+```
+onPanStart(): void           — FlatSurface: no-op. TerrainSurface: freeze elevation
+handlePan(tr, panDelta): bool — FlatSurface: false (use default). TerrainSurface: screen-space pan, return true
+onPanEnd(tr): void           — FlatSurface: no-op. TerrainSurface: unfreeze, recalculateZoomAndCenter
+```
+
+Handler_manager becomes surface-agnostic — no `_terrainMovement`, no `_elevationFreeze`.
+
+##### `terrainRttPosMatrix32f` on OverscaledTileID
+
+`tile_id.ts:100` declares `terrainRttPosMatrix32f` — a terrain render-to-texture matrix — directly on the tile ID type. `mercator_transform.ts:734` conditionally applies it. This means every tile in the system carries a terrain-specific field. Should be in a Surface-provided tile data wrapper or looked up via `surface.getBindings(tileID)`.
+
+##### Remaining direct `surface.terrain` checks
+
+| File | What it does | Path forward |
+|------|-------------|-------------|
+| `handler_manager.ts:597` | Terrain-specific drag panning | Move to Surface pan methods (see above) |
+| `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | Dispatch via `surface.renderLayer()`, or heatmap feature provides both draw functions |
+| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — may be redundant since `getMinMaxElevation()` already bakes elevation into AABBs |
+| `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Factory code — inherently knows about terrain |
+| `map.ts:2303,3601` | Checks `_elevationFreeze` to skip elevation updates | Replace with `surface.isElevationFrozen` |
