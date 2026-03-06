@@ -7,6 +7,7 @@ import {CullFaceMode} from '../gl/cull_face_mode';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {ColorMode} from '../gl/color_mode';
 import {type Terrain} from './terrain';
+import type {RenderToTexture} from './render_to_texture';
 
 /**
  * Redraw the Depth Framebuffer
@@ -69,7 +70,7 @@ function drawCoords(painter: Painter, terrain: Terrain) {
     context.viewport.set([0, 0, painter.width, painter.height]);
 }
 
-function drawTerrain(painter: Painter, terrain: Terrain, tiles: Array<Tile>, renderOptions: RenderOptions) {
+function drawTerrain(painter: Painter, terrain: Terrain, rtt: RenderToTexture, tiles: Array<Tile>, renderOptions: RenderOptions) {
     const {isRenderingGlobe} = renderOptions;
     const context = painter.context;
     const gl = context.gl;
@@ -83,7 +84,7 @@ function drawTerrain(painter: Painter, terrain: Terrain, tiles: Array<Tile>, ren
 
     for (const tile of tiles) {
         const mesh = terrain.getTerrainMesh(tile.tileID);
-        const texture = painter.surface.renderToTexture.getTexture(tile);
+        const texture = rtt.getTexture(tile);
         const terrainData = terrain.getTerrainData(tile.tileID);
         context.activeTexture.set(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture.texture);

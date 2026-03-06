@@ -167,7 +167,7 @@ export class RenderToTexture {
             for (const tile of this._renderableTiles) {
                 // if render pool is full draw current tiles to screen and free pool
                 if (this.pool.isFull()) {
-                    drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+                    drawTerrain(this.painter, this.terrain, this, this._rttTiles, options);
                     this._rttTiles = [];
                     this.pool.freeAllObjects();
                 }
@@ -198,7 +198,7 @@ export class RenderToTexture {
                     if (layer.source) tile.rttCoords[layer.source] = this._coordsAscendingStr[layer.source][tile.tileID.key];
                 }
             }
-            drawTerrain(this.painter, this.terrain, this._rttTiles, options);
+            drawTerrain(this.painter, this.terrain, this, this._rttTiles, options);
             this._rttTiles = [];
             this.pool.freeAllObjects();
 
