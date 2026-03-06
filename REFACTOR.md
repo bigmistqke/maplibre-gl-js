@@ -1718,3 +1718,22 @@ RTT was leaking across architectural boundaries: painter had to skip offscreen p
 - **TerrainSurface**: drives RTT directly in `renderFrame()` — depth/coords update, RTT prep, offscreen (non-RTT layers only), translucent with RTT stacking. No interception needed.
 
 Painter no longer imports or checks `skipOpaquePass`, `renderToTexture.handlesLayer()`, or `surface.renderLayer()`. The pass structure is entirely surface-determined. Coord maps (`_coordsAscending`, `_coordsDescending`, `_coordsDescendingSymbol`) and `_renderOptions` are stored on painter as frame-scoped state accessible to surfaces.
+
+##### Further inversion-of-control opportunities
+
+The render loop refactor revealed a broader pattern: several subsystems have their control flow inverted — the callee checks context that the caller already knows. These are candidates for the same kind of inversion that cleaned up RTT.
+
+**1. `painter.renderPass` checked by every draw function.**
+Every draw function starts with `if (painter.renderPass !== 'translucent') return` (or similar). The draw function is called for all passes and must filter itself. But the surface driving the loop already knows which pass it's in — it should only call draw functions that participate in that pass. Draw functions shouldn't need to check `renderPass` at all. This would simplify draw functions and make them pass-agnostic: they just draw. The surface (or painter helper) decides when to call them based on layer metadata (e.g. `hasOffscreenPass()`, `is3D()`, opaque vs translucent).
+
+**2. `map.setTerrain` — terrain lifecycle in Map (`map.ts:2269-2313`).**
+Map directly constructs `Terrain`, `TerrainSurface`, `RenderToTexture`, wires up event listeners for DEM tile loads (`freeRtt`), elevation updates, and cache invalidation. This is factory code that knows about terrain internals. Could be inverted: `TerrainSurface.create(painter, tileManager, options)` returns a fully wired surface with all event handlers attached, and `surface.destroy()` cleans everything up. Map just swaps surfaces — it doesn't need to know about RTT, freeRtt, or elevation update events.
+
+**3. Elevation synchronization split between Map and Surface (`map.ts:3599-3602`).**
+Map's render tick manually calls `surface.update(transform)`, then `setMinElevationForCurrentTile(surface.getMinElevationForZoom(...))`, then conditionally `setElevation(surface.getElevationForZoom(...))`. The elevation update logic is split: Map decides *when* to update, Surface provides values. Could be inverted: `surface.update(transform)` handles all elevation synchronization internally — the surface knows when elevation is frozen and what the transform needs. Map just calls `surface.update(transform)` and the transform is up to date.
+
+**4. `draw_terrain.ts:86` — compositor reaches into RTT for textures.**
+The terrain draw function accesses `painter.surface.renderToTexture.getTexture(tile)` to get the composited tile texture. Since TerrainSurface owns both RTT and the render loop, the texture could be passed through the render context or a terrain-specific draw parameter rather than reached into via the surface→RTT chain.
+
+**5. `bounding_volume_cache.ts:37` — covering tiles checks `surface.terrain`.**
+Cache key includes `options?.surface?.terrain ? 't' : ''` to differentiate terrain vs flat bounding volumes. Still an open question (see above). The covering tiles system reaches into surface to check type — the cache should ideally not know about surfaces at all.
