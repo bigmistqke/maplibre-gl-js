@@ -2294,17 +2294,13 @@ export class Map extends Camera {
             const terrainSurface = new TerrainSurface(this.terrain);
             terrainSurface.renderToTexture = new RenderToTexture(this.painter, this.terrain);
             this.surface = terrainSurface;
-            this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
-            this.transform.setElevation(this.terrain.getElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
+            this.surface.update(this.transform, true);
             this._terrainDataCallback = e => {
                 if (e.dataType === 'style') {
                     this.terrain.tileManager.freeRtt();
                 } else if (e.dataType === 'source' && e.tile) {
-                    if (e.sourceId === options.source && !this.surface.isElevationFrozen) {
-                        this.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
-                        if (this._centerClampedToGround) {
-                            this.transform.setElevation(this.terrain.getElevationForLngLatZoom(this.transform.center, this.transform.tileZoom));
-                        }
+                    if (e.sourceId === options.source) {
+                        this.surface.update(this.transform, this._centerClampedToGround);
                     }
 
                     if (e.source?.type === 'image') {
@@ -3595,12 +3591,7 @@ export class Map extends Camera {
             this.style._updateSources(this.transform);
         }
 
-        // update terrain stuff
-        this.surface.update(this.transform);
-        this.transform.setMinElevationForCurrentTile(this.surface.getMinElevationForZoom(this.transform.center, this.transform.tileZoom));
-        if (!this.surface.isElevationFrozen && this._centerClampedToGround) {
-            this.transform.setElevation(this.surface.getElevationForZoom(this.transform.center, this.transform.tileZoom));
-        }
+        this.surface.update(this.transform, this._centerClampedToGround);
 
         this._placementDirty = this.style && this.style._updatePlacement(this.transform, this.showCollisionBoxes, fadeDuration, this._crossSourceCollisions, globeRenderingChanged);
 

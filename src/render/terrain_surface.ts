@@ -35,9 +35,13 @@ export class TerrainSurface implements Surface {
 
     markDirty(): void { this._facilitator.dirty = true; }
 
-    update(transform: ITransform): void {
+    update(transform: ITransform, centerClampedToGround: boolean): void {
         this._transform = transform;
         this._terrain.tileManager.update(transform, this._terrain);
+        transform.setMinElevationForCurrentTile(this._terrain.getMinTileElevationForLngLatZoom(transform.center, transform.tileZoom));
+        if (!this._elevationFrozen && centerClampedToGround) {
+            transform.setElevation(this._terrain.getElevationForLngLatZoom(transform.center, transform.tileZoom));
+        }
     }
 
     getElevation(lnglat: LngLat): number {

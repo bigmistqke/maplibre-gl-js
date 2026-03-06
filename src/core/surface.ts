@@ -61,8 +61,8 @@ export interface Surface {
     /** Direct access to the underlying Terrain object (for FBO management). Null for flat. */
     readonly terrain: Terrain | null;
 
-    /** Called once per frame to cache the current transform and update terrain tile manager. */
-    update(transform: ITransform): void;
+    /** Called once per frame to sync elevation with the transform. */
+    update(transform: ITransform, centerClampedToGround: boolean): void;
 
     // === Render strategy ===
 
@@ -117,7 +117,7 @@ export class FlatSurface implements Surface {
     isOccluded(_screenPos: Point, _lngLat: LngLat, _offset: Point, _transform: IReadonlyTransform): {base: boolean; center: boolean} { return {base: false, center: false}; }
     isPointOnSurface(_point: Point): boolean { return true; }
     getBindings(_tileID: OverscaledTileID): TerrainData | null { return null; }
-    update(_transform: ITransform): void {}
+    update(_transform: ITransform, _centerClampedToGround: boolean): void {}
     renderFrame(painter: Painter): void { painter._renderPasses(); }
     ensureFrameBuffers(_painter: Painter): void {}
     markDirty(): void {}
