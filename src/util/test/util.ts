@@ -258,7 +258,8 @@ export function createTerrain(): Terrain {
 export function createTerrainSurface(terrain: Terrain): Surface {
     return {
         shaderExtensions: [],
-        renderToTexture: null,
+        isRenderingToTexture: false,
+        destroy: () => {},
         terrain,
         getElevation: (lnglat) => terrain.getElevationForLngLat(lnglat, null),
         getElevationForZoom: (lnglat, zoom) => terrain.getElevationForLngLatZoom(lnglat, zoom),

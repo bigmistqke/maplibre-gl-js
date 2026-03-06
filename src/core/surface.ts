@@ -2,7 +2,6 @@ import type {LngLat} from '../geo/lng_lat';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate';
 import type {OverscaledTileID} from '../tile/tile_id';
 import type {TerrainData, Terrain} from '../render/terrain';
-import type {RenderToTexture} from '../render/render_to_texture';
 import type {IReadonlyTransform, ITransform} from '../geo/transform_interface';
 import type {Painter} from '../render/painter';
 import type {ShaderExtension} from './shader_extension';
@@ -55,8 +54,8 @@ export interface Surface {
     /** Per-tile GPU bindings (DEM textures + uniforms) for shader draw calls. */
     getBindings(tileID: OverscaledTileID): TerrainData | null;
 
-    /** Render-to-texture manager for terrain rendering, or null for flat. */
-    readonly renderToTexture: RenderToTexture | null;
+    /** Whether this surface renders layers into per-tile textures (for raster fade control). */
+    readonly isRenderingToTexture: boolean;
 
     /** Direct access to the underlying Terrain object (for FBO management). Null for flat. */
     readonly terrain: Terrain | null;
@@ -72,6 +71,9 @@ export interface Surface {
      * TerrainSurface uses RTT tile-based rendering.
      */
     renderFrame(painter: Painter): void;
+
+    /** Release GPU resources (FBOs, textures, RTT pool). */
+    destroy(): void;
 
     /** Force-update depth/coords FBOs (e.g. before reading coords pixel). */
     ensureFrameBuffers(painter: Painter): void;
@@ -103,7 +105,7 @@ export interface Surface {
  */
 export class FlatSurface implements Surface {
     readonly shaderExtensions: readonly ShaderExtension[] = [];
-    readonly renderToTexture: RenderToTexture | null = null;
+    readonly isRenderingToTexture = false;
     readonly terrain: Terrain | null = null;
 
     getElevation(_lnglat: LngLat): number { return 0; }
@@ -118,6 +120,7 @@ export class FlatSurface implements Surface {
     isPointOnSurface(_point: Point): boolean { return true; }
     getBindings(_tileID: OverscaledTileID): TerrainData | null { return null; }
     update(_transform: ITransform, _centerClampedToGround: boolean): void {}
+    destroy(): void {}
     renderFrame(painter: Painter): void { painter._renderPasses(); }
     ensureFrameBuffers(_painter: Painter): void {}
     markDirty(): void {}

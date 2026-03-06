@@ -32,6 +32,11 @@ export class TerrainSurface implements Surface {
     }
 
     get terrain(): Terrain { return this._terrain; }
+    get isRenderingToTexture(): boolean { return this.renderToTexture != null; }
+
+    destroy(): void {
+        this.renderToTexture?.destruct();
+    }
 
     markDirty(): void { this._facilitator.dirty = true; }
 
