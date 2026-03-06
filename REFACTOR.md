@@ -1699,28 +1699,22 @@ FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest
 | File | What it does | Path forward |
 |------|-------------|-------------|
 | `handler_manager.ts:597` | Terrain-specific drag panning | Fix standard pan to handle elevation (see above) |
-| `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | Make RTT handle multi-pass layers (see below) |
+| `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | ✅ Done — branches on `isRenderingToTexture` instead of `surface.terrain`. Heatmap added to RTT LAYERS. |
 | `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | Open question — the `_t` suffix prevents stale flat AABBs from being reused for terrain frames during terrain toggle (cache survives up to 2 frames via `swapBuffers`). Replacing with `allowVariableZoom()` or similar is just `isTerrain` with extra steps. Removing it entirely may be safe (stale AABBs only affect frustum culling for 2 frames) but needs verification. |
 | `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Factory code — inherently knows about terrain |
 | `map.ts:2303,3601` | Checks `_elevationFreeze` to skip elevation updates | ✅ Done — uses `surface.isElevationFrozen` |
 
-##### Heatmap render strategy — make RTT handle multi-pass layers
+##### Heatmap render strategy — ✅ Done
 
-The heatmap `surface.terrain` check exists because heatmap has two fundamentally different render algorithms:
-- **Flat**: one screen-sized FBO (4x downscaled), all tiles rendered with additive blending, composite once as fullscreen quad. Kernels bleed across tile boundaries.
-- **Terrain**: per-tile FBOs at tile resolution, each tile rendered separately, each composited with terrain projection matrix. Kernels clipped at tile edges.
+Resolved by branching on `isRenderingToTexture` (a render context flag) instead of `surface.terrain` (a type check). Heatmap added to RTT's LAYERS table. When RTT calls the draw function with `isRenderingToTexture: true`, it does both passes (kernel accumulation into per-tile FBO + color ramp composite) inline per coord. The flat path unchanged — uses renderPass-based offscreen/translucent split. TerrainSurface's offscreen loop skips layers that `renderToTexture.handlesLayer()` returns true for.
 
-The terrain path exists because heatmap isn't in RTT's `LAYERS` list — RTT doesn't intercept it, so the draw function handles terrain itself. Simply adding heatmap to RTT's `LAYERS` doesn't work because RTT calls `draw` once per tile, but heatmap's flat path creates its own FBO, renders all tiles, and composites — a multi-pass pipeline that doesn't fit RTT's single-draw-call-per-layer model.
+##### RTT as a cross-cutting concern — ✅ Done (Option A)
 
-**Inspiration: deck.gl Layer Extensions.** In deck.gl, terrain draping is a composable extension (`TerrainExtension`) that any layer can opt into. The layer doesn't know about terrain — the extension modifies the render pipeline. Layers provide one draw path; the system adapts it.
+RTT was leaking across architectural boundaries: painter had to skip offscreen passes for RTT-handled layers, skip the opaque pass, intercept the translucent loop via `surface.renderLayer()`, and check `surface.renderToTexture` for globe depth. The fundamental tension was that painter thinks in passes (offscreen → opaque → translucent) while RTT thinks in tiles.
 
-**Proposed fix: make RTT smart enough to intercept multi-pass layers.** Instead of heatmap providing two algorithms, RTT should be able to wrap any layer — including ones with custom offscreen passes. When RTT intercepts a heatmap layer:
-1. It binds its per-tile FBO (as it does for fill, line, raster)
-2. Heatmap's flat draw runs — but "screen" is now the tile FBO
-3. Heatmap creates its kernel FBO relative to the current viewport (tile-sized, not screen-sized)
-4. Heatmap composites into the current FBO (the tile FBO)
+**Resolved: Surface owns the full render loop.** Three Surface interface members removed (`skipOpaquePass`, `prepareFrame`, `renderLayer`), replaced by one: `renderFrame(painter)`. Painter becomes render infrastructure — it exposes helpers (`_prepareMainFramebuffer`, `_finalizeMainPass`, `_renderPasses`) and the surfaces compose them.
 
-What RTT needs to support:
-- **Viewport-relative FBO sizing**: layers that create FBOs should use the current viewport size, not `painter.width/height`. RTT already sets `context.viewport` per tile.
-- **FBO nesting**: after heatmap's offscreen pass creates/destroys its own FBO, RTT's tile FBO must be rebound. This may already work if heatmap correctly restores framebuffer state.
-- **Multi-pass per tile**: RTT may need to call the draw function for both `offscreen` and `translucent` render passes per tile, not just once.
+- **FlatSurface**: one-line delegation to `painter._renderPasses()` (standard 3-pass loop)
+- **TerrainSurface**: drives RTT directly in `renderFrame()` — depth/coords update, RTT prep, offscreen (non-RTT layers only), translucent with RTT stacking. No interception needed.
+
+Painter no longer imports or checks `skipOpaquePass`, `renderToTexture.handlesLayer()`, or `surface.renderLayer()`. The pass structure is entirely surface-determined. Coord maps (`_coordsAscending`, `_coordsDescending`, `_coordsDescendingSymbol`) and `_renderOptions` are stored on painter as frame-scoped state accessible to surfaces.
