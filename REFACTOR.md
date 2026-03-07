@@ -6,6 +6,10 @@ MapLibre GL JS is monolithic. Every source type, layer type, draw function, shad
 
 Beyond the tree-shaking problem, `Map` is a monolith that accumulates all responsibilities: DOM, camera, style parsing, rendering, input handling, terrain lifecycle, public API. Cross-cutting concerns like terrain can't be cleanly featurized because `Map` owns their lifecycle and the renderer has no extension points for render strategies.
 
+## Project Philosophy
+
+This is a **research project** investigating the limits of how far we can go in modularizing and decomposing MapLibre's features. We allow ourselves to make clean breaks from previous code and architecture when it serves the goal of better modularity. When we do make breaking changes, we document them thoroughly in commit messages so the reasoning and trade-offs are preserved.
+
 ## Design Principles
 
 1. **Three core primitives.** The rendering engine has three composable primitives: **Transform** (camera state), **Surface** (world geometry + render strategy), **Renderer** (executes frames). Everything else — Style, Map, handlers — is convenience built on top.
@@ -52,12 +56,12 @@ Renderer    →  executes a frame given transform, surface, and layers
 The renderer asks the surface how to render each layer:
 
 ```ts
-surface.prepareFrame(renderer, transform)
+surface.prepareFrame(renderer, transform);
 for (layer of layers) {
-    if (surface.renderLayer(layer)) continue  // surface handled it (e.g. RTT)
-    renderer.drawLayer(layer)                 // direct path
+    if (surface.renderLayer(layer)) continue; // surface handled it (e.g. RTT)
+    renderer.drawLayer(layer); // direct path
 }
-surface.finalizeFrame(renderer)              // e.g. drape mesh for terrain
+surface.finalizeFrame(renderer); // e.g. drape mesh for terrain
 ```
 
 No `if (terrain)` anywhere in core.
@@ -193,38 +197,38 @@ createMap({ use: [vectorTiles(), raster(), fill(patterns), ...], ... });
 
 Each bundles: source (if needed) + layer type + bucket + draw function + programs + shaders.
 
-| Feature | Factory | Sub-features | What it renders |
-|---|---|---|---|
-| **`raster`** | `raster(image?, video?, canvas?)` | `image`, `video`, `canvas` | Raster tiles. Sub-features add image/video/canvas source support. |
-| **`fill`** | `fill(patterns?)` | `patterns` | Filled polygons. `patterns` adds ImageManager for fill-pattern. |
-| **`line`** | `line(dashes?, gradients?)` | `dashes`, `gradients` | Lines/polylines. `dashes` adds LineAtlas. `gradients` adds gradient texture support. |
-| **`circle`** | `circle()` | *(none)* | Circles at points. |
-| **`labels`** | `labels(text?, icons?, collision?)` | `text`, `icons`, `collision` | Text labels and icons. `text` adds GlyphManager. `icons` adds ImageManager. `collision` adds Placement + CollisionIndex. |
-| **`background`** | `background(patterns?)` | `patterns` | Background color/pattern. |
-| **`heatmap`** | `heatmap()` | *(none)* | Point density heatmaps. Uses FBO. |
-| **`fillExtrusion`** | `fillExtrusion(patterns?)` | `patterns` | 3D extruded polygons. |
-| **`sky`** | `sky()` | *(none)* | Sky/atmosphere rendering. |
-| **`custom`** | `custom()` | *(none)* | Custom WebGL layer interface. |
+| Feature             | Factory                             | Sub-features                 | What it renders                                                                                                          |
+| ------------------- | ----------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **`raster`**        | `raster(image?, video?, canvas?)`   | `image`, `video`, `canvas`   | Raster tiles. Sub-features add image/video/canvas source support.                                                        |
+| **`fill`**          | `fill(patterns?)`                   | `patterns`                   | Filled polygons. `patterns` adds ImageManager for fill-pattern.                                                          |
+| **`line`**          | `line(dashes?, gradients?)`         | `dashes`, `gradients`        | Lines/polylines. `dashes` adds LineAtlas. `gradients` adds gradient texture support.                                     |
+| **`circle`**        | `circle()`                          | _(none)_                     | Circles at points.                                                                                                       |
+| **`labels`**        | `labels(text?, icons?, collision?)` | `text`, `icons`, `collision` | Text labels and icons. `text` adds GlyphManager. `icons` adds ImageManager. `collision` adds Placement + CollisionIndex. |
+| **`background`**    | `background(patterns?)`             | `patterns`                   | Background color/pattern.                                                                                                |
+| **`heatmap`**       | `heatmap()`                         | _(none)_                     | Point density heatmaps. Uses FBO.                                                                                        |
+| **`fillExtrusion`** | `fillExtrusion(patterns?)`          | `patterns`                   | 3D extruded polygons.                                                                                                    |
+| **`sky`**           | `sky()`                             | _(none)_                     | Sky/atmosphere rendering.                                                                                                |
+| **`custom`**        | `custom()`                          | _(none)_                     | Custom WebGL layer interface.                                                                                            |
 
 ### Source Features
 
 Data-only features that provide data for rendering features to consume.
 
-| Feature | Factory | What it provides |
-|---|---|---|
+| Feature           | Factory         | What it provides                                                                              |
+| ----------------- | --------------- | --------------------------------------------------------------------------------------------- |
 | **`vectorTiles`** | `vectorTiles()` | Vector tile source + worker source. Feeds fill, line, circle, labels, heatmap, fillExtrusion. |
-| **`geojson`** | `geojson()` | GeoJSON source + worker source. Feeds same layers as vectorTiles. |
+| **`geojson`**     | `geojson()`     | GeoJSON source + worker source. Feeds same layers as vectorTiles.                             |
 
 ### Elevation Features
 
 Features that depend on DEM (digital elevation model) data.
 
-| Feature | Factory | What it provides |
-|---|---|---|
-| **`elevation`** | `elevation(hillshade?, colorRelief?, terrain?)` | RasterDEM source + worker. Sub-features add rendering features. |
-| `hillshade` | sub-feature of elevation | Hillshade layer + draw + programs. |
-| `colorRelief` | sub-feature of elevation | Color relief layer + draw + programs. |
-| `terrain` | sub-feature of elevation | 3D terrain (render-to-texture, depth buffer). Deeply integrated with Painter. |
+| Feature         | Factory                                         | What it provides                                                              |
+| --------------- | ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| **`elevation`** | `elevation(hillshade?, colorRelief?, terrain?)` | RasterDEM source + worker. Sub-features add rendering features.               |
+| `hillshade`     | sub-feature of elevation                        | Hillshade layer + draw + programs.                                            |
+| `colorRelief`   | sub-feature of elevation                        | Color relief layer + draw + programs.                                         |
+| `terrain`       | sub-feature of elevation                        | 3D terrain (render-to-texture, depth buffer). Deeply integrated with Painter. |
 
 ---
 
@@ -236,13 +240,13 @@ No sub-features, no service dependencies. The smallest possible feature:
 
 ```typescript
 // maplibre-mini/circle/index.ts
-import { CircleStyleLayer } from '../style/style_layer/circle_style_layer';
-import { CircleBucket } from '../data/bucket/circle_bucket';
-import { drawCircle } from '../render/draw_circle';
-import { circleUniforms } from '../render/program/circle_program';
-import circleVert from '../shaders/circle.vertex.glsl';
-import circleFrag from '../shaders/circle.fragment.glsl';
-import type { Feature } from '../core/feature';
+import { CircleStyleLayer } from "../style/style_layer/circle_style_layer";
+import { CircleBucket } from "../data/bucket/circle_bucket";
+import { drawCircle } from "../render/draw_circle";
+import { circleUniforms } from "../render/program/circle_program";
+import circleVert from "../shaders/circle.vertex.glsl";
+import circleFrag from "../shaders/circle.fragment.glsl";
+import type { Feature } from "../core/feature";
 
 export function circle(): Feature {
     return {
@@ -251,10 +255,14 @@ export function circle(): Feature {
                 StyleLayer: CircleStyleLayer,
                 Bucket: CircleBucket,
                 draw: drawCircle,
-            }
+            },
         },
         programs: {
-            circle: { uniforms: circleUniforms, vert: circleVert, frag: circleFrag },
+            circle: {
+                uniforms: circleUniforms,
+                vert: circleVert,
+                frag: circleFrag,
+            },
         },
     };
 }
@@ -266,15 +274,18 @@ Sub-features are optional features that add service dependencies:
 
 ```typescript
 // maplibre-mini/fill/index.ts
-import { FillStyleLayer } from '../style/style_layer/fill_style_layer';
-import { FillBucket } from '../data/bucket/fill_bucket';
-import { drawFill } from '../render/draw_fill';
-import { fillUniforms, fillOutlineUniforms } from '../render/program/fill_program';
-import fillVert from '../shaders/fill.vertex.glsl';
-import fillFrag from '../shaders/fill.fragment.glsl';
+import { FillStyleLayer } from "../style/style_layer/fill_style_layer";
+import { FillBucket } from "../data/bucket/fill_bucket";
+import { drawFill } from "../render/draw_fill";
+import {
+    fillUniforms,
+    fillOutlineUniforms,
+} from "../render/program/fill_program";
+import fillVert from "../shaders/fill.vertex.glsl";
+import fillFrag from "../shaders/fill.fragment.glsl";
 // ... more shader imports
-import type { Feature } from '../core/feature';
-import { merge } from '../core/merge';
+import type { Feature } from "../core/feature";
+import { merge } from "../core/merge";
 
 const fillBase: Feature = {
     layers: {
@@ -282,11 +293,15 @@ const fillBase: Feature = {
             StyleLayer: FillStyleLayer,
             Bucket: FillBucket,
             draw: drawFill,
-        }
+        },
     },
     programs: {
-        fill:        { uniforms: fillUniforms, vert: fillVert, frag: fillFrag },
-        fillOutline: { uniforms: fillOutlineUniforms, vert: fillOutlineVert, frag: fillOutlineFrag },
+        fill: { uniforms: fillUniforms, vert: fillVert, frag: fillFrag },
+        fillOutline: {
+            uniforms: fillOutlineUniforms,
+            vert: fillOutlineVert,
+            frag: fillOutlineFrag,
+        },
     },
 };
 
@@ -297,18 +312,29 @@ export function fill(...features: Feature[]): Feature {
 // --- Sub-feature: patterns (separate export, tree-shakeable) ---
 // Only imported if the consumer explicitly uses it
 
-import { fillPatternUniforms, fillOutlinePatternUniforms } from '../render/program/fill_program';
-import fillPatternVert from '../shaders/fill_pattern.vertex.glsl';
-import fillPatternFrag from '../shaders/fill_pattern.fragment.glsl';
-import { imageManagerService } from '../services/image_manager_service';
-import { imageAtlasProcessor } from '../services/image_atlas_processor';
+import {
+    fillPatternUniforms,
+    fillOutlinePatternUniforms,
+} from "../render/program/fill_program";
+import fillPatternVert from "../shaders/fill_pattern.vertex.glsl";
+import fillPatternFrag from "../shaders/fill_pattern.fragment.glsl";
+import { imageManagerService } from "../services/image_manager_service";
+import { imageAtlasProcessor } from "../services/image_atlas_processor";
 
 export const patterns: Feature = {
     services: [imageManagerService],
     tileProcessors: [imageAtlasProcessor],
     programs: {
-        fillPattern:        { uniforms: fillPatternUniforms, vert: fillPatternVert, frag: fillPatternFrag },
-        fillOutlinePattern: { uniforms: fillOutlinePatternUniforms, vert: fillOutlinePatternVert, frag: fillOutlinePatternFrag },
+        fillPattern: {
+            uniforms: fillPatternUniforms,
+            vert: fillPatternVert,
+            frag: fillPatternFrag,
+        },
+        fillOutlinePattern: {
+            uniforms: fillOutlinePatternUniforms,
+            vert: fillOutlinePatternVert,
+            frag: fillOutlinePatternFrag,
+        },
     },
 };
 ```
@@ -321,14 +347,14 @@ Raster bundles source + layer because they're inseparable:
 
 ```typescript
 // maplibre-mini/raster/index.ts
-import { RasterTileSource } from '../source/raster_tile_source';
-import { RasterStyleLayer } from '../style/style_layer/raster_style_layer';
-import { drawRaster } from '../render/draw_raster';
-import { rasterUniforms } from '../render/program/raster_program';
-import rasterVert from '../shaders/raster.vertex.glsl';
-import rasterFrag from '../shaders/raster.fragment.glsl';
-import type { Feature } from '../core/feature';
-import { merge } from '../core/merge';
+import { RasterTileSource } from "../source/raster_tile_source";
+import { RasterStyleLayer } from "../style/style_layer/raster_style_layer";
+import { drawRaster } from "../render/draw_raster";
+import { rasterUniforms } from "../render/program/raster_program";
+import rasterVert from "../shaders/raster.vertex.glsl";
+import rasterFrag from "../shaders/raster.fragment.glsl";
+import type { Feature } from "../core/feature";
+import { merge } from "../core/merge";
 
 const rasterBase: Feature = {
     sources: {
@@ -339,10 +365,14 @@ const rasterBase: Feature = {
             StyleLayer: RasterStyleLayer,
             draw: drawRaster,
             // No Bucket — raster tiles are pre-rendered images
-        }
+        },
     },
     programs: {
-        raster: { uniforms: rasterUniforms, vert: rasterVert, frag: rasterFrag },
+        raster: {
+            uniforms: rasterUniforms,
+            vert: rasterVert,
+            frag: rasterFrag,
+        },
     },
 };
 
@@ -352,9 +382,9 @@ export function raster(...features: Feature[]): Feature {
 
 // --- Sub-features: additional source types ---
 
-export { image } from './image';     // ImageSource support
-export { video } from './video';     // VideoSource support
-export { canvas } from './canvas';   // CanvasSource support
+export { image } from "./image"; // ImageSource support
+export { video } from "./video"; // VideoSource support
+export { canvas } from "./canvas"; // CanvasSource support
 ```
 
 ### Complex feature: `labels`
@@ -363,14 +393,14 @@ The largest feature, with multiple sub-features:
 
 ```typescript
 // maplibre-mini/labels/index.ts
-import { SymbolStyleLayer } from '../style/style_layer/symbol_style_layer';
-import { SymbolBucket } from '../data/bucket/symbol_bucket';
-import { drawSymbol } from '../render/draw_symbol';
-import { symbolIconUniforms } from '../render/program/symbol_program';
-import symbolIconVert from '../shaders/symbol_icon.vertex.glsl';
-import symbolIconFrag from '../shaders/symbol_icon.fragment.glsl';
-import type { Feature } from '../core/feature';
-import { merge } from '../core/merge';
+import { SymbolStyleLayer } from "../style/style_layer/symbol_style_layer";
+import { SymbolBucket } from "../data/bucket/symbol_bucket";
+import { drawSymbol } from "../render/draw_symbol";
+import { symbolIconUniforms } from "../render/program/symbol_program";
+import symbolIconVert from "../shaders/symbol_icon.vertex.glsl";
+import symbolIconFrag from "../shaders/symbol_icon.fragment.glsl";
+import type { Feature } from "../core/feature";
+import { merge } from "../core/merge";
 
 const labelsBase: Feature = {
     layers: {
@@ -378,10 +408,14 @@ const labelsBase: Feature = {
             StyleLayer: SymbolStyleLayer,
             Bucket: SymbolBucket,
             draw: drawSymbol,
-        }
+        },
     },
     programs: {
-        symbolIcon: { uniforms: symbolIconUniforms, vert: symbolIconVert, frag: symbolIconFrag },
+        symbolIcon: {
+            uniforms: symbolIconUniforms,
+            vert: symbolIconVert,
+            frag: symbolIconFrag,
+        },
     },
 };
 
@@ -391,27 +425,31 @@ export function labels(...features: Feature[]): Feature {
 
 // --- Sub-features (separate exports, tree-shakeable) ---
 
-export { text } from './text';           // GlyphManager + SDF shaders + glyph atlas processor
-export { icons } from './icons';         // ImageManager (shared)
-export { collision } from './collision'; // Placement + CollisionIndex + CrossTileSymbolIndex
+export { text } from "./text"; // GlyphManager + SDF shaders + glyph atlas processor
+export { icons } from "./icons"; // ImageManager (shared)
+export { collision } from "./collision"; // Placement + CollisionIndex + CrossTileSymbolIndex
 ```
 
 Where each sub-feature file imports only what it needs:
 
 ```typescript
 // maplibre-mini/labels/text.ts
-import { glyphManagerService } from '../services/glyph_manager_service';
-import { glyphAtlasProcessor } from '../services/glyph_atlas_processor';
-import { symbolSDFUniforms } from '../render/program/symbol_program';
-import symbolSDFVert from '../shaders/symbol_sdf.vertex.glsl';
-import symbolSDFFrag from '../shaders/symbol_sdf.fragment.glsl';
-import type { Feature } from '../core/feature';
+import { glyphManagerService } from "../services/glyph_manager_service";
+import { glyphAtlasProcessor } from "../services/glyph_atlas_processor";
+import { symbolSDFUniforms } from "../render/program/symbol_program";
+import symbolSDFVert from "../shaders/symbol_sdf.vertex.glsl";
+import symbolSDFFrag from "../shaders/symbol_sdf.fragment.glsl";
+import type { Feature } from "../core/feature";
 
 export const text: Feature = {
     services: [glyphManagerService],
     tileProcessors: [glyphAtlasProcessor],
     programs: {
-        symbolSDF: { uniforms: symbolSDFUniforms, vert: symbolSDFVert, frag: symbolSDFFrag },
+        symbolSDF: {
+            uniforms: symbolSDFUniforms,
+            vert: symbolSDFVert,
+            frag: symbolSDFFrag,
+        },
     },
 };
 ```
@@ -438,7 +476,7 @@ function mergeFeatures(features: Feature[]): MergedFeatureConfig {
     const merged: MergedFeatureConfig = {
         sources: {},
         layers: {},
-        services: [],  // de-duped by identity
+        services: [], // de-duped by identity
         programs: {},
         workerSources: {},
         tileProcessors: [],
@@ -448,7 +486,8 @@ function mergeFeatures(features: Feature[]): MergedFeatureConfig {
         if (feature.sources) Object.assign(merged.sources, feature.sources);
         if (feature.layers) Object.assign(merged.layers, feature.layers);
         if (feature.programs) Object.assign(merged.programs, feature.programs);
-        if (feature.workerSources) Object.assign(merged.workerSources, feature.workerSources);
+        if (feature.workerSources)
+            Object.assign(merged.workerSources, feature.workerSources);
         if (feature.services) {
             for (const svc of feature.services) {
                 if (!merged.services.includes(svc)) merged.services.push(svc);
@@ -456,7 +495,8 @@ function mergeFeatures(features: Feature[]): MergedFeatureConfig {
         }
         if (feature.tileProcessors) {
             for (const proc of feature.tileProcessors) {
-                if (!merged.tileProcessors.includes(proc)) merged.tileProcessors.push(proc);
+                if (!merged.tileProcessors.includes(proc))
+                    merged.tileProcessors.push(proc);
             }
         }
     }
@@ -475,7 +515,7 @@ class Style {
         if (!def) {
             throw new Error(
                 `Layer type "${spec.type}" is not available. ` +
-                `Add the corresponding feature to createMap({ use: [...] }).`
+                    `Add the corresponding feature to createMap({ use: [...] }).`,
             );
         }
         return new def.StyleLayer(spec);
@@ -486,7 +526,7 @@ class Style {
         if (!def) {
             throw new Error(
                 `Source type "${spec.type}" is not available. ` +
-                `Add the corresponding feature to createMap({ use: [...] }).`
+                    `Add the corresponding feature to createMap({ use: [...] }).`,
             );
         }
         return new def.Source(id, spec, this.dispatcher, this);
@@ -498,7 +538,11 @@ class Style {
 
 ```typescript
 class Painter {
-    renderLayer(layer: StyleLayer, tileManager: TileManager, coords: OverscaledTileID[]) {
+    renderLayer(
+        layer: StyleLayer,
+        tileManager: TileManager,
+        coords: OverscaledTileID[],
+    ) {
         const def = this._featureConfig.layers[layer.type];
         if (!def?.draw) return;
         def.draw(this, tileManager, layer, coords, this._renderOptions);
@@ -506,7 +550,8 @@ class Painter {
 
     getProgram(name: string, ...args): Program {
         const def = this._featureConfig.programs[name];
-        if (!def) throw new Error(`Program "${name}" not registered by any feature.`);
+        if (!def)
+            throw new Error(`Program "${name}" not registered by any feature.`);
         return this._createOrGetCachedProgram(name, def, ...args);
     }
 }
@@ -520,34 +565,38 @@ The key insight: the consumer creates ONE feature config in a shared module. Bot
 
 ```typescript
 // features.ts — the shared config
-import { fill, patterns } from 'maplibre-mini/fill';
-import { vectorTiles } from 'maplibre-mini/vt';
-import { raster } from 'maplibre-mini/raster';
-import { labels, text, collision } from 'maplibre-mini/labels';
-import { background } from 'maplibre-mini/background';
+import { fill, patterns } from "maplibre-mini/fill";
+import { vectorTiles } from "maplibre-mini/vt";
+import { raster } from "maplibre-mini/raster";
+import { labels, text, collision } from "maplibre-mini/labels";
+import { background } from "maplibre-mini/background";
 
 export const features = [
-    vectorTiles(), raster(), fill(patterns), labels(text, collision), background()
+    vectorTiles(),
+    raster(),
+    fill(patterns),
+    labels(text, collision),
+    background(),
 ];
 ```
 
 ```typescript
 // main.ts — main thread entry
-import { createMap } from 'maplibre-mini';
-import { features } from './features';
+import { createMap } from "maplibre-mini";
+import { features } from "./features";
 
 const map = createMap({
     use: features,
-    worker: new URL('./worker.ts', import.meta.url),  // explicit worker URL
-    container: 'map',
-    style: '...',
+    worker: new URL("./worker.ts", import.meta.url), // explicit worker URL
+    container: "map",
+    style: "...",
 });
 ```
 
 ```typescript
 // worker.ts — worker thread entry
-import { createWorker } from 'maplibre-mini/worker';
-import { features } from './features';
+import { createWorker } from "maplibre-mini/worker";
+import { features } from "./features";
 
 createWorker(features);
 ```
@@ -565,7 +614,7 @@ export function createWorker(features: Feature[]) {
     // - Worker sources from config.workerSources
     // - Tile processors from config.tileProcessors
 
-    worker.start();  // begins listening for messages from main thread
+    worker.start(); // begins listening for messages from main thread
 }
 ```
 
@@ -581,8 +630,13 @@ Within a feature, both main-thread code (draw functions, shaders) and worker cod
 class WorkerRuntime {
     _getWorkerSource(sourceType: string): WorkerSource {
         const def = this._config.workerSources[sourceType];
-        if (!def) throw new Error(`Worker source "${sourceType}" not available.`);
-        return new def.WorkerSource(this._actor, this._layerIndex, this._availableImages);
+        if (!def)
+            throw new Error(`Worker source "${sourceType}" not available.`);
+        return new def.WorkerSource(
+            this._actor,
+            this._layerIndex,
+            this._availableImages,
+        );
     }
 }
 ```
@@ -609,9 +663,13 @@ The worker needs `createStyleLayer()` for the `StyleLayerIndex`. With the featur
 
 ```typescript
 // Instead of a switch statement, use the merged config
-function createStyleLayer(spec: LayerSpecification, config: MergedFeatureConfig): StyleLayer {
+function createStyleLayer(
+    spec: LayerSpecification,
+    config: MergedFeatureConfig,
+): StyleLayer {
     const def = config.layers[spec.type];
-    if (!def) throw new Error(`Layer type "${spec.type}" not in feature config.`);
+    if (!def)
+        throw new Error(`Layer type "${spec.type}" not in feature config.`);
     return new def.StyleLayer(spec);
 }
 ```
@@ -626,31 +684,39 @@ Every example follows the same pattern: features.ts (shared config) + main.ts + 
 
 ```typescript
 // features.ts
-import { raster } from 'maplibre-mini/raster';
-import { background } from 'maplibre-mini/background';
+import { raster } from "maplibre-mini/raster";
+import { background } from "maplibre-mini/background";
 export const features = [raster(), background()];
 ```
 
 ```typescript
 // main.ts
-import { createMap } from 'maplibre-mini';
-import { features } from './features';
+import { createMap } from "maplibre-mini";
+import { features } from "./features";
 
 const map = createMap({
     use: features,
-    worker: new URL('./worker.ts', import.meta.url),
-    container: 'map',
-    projection: 'globe',
+    worker: new URL("./worker.ts", import.meta.url),
+    container: "map",
+    projection: "globe",
     style: {
         version: 8,
         sources: {
-            osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256 }
+            osm: {
+                type: "raster",
+                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tileSize: 256,
+            },
         },
         layers: [
-            { id: 'bg', type: 'background', paint: { 'background-color': '#001122' } },
-            { id: 'osm', type: 'raster', source: 'osm' }
-        ]
-    }
+            {
+                id: "bg",
+                type: "background",
+                paint: { "background-color": "#001122" },
+            },
+            { id: "osm", type: "raster", source: "osm" },
+        ],
+    },
 });
 
 map.easeTo({ center: [10, 50], zoom: 3, pitch: 40, bearing: 20 });
@@ -658,8 +724,8 @@ map.easeTo({ center: [10, 50], zoom: 3, pitch: 40, bearing: 20 });
 
 ```typescript
 // worker.ts
-import { createWorker } from 'maplibre-mini/worker';
-import { features } from './features';
+import { createWorker } from "maplibre-mini/worker";
+import { features } from "./features";
 createWorker(features);
 ```
 
@@ -667,26 +733,26 @@ createWorker(features);
 
 ```typescript
 // features.ts
-export { standardMap as features } from 'maplibre-mini/presets';
+export { standardMap as features } from "maplibre-mini/presets";
 ```
 
 ```typescript
 // main.ts
-import { createMap } from 'maplibre-mini';
-import { features } from './features';
+import { createMap } from "maplibre-mini";
+import { features } from "./features";
 
 const map = createMap({
     use: features,
-    worker: new URL('./worker.ts', import.meta.url),
-    container: 'map',
-    style: 'https://demotiles.maplibre.org/style.json'
+    worker: new URL("./worker.ts", import.meta.url),
+    container: "map",
+    style: "https://demotiles.maplibre.org/style.json",
 });
 ```
 
 ```typescript
 // worker.ts
-import { createWorker } from 'maplibre-mini/worker';
-import { features } from './features';
+import { createWorker } from "maplibre-mini/worker";
+import { features } from "./features";
 createWorker(features);
 ```
 
@@ -694,10 +760,10 @@ createWorker(features);
 
 ```typescript
 // features.ts
-import { vectorTiles } from 'maplibre-mini/vt';
-import { fill } from 'maplibre-mini/fill';
-import { circle } from 'maplibre-mini/circle';
-import { background } from 'maplibre-mini/background';
+import { vectorTiles } from "maplibre-mini/vt";
+import { fill } from "maplibre-mini/fill";
+import { circle } from "maplibre-mini/circle";
+import { background } from "maplibre-mini/background";
 
 export const features = [vectorTiles(), fill(), circle(), background()];
 // No labels → no GlyphManager, no collision, no SDF shaders in bundle
@@ -707,10 +773,10 @@ export const features = [vectorTiles(), fill(), circle(), background()];
 
 ```typescript
 // features.ts
-import { vectorTiles } from 'maplibre-mini/vt';
-import { fill } from 'maplibre-mini/fill';
-import { labels, text } from 'maplibre-mini/labels';
-import { background } from 'maplibre-mini/background';
+import { vectorTiles } from "maplibre-mini/vt";
+import { fill } from "maplibre-mini/fill";
+import { labels, text } from "maplibre-mini/labels";
+import { background } from "maplibre-mini/background";
 
 export const features = [vectorTiles(), fill(), labels(text), background()];
 // No collision detection, no icon rendering — text labels may overlap but smaller bundle
@@ -800,30 +866,39 @@ maplibre-mini/presets
 ## 8. Migration Path
 
 ### MVP Approach
+
 Features are complete units (no sub-features yet). The architecture supports sub-features via the `merge()` pattern, but for the MVP each feature factory returns a full feature with all features included. Sub-feature splitting is a later optimization.
 
 ### Phase 1: Feature infrastructure
+
 Create `Feature` type, `merge()`, `createMap()`, `createWorker()`. Wire up `Map` to accept merged config.
 
 ### Phase 2: Extract simplest feature — `raster`
+
 Prove the pattern works end-to-end: raster source + raster layer + draw function + programs, all declared as a Feature and consumed via `createMap({ use: [raster()] })`.
 
 ### Phase 3: Extract remaining features one by one
+
 Order: circle → background → fill → line → labels → heatmap → fillExtrusion → sky → custom → elevation.
 
 ### Phase 4: Extract services into ServiceContainer
+
 Move ImageManager, GlyphManager, LineAtlas, Placement out of Style/Painter into the service system.
 
 ### Phase 5: Remove old code paths
+
 Delete switch statements, static imports, hardcoded draw function dispatch.
 
 ### Phase 6: Strip UI for maplibre-mini
+
 Remove handlers, controls, Marker, Popup, Hash.
 
 ### Phase 7: Build system
+
 Configure rollup/package.json for sub-path exports. ESM output for tree-shaking.
 
 ### Phase 8 (future): Sub-feature splitting
+
 Split features into base + sub-features for granular tree-shaking. E.g., `fill()` → `fill(patterns)`, `labels()` → `labels(text, icons, collision)`. Add `enablesProperties` validation.
 
 ---
@@ -916,6 +991,7 @@ Placement     ←  labels(collision)
 - Every paint/layout property used must be enabled by a sub-feature in the config
 
 If the style uses `line-dasharray` but `line(dashes)` wasn't included → **error at style load**:
+
 ```
 Error: Property "line-dasharray" requires the "dashes" capability.
 Add it: line(dashes) in your feature config.
@@ -925,17 +1001,23 @@ Add it: line(dashes) in your feature config.
 
 ```typescript
 // No null checks — services are injected, guaranteed present
-function drawLine(painter, tileManager, layer, coords, services: {
-    lineAtlas: LineAtlas,     // guaranteed by line(dashes)
-    imageManager: ImageManager // guaranteed by line(patterns)
-}) {
+function drawLine(
+    painter,
+    tileManager,
+    layer,
+    coords,
+    services: {
+        lineAtlas: LineAtlas; // guaranteed by line(dashes)
+        imageManager: ImageManager; // guaranteed by line(patterns)
+    },
+) {
     // Style-driven program selection — all programs guaranteed registered
-    if (layer.paint.get('line-pattern')) {
-        useProgram('linePattern');
-    } else if (layer.paint.get('line-dasharray')) {
-        useProgram('lineSDF');
+    if (layer.paint.get("line-pattern")) {
+        useProgram("linePattern");
+    } else if (layer.paint.get("line-dasharray")) {
+        useProgram("lineSDF");
     } else {
-        useProgram('line');
+        useProgram("line");
     }
 }
 ```
@@ -958,22 +1040,75 @@ const draw = (painter, tileManager, layer, coords) => {
 
 ---
 
-## 10. Open Questions
+## 10. Programmatic Composition vs Feature Registry
+
+### The tension
+
+The current feature abstraction may be an anti-pattern. It exists to make a style-document-driven architecture tree-shakeable, but it creates a dual composition problem: you register capabilities (features) AND describe what you want (style JSON), and the two must align. Features are essentially a pre-registration step so the style parser knows what to do. This makes the style document the architectural driver, with features bolted on as a tree-shaking mechanism.
+
+### Alternative: style as sugar over composable primitives
+
+Instead of features enabling the style pipeline, the **primitive API should be programmatic composition** — you directly instantiate sources, layers, and wire them to a map. The style document becomes a convenience deserializer that resolves JSON into those same primitives.
+
+```ts
+// Low-level: composable primitives — import what you use, tree-shaking is natural
+import {createMap} from 'maplibre-mini'
+import {createVectorSource} from 'maplibre-mini/sources/vector'
+import {createFillLayer} from 'maplibre-mini/layers/fill'
+
+const map = createMap(canvas, {transform, surface})
+const source = createVectorSource(url, {tileSize: 512})
+const fill = createFillLayer(source, {paint: {'fill-color': '#f00'}})
+map.addLayer(fill)
+```
+
+```ts
+// High-level: style document as sugar over the same primitives
+import {createMapFromStyle} from 'maplibre-mini/style'
+
+const map = createMapFromStyle(canvas, styleJson)
+// internally resolves sources/layers/glyphs/sprites into the same composable primitives
+```
+
+In this model:
+- **No feature registry needed** — you import what you use, tree-shaking is natural
+- **No tension** between "what features did I register" and "what does my style reference"
+- **Style resolution is a separate concern** — it maps JSON type strings to constructors, lives in its own module
+- **Each layer type is self-contained** — brings its own shaders, bucket, draw function
+- **Style-spec validation stays** — but as part of the style resolver, not as a core architectural constraint
+
+The style resolver (`createMapFromStyle`) would be a convenience that:
+1. Parses the style JSON
+2. Looks up constructors for each source/layer type (from an explicit mapping or auto-import)
+3. Instantiates the same primitives you'd use programmatically
+4. Wires up sprite/glyph loading as needed
+
+This keeps the style document as an ease-of-use abstraction (important for the ecosystem) without it driving the entire architecture.
+
+### Worker orchestration
+
+The programmatic approach raises the question of how layer modules coordinate their worker-side code. Currently the feature registry solves this: a shared `features.ts` module is imported by both main thread and worker, ensuring both sides know about the same capabilities.
+
+In a programmatic model, `createFillLayer()` would need to implicitly ensure its worker-side bucket/parser is available. Initially this can work the same way — a shared module between worker and main thread. But it points to a deeper issue: **keeping main-thread and worker-side code in sync is a fundamental coordination problem** that deserves its own solution, independent of whether we use features or programmatic composition. See Open Question 9.
+
+---
+
+## 11. Open Questions
 
 1. **Style-spec validation**: The `@maplibre/maplibre-gl-style-spec` package validates layer/source types against a fixed list. Need to make validation aware of features in the config, or skip validation for types present in the merged config.
 
 2. **Terrain as a feature**: Terrain is deeply integrated with Painter (render-to-texture, depth buffer, coordinate offsets in every draw call). Making it a clean sub-feature of `elevation` requires extracting a terrain interface that Painter checks for. Already partially null-guarded.
 
 3. **Worker registry isolation**: The current implementation uses a global worker registry (`getWorkerRegistry()`). This works because:
-   - The Worker is a singleton per web worker (`self.worker`)
-   - Workers are pooled globally (`globalWorkerPool`)
-   - Worker sources are keyed by `mapId/sourceType/sourceName`
-   - In practice, all maps on a page typically use the same features
-   - Tree-shaking happens at build time anyway
+    - The Worker is a singleton per web worker (`self.worker`)
+    - Workers are pooled globally (`globalWorkerPool`)
+    - Worker sources are keyed by `mapId/sourceType/sourceName`
+    - In practice, all maps on a page typically use the same features
+    - Tree-shaking happens at build time anyway
 
-   However, this assumes all `Map` instances use the same feature set. If a consumer wanted two maps with different feature sets (e.g., one raster-only, one with vectors), the current architecture doesn't support that — the worker would have whichever features were registered first/last.
+    However, this assumes all `Map` instances use the same feature set. If a consumer wanted two maps with different feature sets (e.g., one raster-only, one with vectors), the current architecture doesn't support that — the worker would have whichever features were registered first/last.
 
-   A cleaner approach would be to store registries per `mapId` in the worker and have each map send its feature configuration during initialization. This adds complexity but provides true isolation. For now, we document the constraint: **all maps on a page must use the same feature set.**
+    A cleaner approach would be to store registries per `mapId` in the worker and have each map send its feature configuration during initialization. This adds complexity but provides true isolation. For now, we document the constraint: **all maps on a page must use the same feature set.**
 
 4. **`patterns` as shared sub-feature**: `fill(patterns)`, `line(patterns)`, `background(patterns)`, `fillExtrusion(patterns)` — `patterns` provides the ImageManager service (shared, de-duped). Each layer provides its own pattern-specific programs and shaders. The `patterns` sub-feature imported from `maplibre-mini/fill` would include fill-pattern programs; from `maplibre-mini/line` would include line-pattern programs.
 
@@ -982,82 +1117,308 @@ const draw = (painter, tileManager, layer, coords) => {
 6. **No-bundler usage**: The `features.ts + main.ts + worker.ts` pattern works great with modern bundlers (Vite, Rollup, Webpack). For consumers without a bundler (CDN script tags), we'd need a pre-built `maplibre-mini.js` that includes all features (equivalent to the `all` preset).
 
 7. **API methods depend on features — typing strategy needed**: Many public API methods on `Map` and `Style` depend on specific features being registered:
+    - `map.addImage()`, `map.removeImage()`, `map.getImage()`, `map.listImages()` → require ImageManager (provided by patterns sub-features, labels with icons)
+    - `map.setGlyphs()` → requires GlyphManager (provided by labels with text)
+    - Line dash rendering → requires LineAtlas (provided by line with dashes)
+    - `map.queryRenderedFeatures()` for specific layer types → requires those layer features
 
-   - `map.addImage()`, `map.removeImage()`, `map.getImage()`, `map.listImages()` → require ImageManager (provided by patterns sub-features, labels with icons)
-   - `map.setGlyphs()` → requires GlyphManager (provided by labels with text)
-   - Line dash rendering → requires LineAtlas (provided by line with dashes)
-   - `map.queryRenderedFeatures()` for specific layer types → requires those layer features
+    Options for typing:
+    - **Runtime errors**: Methods throw if required feature not registered. Simple but no compile-time safety.
+    - **Conditional types**: `createMap<F extends Feature[]>()` returns a `Map` type with only the methods available for those features. Complex generics.
+    - **Separate APIs**: Image methods live on an `ImageManager` accessed via `map.images.add()`. Only available if feature registered. Explicit but API change.
+    - **Assertion helpers**: `map.requireImages().addImage()` — user explicitly asserts the feature is present.
 
-   Options for typing:
-   - **Runtime errors**: Methods throw if required feature not registered. Simple but no compile-time safety.
-   - **Conditional types**: `createMap<F extends Feature[]>()` returns a `Map` type with only the methods available for those features. Complex generics.
-   - **Separate APIs**: Image methods live on an `ImageManager` accessed via `map.images.add()`. Only available if feature registered. Explicit but API change.
-   - **Assertion helpers**: `map.requireImages().addImage()` — user explicitly asserts the feature is present.
-
-   Need to map out all feature-dependent APIs and choose a strategy. For MVP, runtime errors with helpful messages may be sufficient.
+    Need to map out all feature-dependent APIs and choose a strategy. For MVP, runtime errors with helpful messages may be sufficient.
 
 8. **Shared instances (ImageManager, GlyphManager, LineAtlas) as feature dependencies**: ✅ IMPLEMENTED. Features declare manager classes they need, FeatureRegistry provides them to Style for instantiation.
 
-   ```typescript
-   // Feature declares singletons it needs (one instance per map)
-   import {ImageManager, GlyphManager, CrossTileSymbolIndex} from '../core/feature';
+    ```typescript
+    // Feature declares singletons it needs (one instance per map)
+    import {ImageManager, GlyphManager, CrossTileSymbolIndex} from '../core/feature';
 
-   export const symbolBase: Feature = {
-       singletons: {ImageManager, GlyphManager, CrossTileSymbolIndex},
-       programs: { ... }
-   };
-   ```
+    export const symbolBase: Feature = {
+        singletons: {ImageManager, GlyphManager, CrossTileSymbolIndex},
+        programs: { ... }
+    };
+    ```
 
-   Style gets classes from registry and creates instances:
-   ```typescript
-   // Style constructor - gets class from registry, creates if provided
-   const ImageManagerClass = this._featureRegistry.getSingleton('ImageManager');
-   if (ImageManagerClass) {
-       this.imageManager = new ImageManagerClass();
-       this.imageManager.setEventedParent(this);
-   }
-   ```
+    Style gets classes from registry and creates instances:
 
-   Painter retrieves from style:
-   ```typescript
-   this.imageManager = style.imageManager;
-   ```
+    ```typescript
+    // Style constructor - gets class from registry, creates if provided
+    const ImageManagerClass =
+        this._featureRegistry.getSingleton("ImageManager");
+    if (ImageManagerClass) {
+        this.imageManager = new ImageManagerClass();
+        this.imageManager.setEventedParent(this);
+    }
+    ```
 
-   Type-safe registry with inference:
-   ```typescript
-   interface SingletonMap {
-       ImageManager: typeof ImageManager;
-       GlyphManager: typeof GlyphManager;
-       LineAtlas: typeof LineAtlas;
-       CrossTileSymbolIndex: typeof CrossTileSymbolIndex;
-   }
+    Painter retrieves from style:
 
-   getSingleton<K extends SingletonName>(name: K): SingletonMap[K] | undefined
-   ```
+    ```typescript
+    this.imageManager = style.imageManager;
+    ```
 
-   Benefits:
-   - Features are declarative — they provide the class itself
-   - Style doesn't import singleton classes directly — gets them from registry (tree-shaking friendly)
-   - Type-safe — `getSingleton('ImageManager')` returns `typeof ImageManager | undefined`
-   - Instantiation logic stays in Style where it already lives, just made conditional
+    Type-safe registry with inference:
 
-   **Future consideration**: Currently instances live on Style (`style.imageManager`, etc.) for backward compatibility. A cleaner design would have FeatureRegistry be the sole owner of feature-provided instances, making Style's core smaller and all feature-specific state accessed uniformly via the registry.
+    ```typescript
+    interface SingletonMap {
+        ImageManager: typeof ImageManager;
+        GlyphManager: typeof GlyphManager;
+        LineAtlas: typeof LineAtlas;
+        CrossTileSymbolIndex: typeof CrossTileSymbolIndex;
+    }
 
-   The typing question (#7) determines whether missing dependencies are a compile-time or runtime concern.
+    getSingleton<K extends SingletonName>(name: K): SingletonMap[K] | undefined
+    ```
+
+    Benefits:
+    - Features are declarative — they provide the class itself
+    - Style doesn't import singleton classes directly — gets them from registry (tree-shaking friendly)
+    - Type-safe — `getSingleton('ImageManager')` returns `typeof ImageManager | undefined`
+    - Instantiation logic stays in Style where it already lives, just made conditional
+
+    **Future consideration**: Currently instances live on Style (`style.imageManager`, etc.) for backward compatibility. A cleaner design would have FeatureRegistry be the sole owner of feature-provided instances, making Style's core smaller and all feature-specific state accessed uniformly via the registry.
+
+    The typing question (#7) determines whether missing dependencies are a compile-time or runtime concern.
+
+9. **Main-thread / worker synchronization**: The main thread and worker must agree on what code is available (bucket constructors, tile parsers, worker sources). Currently this is solved by a shared `features.ts` module imported by both entry points. But this is fragile — nothing enforces that the worker was built with the same features as the main thread. In a programmatic composition model (see section 10), this becomes harder: if you call `createFillLayer()` on the main thread, its worker-side bucket code must be present in the worker. This is a fundamental coordination problem: two separate JS bundles (main + worker) must stay in sync about capabilities, but they're built and loaded independently. Possible directions:
+    - **Shared module** (current approach): works but requires discipline and bundler cooperation
+    - **Worker auto-registration**: `createFillLayer()` sends a message to the worker to dynamically import its worker-side module. Adds latency, requires dynamic import support in workers.
+    - **Worker codegen at build time**: a bundler plugin that inspects main-thread imports and generates the worker entry point automatically.
+    - **Single-thread mode**: eliminate the worker for simple use cases, sidestepping the sync problem entirely.
+
+    None of these are great. They're all workarounds for a deeper problem: two separate JS contexts that need to agree on capabilities.
+
+    **Reframing: should we need to sync at all?** The tight coupling exists because the worker does layer-specific bucket construction — it takes vector tile data and produces typed geometry buffers specific to each layer type (FillBucket, LineBucket, etc). What if we moved the boundary?
+
+    - **Worker as generic data fetcher**: worker fetches/decodes tiles and sends back raw feature data. Bucket construction moves to the main thread. The worker has zero layer-type awareness — sync problem disappears. Cost: bucket construction (tesselation, attribute packing) is CPU-heavy work that currently benefits from being off the main thread. This is a real performance concern, especially for complex styles with many layers.
+    - **Split the pipeline**: worker does generic parsing (protobuf decode, geometry extraction), main thread does layer-specific work (tesselation, attribute packing into typed arrays). The sync boundary becomes "raw features in, typed arrays out" on the main thread side. Less work moved to main thread than the full bucket construction, but still some.
+    - **Keep heavy work in worker, but make it generic**: instead of layer-specific bucket classes, the worker runs a generic geometry pipeline parameterized by attribute descriptors sent from the main thread. The main thread says "I need position (vec2), color (vec4), pattern (vec2) for these features" and the worker packs attributes without knowing it's building a "fill bucket". This preserves the performance benefit while eliminating the need for layer-specific code in the worker — but it's a significant rearchitecture of how buckets work.
+
+    The performance tradeoff is real and shouldn't be dismissed — the current worker-side bucket construction exists for good reason. But the sync problem is also real and gets worse as the architecture becomes more modular. Worth investigating where exactly the CPU cost concentrates (parsing? tesselation? attribute packing?) to find the right boundary.
+
+    This deserves deeper investigation regardless of whether we keep the feature registry or move to programmatic composition.
+
+    ### Investigation: can bucket tesselation be decomposed into generic primitives?
+
+    We investigated whether the worker could be made layer-type-unaware by decomposing tesselation into composable geometric primitives (`triangulatePolygon()`, `extrudeLine()`, `emitQuad()`, etc). The idea: layers declare a composition of primitives, the worker has a library of these primitives, no layer-specific code needed.
+
+    **Finding: the abstraction boundary is wrong.** Bucket tesselation is deeply entangled with attribute encoding in ways that prevent clean decomposition:
+
+    - **Bit-packing geometry decisions into vertex data**: line bucket encodes `round` join flag in LSB of position, fill extrusion encodes edge type in normal LSB. You cannot separate "compute geometry" from "write vertex" — the geometry decision *is* the encoding.
+    - **Stateful iteration across vertices**: line distance accumulates across all vertices (for dash patterns). Fill extrusion centroids are computed from the whole polygon, then written back to every vertex. These are state machines, not pure functions.
+    - **Variable vertex counts**: round joins emit N vertices based on angle (`Math.round(angle / DEG_PER_TRIANGLE)`), sharp corners insert extra vertices mid-line. The tesselation topology is data-dependent.
+    - **Multi-array lockstep**: symbols write 4+ arrays simultaneously (layout, dynamic, opacity, glyph offsets, placement metadata) with section-aligned paint array boundaries. A generic primitive can't reason about this coupling.
+    - **Layer-property-dependent geometry**: join type (miter/bevel/round), cap type, circle granularity — the tesselation algorithm itself branches on style properties.
+
+    **Revised direction: GeometryProcessor as the unit of sync.** Instead of making the worker layer-unaware, shrink the layer-specific code to a single self-contained function per layer type:
+
+    ```ts
+    type GeometryProcessor = {
+      layout: AttributeLayout[],
+      process(feature: VectorFeature, geometry: Geometry, arrays: VertexArrays, indices: IndexArrays): void
+    }
+    ```
+
+    Each processor owns both geometry and encoding — they're inseparable. What becomes generic is the *infrastructure*: feature filtering, segment management (65K vertex limit), paint property evaluation, serialization, upload/destroy lifecycle. This is ~35-45% of current bucket code.
+
+    The sync problem shrinks: instead of syncing entire bucket classes with constructor, lifecycle, serialization boilerplate, you sync a single processor function per layer type. The generic bucket infrastructure lives in the worker permanently. Whether this is small enough to transfer dynamically (via message) or still needs static bundling is an open question.
+
+    **Code breakdown across bucket types (% of total lines):**
+
+    | Bucket | Lines | Boilerplate | Tesselation+Encoding | Feature Filter | Paint Eval |
+    |--------|-------|-------------|---------------------|----------------|------------|
+    | Fill | 200 | 37% | 21% | 25% | 5% |
+    | Line | 652 | 20% | 50% | 9% | 1% |
+    | Circle | 240 | 44% | 52% | 24% | 3% |
+    | Symbol | 974 | 33% | 35% | 13% | 1% |
+    | FillExtrusion | 337 | 27% | 58% | 9% | 2% |
+
+    ~35-45% boilerplate could be handled by generic infrastructure. The remaining 50-60% is the processor function — layer-specific and irreducibly so.
+
+    ### Decomposing geometry from encoding: Struct-based layout abstraction
+
+    The entanglement between geometry and encoding in current buckets is real but not *necessary*. Geometry algorithms produce semantic information (position, join type, extrude direction, distance along line). Currently this immediately gets bit-packed into vertex data — e.g., `(x << 1) | (round ? 1 : 0)`. The bit-packing is an optimization choice, not an architectural necessity. These are two separable concerns: *what* the geometry computed vs *how* it's stored.
+
+    The naive decomposition (geometry → intermediate objects → packed arrays) adds allocation overhead. But a **struct-based layout abstraction** over ArrayBuffer eliminates the intermediate step entirely:
+
+    ```ts
+    const lineVertex = defineLayout({
+      pos:        { type: 'Int16', components: 2, encode: (x) => x << 1 },
+      round:      { type: 'Int16', component: 0, bit: 0 },   // LSB of pos.x
+      up:         { type: 'Int16', component: 1, bit: 0 },   // LSB of pos.y
+      extrudeDir: { type: 'Uint8', components: 2, encode: (v) => Math.round(v * EXTRUDE_SCALE) + 128 },
+      distance:   { type: 'Uint8', components: 2, encode: packDistance },
+    })
+
+    // Geometry code writes semantically — packs directly, zero intermediate
+    const v = lineVertex.emplace(array, index)
+    v.pos(x, y)
+    v.round(true)
+    v.extrudeDir(ex, ey)
+    v.distance(dist)
+    ```
+
+    This is what `StructArray.emplaceBack(a, b, c, d, e, f)` already does, but positional — so the geometry code must know the encoding. Making it **named + declarative** separates the concerns without performance cost:
+
+    - **Encoding rules live in the layout descriptor**, not in geometry code
+    - **Geometry primitives become reusable** — `extrudeLine()` outputs positions, normals, join types, distances. Different layers could encode the same geometric data into different packed layouts via different descriptors.
+    - **Layout descriptors are serializable** — they're data, not code. They can be sent to the worker.
+    - **Zero intermediate allocation** — writes go directly to the final ArrayBuffer
+
+    This changes the decomposition picture. If geometry primitives don't know about encoding, they *can* be composed:
+
+    ```ts
+    // Geometry primitives output semantic data via struct writer
+    const fill = (features, writer) => {
+      for (const polygon of features) {
+        classifyRings(polygon)
+        subdivide(polygon, granularity)
+        triangulate(polygon, (x, y) => {
+          const v = writer.emplace()
+          v.pos(x, y)
+        })
+      }
+    }
+
+    // Different layers reuse the same primitives with different layouts
+    const fillExtrusion = (features, layoutWriter, centroidWriter) => {
+      for (const polygon of features) {
+        const centroid = computeCentroid(polygon)
+        // top face — same triangulate as fill
+        triangulate(polygon, (x, y) => {
+          const v = layoutWriter.emplace()
+          v.pos(x, y)
+          v.normal(0, 0, 1)
+          v.edgeType(0)
+        })
+        // side faces — different primitive, same layout
+        extrudeEdges(polygon, (x, y, nx, ny) => {
+          const v = layoutWriter.emplace()
+          v.pos(x, y)
+          v.normal(nx, ny, 0)
+          v.edgeType(1)
+        })
+      }
+    }
+    ```
+
+    **Open question**: how far can this go? The stateful concerns (distance accumulation in lines, centroid tracking in fill extrusion) still live in the composition code. Variable vertex counts (round joins) still require the geometry primitive to call `emplace()` a data-dependent number of times. These aren't encoding concerns — they're genuinely geometric. But they're also not *layer-specific* — distance tracking is a reusable primitive, centroid computation is a reusable primitive. The composition of primitives + layout descriptor might be enough to describe any layer type declaratively.
+
+    ### Declarative composition: how far can it go?
+
+    If geometry and encoding are separated via the struct abstraction, and the geometric primitives are reusable, can a layer's entire bucket construction be described as **data** (not code) sent to the worker? The worker would ship with a fixed library of ~9 geometric primitives. The main thread sends a composition descriptor.
+
+    **Primitives needed (covers all current layer types):**
+
+    | Primitive | Used by |
+    |-----------|---------|
+    | `classifyRings` | fill, fillExtrusion |
+    | `subdividePolygon` | fill, fillExtrusion |
+    | `subdivideLine` | line |
+    | `triangulate` (earcut) | fill, fillExtrusion |
+    | `extrudeLine` (joins, caps, distance tracking) | line |
+    | `extrudeEdges` (wall generation) | fillExtrusion |
+    | `emitPointGrid` (NxN quad) | circle, heatmap |
+    | `emitTexturedQuad` | symbol |
+    | `computeCentroid` | fillExtrusion |
+
+    Most algorithmic complexity (miter angle math, sharp corner insertion, variable vertex counts, distance accumulation) lives *inside* these primitives. The composition itself is ~3-5 steps per layer type:
+
+    ```ts
+    // Fill
+    {
+      layout: fillLayout,
+      perPolygon: [
+        'classifyRings',
+        { op: 'subdivide', params: { granularity } },
+        { op: 'triangulate', attrs: { pos: '$vertex' } },
+      ]
+    }
+
+    // Fill extrusion — centroid computed upfront, referenced by later steps
+    {
+      layout: fillExtrusionLayout,
+      perPolygon: [
+        { op: 'computeCentroid', as: 'centroid' },
+        'classifyRings',
+        { op: 'subdivide', params: { granularity } },
+        { op: 'triangulate', attrs: { pos: '$vertex', normal: [0,0,1], edgeType: 0, centroid: '$centroid' } },
+        { op: 'extrudeEdges', attrs: { edgeType: 1, centroid: '$centroid' } },
+      ]
+    }
+
+    // Line — style properties feed into primitive params
+    {
+      layout: lineLayout,
+      perFeature: [
+        { op: 'subdivideLine', params: { granularity } },
+        { op: 'extrudeLine', params: {
+            join: '$style.line-join',
+            cap: '$style.line-cap',
+            miterLimit: '$style.line-miter-limit',
+          }
+        },
+      ]
+    }
+
+    // Circle
+    {
+      layout: circleLayout,
+      perPoint: [
+        { op: 'emitPointGrid', params: { granularity: '$computed' } },
+      ]
+    }
+    ```
+
+    **Assessment by layer type:**
+
+    - **Fill, circle, heatmap**: clean fit — simple compositions of 2-3 primitives.
+    - **Fill extrusion**: works with a `$centroid` reference pattern — centroid computed from the whole polygon, then written to every vertex. The descriptor needs a way to say "compute this value upfront, apply to all emitted vertices."
+    - **Line**: works if `extrudeLine` is a self-contained primitive. All the complexity (miter math, sharp corners, round join approximation, distance accumulation, `MAX_LINE_DISTANCE` reset) lives inside the primitive. Style properties (`line-join`, `line-cap`, `line-miter-limit`) are parameters.
+    - **Symbol**: **does not fit.** Text shaping, glyph resolution, RTL reordering, collision box generation, section-aligned paint arrays, 4+ arrays written in lockstep, per-frame dynamic layout updates — this is an entire subsystem, not a composition of geometric primitives. Forcing it into a declarative descriptor would mean inventing a DSL that's just a worse programming language.
+
+    **Conclusion: most layer types can be declarative, symbol is special.** This still shrinks the worker sync problem dramatically — from 6 bucket classes needing sync to 1 (symbol), with the rest described as serializable data sent to a generic worker. The worker ships with a fixed primitive library (~9 functions) that rarely changes. New layer types compose from existing primitives — no worker rebuild needed. Only genuinely new geometric operations (rare) would require adding a primitive to the worker.
+
+    **Remaining design questions:**
+
+    - **Style property access**: descriptors reference `$style.line-join` etc. The worker needs evaluated style properties per feature. Currently it has this (features carry evaluated properties), but it's a dependency to formalize.
+    - **Segment management**: the 65K vertex limit requires splitting across segments. This is generic infrastructure that wraps around any composition — not per-layer. The struct abstraction could handle this transparently.
+    - **Paint property evaluation**: `ProgramConfigurationSet` evaluates data-driven style properties per vertex. Currently tightly coupled to buckets. Needs to work with the generic composition — probably as a post-pass over emitted vertices.
+    - **Symbol as the exception**: symbol is special-cased as the one layer type that doesn't fit the declarative model. See "Specialized worker pools" below.
+
+    ### Specialized worker pools
+
+    MapLibre already uses a worker pool (`globalWorkerPool`) with identical workers. A natural extension: **specialized pools** instead of identical workers.
+
+    - **N generic geometry workers**: ship with the fixed primitive library (~9 functions). Receive declarative composition descriptors. No layer-specific code. Stateless per-feature, so tiles can be dispatched to whichever worker is free.
+    - **1 symbol worker**: owns the text/icon subsystem — text shaping, glyph resolution, RTL reordering, collision box generation. This is the one worker with layer-specific code, but it's a self-contained subsystem rather than a bucket class.
+
+    Why this works:
+
+    - **Symbol is already naturally async** — it waits for glyph/icon loading. A dedicated worker can manage that lifecycle independently.
+    - **Different performance profiles** — geometry work (earcut, line extrusion) is pure compute. Symbol work is mixed (text shaping + async I/O for glyphs/icons). Specialization lets each pool be tuned for its workload.
+    - **Collision detection is already main-thread** — `Placement` runs on the main thread. The symbol worker only does bucket construction (glyph quads, collision boxes). The boundary is clean.
+    - **Generic workers are lighter** — no symbol subsystem code, so per-worker memory overhead is lower than today's identical workers that each carry everything.
+    - **Sync problem solved** — generic workers need zero layer-specific code (descriptors are data). The symbol worker is a fixed subsystem that ships with the library. No coordination needed between main thread and workers about which layer types are available.
 
 ---
 
-## 11. Implementation Status
+## 12. Implementation Status
 
 ### What's done (Phase 1 + 2 + 3 + partial Phase 4)
 
 **Core infrastructure:**
+
 - `src/core/feature.ts` — `Feature` interface, `merge()`, `FeatureRegistry` class
 - `src/core/map_context.ts` — `MapContext` with `ensure<T>(key, factory)` upsert
 - `src/core/create_map.ts` — `createMap({ use: [...] })` entry point
 - `src/core/create_worker.ts` — `createWorker()` placeholder
 
 **All layer features extracted:**
+
 - `src/features/raster.ts` — raster()
 - `src/features/background.ts` — background()
 - `src/features/circle.ts` — circle()
@@ -1071,6 +1432,7 @@ const draw = (painter, tileManager, layer, coords) => {
 - `src/features/sky.ts` — sky() (programs only, no layer — sky is rendered outside the layer loop)
 
 **Modified core files:**
+
 - `src/style/style.ts` — `_createStyleLayer()` uses `registry.getLayer(type)` instead of `createStyleLayer` switch
 - `src/render/painter.ts` — `renderLayer()` uses `registry.getLayer(type).draw()` instead of if/else chain. Only custom layers remain special-cased (they're user-provided, not feature-registered).
 - `src/source/source.ts` — `create()` uses `registry.getSource(type)` instead of `getSourceType` switch. `addSourceType` and `registeredSources` removed.
@@ -1097,20 +1459,18 @@ const draw = (painter, tileManager, layer, coords) => {
 
 1. **Sub-feature splitting not started.** All features include all their programs (e.g., fill includes fillPattern programs). The `merge()` pattern supports sub-features but no feature uses it yet.
 
-
 2. **Terrain decoupled via Surface abstraction.** ✅ DONE (Phase 1 + 2). The `Surface` interface (`src/core/surface.ts`) with `FlatSurface` and `TerrainSurface` (`src/render/terrain_surface.ts`) implementations eliminates `if (terrain)` conditionals across ~35 files. Surface also owns `renderToTexture` and exposes `terrain` for FBO management. No `style.map.terrain` or `painter.renderToTexture` references remain in core. See `SURFACE.md` for full migration details.
 
-   **What's left for full terrain featurization (Surface as render strategy):**
-   - ~~Surface should own the **render strategy**~~ ✅ Done — `prepareFrame()`, `renderLayer()`, `skipOpaquePass` on Surface. Painter delegates polymorphically
-   - ~~`useProgram()` still hardcodes `/terrain` shader variant suffix~~ ✅ Done — ShaderExtension system
-   - ~~`usedForTerrain` flag in TileManager still mutated by TerrainTileManager~~ ✅ Done — TileDataLayer declarations
-   - `map.setTerrain()` / `map.getTerrain()` are terrain-specific API on the Map convenience layer — terrain lifecycle should be owned by the terrain feature, not Map
-   - Terrain-specific files (`terrain.ts`, `draw_terrain.ts`, `terrain_tile_manager.ts`, `render_to_texture.ts`) remain as-is
-
+    **What's left for full terrain featurization (Surface as render strategy):**
+    - ~~Surface should own the **render strategy**~~ ✅ Done — `prepareFrame()`, `renderLayer()`, `skipOpaquePass` on Surface. Painter delegates polymorphically
+    - ~~`useProgram()` still hardcodes `/terrain` shader variant suffix~~ ✅ Done — ShaderExtension system
+    - ~~`usedForTerrain` flag in TileManager still mutated by TerrainTileManager~~ ✅ Done — TileDataLayer declarations
+    - `map.setTerrain()` / `map.getTerrain()` are terrain-specific API on the Map convenience layer — terrain lifecycle should be owned by the terrain feature, not Map
+    - Terrain-specific files (`terrain.ts`, `draw_terrain.ts`, `terrain_tile_manager.ts`, `render_to_texture.ts`) remain as-is
 
 ---
 
-## 12. Surface as Render Strategy
+## 13. Surface as Render Strategy
 
 ### The Key Insight
 
@@ -1127,7 +1487,7 @@ interface Surface {
 
     // === Render strategy (producer side: renderer) ===
     prepareFrame(renderer: Renderer, transform: Transform): void;
-    renderLayer(layer: StyleLayer): boolean;  // true = "I handled it"
+    renderLayer(layer: StyleLayer): boolean; // true = "I handled it"
     finalizeFrame(renderer: Renderer): void;
 }
 ```
@@ -1139,12 +1499,12 @@ interface Surface {
 The renderer becomes simple:
 
 ```typescript
-surface.prepareFrame(this, transform)
+surface.prepareFrame(this, transform);
 for (layer of layers) {
-    if (surface.renderLayer(layer)) continue  // surface handled it (RTT)
-    this.drawLayer(layer)                     // direct path
+    if (surface.renderLayer(layer)) continue; // surface handled it (RTT)
+    this.drawLayer(layer); // direct path
 }
-surface.finalizeFrame(this)                  // e.g. drape terrain mesh
+surface.finalizeFrame(this); // e.g. drape terrain mesh
 ```
 
 No `if (terrain)` anywhere. No render strategy as a separate concept — **Surface IS the strategy.**
@@ -1152,6 +1512,7 @@ No `if (terrain)` anywhere. No render strategy as a separate concept — **Surfa
 ### What This Replaces
 
 Currently in `painter.ts`:
+
 ```typescript
 // Before: terrain knowledge scattered through render loop
 if (this.renderToTexture) {
@@ -1191,8 +1552,8 @@ interface ShaderExtension {
 }
 
 const terrainShaderExtension: ShaderExtension = {
-    key: 'terrain',
-    defines: ['TERRAIN3D'],
+    key: "terrain",
+    defines: ["TERRAIN3D"],
     isActive: () => surface.hasTerrain,
 };
 ```
@@ -1221,7 +1582,7 @@ interface TileDataLayer {
 }
 
 const demDataLayer: TileDataLayer = {
-    name: 'dem',
+    name: "dem",
     tileSize: 514,
     loadParentTiles: true,
 };
@@ -1270,8 +1631,8 @@ interface ShaderExtension {
 }
 
 const terrainShaderExtension: ShaderExtension = {
-    key: 'terrain',
-    defines: ['TERRAIN3D'],
+    key: "terrain",
+    defines: ["TERRAIN3D"],
     uniforms: terrainPreludeUniforms,
     isActive: (ctx) => ctx.elevation != null,
     getUniformValues: (ctx) => ctx.elevation.getBindings(ctx.tileID),
@@ -1314,14 +1675,14 @@ interface TileDataLayer {
 }
 
 const demDataLayer: TileDataLayer = {
-    name: 'dem',
+    name: "dem",
     tileSize: 514,
     loadParentTiles: true,
 
     async onTileLoad(tile) {
         const dem = await this.loadDEM(tile.tileID);
-        tile.setData('dem', dem);
-    }
+        tile.setData("dem", dem);
+    },
 };
 ```
 
@@ -1337,8 +1698,9 @@ class TileManager {
     }
 
     shouldLoadParentTiles() {
-        return this.features.tileDataLayers
-            .some(layer => layer.loadParentTiles);
+        return this.features.tileDataLayers.some(
+            (layer) => layer.loadParentTiles,
+        );
     }
 }
 ```
@@ -1365,11 +1727,11 @@ interface DrawContext {
 }
 
 function drawFill(context: DrawContext, layer: FillStyleLayer, tiles: Tile[]) {
-    const program = context.painter.useProgram('fill', context);
+    const program = context.painter.useProgram("fill", context);
 
     for (const tile of tiles) {
         program.draw({
-            ...context.bindings,  // Includes terrain if present
+            ...context.bindings, // Includes terrain if present
             ...fillUniformValues(layer, tile),
         });
     }
@@ -1405,14 +1767,14 @@ export function terrain(): Feature {
 
 ### Impact Summary
 
-| Before | After |
-|--------|-------|
-| `if (map.terrain)` checks everywhere | Features queried uniformly |
-| `/terrain` suffix hardcoded | Shader extensions compose |
-| `usedForTerrain` flag mutation | Data layers declare behavior |
-| RenderToTexture holds Terrain ref | Strategy pattern, injected |
-| TerrainData passed to every draw | DrawContext accumulates bindings |
-| 16 files modified for terrain | Zero core files know about terrain |
+| Before                               | After                              |
+| ------------------------------------ | ---------------------------------- |
+| `if (map.terrain)` checks everywhere | Features queried uniformly         |
+| `/terrain` suffix hardcoded          | Shader extensions compose          |
+| `usedForTerrain` flag mutation       | Data layers declare behavior       |
+| RenderToTexture holds Terrain ref    | Strategy pattern, injected         |
+| TerrainData passed to every draw     | DrawContext accumulates bindings   |
+| 16 files modified for terrain        | Zero core files know about terrain |
 
 ### The Radical Simplification
 
@@ -1451,7 +1813,7 @@ This capability system could also handle:
 
 ---
 
-## 13. Core Decomposition: Transform, Surface, Renderer
+## 14. Core Decomposition: Transform, Surface, Renderer
 
 ### Why Map Must Be Decomposed
 
@@ -1461,11 +1823,11 @@ Map is a monolith that accumulates all responsibilities: DOM, camera, style pars
 
 A frame requires exactly three things:
 
-| Primitive | Responsibility | Extension Points |
-|-----------|---------------|-----------------|
-| **Transform** | Camera state: center, zoom, bearing, pitch, projection | Elevation clamping (via Surface) |
-| **Surface** | World geometry + render strategy | FlatSurface, TerrainSurface, future OceanSurface... |
-| **Renderer** | Executes a frame: setup GPU, draw layers, present | Shader extensions, features |
+| Primitive     | Responsibility                                         | Extension Points                                    |
+| ------------- | ------------------------------------------------------ | --------------------------------------------------- |
+| **Transform** | Camera state: center, zoom, bearing, pitch, projection | Elevation clamping (via Surface)                    |
+| **Surface**   | World geometry + render strategy                       | FlatSurface, TerrainSurface, future OceanSurface... |
+| **Renderer**  | Executes a frame: setup GPU, draw layers, present      | Shader extensions, features                         |
 
 These compose without knowing about each other's internals:
 
@@ -1492,6 +1854,7 @@ No elevation feature        →  surface = FlatSurface
 ```
 
 This means Surface is the natural place for:
+
 1. **Elevation queries** — consumers (camera, markers, placement) ask "what's the elevation here?"
 2. **Render strategy** — the renderer asks "how should I draw this layer?"
 3. **Feature-specific configuration** — the terrain feature exposes `set()`/`get()` on its surface
@@ -1520,37 +1883,37 @@ In the target architecture, the terrain **feature** owns its API. The surface ty
 
 ```typescript
 // Without terrain feature:
-map.surface  // type: Surface
+map.surface; // type: Surface
 
 // With terrain feature:
-map.surface  // type: Surface & TerrainConfig
-map.surface.set({ source: 'dem' })
-map.surface.get()  // => { source: 'dem' } | null
+map.surface; // type: Surface & TerrainConfig
+map.surface.set({ source: "dem" });
+map.surface.get(); // => { source: 'dem' } | null
 ```
 
 Type inference happens only at the `createMap` boundary. Internally, everything uses concrete `Surface` — no generics leak.
 
 ### Remaining Coupling (to be resolved via Section 12)
 
-| Problem | Resolution | Status |
-|---------|-----------|--------|
-| `if (map.terrain)` in draw files | Surface abstraction (Phase 1+2) | ✅ Done |
-| `painter.renderToTexture` | Moved to `surface.renderToTexture` | ✅ Done |
-| `style.map.terrain` in painter | Moved to `surface.terrain` | ✅ Done |
-| RTT logic in `painter.render()` | Surface render strategy (`prepareFrame`/`renderLayer`/`skipOpaquePass`) | ✅ Done (polymorphic dispatch) |
-| `/terrain` suffix in `useProgram()` | ShaderExtension system | ✅ Done |
-| `usedForTerrain` flag mutation | TileDataLayer declarations | ✅ Done |
-| `map.setTerrain()` / `map.getTerrain()` | Terrain feature owns lifecycle, Surface typed at boundary | Not started |
+| Problem                                 | Resolution                                                              | Status                         |
+| --------------------------------------- | ----------------------------------------------------------------------- | ------------------------------ |
+| `if (map.terrain)` in draw files        | Surface abstraction (Phase 1+2)                                         | ✅ Done                        |
+| `painter.renderToTexture`               | Moved to `surface.renderToTexture`                                      | ✅ Done                        |
+| `style.map.terrain` in painter          | Moved to `surface.terrain`                                              | ✅ Done                        |
+| RTT logic in `painter.render()`         | Surface render strategy (`prepareFrame`/`renderLayer`/`skipOpaquePass`) | ✅ Done (polymorphic dispatch) |
+| `/terrain` suffix in `useProgram()`     | ShaderExtension system                                                  | ✅ Done                        |
+| `usedForTerrain` flag mutation          | TileDataLayer declarations                                              | ✅ Done                        |
+| `map.setTerrain()` / `map.getTerrain()` | Terrain feature owns lifecycle, Surface typed at boundary               | Not started                    |
 
 ### Applicability to Other Cross-Cutting Concerns
 
-| Concern | Core Primitive | How It Composes |
-|---------|---------------|-----------------|
-| **Terrain** | Surface | TerrainSurface with RTT render strategy |
-| **Globe** | Transform | Globe projection + ShaderExtension |
-| **Fog/atmosphere** | Renderer | ShaderExtension with fog uniforms |
-| **3D shadows** | Surface | Shadow pass in render strategy |
-| **Post-processing** | Renderer | Additional passes after layers |
+| Concern             | Core Primitive | How It Composes                         |
+| ------------------- | -------------- | --------------------------------------- |
+| **Terrain**         | Surface        | TerrainSurface with RTT render strategy |
+| **Globe**           | Transform      | Globe projection + ShaderExtension      |
+| **Fog/atmosphere**  | Renderer       | ShaderExtension with fog uniforms       |
+| **3D shadows**      | Surface        | Shadow pass in render strategy          |
+| **Post-processing** | Renderer       | Additional passes after layers          |
 
 The pattern scales because the abstraction is correct — each concern plugs into the right primitive.
 
@@ -1575,6 +1938,7 @@ The pattern scales because the abstraction is correct — each concern plugs int
 ✅ **Phase 1+2 DONE — Surface interface + deeper decoupling.** The polymorphic `Surface` interface eliminates `if (terrain)` conditionals across ~35 files. RTT and terrain access moved to Surface. See `SURFACE.md` for full migration details.
 
 **What's implemented:**
+
 - `Surface` interface in `src/core/surface.ts` with `FlatSurface` (zero-cost default) and `TerrainSurface` (wraps `Terrain`)
 - `map.surface: Surface` always exists — `FlatSurface` by default, `TerrainSurface` when terrain enabled
 - All draw functions use `painter.surface.getBindings(coord)` instead of `painter.style.map.terrain?.getTerrainData(coord)`
@@ -1615,6 +1979,7 @@ See sections 12-13 of this doc for the full architecture.
 #### ✅ Done
 
 **Polymorphic methods added to Surface:**
+
 - `getElevationCallback(tileID)` — replaces `hasTerrain ? (x,y) => ... : null` (draw_symbol, placement, style query)
 - `isOccluded(screenPos, lngLat, offset, transform)` — replaces inline depth-buffer occlusion in marker.ts. FlatSurface returns `{base: false, center: false}`
 - `allowVariableZoom()` — replaces `!!surface.terrain` in mercator_covering_tiles_details_provider. FlatSurface returns `false`
@@ -1622,6 +1987,7 @@ See sections 12-13 of this doc for the full architecture.
 - `isPointOnMapSurface` in MercatorTransform — refactored to check horizon first, then delegate to `surface.isPointOnSurface()`
 
 **Guards removed (flat is already a no-op):**
+
 - `camera.ts` — removed terrain guards around `_prepareElevation`, `_updateElevation`, `_finalizeElevation` (6 sites in easeTo/flyTo)
 - `camera.ts _elevateCameraIfInsideTerrain` — removed early return; fixed root cause of NaN from uninitialized `_cameraToCenterDistance` in transform_helper.ts
 - `camera.ts _getTransformForUpdate` — always clones transform
@@ -1631,6 +1997,7 @@ See sections 12-13 of this doc for the full architecture.
 - `handler_manager.ts:530` — removed redundant `surface.terrain &&` (terrainMovement only set inside terrain paths)
 
 **Always compute both paths:**
+
 - `map.ts calculateCameraOptionsFromTo` — always calls `surface.getElevation(to)` instead of checking terrain
 - `marker.ts` / `popup.ts` — always compute `_flatPos` separately from `_pos`
 - `draw_fill_extrusion.ts` — always passes `centroidVertexBuffer`
@@ -1640,6 +2007,7 @@ See sections 12-13 of this doc for the full architecture.
 - `tile_manager.ts` — uses `surface.renderToTexture` for raster fade check
 
 **Terrain lifecycle moved into Surface:**
+
 - `map.ts` — terrain tile manager update moved into `TerrainSurface.update()`
 
 #### Remaining terrain leaks
@@ -1650,11 +2018,11 @@ Surface owns world geometry AND how that geometry affects interaction. Terrain k
 
 `_elevationFreeze` is a single terrain concern ("don't update elevation mid-gesture/animation") scattered across three files:
 
-| File | Role | Lines |
-|------|------|-------|
-| `camera.ts` | Declares `_elevationFreeze` (line 306). Sets it in `_prepareElevation` (1210), clears in `_finalizeElevation` (1232) | Property + animation lifecycle |
-| `handler_manager.ts` | Sets `_elevationFreeze = true` on drag start (605, 613), clears on drag end (678) | Gesture lifecycle |
-| `map.ts` | Reads `_elevationFreeze` to skip elevation updates (2303, 3601) | Render loop guard |
+| File                 | Role                                                                                                                 | Lines                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `camera.ts`          | Declares `_elevationFreeze` (line 306). Sets it in `_prepareElevation` (1210), clears in `_finalizeElevation` (1232) | Property + animation lifecycle |
+| `handler_manager.ts` | Sets `_elevationFreeze = true` on drag start (605, 613), clears on drag end (678)                                    | Gesture lifecycle              |
+| `map.ts`             | Reads `_elevationFreeze` to skip elevation updates (2303, 3601)                                                      | Render loop guard              |
 
 This should be encapsulated in Surface as an **elevation controller**:
 
@@ -1671,11 +2039,13 @@ Camera and handler_manager call `surface.freezeElevation()` / `surface.unfreezeE
 `_prepareElevation`, `_updateElevation`, `_finalizeElevation` in camera.ts (lines 1206-1235) interpolate elevation during `easeTo`/`flyTo`. This is terrain-specific animation logic — on flat, elevation is always 0 and these are no-ops.
 
 These could become Surface methods:
+
 ```
 surface.prepareElevationAnimation(tr): ElevationState | null
 surface.updateElevationAnimation(state, k): void
 surface.finalizeElevationAnimation(state, tr): void
 ```
+
 FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest.
 
 ##### Handler_manager terrain panning
@@ -1696,13 +2066,13 @@ FlatSurface returns null from `prepareElevationAnimation`, camera skips the rest
 
 ##### Remaining direct `surface.terrain` checks
 
-| File | What it does | Path forward |
-|------|-------------|-------------|
-| `handler_manager.ts:597` | Terrain-specific drag panning | ✅ Done — removed early return, elevation-aware path works for flat |
-| `draw_heatmap.ts:29` | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | ✅ Done — branches on `isRenderingToTexture` instead of `surface.terrain`. Heatmap added to RTT LAYERS. |
-| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key | ✅ Done — Surface owns the full tile key via `tileKey(tileID)`, cache is generic |
-| `map.ts setTerrain` | Terrain lifecycle (create/destroy Terrain object) | Factory code — inherently knows about terrain |
-| `map.ts:2303,3601` | Checks `_elevationFreeze` to skip elevation updates | ✅ Done — uses `surface.isElevationFrozen` |
+| File                          | What it does                                                                | Path forward                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `handler_manager.ts:597`      | Terrain-specific drag panning                                               | ✅ Done — removed early return, elevation-aware path works for flat                                     |
+| `draw_heatmap.ts:29`          | Two entirely different render strategies (per-tile FBO vs screen-space FBO) | ✅ Done — branches on `isRenderingToTexture` instead of `surface.terrain`. Heatmap added to RTT LAYERS. |
+| `bounding_volume_cache.ts:37` | Includes terrain flag `_t` in cache key                                     | ✅ Done — Surface owns the full tile key via `tileKey(tileID)`, cache is generic                        |
+| `map.ts setTerrain`           | Terrain lifecycle (create/destroy Terrain object)                           | Factory code — inherently knows about terrain                                                           |
+| `map.ts:2303,3601`            | Checks `_elevationFreeze` to skip elevation updates                         | ✅ Done — uses `surface.isElevationFrozen`                                                              |
 
 ##### Heatmap render strategy — ✅ Done
 
@@ -1762,6 +2132,7 @@ Instead of draw functions adapting `getProjectionData` params based on RTT state
 - Draw functions just call `transform.getProjectionData({overscaledTileID: coord, aligned})` — no RTT flags.
 
 This means:
+
 - `isRenderingToTexture` removed from `RenderOptions` (and from Surface interface)
 - `applyTerrainMatrix` and `applyGlobeMatrix` removed from `ProjectionDataParams`
 - `terrainRttPosMatrix32f` removed from `OverscaledTileID`
@@ -1785,6 +2156,7 @@ Less ambitious but still an improvement: add `rttPosMatrices: Record<string, mat
 
 **B. `isRenderingToTexture` on the Surface interface — questionable.**
 Only consumed by `tile_manager.ts:589` (to disable raster fading when RTT is active). All draw functions get it from `renderOptions`, which RTT sets to `true` when it calls through. So the Surface property exists for a single consumer. Options:
+
 - **Move to `renderOptions` only**: tile_manager could receive the flag from the caller rather than reaching into Surface. This removes the property from the interface entirely.
 - **Replace with a method like `allowRasterFading()`**: more abstract, but it's still a single-purpose query that describes an RTT implementation detail.
 - **Keep as-is**: it's a boolean, not a type leak. Low priority.
