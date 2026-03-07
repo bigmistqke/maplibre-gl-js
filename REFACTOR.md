@@ -1404,6 +1404,70 @@ In a programmatic model, `createFillLayer()` would need to implicitly ensure its
     - **Generic workers are lighter** — no symbol subsystem code, so per-worker memory overhead is lower than today's identical workers that each carry everything.
     - **Sync problem solved** — generic workers need zero layer-specific code (descriptors are data). The symbol worker is a fixed subsystem that ships with the library. No coordination needed between main thread and workers about which layer types are available.
 
+    ### Reconsidering: descriptors are a DSL, codegen is simpler
+
+    After exploring the declarative descriptor approach in depth, we concluded it's becoming a DSL — reinventing a worse programming language to avoid sending code to a worker. The descriptor format keeps growing to handle fill extrusion's centroid writeback, line's conditional clip arrays, per-feature style property params, etc. And the struct layout's `encode`/`pack` functions aren't serializable over `postMessage`, which undermines the whole "descriptors as data" premise.
+
+    **Alternative: Blob-based worker codegen.** Instead of making the worker generic, let `createMap` generate the worker at runtime by concatenating only the code it needs.
+
+    Each layer module carries its worker-side bucket code as a pre-bundled string. `createMap` concatenates a shared worker core + only the needed layer chunks into a Blob URL:
+
+    ```ts
+    // Each layer module includes its worker code as a pre-bundled string
+    import { WORKER_CORE } from 'maplibre-mini/worker-core'
+
+    function fill() {
+      return {
+        draw: drawFill,
+        programs: fillPrograms,
+        workerCode: FILL_BUCKET_CODE, // pre-bundled string
+      }
+    }
+
+    function line() {
+      return {
+        draw: drawLine,
+        programs: linePrograms,
+        workerCode: LINE_BUCKET_CODE,
+      }
+    }
+
+    // createMap generates the worker — single composition point
+    function createMap({ canvas, layers }) {
+      const code = WORKER_CORE
+        + '\n' + layers.map(l => l.workerCode).join('\n')
+        + '\nself.initWorker()'
+      const worker = new Worker(
+        URL.createObjectURL(new Blob([code], { type: 'text/javascript' }))
+      )
+      // ...
+    }
+
+    // User code — no separate worker entry point, no sync problem
+    import { fill, line } from 'maplibre-mini/layers'
+    const map = createMap({ canvas, layers: [fill(), line()] })
+    ```
+
+    **Why this is better than descriptors:**
+
+    - **No DSL** — bucket code stays as real JavaScript. No descriptor format to design, maintain, or debug.
+    - **No serialization problem** — code is concatenated as strings, not sent over `postMessage`. Encoding functions, style property access, stateful iteration — all just work.
+    - **Naturally tree-shakeable** — if you don't import `fill`, `FILL_BUCKET_CODE` isn't in your main bundle and isn't concatenated into the worker.
+    - **No bundler plugin needed** — works with any bundler (or none). The "codegen" is string concatenation at runtime.
+    - **Single composition point** — the user writes `createMap({ layers: [...] })` and never thinks about workers.
+    - **No new abstractions** — bucket code stays as-is. No geometry processors, no descriptor interpreters, no struct layout required for this to work.
+
+    **Shared dependencies:** `WORKER_CORE` includes all shared infrastructure (StructArray, SegmentVector, ProgramConfigurationSet, subdivision, earcut, etc.). Each layer's `workerCode` string is only the layer-specific bucket class — which is small once the shared parts are in the core. The `bucket_utils` and extracted primitives (`triangulatePolygon`, etc.) reduce the size of each layer chunk by moving shared code into the core.
+
+    **How pre-bundled strings are produced:** A build step (part of the library's own build, not the consumer's) compiles each bucket into a self-contained string that assumes `WORKER_CORE` globals are available. This is similar to how libraries inline web workers today (Vite's `?worker&inline`, Webpack's `worker-loader` with `inline` option).
+
+    **Open questions:**
+
+    - **Source maps** — Blob URL workers don't have great source map support. Debugging worker code becomes harder. Could be mitigated by also providing a traditional worker entry point for development.
+    - **CSP (Content Security Policy)** — `blob:` URLs may be blocked by strict CSP policies. Fallback to a pre-built worker file would be needed for those environments.
+    - **Code size** — each layer's `workerCode` string is embedded in the main bundle even though it runs in the worker. The main thread pays the parse cost for code it doesn't execute. This could be mitigated by lazy loading the strings.
+    - **Symbol bucket** — still the most complex case. Its worker code string would be large. The specialized symbol worker idea from above could still apply — symbol's `workerCode` spawns its own dedicated worker.
+
 ---
 
 ## 12. Implementation Status
