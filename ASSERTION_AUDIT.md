@@ -15,12 +15,10 @@ TypeScript strict mode migration. Each assertion falls into one of three categor
 
 | Category | Production | Tests | Total |
 |---|---|---|---|
-| **CRASHED** | ~670 | ~115 | ~785 |
-| **HANDLED** | ~25 | ~5 | ~30 |
-| **NEVER_UNDEFINED** | ~35 | ~340 | ~375 |
-| **Total** | ~730 | ~460 | ~1190 |
-
-**Reclassification note:** Many patterns originally marked NEVER_UNDEFINED have been moved to CRASHED because they are set in methods other than the constructor body (e.g., `setup()`, `onAdd()`, `recalculate()`, `_load()`, `_calcMatrices()`, `performSymbolLayout()`, `prepareForRender()`). Only properties directly set in the constructor body or with field initializers qualify as NEVER_UNDEFINED.
+| **CRASHED** | ~684 | ~115 | ~799 |
+| **HANDLED** | ~27 | ~5 | ~32 |
+| **NEVER_UNDEFINED** | ~3 | ~340 | ~343 |
+| **Total** | ~714 | ~460 | ~1174 |
 
 ---
 
@@ -34,7 +32,7 @@ TypeScript strict mode migration. Each assertion falls into one of three categor
 
 ## HANDLED Assertions (Remove assertion, keep type optional)
 
-These assertions are wrong because the surrounding code already handles `undefined`/`null` safely.
+These assertions paper over patterns that are not typesafe. The surrounding code may handle `undefined`/`null` at runtime, but the current patterns prevent proper type narrowing. These need to be refactored for typesafety.
 
 ### `src/render/` directory
 
@@ -85,6 +83,8 @@ These assertions are wrong because the surrounding code already handles `undefin
 
 | File | Value | Reason |
 |---|---|---|
+| `mercator_transform.ts:~416,433,443` | `cache.get(key)` | Preceded by `cache.has(key)` check |
+| `gl/render_pool.ts:~2215` | `extTextureFilterAnisotropicMax` | Inside `if (extTextureFilterAnisotropic)` guard |
 | `geojson_source.ts:~3098` | `options.clusterMaxZoom` | `_getClusterMaxZoom` already handles undefined with `this.maxzoom` fallback |
 | `geojson_worker_source.ts:~3885` | `getSuperclusterOptions(params)` | Returns valid options in cluster path; undefined only when clustering disabled |
 | `query_features.ts:~4315` | `tiles[i]` | Iterating array with `for` loop using `i < tiles.length`; element always defined |
@@ -96,37 +96,20 @@ These assertions are wrong because the surrounding code already handles `undefin
 
 These values are always defined at the point of use because they are set **directly in the constructor body or with field initializers**. The type should not include `| undefined`.
 
-### Pattern 7: Map constructor-initialized properties (~15 sites)
+### Pattern 7: Map constructor-initialized properties
 
-`_canvas`, `_canvasContainer`, `_controlContainer`, `_controlPositions`, `painter`, `handlers`, `_maxCanvasSize` -- set in constructor, never nullified.
+`handlers`, `_maxCanvasSize` -- set directly in constructor body.
+
+`_canvas`, `_canvasContainer`, `_controlContainer`, `_controlPositions` -- set in `_setupContainer()` called from constructor. `painter` -- set in `_setupPainter()` called from constructor. These are always defined but TypeScript can't infer it through method calls. Need to be inlined into the constructor at some point.
 
 **File**: `map.ts`
 
-### Pattern 18: Miscellaneous NEVER_UNDEFINED (constructor-set or truly always-defined)
+### Miscellaneous NEVER_UNDEFINED
 
 | File | Value | Reason |
 |---|---|---|
-| `draw_symbol.ts:~1406` | `updateTextFitIcon` | Boolean expression, never nullish |
-| `draw_symbol.ts:~1525` | `isSDF` | Boolean expression, never nullish |
-| `draw_symbol.ts:~1631,1637,1643` | `shaderVariableAnchor` | Boolean expression, never nullish |
-| `symbol_layout.ts:~2555,2558` | `compareText` | Already asserted on line 2552; double assertion |
 | `cross_tile_symbol_index.ts:~63` | `entry.positions` | Assigned on immediately preceding line |
-| `grid_index.ts:~180,215` | `this._queryCell`, `this._queryCellCircle` | Class methods, always exist |
-| `shaping.ts:~2061` | `sectionAttributes` | Guarded by `if (!sectionAttributes) continue` above |
-| `mercator_transform.ts:~416,433,443` | `cache.get(key)` | Preceded by `cache.has(key)` check |
-| `mercator_utils.ts:~78` | `unwrappedTileID.wrap` | All callers pass `UnwrappedTileID` which always has `wrap` |
-| `gl/render_pool.ts:~2215` | `extTextureFilterAnisotropicMax` | Inside `if (extTextureFilterAnisotropic)` guard |
 | `gl/vertex_buffer.ts:~2432` | `array.bytesPerElement` | Always defined on `StructArray` instances |
-| `geojson_source.ts` | `workerOptions.superclusterOptions`, `workerOptions.geojsonVtOptions`, `buffer`, `extent` | Always set in constructor |
-| `geojson_worker_source.ts:~3858` | `params.source` | Always provided by callers |
-| `vector_tile_worker_source.ts` | `overzoomParameters` | Only called when exists |
-| `worker_tile.ts:~82` | `layerIndex.familiesBySource` | Always initialized |
-| `query_features.ts:~4333` | `layer.source` | Always set on concrete style layers |
-| `tile_bounds.ts:~10` | `LngLatBounds.convert()` | Always returns for valid input |
-| `terrain_tile_manager.ts` | `tileID.terrainRttPosMatrix32f` | Assigned on line above |
-| `tile.ts:~prepare` | `this.imageAtlasTexture` | Created in same upload flow as imageAtlas |
-| `pauseable_placement.ts:~114` | `layer.source` | Symbol layers always have a source |
-| `style.ts:~396,516,1387,1853,1904` | `layer.source` / `styledLayer.source` | Only reached for layer types that have sources |
 
 ---
 
@@ -189,7 +172,7 @@ Properties set in `painter.setup()` or `painter.render()`, NOT in constructor.
 - `placement.ts`: ~60 sites (bucket properties, `placedGlyphBoxes`, `placedIconBoxes`, `prevZoomAdjustment`, `lastPlacementChangeTime`)
 - `projection.ts`: `transform.pixelsToClipSpaceMatrix`, bucket text/icon (x8), `projectionContext.*` (x6), `currentLineSegment`
 - `quads.ts`: `layer.layout`
-- `shaping.ts`: `sectionAttributes?.imageOffset`, `content`
+- `shaping.ts`: `sectionAttributes.imageOffset`, `content`
 - `symbol_layout.ts`: `layout` (~25), `bucket.tilePixelRatio` (x5), `shapedTextOrientations` (x2), `lineArray` (x2), various bucket properties
 - `transform_text.ts`: `layer.layout`
 
@@ -201,7 +184,8 @@ Properties set in `painter.setup()` or `painter.render()`, NOT in constructor.
 
 ### `src/style/`
 
-- `style.ts`: `serializedStyle`, `styledLayer.source`, `_removedLayers` (x2), `getLayer(layer)` (x2), `stylesheet` (serialize/getGlyphsUrl/getSprite), `placement`, `map.terrain`, `tileManager.getTileByID()`, `map.transformConstrain`
+- `style.ts`: `serializedStyle`, `styledLayer.source` (x5), `_removedLayers` (x2), `getLayer(layer)` (x2), `stylesheet` (serialize/getGlyphsUrl/getSprite), `placement`, `map.terrain`, `tileManager.getTileByID()`, `map.transformConstrain`
+- `pauseable_placement.ts`: `layer.source`
 - `style_layer_index.ts`: `globalState` parameter
 - `properties.ts`: `prior.possiblyEvaluate(...)`
 - `query_utils.ts`: `transform.cameraToCenterDistance` (x2)
@@ -246,6 +230,7 @@ Set via `recalculate()`, NOT in constructor.
 - `globe_projection_error_measurement.ts`: post-destroy fields (x11)
 - `mercator_camera_helper.ts`: `options.aroundPoint`
 - `vertical_perspective_camera_helper.ts`: `cameraForBoxAndBearing result`, `padding.*` (x4), `options.aroundPoint`
+- `mercator_utils.ts`: `unwrappedTileID.wrap` (caller convention, not type-enforced)
 - `vertical_perspective_projection.ts`: `_errorQueryLatitudeDegrees`, `options.granularity`
 - `vertical_perspective_transform.ts`: `altitude`
 
@@ -305,6 +290,9 @@ Set in `onAdd()`, NOT in constructor.
 ### `src/data/`
 
 - `feature_index.ts`: `args.params`, `styleLayer.queryIntersectsFeature`, `bucketLayerIDs` (x2), `sourceLayerCoder`
+- `query_features.ts`: `layer.source` (subtype narrowing — type says optional but concrete layers always have it)
+- `worker_tile.ts`: `layerIndex.familiesBySource`
+- `tile.ts`: `this.imageAtlasTexture` (created in upload flow, not constructor)
 - `bucket/line_bucket.ts`: `prevNormal`, `nextNormal`, `prevVertex`, `nextVertex`
 - `gl/index_buffer.ts`: `array.arrayBuffer` (x2)
 - `gl/vertex_buffer.ts`: `array.arrayBuffer` (x2), `program.attributes` (x2)
@@ -325,13 +313,13 @@ Set in `onAdd()`, NOT in constructor.
 - `canvas_source.ts`: `this.canvas` (public API), `this.pause`, `map.painter`
 - `geojson_source.ts`: `_data.updateable`, `options`, `map.style`, `map.style.projection`, `_data.url || _data.geojson`
 - `geojson_source_diff.ts`: `feature.properties`
-- `geojson_worker_source.ts`: `workerTile.vectorTile`, `_geoJSONIndex` (x4)
+- `geojson_worker_source.ts`: `workerTile.vectorTile`, `_geoJSONIndex` (x4), `params.source` (caller convention)
 - `image_source.ts`: `map.painter`
 - `raster_dem_tile_source.ts`: `sendAsync result`, `map.painter`
 - `raster_tile_source.ts`: `map.painter` (x3)
 - `rtl_text_plugin_worker.ts`: `incomingState.pluginURL`
 - `vector_tile_source.ts`: `map.style`, `map.style.projection`, `map.painter`
-- `vector_tile_worker_source.ts`: `params.request` (x2), `workerTile.vectorTile`
+- `vector_tile_worker_source.ts`: `params.request` (x2), `workerTile.vectorTile`, `overzoomParameters` (caller convention)
 - `video_source.ts`: `this.video` (x4), `map.painter`
 
 ### Test files (~115 CRASHED sites)
@@ -354,22 +342,21 @@ Set in `onAdd()`, NOT in constructor.
 
 1. **`handler_manager.ts`**: Remove `assertedNotNullish` around void `handleEvent` return
 
-### Phase 1: Revert remaining type widenings (~35 NEVER_UNDEFINED assertions)
+### Phase 1: Revert remaining type widenings (~4 NEVER_UNDEFINED assertions)
 
 For each remaining NEVER_UNDEFINED pattern, revert the property type from `T | undefined` back to `T`.
 
-**Priority order by impact:**
-1. Map constructor-initialized properties (~15 sites)
-2. Miscellaneous always-defined values (~20 sites)
+1. `map.ts`: `handlers`, `_maxCanvasSize` (2 sites — directly set in constructor)
+2. `cross_tile_symbol_index.ts` `entry.positions`, `vertex_buffer.ts` `array.bytesPerElement` (2 sites)
 
-### Phase 2: Remove remaining HANDLED assertions (~30 assertions)
+### Phase 2: Remove remaining HANDLED assertions (~32 assertions)
 
 Delete HANDLED assertions where existing guards already ensure non-nullish. Key targets:
 - `uniform_binding.ts` Uniform.current (~12 sites)
 - Remaining bucket destroy guards (~5 sites)
 - Remaining style/source guards
 
-### Phase 3: Keep CRASHED assertions (~785 assertions)
+### Phase 3: Keep CRASHED assertions (~799 assertions)
 
 These are correct. Consider improving them by:
 - Creating typed wrappers for DOM/WebGL APIs that throw descriptively
