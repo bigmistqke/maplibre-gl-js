@@ -369,11 +369,11 @@ function shapeLines(shaping: Shaping,
 
                 sectionAttributes = shapeImageSection(section, vertical, lineMaxScale, lineShapingSize, imagePositions);
                 if (!sectionAttributes) continue;
-                imageOffset = Math.max(imageOffset, assertedNotNullish(sectionAttributes?.imageOffset));
+                imageOffset = Math.max(imageOffset, assertedNotNullish(sectionAttributes.imageOffset));
                 positionedGlyph.imageName = section.imageName;
             }
 
-            const {rect, metrics, baselineOffset} = assertedNotNullish(sectionAttributes);
+            const {rect, metrics, baselineOffset} = sectionAttributes;
             positionedGlyph.y += baselineOffset;
             positionedGlyph.scale = section.scale;
             positionedGlyph.metrics = metrics;

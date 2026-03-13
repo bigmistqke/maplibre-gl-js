@@ -355,7 +355,7 @@ function drawLayerSymbols(
         const sizeData = isText ? bucket.textSizeData : bucket.iconSizeData;
         const transformed = pitchWithMap || transform.pitch !== 0;
 
-        const program = painter.useProgram(getSymbolProgramName(assertedNotNullish(isSDF), isText, bucket), programConfiguration);
+        const program = painter.useProgram(getSymbolProgramName(isSDF, isText, bucket), programConfiguration);
         const size = evaluateSizeForZoom(sizeData, transform.zoom);
         const terrainData = painter.style?.map.terrain?.getTerrainData(coord);
 
@@ -412,7 +412,7 @@ function drawLayerSymbols(
             updateLineLabels(bucket, painter, isText, pitchedLabelPlaneMatrix, pitchedLabelPlaneMatrixInverse, pitchWithMap, keepUpright, rotateToLine, coord.toUnwrapped(), transform.width, transform.height, translation, getElevation);
         }
 
-        const shaderVariableAnchor = (isText && hasVariablePlacement) || updateTextFitIcon;
+        const shaderVariableAnchor = (isText && hasVariablePlacement) || !!updateTextFitIcon;
 
         // If the label plane matrix is used, it transforms either map-pitch-aligned pixels, or to screenspace pixels
         const combinedLabelPlaneMatrix = pitchWithMap ? pitchedLabelPlaneMatrix : assertedNotNullish(painter.transform.clipSpaceToPixelsMatrix);
@@ -436,19 +436,19 @@ function drawLayerSymbols(
         const state: SymbolTileRenderState['state'] = isSDF ? !bucket.iconsInText ? {
             isSDF,
             uniformValues: symbolSDFUniformValues(sizeData.kind,
-                size, rotateInShader, pitchWithMap, alongLine, assertedNotNullish(shaderVariableAnchor), painter,
+                size, rotateInShader, pitchWithMap, alongLine, shaderVariableAnchor, painter,
                 uLabelPlaneMatrix, glCoordMatrixForShader, translation, isText, texSize, true, pitchedTextRescaling),
             ...base
         } : {
             isSDF,
             uniformValues: symbolTextAndIconUniformValues(sizeData.kind,
-                size, rotateInShader, pitchWithMap, alongLine, assertedNotNullish(shaderVariableAnchor), painter,
+                size, rotateInShader, pitchWithMap, alongLine, shaderVariableAnchor, painter,
                 uLabelPlaneMatrix, glCoordMatrixForShader, translation, texSize, texSizeIcon, pitchedTextRescaling),
             ...base
         } : {
             isSDF,
             uniformValues: symbolIconUniformValues(sizeData.kind,
-                size, rotateInShader, pitchWithMap, alongLine, assertedNotNullish(shaderVariableAnchor), painter,
+                size, rotateInShader, pitchWithMap, alongLine, shaderVariableAnchor, painter,
                 uLabelPlaneMatrix, glCoordMatrixForShader, translation, isText, texSize, pitchedTextRescaling),
             ...base
         };

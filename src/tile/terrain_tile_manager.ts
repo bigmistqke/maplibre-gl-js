@@ -106,7 +106,7 @@ export class TerrainTileManager extends Evented {
             this._renderableTilesKeys.push(tileID.key);
             if (!this._tiles[tileID.key]) {
                 tileID.terrainRttPosMatrix32f = new Float64Array(16);
-                mat4.ortho(assertedNotNullish(tileID.terrainRttPosMatrix32f), 0, EXTENT, EXTENT, 0, 0, 1);
+                mat4.ortho(tileID.terrainRttPosMatrix32f, 0, EXTENT, EXTENT, 0, 0, 1);
                 this._tiles[tileID.key] = new Tile(tileID, this.tileSize);
                 this._lastTilesetChange = now();
             }

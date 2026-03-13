@@ -740,7 +740,7 @@ function anchorIsTooClose(bucket: SymbolBucket, text: string, repeatDistance: nu
     if (!(text in compareText)) {
         assertedNotNullish(compareText)[text] = [];
     } else {
-        const otherAnchors = assertedNotNullish(compareText)[text];
+        const otherAnchors = compareText[text];
         for (let k = otherAnchors.length - 1; k >= 0; k--) {
             if (anchor.dist(otherAnchors[k]) < repeatDistance) {
                 // If it's within repeatDistance of one anchor, stop looking

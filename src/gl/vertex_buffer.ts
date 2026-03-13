@@ -29,8 +29,8 @@ const AttributeType = {
 export class VertexBuffer {
     length: number;
     attributes: ReadonlyArray<StructArrayMember>;
-    itemSize: number;
-    dynamicDraw: boolean;
+    itemSize?: number;
+    dynamicDraw?: boolean;
     context: Context;
     buffer: WebGLBuffer | undefined;
 

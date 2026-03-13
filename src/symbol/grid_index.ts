@@ -177,7 +177,7 @@ export class GridIndex<T extends GridKey> {
                 overlapMode,
                 seenUids: {box: {}, circle: {}}
             };
-            this._forEachCell(x1, y1, x2, y2, assertedNotNullish(this._queryCell), result, queryArgs, predicate);
+            this._forEachCell(x1, y1, x2, y2, this._queryCell, result, queryArgs, predicate);
         }
 
         return result;
@@ -212,7 +212,7 @@ export class GridIndex<T extends GridKey> {
             circle: {x, y, radius},
             seenUids: {box: {}, circle: {}}
         };
-        this._forEachCell(x1, y1, x2, y2, assertedNotNullish(this._queryCellCircle), result, queryArgs, predicate);
+        this._forEachCell(x1, y1, x2, y2, this._queryCellCircle, result, queryArgs, predicate);
         return result.length > 0;
     }
 

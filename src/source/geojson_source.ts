@@ -1,3 +1,4 @@
+import type {GeoJSONVTOptions, SuperclusterOptions} from '@maplibre/geojson-vt';
 import {Event, ErrorEvent, Evented} from '../util/evented';
 import {extend, warnOnce, assertedNotNullish, type ExactlyOne} from '../util/util';
 import {EXTENT} from '../data/extent';
@@ -138,7 +139,12 @@ export class GeoJSONSource extends Evented implements Source {
         updateable: globalThis.Map<GeoJSONFeatureId, GeoJSON.Feature>;
     }>;
     _options: GeoJSONSourceInternalOptions;
-    workerOptions: GeoJSONWorkerOptions;
+    workerOptions:  GeoJSONWorkerOptions & {
+        source: string;
+        cluster: boolean;
+        geojsonVtOptions: GeoJSONVTOptions;
+        superclusterOptions: SuperclusterOptions;
+    };
     map: Map | undefined;
     actor: Actor;
     _isUpdatingWorker: boolean;
@@ -321,12 +327,12 @@ export class GeoJSONSource extends Evented implements Source {
      * ```
      */
     setClusterOptions(options: SetClusterOptions): this {
-        this.workerOptions.cluster = options.cluster;
+        this.workerOptions.cluster = !!options.cluster;
         if (options.clusterRadius !== undefined) {
-            assertedNotNullish(this.workerOptions.superclusterOptions).radius = this._pixelsToTileUnits(options.clusterRadius);
+            this.workerOptions.superclusterOptions.radius = this._pixelsToTileUnits(options.clusterRadius);
         }
         if (options.clusterMaxZoom !== undefined) {
-            assertedNotNullish(this.workerOptions.superclusterOptions).maxZoom = this._getClusterMaxZoom(options.clusterMaxZoom);
+            this.workerOptions.superclusterOptions.maxZoom = this._getClusterMaxZoom(options.clusterMaxZoom);
         }
         this._pendingWorkerUpdate.updateCluster = true;
         this._updateWorkerData();
@@ -568,7 +574,7 @@ export class GeoJSONSource extends Evented implements Source {
         }
 
         // Update the tile if contained or will contain an updated feature.
-        const {buffer, extent} = assertedNotNullish(this.workerOptions.geojsonVtOptions);
+        const {buffer, extent} = this.workerOptions.geojsonVtOptions;
         const tileBounds = tileIdToLngLatBounds(
             tile.tileID.canonical,
             assertedNotNullish(buffer) / assertedNotNullish(extent)
