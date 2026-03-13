@@ -118,7 +118,7 @@ export class BoxZoomHandler implements Handler {
 
         const pos = point;
 
-        if (assertedNotNullish(this._lastPos, 'Expected this._lastPos to be defined').equals(pos) || (!this._box && pos.dist(assertedNotNullish(this._startPos, 'Expected this._startPos to be defined')) < this._clickTolerance)) {
+        if (assertedNotNullish(this._lastPos) .equals(pos) || (!this._box && pos.dist(assertedNotNullish(this._startPos) ) < this._clickTolerance)) {
             return;
         }
 

@@ -371,7 +371,7 @@ export class LngLatBounds {
      * let llb = LngLatBounds.convert(arr); // = LngLatBounds {_sw: LngLat {lng: -73.9876, lat: 40.7661}, _ne: LngLat {lng: -73.9397, lat: 40.8002}}
      * ```
      */
-    static convert(input: LngLatBoundsLike | null): LngLatBounds|null {
+    static convert(input: LngLatBoundsLike | null | undefined): LngLatBounds|null {
         if (input instanceof LngLatBounds) return input;
         if (isNullish(input)) return null;
         return new LngLatBounds(input);

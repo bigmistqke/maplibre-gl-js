@@ -583,7 +583,7 @@ function applyTextFit(shapedIcon: PositionedIcon): Box {
     let iconHeight = shapedIcon.bottom - iconTop;
     // Size of the original content area
     const content = shapedIcon.image.content;
-    assertNotNullish(content, 'Expected shapedIcon.image.content to be defined for text fit');
+    assertNotNullish(content) ;
     const contentWidth = content[2] - content[0];
     const contentHeight = content[3] - content[1];
     const textFitWidth = shapedIcon.image.textFitWidth ?? TextFit.stretchOrShrink;

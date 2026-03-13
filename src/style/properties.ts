@@ -74,7 +74,7 @@ export class PropertyValue<T, R> {
     value: PropertyValueSpecification<T> | void;
     expression: StylePropertyExpression;
 
-    constructor(property: Property<T, R>, value: PropertyValueSpecification<T> | void, globalState: Record<string, any>) {
+    constructor(property: Property<T, R>, value: PropertyValueSpecification<T> | void, globalState: Record<string, any> | undefined) {
         this.property = property;
         this.value = value;
         // NOTE: upstream StylePropertySpecification.default is a broad union that loses the connection to T
@@ -321,9 +321,9 @@ export class Transitioning<Props extends Record<string, Property<unknown, unknow
 export class Layout<Props extends Record<string, Property<unknown, unknown>>> {
     _properties: Properties<Props>;
     _values: {[K in keyof Props]: PropertyValue<any, PossiblyEvaluatedPropertyValue<any>>};
-    private _globalState: Record<string, any>; // reference to global state
+    private _globalState: Record<string, any> | undefined; // reference to global state
 
-    constructor(properties: Properties<Props>, globalState: Record<string, any>) {
+    constructor(properties: Properties<Props>, globalState: Record<string, any> | undefined) {
         this._properties = properties;
         this._values = (Object.create(properties.defaultPropertyValues) as any);
         this._globalState = globalState;

@@ -37,7 +37,7 @@ import type {ColorMode} from '../gl/color_mode';
 import type {Program} from './program';
 import type {TextAnchor} from '../style/style_layer/variable_text_anchor';
 import {getGlCoordMatrix, getPerspectiveRatio, getPitchedLabelPlaneMatrix, hideGlyphs, projectWithMatrix, projectTileCoordinatesToClipSpace, projectTileCoordinatesToLabelPlane, type SymbolProjectionContext, updateLineLabels} from '../symbol/projection';
-import {assertedNotNullish, translatePosition} from '../util/util';
+import {assertedNotNullish, assertNotNullish, translatePosition} from '../util/util';
 import type {ProjectionData} from '../geo/projection/projection_data';
 
 type SymbolTileRenderState = {
@@ -73,7 +73,7 @@ const identityMat4 = mat4.identity(new Float32Array(16));
 
 export function drawSymbols(painter: Painter, tileManager: TileManager, layer: SymbolStyleLayer, coords: Array<OverscaledTileID>, variableOffsets: {
     [_ in CrossTileID]: VariableOffset;
-}, renderOptions: RenderOptions) {
+} | undefined, renderOptions: RenderOptions) {
     if (painter.renderPass !== 'translucent') return;
 
     const {isRenderingToTexture} = renderOptions;
@@ -145,7 +145,7 @@ function updateVariableAnchors(coords: Array<OverscaledTileID>,
     pitchAlignment: NonNullable<SymbolLayerSpecification['layout']>['text-pitch-alignment'],
     translate: [number, number],
     translateAnchor: 'map' | 'viewport',
-    variableOffsets: {[_ in CrossTileID]: VariableOffset}) {
+    variableOffsets: {[_ in CrossTileID]: VariableOffset} | undefined) {
     const transform = painter.transform;
     const terrain = assertedNotNullish(painter.style).map.terrain;
     const rotateWithMap = rotationAlignment === 'map';
@@ -168,7 +168,7 @@ function updateVariableAnchors(coords: Array<OverscaledTileID>,
             const getElevation = terrain ? (x: number, y: number) => terrain.getElevation(coord, x, y) : null;
             const translation = translatePosition(transform, tile, translate, translateAnchor);
             updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets,
-                transform, pitchedLabelPlaneMatrix, tileScale, size, assertedNotNullish(updateTextFitIcon), translation, coord.toUnwrapped(), getElevation);
+                transform, pitchedLabelPlaneMatrix, tileScale, size, !!updateTextFitIcon, translation, coord.toUnwrapped(), getElevation);
         }
     }
 }
@@ -288,9 +288,9 @@ function updateVariableAnchorsForBucket(
                 }
             }
         }
-        assertedNotNullish(assertedNotNullish(bucket.icon).dynamicLayoutVertexBuffer).updateData(dynamicIconLayoutVertexArray);
+        assertedNotNullish(bucket.icon?.dynamicLayoutVertexBuffer).updateData(dynamicIconLayoutVertexArray);
     }
-    assertedNotNullish(assertedNotNullish(bucket.text).dynamicLayoutVertexBuffer).updateData(dynamicTextLayoutVertexArray);
+    assertedNotNullish(bucket.text?.dynamicLayoutVertexBuffer).updateData(dynamicTextLayoutVertexArray);
 }
 
 function getSymbolProgramName(isSDF: boolean, isText: boolean, bucket: SymbolBucket) {
@@ -357,31 +357,37 @@ function drawLayerSymbols(
 
         const program = painter.useProgram(getSymbolProgramName(assertedNotNullish(isSDF), isText, bucket), programConfiguration);
         const size = evaluateSizeForZoom(sizeData, transform.zoom);
-        const terrainData = assertedNotNullish(painter.style).map.terrain && assertedNotNullish(assertedNotNullish(painter.style).map.terrain).getTerrainData(coord);
+        const terrainData = painter.style?.map.terrain?.getTerrainData(coord);
 
         let texSize: [number, number];
         let texSizeIcon: [number, number] = [0, 0];
-        let atlasTexture: Texture;
+        let atlasTexture: Texture | undefined;
         let atlasInterpolation: TextureFilter;
         let atlasTextureIcon: Texture | null = null;
         let atlasInterpolationIcon: TextureFilter = gl.LINEAR;
         if (isText) {
-            atlasTexture = assertedNotNullish(tile.glyphAtlasTexture);
+            assertNotNullish(tile.glyphAtlasTexture);
+            atlasTexture = tile.glyphAtlasTexture;
             atlasInterpolation = gl.LINEAR;
-            texSize = assertedNotNullish(assertedNotNullish(tile.glyphAtlasTexture).size);
+            texSize = assertedNotNullish(tile.glyphAtlasTexture.size);
             if (bucket.iconsInText) {
-                texSizeIcon = assertedNotNullish(assertedNotNullish(tile.imageAtlasTexture).size);
-                atlasTextureIcon = assertedNotNullish(tile.imageAtlasTexture);
+                assertNotNullish(tile.imageAtlasTexture);
+                assertNotNullish(painter.options);
+                texSizeIcon = assertedNotNullish(tile.imageAtlasTexture.size);
+                atlasTextureIcon = tile.imageAtlasTexture;
                 const zoomDependentSize = sizeData.kind === 'composite' || sizeData.kind === 'camera';
-                atlasInterpolationIcon = transformed || assertedNotNullish(painter.options).rotating || assertedNotNullish(painter.options).zooming || zoomDependentSize ? gl.LINEAR : gl.NEAREST;
+                atlasInterpolationIcon = transformed || painter.options.rotating || painter.options.zooming || zoomDependentSize ? gl.LINEAR : gl.NEAREST;
             }
         } else {
+            assertNotNullish(painter.options);
+            assertNotNullish(tile.imageAtlasTexture);
+
             const iconScaled = assertedNotNullish(layer.layout).get('icon-size').constantOr(0) !== 1 || bucket.iconsNeedLinear;
-            atlasTexture = assertedNotNullish(tile.imageAtlasTexture);
-            atlasInterpolation = isSDF || assertedNotNullish(painter.options).rotating || assertedNotNullish(painter.options).zooming || iconScaled || transformed ?
+            atlasTexture = tile.imageAtlasTexture;
+            atlasInterpolation = isSDF || painter.options.rotating || painter.options.zooming || iconScaled || transformed ?
                 gl.LINEAR :
                 gl.NEAREST;
-            texSize = assertedNotNullish(assertedNotNullish(tile.imageAtlasTexture).size);
+            texSize = assertedNotNullish(tile.imageAtlasTexture.size);
         }
 
         // See the comment at the beginning of src/symbol/projection.ts for an overview of the symbol projection process

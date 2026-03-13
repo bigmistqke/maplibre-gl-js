@@ -13,7 +13,6 @@ import type {AddressInfo} from 'node:net';
 import {deepEqual} from '../lib/json-diff';
 import {localizeURLs} from '../lib/localize-urls';
 import {launchPuppeteer} from '../lib/puppeteer_config';
-// @ts-expect-error - dist types not available during type checking
 import type {default as MapLibreGL} from '../../../dist/maplibre-gl';
 
 let maplibregl: typeof MapLibreGL;
@@ -126,7 +125,7 @@ describe('query tests', () => {
             <html lang="en">
             <head>
                 <meta charset='utf-8'>
-                
+
             </head>
             <body id='map'></body>
             </html>`);
@@ -150,7 +149,7 @@ describe('query tests', () => {
             }
             return entry;
         });
-        
+
         const coverageReport = new CoverageReport({
             name: 'MapLibre Coverage Report',
             outputDir: './coverage/query',
@@ -160,9 +159,9 @@ describe('query tests', () => {
             }
         });
         coverageReport.cleanCache();
-        
+
         await coverageReport.add(rawV8CoverageData);
-        
+
         await coverageReport.generate();
     }, 60000);
 

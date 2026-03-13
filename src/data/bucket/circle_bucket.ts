@@ -29,7 +29,7 @@ import type {ImagePosition} from '../../render/image_atlas';
 import {type CircleGranularity} from '../../render/subdivision_granularity_settings';
 import type {VectorTileLayerLike} from '@maplibre/vt-pbf';
 import type {StructArray} from '../../util/struct_array';
-import {assertedNotNullish} from '../../util/util';
+import {assertedNotNullish, assertNotNullish} from '../../util/util';
 
 const VERTEX_MIN_VALUE = -32768; // -(2^15)
 
@@ -144,8 +144,9 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
     }
 
     update(states: FeatureStates, vtLayer: VectorTileLayerLike, imagePositions: {[_: string]: ImagePosition}) {
-        if (!assertedNotNullish(this.stateDependentLayers).length) return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers!, {
+        assertNotNullish(this.stateDependentLayers);
+        if (!this.stateDependentLayers.length) return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
             imagePositions
         });
     }
@@ -170,7 +171,7 @@ export class CircleBucket<Layer extends CircleStyleLayer | HeatmapStyleLayer> im
     destroy() {
         if (!this.layoutVertexBuffer) return;
         this.layoutVertexBuffer.destroy();
-        assertedNotNullish(this.indexBuffer).destroy();
+        this.indexBuffer?.destroy();
         this.programConfigurations.destroy();
         this.segments.destroy();
     }

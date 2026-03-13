@@ -317,9 +317,9 @@ export function updateLineLabels(bucket: SymbolBucket,
     }
 
     if (isText) {
-        assertedNotNullish(assertedNotNullish(bucket.text).dynamicLayoutVertexBuffer).updateData(dynamicLayoutVertexArray);
+        assertedNotNullish(bucket.text?.dynamicLayoutVertexBuffer).updateData(dynamicLayoutVertexArray);
     } else {
-        assertedNotNullish(assertedNotNullish(bucket.icon).dynamicLayoutVertexBuffer).updateData(dynamicLayoutVertexArray);
+        assertedNotNullish(bucket.icon?.dynamicLayoutVertexBuffer).updateData(dynamicLayoutVertexArray);
     }
 }
 

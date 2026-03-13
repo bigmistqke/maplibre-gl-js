@@ -35,7 +35,7 @@ import type {SubdivisionGranularitySetting} from '../../render/subdivision_granu
 import {fillLargeMeshArrays} from '../../render/fill_large_mesh_arrays';
 import type {VectorTileLayerLike} from '@maplibre/vt-pbf';
 import type {StructArray} from '../../util/struct_array';
-import {assertedNotNullish} from '../../util/util';
+import {assertedNotNullish, assertNotNullish} from '../../util/util';
 
 const FACTOR = Math.pow(2, 13);
 
@@ -130,7 +130,8 @@ export class FillExtrusionBucket implements Bucket {
     }
 
     addFeatures(options: PopulateParameters, canonical: CanonicalTileID, imagePositions: {[_: string]: ImagePosition}) {
-        for (const feature of assertedNotNullish(this.features)) {
+        assertNotNullish(this.features);
+        for (const feature of this.features) {
             const {geometry} = feature;
             this.addFeature(feature, geometry, feature.index, canonical, imagePositions, options.subdivisionGranularity);
         }

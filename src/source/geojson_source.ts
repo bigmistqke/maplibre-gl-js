@@ -600,7 +600,7 @@ export class GeoJSONSource extends Evented implements Source {
             pixelRatio: assertedNotNullish(this.map).getPixelRatio(),
             showCollisionBoxes: assertedNotNullish(this.map).showCollisionBoxes,
             promoteId: this.promoteId as PromoteIdSpecification,
-            subdivisionGranularity: assertedNotNullish(assertedNotNullish(assertedNotNullish(this.map).style).projection).subdivisionGranularity
+            subdivisionGranularity: assertedNotNullish(this.map?.style?.projection).subdivisionGranularity
         };
 
         tile.abortController = new AbortController();
@@ -609,8 +609,7 @@ export class GeoJSONSource extends Evented implements Source {
         tile.unloadVectorData();
 
         if (!tile.aborted) {
-            // @ts-expect-error - original code accessed this.map.painter directly
-            tile.loadVectorData(data, assertedNotNullish(this.map).painter, message ===  MessageType.reloadTile);
+            tile.loadVectorData(data, this.map?.painter, message ===  MessageType.reloadTile);
         }
     }
 

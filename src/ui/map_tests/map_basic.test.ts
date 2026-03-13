@@ -143,7 +143,7 @@ describe('Map', () => {
             map.addSource('geojson', createStyleSource());
             assertedNotNullish(map.style).tileManagers.geojson._inViewTiles.setTile(fakeTileId.key, new Tile(fakeTileId, 0));
             expect(map.areTilesLoaded()).toBe(false);
-            assertedNotNullish(assertedNotNullish(map.style).tileManagers.geojson._inViewTiles.getTileById(fakeTileId.key)).state = 'loaded';
+            assertedNotNullish(map.style?.tileManagers.geojson._inViewTiles.getTileById(fakeTileId.key)).state = 'loaded';
             expect(map.areTilesLoaded()).toBe(true);
         });
     });

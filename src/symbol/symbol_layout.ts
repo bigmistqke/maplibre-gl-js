@@ -255,7 +255,7 @@ export function performSymbolLayout(args: {
         const shapedText = getDefaultHorizontalShaping(shapedTextOrientations.horizontal) || shapedTextOrientations.vertical;
         args.bucket.iconsInText ||= shapedText ? shapedText.iconsInText : false;
         if (shapedText || shapedIcon) {
-            addFeature(args.bucket, feature, shapedTextOrientations, assertedNotNullish(shapedIcon), args.imageMap, sizes, layoutTextSize, layoutIconSize, textOffset, isSDFIcon, args.canonical, args.subdivisionGranularity);
+            addFeature(args.bucket, feature, shapedTextOrientations, shapedIcon, args.imageMap, sizes, layoutTextSize, layoutIconSize, textOffset, isSDFIcon, args.canonical, args.subdivisionGranularity);
         }
     }
 
@@ -288,7 +288,7 @@ export function getAnchorJustification(anchor: TextAnchor): TextJustify {
 function addFeature(bucket: SymbolBucket,
     feature: SymbolFeature,
     shapedTextOrientations: ShapedTextOrientations,
-    shapedIcon: PositionedIcon,
+    shapedIcon: PositionedIcon | null | undefined,
     imageMap: {[_: string]: StyleImage},
     sizes: Sizes,
     layoutTextSize: number,
@@ -362,7 +362,7 @@ function addFeature(bucket: SymbolBucket,
                 subdividedLine,
                 symbolMinDistance,
                 textMaxAngle,
-                assertedNotNullish(shapedTextOrientations.vertical || defaultHorizontalShaping),
+                shapedTextOrientations.vertical || defaultHorizontalShaping,
                 shapedIcon,
                 glyphSize,
                 textMaxBoxScale,
@@ -385,7 +385,7 @@ function addFeature(bucket: SymbolBucket,
                 const anchor = getCenterAnchor(
                     subdividedLine,
                     textMaxAngle,
-                    assertedNotNullish(shapedTextOrientations.vertical || defaultHorizontalShaping),
+                    shapedTextOrientations.vertical || defaultHorizontalShaping,
                     shapedIcon,
                     glyphSize,
                     textMaxBoxScale);
@@ -514,7 +514,7 @@ function addSymbol(bucket: SymbolBucket,
     anchor: Anchor,
     line: Array<Point>,
     shapedTextOrientations: ShapedTextOrientations,
-    shapedIcon: PositionedIcon | undefined,
+    shapedIcon: PositionedIcon | undefined | null,
     imageMap: {[_: string]: StyleImage},
     verticallyShapedIcon: PositionedIcon | undefined,
     layer: SymbolStyleLayer,

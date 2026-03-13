@@ -2,7 +2,7 @@ import Point from '@mapbox/point-geometry';
 import {cameraBoundsWarning, type CameraForBoxAndBearingHandlerResult, type EaseToHandlerResult, type EaseToHandlerOptions, type FlyToHandlerResult, type FlyToHandlerOptions, type ICameraHelper, type MapControlsDeltas, updateRotation, type UpdateRotationArgs, cameraForBoxAndBearing} from './camera_helper';
 import {LngLat, type LngLatLike} from '../lng_lat';
 import {angularCoordinatesToSurfaceVector, computeGlobePanCenter, getGlobeRadiusPixels, getZoomAdjustment, globeDistanceOfLocationsPixels, interpolateLngLatForGlobe} from './globe_utils';
-import {assertedNotNullish, clamp, createVec3f64, differenceOfAnglesDegrees, MAX_VALID_LATITUDE, remapSaturate, rollPitchBearingEqual, scaleZoom, warnOnce, zoomScale} from '../../util/util';
+import {assertedNotNullish, clamp, createVec3f64, differenceOfAnglesDegrees, isNotNullish, MAX_VALID_LATITUDE, remapSaturate, rollPitchBearingEqual, scaleZoom, warnOnce, zoomScale} from '../../util/util';
 import {type mat4, vec3} from 'gl-matrix';
 import {normalizeCenter} from '../transform_helper';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
@@ -233,8 +233,6 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
         const endBearing = options.bearing === undefined ? tr.bearing : options.bearing;
         const endEulerAngles = {roll: endRoll, pitch: endPitch, bearing: endBearing};
 
-        const optionsZoom = typeof options.zoom !== 'undefined';
-
         const doPadding = !tr.isPaddingEqual(options.padding);
 
         let isZooming = false;
@@ -254,8 +252,8 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
         const clonedTr = tr.clone();
         clonedTr.setCenter(constrainedCenter);
 
-        clonedTr.setZoom(optionsZoom ?
-            +assertedNotNullish(options.zoom):
+        clonedTr.setZoom(isNotNullish(options.zoom) ?
+            +options.zoom:
             startZoom + getZoomAdjustment(startCenter.lat, preConstrainCenter.lat));
         clonedTr.setBearing(options.bearing);
         const clampedPoint = new Point(
@@ -265,9 +263,9 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
         clonedTr.setLocationAtPoint(constrainedCenter, clampedPoint);
         // Find final animation targets
         // NOTE:    this ternary seems off -> shouldn't it be `options.offset && (options.offsetAsPoint.mag() > 0)` ?
-        const endCenterWithShift = assertedNotNullish(options.offset && options.offsetAsPoint.mag()) > 0 ? clonedTr.center : constrainedCenter;
-        const endZoomWithShift = optionsZoom ?
-            +assertedNotNullish(options.zoom):
+        const endCenterWithShift = options.offset && options.offsetAsPoint.mag() > 0 ? clonedTr.center : constrainedCenter;
+        const endZoomWithShift = isNotNullish(options.zoom) ?
+            +options.zoom:
             startZoom + getZoomAdjustment(startCenter.lat, endCenterWithShift.lat);
 
         // Planet radius for a given zoom level differs according to latitude
@@ -326,8 +324,6 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
     }
 
     handleFlyTo(tr: ITransform, options: FlyToHandlerOptions): FlyToHandlerResult {
-        const optionsZoom = typeof options.zoom !== 'undefined';
-
         const startCenter = tr.center;
         const startZoom = tr.zoom;
         const startPadding = tr.padding;
@@ -339,7 +335,7 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
             LngLat.convert(options.center || options.locationAtOffset),
             startZoom
         ).center;
-        const targetZoom = optionsZoom ? +assertedNotNullish(options.zoom): tr.zoom + getZoomAdjustment(tr.center.lat, constrainedCenter.lat);
+        const targetZoom = isNotNullish(options.zoom) ? +options.zoom : tr.zoom + getZoomAdjustment(tr.center.lat, constrainedCenter.lat);
 
         // Compute target center that respects offset by creating a temporary transform and calling its `setLocationAtPoint`.
         const clonedTr = tr.clone();
@@ -362,12 +358,10 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
         const normalizedTargetZoom = targetZoom + getZoomAdjustment(targetCenter.lat, 0);
         const scaleOfZoom = zoomScale(normalizedTargetZoom - normalizedStartZoom);
 
-        const optionsMinZoom = typeof options.minZoom === 'number';
-
         let scaleOfMinZoom: number | undefined;
 
-        if (optionsMinZoom) {
-            const normalizedOptionsMinZoom = +assertedNotNullish(options.minZoom)+ getZoomAdjustment(targetCenter.lat, 0);
+        if (isNotNullish(options.minZoom)) {
+            const normalizedOptionsMinZoom = +options.minZoom + getZoomAdjustment(targetCenter.lat, 0);
             const normalizedMinZoomPreConstrain = Math.min(normalizedOptionsMinZoom, normalizedStartZoom, normalizedTargetZoom);
             const minZoomPreConstrain = normalizedMinZoomPreConstrain + getZoomAdjustment(0, targetCenter.lat);
             const minZoom = tr.applyConstrain(targetCenter, minZoomPreConstrain).zoom;

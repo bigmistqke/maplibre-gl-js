@@ -43,7 +43,7 @@ export class Frustum {
 
         if (horizonPlane) {
             // A horizon clipping plane was supplied.
-            adjustFarPlaneByHorizonPlane(frustumCoords, frustumPlanePointIndices[0], horizonPlane, assertedNotNullish(flippedNearFar));
+            adjustFarPlaneByHorizonPlane(frustumCoords, frustumPlanePointIndices[0], horizonPlane, !!flippedNearFar);
         }
 
         const frustumPlanes = frustumPlanePointIndices.map((p: number[]) => {

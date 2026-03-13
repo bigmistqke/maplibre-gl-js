@@ -1,4 +1,4 @@
-import {extend, wrap, defaultEasing, pick, scaleZoom, evaluateZoomSnap, assertedNotNullish} from '../util/util';
+import {extend, wrap, defaultEasing, pick, scaleZoom, evaluateZoomSnap, assertedNotNullish, isNotNullish} from '../util/util';
 import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 import {browser} from '../util/browser';
 import {now} from '../util/time_control';
@@ -955,28 +955,29 @@ export abstract class Camera extends Evented {
 
         const zoomChanged = tr.zoom !== oldZoom;
 
-        if ('elevation' in options && tr.elevation !== +assertedNotNullish(options.elevation, 'Expected elevation to be defined')) {
-            tr.setElevation(+assertedNotNullish(options.elevation, 'Expected elevation to be defined'));
+        if (isNotNullish(options.elevation) && tr.elevation !== +options.elevation) {
+            tr.setElevation(+options.elevation);
         }
 
-        if ('bearing' in options && tr.bearing !== +assertedNotNullish(options.bearing, 'Expected bearing to be defined')) {
+        if (isNotNullish(options.bearing) && tr.bearing !== +options.bearing) {
             bearingChanged = true;
-            tr.setBearing(+assertedNotNullish(options.bearing, 'Expected bearing to be defined'));
+            tr.setBearing(+options.bearing);
         }
 
-        if ('pitch' in options && tr.pitch !== +assertedNotNullish(options.pitch, 'Expected pitch to be defined')) {
+        if (isNotNullish(options.pitch) && tr.pitch !== +options.pitch) {
             pitchChanged = true;
-            tr.setPitch(+assertedNotNullish(options.pitch, 'Expected pitch to be defined'));
+            tr.setPitch(+options.pitch);
         }
 
-        if ('roll' in options && tr.roll !== +assertedNotNullish(options.roll, 'Expected roll to be defined')) {
+        if (isNotNullish(options.roll) && tr.roll !== +options.roll) {
             rollChanged = true;
-            tr.setRoll(+assertedNotNullish(options.roll, 'Expected roll to be defined'));
+            tr.setRoll(+options.roll);
         }
 
-        if (options.padding != null && !tr.isPaddingEqual(options.padding)) {
+        if (isNotNullish(options.padding) && !tr.isPaddingEqual(options.padding)) {
             tr.setPadding(options.padding);
         }
+
         this._applyUpdatedTransform(tr);
 
         this.fire(new Event('movestart', eventData))
@@ -1040,7 +1041,7 @@ export abstract class Camera extends Evented {
 
         const groundDistance = Math.hypot(dx, dy);
 
-        const zoom = scaleZoom(assertedNotNullish(this.transform.cameraToCenterDistance, 'Expected this.transform.cameraToCenterDistance to be defined') / distance3D / this.transform.tileSize);
+        const zoom = scaleZoom(assertedNotNullish(this.transform.cameraToCenterDistance) / distance3D / this.transform.tileSize);
         const bearing = (Math.atan2(dx, -dy) * 180) / Math.PI;
         let pitch = (Math.acos(groundDistance / distance3D) * 180) / Math.PI;
         pitch = dz < 0 ? 90 - pitch : 90 + pitch;
@@ -1105,14 +1106,14 @@ export abstract class Camera extends Evented {
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
      * @see [Navigate the map with game-like controls](https://maplibre.org/maplibre-gl-js/docs/examples/navigate-the-map-with-game-like-controls/)
      */
-    easeTo(options: EaseToOptions, eventData?: any): this {
-        this._stop(false, options.easeId);
+    easeTo(_options: EaseToOptions, eventData?: any): this {
+        this._stop(false, _options.easeId);
 
-        options = extend({
+        const options = extend({
             offset: [0, 0],
             duration: 500,
             easing: defaultEasing
-        }, options);
+        }, _options);
 
         if (options.animate === false || (!options.essential && browser.prefersReducedMotion)) {
             options.duration = 0;
@@ -1122,11 +1123,11 @@ export abstract class Camera extends Evented {
         const startBearing = this.getBearing(),
             startPitch = tr.pitch,
             startRoll = tr.roll,
-            bearing = 'bearing' in options ? this._normalizeBearing(assertedNotNullish(options.bearing, 'Expected options.bearing to be defined'), startBearing) : startBearing,
-            pitch = 'pitch' in options ? +assertedNotNullish(options.pitch, 'Expected pitch to be defined') : startPitch,
-            roll = 'roll' in options ? this._normalizeBearing(assertedNotNullish(options.roll, 'Expected options.roll to be defined'), startRoll) : startRoll,
-            padding = ('padding' in options ? options.padding : tr.padding) as PaddingOptions;
-        const offsetAsPoint = Point.convert(assertedNotNullish(options.offset, 'Expected options.offset to be defined'));
+            bearing = isNotNullish(options.bearing) ? this._normalizeBearing(options.bearing, startBearing) : startBearing,
+            pitch = isNotNullish(options.pitch) ? +options.pitch: startPitch,
+            roll = isNotNullish(options.roll) ? this._normalizeBearing(options.roll, startRoll) : startRoll,
+            padding = (isNotNullish(options.padding) ? options.padding : tr.padding) as PaddingOptions;
+        const offsetAsPoint = Point.convert(options.offset);
 
         let around, aroundPoint;
 
@@ -1162,7 +1163,7 @@ export abstract class Camera extends Evented {
         this._padding = !tr.isPaddingEqual(padding);
         this._zooming = this._zooming || easeHandler.isZooming;
         this._easeId = options.easeId;
-        this._prepareEase(eventData, assertedNotNullish(options.noMoveStart), currently);
+        this._prepareEase(eventData, options.noMoveStart, currently);
 
         if (this.terrain) {
             this._prepareElevation(easeHandler.elevationCenter);
@@ -1183,7 +1184,7 @@ export abstract class Camera extends Evented {
         return this;
     }
 
-    _prepareEase(eventData: any, noMoveStart: boolean,
+    _prepareEase(eventData: any, noMoveStart: boolean | undefined,
         currently: { moving?: boolean; zooming?: boolean; rotating?: boolean; pitching?: boolean; rolling?: boolean} = {}) {
         this._moving = true;
         if (!noMoveStart && !currently.moving) {
@@ -1216,8 +1217,8 @@ export abstract class Camera extends Evented {
             this._prepareElevation(this.transform.center);
         }
 
-        this.transform.setMinElevationForCurrentTile(assertedNotNullish(this.terrain, 'Expected terrain to be defined').getMinTileElevationForLngLatZoom(assertedNotNullish(this._elevationCenter, 'Expected _elevationCenter to be defined'), this.transform.tileZoom));
-        const elevation = assertedNotNullish(this.terrain).getElevationForLngLatZoom(assertedNotNullish(this._elevationCenter, 'Expected _elevationCenter to be defined'), this.transform.tileZoom);
+        this.transform.setMinElevationForCurrentTile(assertedNotNullish(this.terrain) .getMinTileElevationForLngLatZoom(assertedNotNullish(this._elevationCenter) , this.transform.tileZoom));
+        const elevation = assertedNotNullish(this.terrain).getElevationForLngLatZoom(assertedNotNullish(this._elevationCenter) , this.transform.tileZoom);
         // target terrain updated during flight, slowly move camera to new height
         if (k < 1 && elevation !== assertedNotNullish(this._elevationTarget)) {
             const pitch1 = assertedNotNullish(this._elevationTarget) - assertedNotNullish(this._elevationStart);
@@ -1225,7 +1226,7 @@ export abstract class Camera extends Evented {
             this._elevationStart = assertedNotNullish(this._elevationStart) + k * (pitch1 - pitch2);
             this._elevationTarget = elevation;
         }
-        this.transform.setElevation(interpolates.number(assertedNotNullish(this._elevationStart, 'Expected _elevationStart to be defined'), assertedNotNullish(this._elevationTarget), k));
+        this.transform.setElevation(interpolates.number(assertedNotNullish(this._elevationStart) , assertedNotNullish(this._elevationTarget), k));
     }
 
     _finalizeElevation() {
@@ -1437,12 +1438,12 @@ export abstract class Camera extends Evented {
             startRoll = tr.roll,
             startPadding = tr.padding;
 
-        const bearing = 'bearing' in options ? this._normalizeBearing(assertedNotNullish(options.bearing, 'Expected options.bearing to be defined'), startBearing) : startBearing;
-        const pitch = 'pitch' in options ? +assertedNotNullish(options.pitch, 'Expected pitch to be defined') : startPitch;
-        const roll = 'roll' in options ? this._normalizeBearing(assertedNotNullish(options.roll, 'Expected options.roll to be defined'), startRoll) : startRoll;
+        const bearing = 'bearing' in options ? this._normalizeBearing(assertedNotNullish(options.bearing) , startBearing) : startBearing;
+        const pitch = 'pitch' in options ? +assertedNotNullish(options.pitch) : startPitch;
+        const roll = 'roll' in options ? this._normalizeBearing(assertedNotNullish(options.roll) , startRoll) : startRoll;
         const padding = ('padding' in options ? options.padding : tr.padding) as PaddingOptions;
 
-        const offsetAsPoint = Point.convert(assertedNotNullish(options.offset, 'Expected options.offset to be defined'));
+        const offsetAsPoint = Point.convert(assertedNotNullish(options.offset) );
         let pointAtOffset = tr.centerPoint.add(offsetAsPoint);
         const locationAtOffset = tr.screenPointToLocation(pointAtOffset);
 
@@ -1523,9 +1524,9 @@ export abstract class Camera extends Evented {
         }
 
         if ('duration' in options) {
-            options.duration = +assertedNotNullish(options.duration, 'Expected duration to be defined');
+            options.duration = +assertedNotNullish(options.duration) ;
         } else {
-            const V = 'screenSpeed' in options ? +assertedNotNullish(options.screenSpeed, 'Expected screenSpeed to be defined') / assertedNotNullish(rho) : +assertedNotNullish(options.speed, 'Expected speed to be defined');
+            const V = 'screenSpeed' in options ? +assertedNotNullish(options.screenSpeed) / assertedNotNullish(rho) : +assertedNotNullish(options.speed) ;
             options.duration = 1000 * S / V;
         }
 
@@ -1629,8 +1630,8 @@ export abstract class Camera extends Evented {
 
     // Callback for map._requestRenderFrame
     _renderFrameCallback = () => {
-        const t = Math.min((now() - assertedNotNullish(this._easeStart)) / assertedNotNullish(assertedNotNullish(this._easeOptions).duration, 'Expected duration to be defined'), 1);
-        assertedNotNullish(this._onEaseFrame)(assertedNotNullish(assertedNotNullish(this._easeOptions, 'Expected _easeOptions to be defined').easing, 'Expected easing to be defined')(t));
+        const t = Math.min((now() - assertedNotNullish(this._easeStart)) / assertedNotNullish(this._easeOptions?.duration) , 1);
+        assertedNotNullish(this._onEaseFrame)(assertedNotNullish(this._easeOptions?.easing) (t));
 
         // if _stop is called during _onEaseFrame from _fireMoveEvents we should avoid a new _requestRenderFrame, checking it by ensuring _easeFrameId was not deleted
         if (t < 1 && this._easeFrameId) {

@@ -113,12 +113,12 @@ export abstract class StyleLayer extends Evented {
     queryIntersectsFeature?(params: QueryIntersectsFeatureParams): boolean | number;
     createBucket?(parameters: BucketParameters<any>): Bucket;
 
-    private _globalState: Record<string, any>; // reference to global state
+    private _globalState: Record<string, any> | undefined; // reference to global state
 
     constructor(layer: LayerSpecification | CustomLayerInterface, properties: Readonly<{
         layout?: Properties<any>;
         paint?: Properties<any>;
-    }>, globalState: Record<string, any>) {
+    }>, globalState: Record<string, any> | undefined) {
         super();
 
         this.id = layer.id;

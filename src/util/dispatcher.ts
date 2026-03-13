@@ -76,7 +76,7 @@ export function getGlobalDispatcher(): Dispatcher {
     if (!globalDispatcher) {
         globalDispatcher = new Dispatcher(getGlobalWorkerPool(), GLOBAL_DISPATCHER_ID);
         globalDispatcher.registerMessageHandler(MessageType.getResource, (_mapId, params, abortController) => {
-            return makeRequest(params, assertedNotNullish(abortController));
+            return makeRequest(params, abortController);
         });
     }
     return globalDispatcher;

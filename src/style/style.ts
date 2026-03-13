@@ -2057,7 +2057,7 @@ export class Style extends Evented {
      * @param options - style setter options
      * @param completion - the completion handler
      */
-    setSprite(sprite: SpriteSpecification, options: StyleSetterOptions = {}, completion?: (err: Error) => void) {
+    setSprite(sprite: SpriteSpecification, options: StyleSetterOptions = {}, completion?: (err: Error| null) => void) {
         this._checkLoaded();
 
         if (sprite && this._validate(validateStyle.sprite, 'sprite', sprite, null, options)) {
@@ -2071,7 +2071,7 @@ export class Style extends Evented {
         } else {
             this._unloadSprite();
             if (completion) {
-                completion(assertedNotNullish(null, 'Unexpected null value'));
+                completion(null);
             }
         }
     }

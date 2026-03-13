@@ -178,7 +178,7 @@ describe('popup', () => {
             .addTo(map)
             .setHTML('<span>Test</span>');
 
-        expect(assertedNotNullish(assertedNotNullish(popup.getElement()).querySelector('.maplibregl-popup-content')).innerHTML).toBe('<span>Test</span>');
+        expect(assertedNotNullish(popup.getElement()?.querySelector('.maplibregl-popup-content')).innerHTML).toBe('<span>Test</span>');
     });
 
     test('Popup width maximum defaults to 240px', () => {
@@ -224,7 +224,7 @@ describe('popup', () => {
             .addTo(map)
             .setDOMContent(content);
 
-        expect(assertedNotNullish(assertedNotNullish(popup.getElement()).querySelector('.maplibregl-popup-content')).firstChild).toBe(content);
+        expect(assertedNotNullish(popup.getElement()?.querySelector('.maplibregl-popup-content')).firstChild).toBe(content);
     });
 
     test('Popup.setText protects against XSS', () => {
@@ -538,7 +538,7 @@ describe('popup', () => {
             .addTo(map)
             .addTo(map);
 
-        expect(assertedNotNullish(assertedNotNullish(popup.getElement()).querySelector('.maplibregl-popup-content')).textContent).toBe('Test');
+        expect(assertedNotNullish(popup.getElement()?.querySelector('.maplibregl-popup-content')).textContent).toBe('Test');
     });
 
     test('Popup.remove is idempotent (#2395)', () => {

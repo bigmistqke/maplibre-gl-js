@@ -316,7 +316,7 @@ export class ImageManager extends Evented {
             const {bin} = this.patterns[id];
             const x = assertedNotNullish(bin.x) + padding;
             const y = assertedNotNullish(bin.y) + padding;
-            const src = assertedNotNullish(assertedNotNullish(this.getImage(id)).data);
+            const src = assertedNotNullish(this.getImage(id)?.data);
             const w = src.width;
             const h = src.height;
 

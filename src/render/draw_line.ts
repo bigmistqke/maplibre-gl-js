@@ -198,8 +198,8 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
 
         } else if (constantDasharray) {
             const round = assertedNotNullish(layer.layout).get('line-cap') === 'round';
-            const dashTo = assertedNotNullish(assertedNotNullish(painter.lineAtlas).getDash(constantDasharray.to, round));
-            const dashFrom = assertedNotNullish(assertedNotNullish(painter.lineAtlas).getDash(constantDasharray.from, round));
+            const dashTo = assertedNotNullish(painter.lineAtlas?.getDash(constantDasharray.to, round));
+            const dashFrom = assertedNotNullish(painter.lineAtlas?.getDash(constantDasharray.from, round));
             programConfiguration.setConstantDashPositions(dashTo, dashFrom);
         }
 

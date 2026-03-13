@@ -35,7 +35,7 @@ export type TerrainData = {
     'u_terrain_unpack': number[] | undefined;
     'u_terrain_exaggeration': number;
     texture: WebGLTexture | null;
-    depthTexture: WebGLTexture;
+    depthTexture: WebGLTexture | null;
     tile: Tile | null | undefined;
 };
 
@@ -276,8 +276,8 @@ export class Terrain {
             'u_terrain_matrix': matrixKey ? this._demMatrixCache[tileID.key].matrix : this._emptyDemMatrix,
             'u_terrain_unpack': sourceTile && sourceTile.dem && sourceTile.dem.getUnpackVector() || this._emptyDemUnpack,
             'u_terrain_exaggeration': this.exaggeration,
-            texture: assertedNotNullish(sourceTile && sourceTile.demTexture || this._emptyDemTexture).texture,
-            depthTexture: assertedNotNullish(assertedNotNullish(this._fboDepthTexture || this._emptyDepthTexture).texture),
+            texture: (sourceTile && sourceTile.demTexture || this._emptyDemTexture).texture,
+            depthTexture: (this._fboDepthTexture || this._emptyDepthTexture)?.texture ?? null,
             tile: sourceTile
         };
     }

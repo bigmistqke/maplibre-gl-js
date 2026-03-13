@@ -119,7 +119,7 @@ abstract class StructArray {
      * deserialization.
      */
     static serialize(array: StructArray, transferables?: Array<Transferable>): SerializedStructArray {
-        assertNotNullish(array.arrayBuffer, 'Expected array.arrayBuffer to be defined');
+        assertNotNullish(array.arrayBuffer) ;
 
         array._trim();
 

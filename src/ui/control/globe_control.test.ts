@@ -52,14 +52,14 @@ describe('GlobeControl', () => {
         await map.once('load');
 
         map.addControl(new GlobeControl());
-        expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('mercator');
+        expect(assertedNotNullish(map.style?.projection).name).toBe('mercator');
         const button = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-globe')) as HTMLElement;
 
         button.click();
-        expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('globe');
+        expect(assertedNotNullish(map.style?.projection).name).toBe('globe');
 
         button.click();
-        expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('mercator');
+        expect(assertedNotNullish(map.style?.projection).name).toBe('mercator');
     });
 
     describe('updates control state when Map.setProjection is called', () => {
@@ -70,7 +70,7 @@ describe('GlobeControl', () => {
 
         test('default without call to setProjection', () => {
             const button = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-globe'));
-            expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('mercator');
+            expect(assertedNotNullish(map.style?.projection).name).toBe('mercator');
             expect(button.classList.contains('maplibregl-ctrl-globe')).toBeTruthy();
             expect(button.classList.contains('maplibregl-ctrl-globe-enabled')).toBeFalsy();
         });
@@ -81,7 +81,7 @@ describe('GlobeControl', () => {
 
             // mercator = disabled state
             const button = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-globe-enabled'));
-            expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('globe');
+            expect(assertedNotNullish(map.style?.projection).name).toBe('globe');
             expect(button).not.toBeNull();
             expect(button.classList.contains('maplibregl-ctrl-globe-enabled')).toBeTruthy();
             expect(button.classList.contains('maplibregl-ctrl-globe')).toBeFalsy();
@@ -93,7 +93,7 @@ describe('GlobeControl', () => {
 
             // mercator = disabled state
             const button = assertedNotNullish(map.getContainer().querySelector('.maplibregl-ctrl-globe'));
-            expect(assertedNotNullish(assertedNotNullish(map.style).projection).name).toBe('mercator');
+            expect(assertedNotNullish(map.style?.projection).name).toBe('mercator');
             expect(button.classList.contains('maplibregl-ctrl-globe')).toBeTruthy();
             expect(button.classList.contains('maplibregl-ctrl-globe-enabled')).toBeFalsy();
         });

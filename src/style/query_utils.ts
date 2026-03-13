@@ -114,13 +114,13 @@ function intersectionTestMapMap({queryGeometry, size}: CircleIntersectionTestPar
 }
 
 function intersectionTestMapViewport({queryGeometry, size, transform, unwrappedTileID, getElevation}: CircleIntersectionTestParams, point: Point): boolean {
-    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, assertedNotNullish(getElevation)).signedDistanceFromCamera;
+    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
     const adjustedSize = size * (w / assertedNotNullish(transform.cameraToCenterDistance));
     return polygonIntersectsBufferedPoint(queryGeometry, point, adjustedSize);
 }
 
 function intersectionTestViewportMap({queryGeometry, size, transform, unwrappedTileID, getElevation}: CircleIntersectionTestParams, point: Point): boolean {
-    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, assertedNotNullish(getElevation)).signedDistanceFromCamera;
+    const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation).signedDistanceFromCamera;
     const adjustedSize = size * (assertedNotNullish(transform.cameraToCenterDistance)/ w);
     return polygonIntersectsBufferedPoint(queryGeometry, projectPoint(point, transform, unwrappedTileID, getElevation), adjustedSize);
 }
@@ -155,7 +155,7 @@ export function circleIntersection({
 
 function projectPoint(tilePoint: Point, transform: IReadonlyTransform, unwrappedTileID: UnwrappedTileID, getElevation: undefined | ((x: number, y: number) => number)): Point {
     // Convert `tilePoint` from tile coordinates to clip coordinates.
-    const clipPoint = transform.projectTileCoordinates(tilePoint.x, tilePoint.y, unwrappedTileID, assertedNotNullish(getElevation)).point;
+    const clipPoint = transform.projectTileCoordinates(tilePoint.x, tilePoint.y, unwrappedTileID, getElevation).point;
     // Convert `clipPoint` from clip coordinates into pixel/screen coordinates.
     const pixelPoint = new Point(
         (clipPoint.x * 0.5 + 0.5) * transform.width,

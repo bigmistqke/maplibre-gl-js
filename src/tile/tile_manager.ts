@@ -228,7 +228,7 @@ export class TileManager extends Evented {
         this._state.coalesceChanges(this._inViewTiles, this.map ? this.map.painter : null);
         for (const tile of this._inViewTiles.getAllTiles()) {
             tile.upload(context);
-            tile.prepare(assertedNotNullish(assertedNotNullish(this.map).style).imageManager);
+            tile.prepare(assertedNotNullish(this.map?.style).imageManager);
         }
     }
 

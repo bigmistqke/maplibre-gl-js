@@ -3409,8 +3409,9 @@ describe('Style.serialize', () => {
         }));
 
         await style.once('style.load');
-        expect(assertedNotNullish(style.serialize()).projection).toBeDefined();
-        expect(assertedNotNullish(assertedNotNullish(style.serialize()).projection).type).toBe('globe');
+        const projection = assertedNotNullish(style.serialize()).projection;
+        expect(projection).toBeDefined();
+        expect(projection?.type).toBe('globe');
     });
 
     test('include projection property when projection is set', async () => {
@@ -3421,7 +3422,7 @@ describe('Style.serialize', () => {
         style.setProjection({type: 'globe'});
 
         expect(assertedNotNullish(style.serialize()).projection).toBeDefined();
-        expect(assertedNotNullish(assertedNotNullish(style.serialize()).projection).type).toBe('globe');
+        expect(assertedNotNullish(style.serialize()?.projection).type).toBe('globe');
     });
 
     test('include projection property when projection is set to mercator', async () => {
@@ -3539,8 +3540,8 @@ describe('Style.serialize', () => {
             'fog-color': '#00FF00'
         });
         style.update({transition: {duration: 0, delay: 0}} as EvaluationParameters);
-        expect(assertedNotNullish(assertedNotNullish(assertedNotNullish(style.sky).properties).get('fog-color')).g).toBe(1);
-        expect(assertedNotNullish(assertedNotNullish(assertedNotNullish(style.sky).properties).get('fog-color')).r).toBe(0);
+        expect(assertedNotNullish(style.sky?.properties?.get('fog-color')).g).toBe(1);
+        expect(assertedNotNullish(style.sky?.properties?.get('fog-color')).r).toBe(0);
     });
 
     test('Style.getDashes returns line atlas entries for dash patterns', async () => {

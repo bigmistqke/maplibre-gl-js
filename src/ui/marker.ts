@@ -559,8 +559,8 @@ export class Marker extends Evented {
         if (!popup) return this;
         else if (popup.isOpen()) popup.remove();
         else {
-            popup.setLngLat(assertedNotNullish(this._lngLat, 'Expected this._lngLat to be defined.'));
-            popup.addTo(assertedNotNullish(this._map, 'Expected this.map to be defined.'));
+            popup.setLngLat(assertedNotNullish(this._lngLat) );
+            popup.addTo(assertedNotNullish(this._map) );
         }
         return this;
     }
@@ -732,11 +732,11 @@ export class Marker extends Evented {
 
         if (!this._isDragging) {
             const clickTolerance = this._clickTolerance ?? this._map._clickTolerance;
-            this._isDragging = assertedNotNullish(e.point).dist(assertedNotNullish(this._pointerdownPos, 'Expected this._pointerdownPos to be defined.')) >= assertedNotNullish(clickTolerance);
+            this._isDragging = assertedNotNullish(e.point).dist(assertedNotNullish(this._pointerdownPos) ) >= assertedNotNullish(clickTolerance);
         }
         if (!this._isDragging) return;
 
-        this._pos = assertedNotNullish(e.point).sub(assertedNotNullish(this._positionDelta, 'Expected this._positionDelta to be defined.'));
+        this._pos = assertedNotNullish(e.point).sub(assertedNotNullish(this._positionDelta) );
         this._lngLat = this._map.unproject(this._pos);
         this.setLngLat(this._lngLat);
         // suppress click event so that popups don't toggle on drag

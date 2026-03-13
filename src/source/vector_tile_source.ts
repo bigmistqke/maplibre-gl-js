@@ -216,7 +216,7 @@ export class VectorTileSource extends Evented implements Source {
             pixelRatio: map.getPixelRatio(),
             showCollisionBoxes: map.showCollisionBoxes,
             promoteId: this.promoteId,
-            subdivisionGranularity: assertedNotNullish(assertedNotNullish(map.style).projection).subdivisionGranularity,
+            subdivisionGranularity: assertedNotNullish(map.style?.projection).subdivisionGranularity,
             encoding: this.encoding,
             overzoomParameters: this._getOverzoomParameters(tile),
             etag: tile.etag
@@ -289,7 +289,7 @@ export class VectorTileSource extends Evented implements Source {
         }
         tile.etag = data?.etag;
 
-        tile.loadVectorData(data, assertedNotNullish(assertedNotNullish(this.map).painter));
+        tile.loadVectorData(data, this.map?.painter);
 
         if (tile.reloadPromise) {
             const reloadPromise = tile.reloadPromise;

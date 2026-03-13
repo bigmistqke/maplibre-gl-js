@@ -334,7 +334,7 @@ export class Placement {
         translationText: [number, number],
         translationIcon: [number, number],
         iconBox?: SingleCollisionBox | null,
-        getElevation?: (x: number, y: number) => number,
+        getElevation?: ((x: number, y: number) => number) | null,
         simpleProjectionMatrix?: mat4,
     ): {
         shift: Point;
@@ -543,7 +543,7 @@ export class Placement {
                             rotateWithMap,
                             translationText,
                             collisionGroup.predicate,
-                            assertedNotNullish(getElevation),
+                            getElevation,
                             undefined,
                             simpleProjectionMatrix,
                         );
@@ -599,7 +599,7 @@ export class Placement {
                                 const result = this.attemptAnchorPlacement(
                                     textAnchorOffset, collisionTextBox, width, height,
                                     textBoxScale, rotateWithMap, pitchWithMap, textPixelRatio, tileID, unwrappedTileID,
-                                    collisionGroup, overlapMode, symbolInstance, bucket, orientation, translationText, translationIcon, variableIconBox, assertedNotNullish(getElevation));
+                                    collisionGroup, overlapMode, symbolInstance, bucket, orientation, translationText, translationIcon, variableIconBox, getElevation);
 
                                 if (result) {
                                     placedBox = result.placedGlyphBoxes;
@@ -631,7 +631,7 @@ export class Placement {
                                 rotateWithMap,
                                 translationText,
                                 collisionGroup.predicate,
-                                assertedNotNullish(getElevation),
+                                getElevation,
                                 undefined,
                                 simpleProjectionMatrix,
                             );
@@ -737,7 +737,7 @@ export class Placement {
                         rotateWithMap,
                         translationIcon,
                         collisionGroup.predicate,
-                        assertedNotNullish(getElevation),
+                        getElevation,
                         (hasIconTextFit && shift) ? shift : undefined,
                         simpleProjectionMatrix,
                     );
@@ -811,7 +811,7 @@ export class Placement {
             }
 
             if (showCollisionBoxes) {
-                this.storeCollisionData(assertedNotNullish(bucket.bucketInstanceId, 'Expected bucket.bucketInstanceId to be defined'), symbolIndex, collisionArrays, placedGlyphBoxes, placedIconBoxes, placedGlyphCircles);
+                this.storeCollisionData(assertedNotNullish(bucket.bucketInstanceId) , symbolIndex, collisionArrays, placedGlyphBoxes, placedIconBoxes, placedGlyphCircles);
             }
 
             if (symbolInstance.crossTileID === 0) throw new Error('symbolInstance.crossTileID can\'t be 0');
@@ -829,11 +829,11 @@ export class Placement {
             const symbolIndexes = bucket.getSortedSymbolIndexes(-this.transform.bearingInRadians);
             for (let i = symbolIndexes.length - 1; i >= 0; --i) {
                 const symbolIndex = symbolIndexes[i];
-                placeSymbol(assertedNotNullish(bucket.symbolInstances, 'Expected symbolInstances to be defined').get(symbolIndex), assertedNotNullish(bucket.collisionArrays)[symbolIndex], symbolIndex);
+                placeSymbol(assertedNotNullish(bucket.symbolInstances) .get(symbolIndex), assertedNotNullish(bucket.collisionArrays)[symbolIndex], symbolIndex);
             }
         } else {
             for (let i = bucketPart.symbolInstanceStart; i < bucketPart.symbolInstanceEnd; i++) {
-                placeSymbol(assertedNotNullish(bucket.symbolInstances, 'Expected symbolInstances to be defined').get(i), assertedNotNullish(bucket.collisionArrays)[i], i);
+                placeSymbol(assertedNotNullish(bucket.symbolInstances) .get(i), assertedNotNullish(bucket.collisionArrays)[i], i);
             }
         }
 
@@ -974,7 +974,7 @@ export class Placement {
                     jointPlacement.text !== prevOpacity.text.placed ||
                     jointPlacement.icon !== prevOpacity.icon.placed;
             } else {
-                this.opacities[crossTileID] = new JointOpacityState(assertedNotNullish(null, 'Unexpected null value'), increment, jointPlacement.text, jointPlacement.icon, jointPlacement.skipFade);
+                this.opacities[crossTileID] = new JointOpacityState(null, increment, jointPlacement.text, jointPlacement.icon, jointPlacement.skipFade);
                 placementChanged = placementChanged || jointPlacement.text || jointPlacement.icon;
             }
         }
@@ -1041,7 +1041,7 @@ export class Placement {
 
         const layer = bucket.layers[0];
         const layout = assertedNotNullish(layer.layout);
-        const duplicateOpacityState = new JointOpacityState(assertedNotNullish(null, 'Unexpected null value'), 0, false, false, true);
+        const duplicateOpacityState = new JointOpacityState(null, 0, false, false, true);
         const textAllowOverlap = layout.get('text-allow-overlap');
         const iconAllowOverlap = layout.get('icon-allow-overlap');
         const hasVariablePlacement = assertedNotNullish(layer._unevaluatedLayout).hasValue('text-variable-anchor') || assertedNotNullish(layer._unevaluatedLayout).hasValue('text-variable-anchor-offset');
@@ -1052,7 +1052,7 @@ export class Placement {
         // But we have to wait for placement if we potentially depend on a paired icon/text
         // with allow-overlap: false.
         // See https://github.com/mapbox/mapbox-gl-js/issues/7032
-        const defaultOpacityState = new JointOpacityState(assertedNotNullish(null, 'Unexpected null value'), 0,
+        const defaultOpacityState = new JointOpacityState(null, 0,
             textAllowOverlap && (iconAllowOverlap || !bucket.hasIconData() || layout.get('icon-optional')),
             iconAllowOverlap && (textAllowOverlap || !bucket.hasTextData() || layout.get('text-optional')),
             true);
@@ -1068,7 +1068,7 @@ export class Placement {
             iconOrText.hasVisibleVertices = iconOrText.hasVisibleVertices || (opacity !== PACKED_HIDDEN_OPACITY);
         };
 
-        const boxArrays = this.collisionBoxArrays.get(assertedNotNullish(bucket.bucketInstanceId, 'Expected bucket.bucketInstanceId to be defined'));
+        const boxArrays = this.collisionBoxArrays.get(assertedNotNullish(bucket.bucketInstanceId) );
 
         for (let s = 0; s < assertedNotNullish(bucket.symbolInstances).length; s++) {
             const symbolInstance = assertedNotNullish(bucket.symbolInstances).get(s);
@@ -1145,14 +1145,14 @@ export class Placement {
 
                 if (symbolInstance.placedIconSymbolIndex >= 0) {
                     const horizontalOpacity = useHorizontal ? packedOpacity : PACKED_HIDDEN_OPACITY;
-                    addOpacities(assertedNotNullish(bucket.icon, 'Expected bucket.icon to be defined'), symbolInstance.numIconVertices, horizontalOpacity);
+                    addOpacities(assertedNotNullish(bucket.icon) , symbolInstance.numIconVertices, horizontalOpacity);
                     assertedNotNullish(bucket.icon).placedSymbolArray.get(symbolInstance.placedIconSymbolIndex).hidden =
                         (opacityState.icon.isHidden() as any);
                 }
 
                 if (symbolInstance.verticalPlacedIconSymbolIndex >= 0) {
                     const verticalOpacity = !useHorizontal ? packedOpacity : PACKED_HIDDEN_OPACITY;
-                    addOpacities(assertedNotNullish(bucket.icon, 'Expected bucket.icon to be defined'), symbolInstance.numVerticalIconVertices, verticalOpacity);
+                    addOpacities(assertedNotNullish(bucket.icon) , symbolInstance.numVerticalIconVertices, verticalOpacity);
                     assertedNotNullish(bucket.icon).placedSymbolArray.get(symbolInstance.verticalPlacedIconSymbolIndex).hidden =
                         (opacityState.icon.isHidden() as any);
                 }
@@ -1202,7 +1202,7 @@ export class Placement {
                             }
                             const textBox = assertedNotNullish(realBoxes).text;
                             if (textBox) {
-                                updateCollisionVertices(assertedNotNullish(bucket.textCollisionBox, 'Expected bucket.textCollisionBox to be defined').collisionVertexArray, opacityState.text.placed, !used || hidden, textBox, shift.x, shift.y);
+                                updateCollisionVertices(assertedNotNullish(bucket.textCollisionBox) .collisionVertexArray, opacityState.text.placed, !used || hidden, textBox, shift.x, shift.y);
                             }
                         }
                     }
@@ -1218,7 +1218,7 @@ export class Placement {
                         }
                         const iconBox = assertedNotNullish(realBoxes).icon;
                         if (iconBox) {
-                            updateCollisionVertices(assertedNotNullish(bucket.iconCollisionBox, 'Expected bucket.iconCollisionBox to be defined').collisionVertexArray, opacityState.icon.placed, hidden, iconBox,
+                            updateCollisionVertices(assertedNotNullish(bucket.iconCollisionBox) .collisionVertexArray, opacityState.icon.placed, hidden, iconBox,
                                 hasIconTextFit ? shift.x : 0,
                                 hasIconTextFit ? shift.y : 0);
                         }
@@ -1233,26 +1233,26 @@ export class Placement {
             this.retainedQueryData[bucketId].featureSortOrder = bucket.featureSortOrder;
         }
 
-        if (bucket.hasTextData() && assertedNotNullish(bucket.text).opacityVertexBuffer) {
-            assertedNotNullish(assertedNotNullish(bucket.text).opacityVertexBuffer, 'Expected opacityVertexBuffer to be defined').updateData(assertedNotNullish(bucket.text, 'Expected bucket.text to be defined').opacityVertexArray);
+        if (bucket.hasTextData() && bucket.text?.opacityVertexBuffer) {
+            bucket.text.opacityVertexBuffer.updateData(assertedNotNullish(bucket.text) .opacityVertexArray);
         }
-        if (bucket.hasIconData() && assertedNotNullish(bucket.icon).opacityVertexBuffer) {
-            assertedNotNullish(assertedNotNullish(bucket.icon).opacityVertexBuffer, 'Expected opacityVertexBuffer to be defined').updateData(assertedNotNullish(bucket.icon, 'Expected bucket.icon to be defined').opacityVertexArray);
+        if (bucket.hasIconData() && bucket.icon?.opacityVertexBuffer) {
+            bucket.icon.opacityVertexBuffer.updateData(assertedNotNullish(bucket.icon) .opacityVertexArray);
         }
-        if (bucket.hasIconCollisionBoxData() && assertedNotNullish(bucket.iconCollisionBox).collisionVertexBuffer) {
-            assertedNotNullish(assertedNotNullish(bucket.iconCollisionBox).collisionVertexBuffer, 'Expected collisionVertexBuffer to be defined').updateData(assertedNotNullish(bucket.iconCollisionBox, 'Expected bucket.iconCollisionBox to be defined').collisionVertexArray);
+        if (bucket.hasIconCollisionBoxData() && bucket.iconCollisionBox?.collisionVertexBuffer) {
+            bucket.iconCollisionBox.collisionVertexBuffer.updateData(assertedNotNullish(bucket.iconCollisionBox) .collisionVertexArray);
         }
-        if (bucket.hasTextCollisionBoxData() && assertedNotNullish(bucket.textCollisionBox).collisionVertexBuffer) {
-            assertedNotNullish(assertedNotNullish(bucket.textCollisionBox).collisionVertexBuffer, 'Expected collisionVertexBuffer to be defined').updateData(assertedNotNullish(bucket.textCollisionBox, 'Expected bucket.textCollisionBox to be defined').collisionVertexArray);
+        if (bucket.hasTextCollisionBoxData() && bucket.textCollisionBox?.collisionVertexBuffer) {
+            bucket.textCollisionBox?.collisionVertexBuffer.updateData(assertedNotNullish(bucket.textCollisionBox) .collisionVertexArray);
         }
 
-        if (assertedNotNullish(bucket.text, 'Expected bucket.text to be defined').opacityVertexArray.length !== assertedNotNullish(bucket.text).layoutVertexArray.length / 4) throw new Error(`bucket.text.opacityVertexArray.length (= ${assertedNotNullish(bucket.text, 'Expected bucket.text to be defined').opacityVertexArray.length}) !== bucket.text.layoutVertexArray.length (= ${assertedNotNullish(bucket.text, 'Expected bucket.text to be defined').layoutVertexArray.length}) / 4`);
-        if (assertedNotNullish(bucket.icon, 'Expected bucket.icon to be defined').opacityVertexArray.length !== assertedNotNullish(bucket.icon).layoutVertexArray.length / 4) throw new Error(`bucket.icon.opacityVertexArray.length (= ${assertedNotNullish(bucket.icon, 'Expected bucket.icon to be defined').opacityVertexArray.length}) !== bucket.icon.layoutVertexArray.length (= ${assertedNotNullish(bucket.icon, 'Expected bucket.icon to be defined').layoutVertexArray.length}) / 4`);
+        if (assertedNotNullish(bucket.text).opacityVertexArray.length !== assertedNotNullish(bucket.text).layoutVertexArray.length / 4) throw new Error(`bucket.text.opacityVertexArray.length (= ${assertedNotNullish(bucket.text).opacityVertexArray.length}) !== bucket.text.layoutVertexArray.length (= ${assertedNotNullish(bucket.text).layoutVertexArray.length}) / 4`);
+        if (assertedNotNullish(bucket.icon).opacityVertexArray.length !== assertedNotNullish(bucket.icon).layoutVertexArray.length / 4) throw new Error(`bucket.icon.opacityVertexArray.length (= ${assertedNotNullish(bucket.icon).opacityVertexArray.length}) !== bucket.icon.layoutVertexArray.length (= ${assertedNotNullish(bucket.icon).layoutVertexArray.length}) / 4`);
 
         // Push generated collision circles to the bucket for debug rendering
-        if (assertedNotNullish(bucket.bucketInstanceId, 'Expected bucketInstanceId to be defined') in this.collisionCircleArrays) {
-            bucket.collisionCircleArray = this.collisionCircleArrays[assertedNotNullish(bucket.bucketInstanceId, 'Expected bucketInstanceId to be defined')];
-            delete this.collisionCircleArrays[assertedNotNullish(bucket.bucketInstanceId, 'Expected bucketInstanceId to be defined')];
+        if (assertedNotNullish(bucket.bucketInstanceId) in this.collisionCircleArrays) {
+            bucket.collisionCircleArray = this.collisionCircleArrays[assertedNotNullish(bucket.bucketInstanceId) ];
+            delete this.collisionCircleArrays[assertedNotNullish(bucket.bucketInstanceId) ];
         }
     }
 

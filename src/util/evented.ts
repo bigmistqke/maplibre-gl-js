@@ -15,7 +15,7 @@ function _addEventListener(type: string, listener: Listener, listenerList: Liste
     }
 }
 
-function _removeEventListener(type: string, listener: Listener, listenerList: Listeners) {
+function _removeEventListener(type: string, listener: Listener, listenerList: Listeners | undefined) {
     if (listenerList && listenerList[type]) {
         const index = listenerList[type].indexOf(listener);
         if (index !== -1) {
@@ -88,8 +88,8 @@ export class Evented {
      * @param listener - The listener function to remove.
      */
     off(type: string, listener: Listener) {
-        _removeEventListener(type, listener, assertedNotNullish(this._listeners));
-        _removeEventListener(type, listener, assertedNotNullish(this._oneTimeListeners));
+        _removeEventListener(type, listener, this._listeners);
+        _removeEventListener(type, listener, this._oneTimeListeners);
 
         return this;
     }
@@ -134,7 +134,7 @@ export class Evented {
 
             const oneTimeListeners = this._oneTimeListeners && this._oneTimeListeners[type] ? this._oneTimeListeners[type].slice() : [];
             for (const listener of oneTimeListeners) {
-                _removeEventListener(type, listener, assertedNotNullish(this._oneTimeListeners));
+                _removeEventListener(type, listener, this._oneTimeListeners);
                 listener.call(this, event);
             }
 

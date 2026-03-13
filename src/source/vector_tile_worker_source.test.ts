@@ -396,7 +396,7 @@ describe('vector tile worker source', () => {
         server.respond();
         const res = await promise;
 
-        expect(assertedNotNullish(assertedNotNullish(res).resourceTiming)[0]).toEqual(exampleResourceTiming);
+        expect(assertedNotNullish(res?.resourceTiming)[0]).toEqual(exampleResourceTiming);
     });
 
     test('VectorTileWorkerSource provides resource timing information (fallback method)', async () => {
@@ -455,7 +455,7 @@ describe('vector tile worker source', () => {
         server.respond();
         const res = await promise;
 
-        expect(assertedNotNullish(assertedNotNullish(res).resourceTiming)[0]).toEqual(
+        expect(assertedNotNullish(res?.resourceTiming)[0]).toEqual(
             {'duration': 250, 'entryType': 'measure', 'name': 'http://localhost:2900/faketile.pbf', 'startTime': 100}
         );
     });

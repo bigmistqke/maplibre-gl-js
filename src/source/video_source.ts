@@ -155,7 +155,7 @@ export class VideoSource extends ImageSource {
             return this; // not enough data for current position
         }
 
-        const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
+        const context = assertedNotNullish(this.map?.painter).context;
         const gl = context.gl;
 
         if (!this.texture) {

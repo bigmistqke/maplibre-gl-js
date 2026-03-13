@@ -16,9 +16,8 @@ function createFillExtrusionBucket({id, layout, paint, globalState, availableIma
         type: 'fill-extrusion',
         layout,
         paint
-    } as LayerSpecification, assertedNotNullish(globalState, 'globalState must be defined'));
-    layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters,
-        assertedNotNullish(availableImages, 'availableImages must be defined'));
+    } as LayerSpecification, globalState);
+    layer.recalculate({zoom: 0, zoomHistory: {} as ZoomHistory} as EvaluationParameters, availableImages);
 
     return new FillExtrusionBucket({layers: [layer]} as BucketParameters<FillExtrusionStyleLayer>);
 }
@@ -40,8 +39,8 @@ describe('FillExtrusionBucket', () => {
 
         bucket.populate(getFeaturesFromLayer(sourceLayer), createPopulateOptions(availableImages), new CanonicalTileID(0, 0, 0));
 
-        expect(assertedNotNullish(bucket.features, 'bucket.features must be defined').length).toBeGreaterThan(0);
-        expect(assertedNotNullish(bucket.features, 'bucket.features must be defined')[0].patterns).toEqual({
+        expect(assertedNotNullish(bucket.features).length).toBeGreaterThan(0);
+        expect(assertedNotNullish(bucket.features)[0].patterns).toEqual({
             test: {min: 'test-pattern', mid: 'test-pattern', max: 'test-pattern'}
         });
     });

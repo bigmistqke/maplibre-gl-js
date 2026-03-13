@@ -171,7 +171,7 @@ describe('marker', () => {
             .setLngLat([0,0])
             .setPopup(popup)
             .addTo(map);
-        
+
         // open popup
         marker.togglePopup();
         const spy = vi.fn();
@@ -384,43 +384,43 @@ describe('marker', () => {
         // move marker to the top forcing the popup to below
         marker.setLngLat(map.unproject([mapHeight / 2, markerTop]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-top')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-top')
         ).toBeTruthy();
 
         // move marker to the right forcing the popup to the left
         marker.setLngLat(map.unproject([mapHeight - markerRight, mapHeight / 2]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-right')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-right')
         ).toBeTruthy();
 
         // move marker to the left forcing the popup to the right
         marker.setLngLat(map.unproject([markerRight, mapHeight / 2]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-left')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-left')
         ).toBeTruthy();
 
         // move marker to the top left forcing the popup to the bottom right
         marker.setLngLat(map.unproject([markerRight, markerTop]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-top-left')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-top-left')
         ).toBeTruthy();
 
         // move marker to the top right forcing the popup to the bottom left
         marker.setLngLat(map.unproject([mapHeight - markerRight, markerTop]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-top-right')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-top-right')
         ).toBeTruthy();
 
         // move marker to the bottom left forcing the popup to the top right
         marker.setLngLat(map.unproject([markerRight, mapHeight]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-bottom-left')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-bottom-left')
         ).toBeTruthy();
 
         // move marker to the bottom right forcing the popup to the top left
         marker.setLngLat(map.unproject([mapHeight - markerRight, mapHeight]));
         expect(
-            assertedNotNullish(assertedNotNullish(marker.getPopup())._container).classList.contains('maplibregl-popup-anchor-bottom-right')
+            assertedNotNullish(marker.getPopup()?._container).classList.contains('maplibregl-popup-anchor-bottom-right')
         ).toBeTruthy();
 
         map.remove();
@@ -817,7 +817,7 @@ describe('marker', () => {
         el.click();
 
         expect(clickSpy).toHaveBeenCalledTimes(1);
-        
+
         map.remove();
     });
 

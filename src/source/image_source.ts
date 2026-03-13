@@ -151,7 +151,7 @@ export class ImageSource extends Evented implements Source {
 
         this._request = new AbortController();
         try {
-            const image = await ImageRequest.getImage(assertedNotNullish(this.map, 'Expected this.map to be defined')._requestManager.transformRequest(assertedNotNullish(this.url, 'Expected this.url to be defined'), ResourceType.Image), this._request);
+            const image = await ImageRequest.getImage(assertedNotNullish(this.map) ._requestManager.transformRequest(assertedNotNullish(this.url) , ResourceType.Image), this._request);
             this._request = undefined;
             this._loaded = true;
 
@@ -260,7 +260,7 @@ export class ImageSource extends Evented implements Source {
             return;
         }
 
-        const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
+        const context = assertedNotNullish(this.map?.painter).context;
         const gl = context.gl;
 
         if (!this.texture) {

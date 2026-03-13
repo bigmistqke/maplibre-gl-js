@@ -193,10 +193,10 @@ export class RasterTileSource extends Evented implements Source {
                 if (assertedNotNullish(this.map)._refreshExpiredTiles && (response.cacheControl || response.expires)) {
                     tile.setExpiryData({cacheControl: response.cacheControl, expires: response.expires});
                 }
-                const context = assertedNotNullish(assertedNotNullish(this.map).painter).context;
+                const context = assertedNotNullish(this.map?.painter).context;
                 const gl = context.gl;
                 const img = response.data;
-                tile.texture = assertedNotNullish(assertedNotNullish(this.map).painter).getTileTexture(img.width);
+                tile.texture = assertedNotNullish(this.map?.painter).getTileTexture(img.width);
                 if (tile.texture) {
                     tile.texture.update(img, {useMipmap: true});
                 } else {
@@ -225,7 +225,7 @@ export class RasterTileSource extends Evented implements Source {
 
     async unloadTile(tile: Tile) {
         if (tile.texture) {
-            assertedNotNullish(assertedNotNullish(this.map).painter).saveTileTexture(tile.texture);
+            assertedNotNullish(this.map?.painter).saveTileTexture(tile.texture);
         }
     }
 

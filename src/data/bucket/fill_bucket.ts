@@ -131,8 +131,8 @@ export class FillBucket implements Bucket {
     update(states: FeatureStates, vtLayer: VectorTileLayerLike, imagePositions: {
         [_: string]: ImagePosition;
     }) {
-        if (!assertedNotNullish(this.stateDependentLayers).length) return;
-        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers!, {
+        if (!this.stateDependentLayers?.length) return;
+        this.programConfigurations.updatePaintArrays(states, vtLayer, this.stateDependentLayers, {
             imagePositions
         });
     }
@@ -165,8 +165,8 @@ export class FillBucket implements Bucket {
     destroy() {
         if (!this.layoutVertexBuffer) return;
         this.layoutVertexBuffer.destroy();
-        assertedNotNullish(this.indexBuffer).destroy();
-        assertedNotNullish(this.indexBuffer2).destroy();
+        this.indexBuffer?.destroy();
+        this.indexBuffer2?.destroy();
         this.programConfigurations.destroy();
         this.segments.destroy();
         this.segments2.destroy();

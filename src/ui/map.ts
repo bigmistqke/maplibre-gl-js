@@ -1162,7 +1162,7 @@ export class Map extends Camera {
      * ```
      */
     setMaxBounds(bounds?: LngLatBoundsLike | null): Map {
-        this.transform.setMaxBounds(LngLatBounds.convert(assertedNotNullish(bounds)));
+        this.transform.setMaxBounds(LngLatBounds.convert(bounds));
         return this._update();
     }
 

@@ -189,7 +189,7 @@ export class HandlerManager {
         this._changes = [];
 
         this._inertia = new HandlerInertia(map);
-        this._bearingSnap = assertedNotNullish(options.bearingSnap, 'Expected bearingSnap to be defined in options');
+        this._bearingSnap = assertedNotNullish(options.bearingSnap) ;
         this._previousActiveHandlers = {};
 
         // Track whether map is currently moving, to compute start/move/end events
@@ -254,7 +254,7 @@ export class HandlerManager {
     _addDefaultHandlers(options: CompleteMapOptions) {
         const map = this._map;
         const el = map.getCanvasContainer();
-        const clickTolerance = assertedNotNullish(options.clickTolerance, 'Expected clickTolerance to be defined in options');
+        const clickTolerance = assertedNotNullish(options.clickTolerance) ;
         this._add('mapEvent', new MapEventHandler(map, {clickTolerance}));
 
         const boxZoom = map.boxZoom = new BoxZoomHandler(map, {clickTolerance});
@@ -291,8 +291,8 @@ export class HandlerManager {
         const mousePitch = generateMousePitchHandler({clickTolerance});
         const mouseRoll = generateMouseRollHandler({clickTolerance}, getCenter);
         map.dragRotate = new DragRotateHandler({
-            pitchWithRotate: assertedNotNullish(options.pitchWithRotate, 'Expected pitchWithRotate to be defined'),
-            rollEnabled: assertedNotNullish(options.rollEnabled, 'Expected rollEnabled to be defined')
+            pitchWithRotate: assertedNotNullish(options.pitchWithRotate) ,
+            rollEnabled: assertedNotNullish(options.rollEnabled)
         }, mouseRotate, mousePitch, mouseRoll);
         this._add('mouseRotate', mouseRotate, ['mousePitch']);
         this._add('mousePitch', mousePitch, ['mouseRotate', 'mouseRoll']);

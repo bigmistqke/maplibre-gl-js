@@ -24,7 +24,7 @@ type Registry = {
         klass: {
             new (...args: any): any;
             deserialize?: (input: Serialized) => unknown;
-            serialize?: (input: any, transferables: Transferable[]) => SerializedObject;
+            serialize?: (input: any, transferables: Transferable[] | null | undefined) => SerializedObject;
         };
         omit: ReadonlyArray<string>;
         shallow: ReadonlyArray<string>;
@@ -192,7 +192,7 @@ export function serialize(input: unknown, transferables?: Array<Transferable> | 
         // approach for objects whose members include instances of dynamic
         // StructArray types. Once we refactor StructArray to be static,
         // we can remove this complexity.
-        (klass.serialize(input, assertedNotNullish(transferables)) as SerializedObject) : {};
+        (klass.serialize(input, transferables) as SerializedObject) : {};
 
     if (!klass.serialize) {
         for (const key in input) {

@@ -110,7 +110,7 @@ export class CollisionIndex {
         rotateWithMap: boolean,
         translation: [number, number],
         collisionGroupPredicate?: (key: FeatureKey) => boolean,
-        getElevation?: (x: number, y: number) => number,
+        getElevation?: ((x: number, y: number) => number) | null,
         shift?: Point,
         simpleProjectionMatrix?: mat4,
     ): PlacedBox {
@@ -439,7 +439,7 @@ export class CollisionIndex {
         }
     }
 
-    projectAndGetPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number, simpleProjectionMatrix?: mat4) {
+    projectAndGetPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: ((x: number, y: number) => number) | null, simpleProjectionMatrix?: mat4) {
         if (simpleProjectionMatrix) {
             // This branch is a fast-path for mercator transform.
             // The code here is a copy of MercatorTransform.projectTileCoordinates, slightly modified for extra performance.
@@ -461,7 +461,7 @@ export class CollisionIndex {
                 signedDistanceFromCamera: w
             };
         } else {
-            const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, assertedNotNullish(getElevation));
+            const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, getElevation);
             return {
                 x: (((projected.point.x + 1) / 2) * this.transform.width) + viewportPadding,
                 y: (((-projected.point.y + 1) / 2) * this.transform.height) + viewportPadding,
@@ -477,7 +477,7 @@ export class CollisionIndex {
 
     getPerspectiveRatio(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): number {
         // We don't care about the actual projected point, just its W component.
-        const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, assertedNotNullish(getElevation));
+        const projected = this.transform.projectTileCoordinates(x, y, unwrappedTileID, getElevation);
         return 0.5 + 0.5 * (assertedNotNullish(this.transform.cameraToCenterDistance)/ projected.signedDistanceFromCamera);
     }
 

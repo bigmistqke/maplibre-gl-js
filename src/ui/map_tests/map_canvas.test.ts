@@ -94,7 +94,7 @@ describe('WebGLContextAttributes options', () => {
         Object.defineProperty(container, 'clientWidth', {value: 2048});
         Object.defineProperty(container, 'clientHeight', {value: 2048});
         const map = createMap({container, canvasContextAttributes});
-        const mapContextAttributes = assertedNotNullish(assertedNotNullish(map.painter).context.gl.getContextAttributes());
+        const mapContextAttributes = assertedNotNullish(map.painter?.context.gl.getContextAttributes());
         expect(mapContextAttributes.alpha).toBe(true);
         expect(mapContextAttributes.depth).toBe(true);
         expect(mapContextAttributes.stencil).toBe(true);

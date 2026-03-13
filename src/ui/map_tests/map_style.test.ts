@@ -105,7 +105,7 @@ describe('setStyle', () => {
         map.setStyle(blueStyle);
         await map.once('style.load');
         map.setStyle(redStyle);
-        const serializedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
+        const serializedStyle = assertedNotNullish(map.style?.serialize());
         const firstLayer = assertedNotNullish(serializedStyle.layers[0]);
         // Type cast needed: paint type is a discriminated union and TS can't narrow via index access
         expect((firstLayer.paint as Record<string, unknown>)['background-color']).toBe('red');
@@ -220,7 +220,7 @@ describe('setStyle', () => {
         });
 
         await map.once('style.load');
-        const loadedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
+        const loadedStyle = assertedNotNullish(map.style?.serialize());
         expect('maplibre' in loadedStyle.sources).toBeTruthy();
         expect(assertedNotNullish(loadedStyle.layers[0]).id).toBe(style.layers[0].id);
         expect(loadedStyle.layers).toHaveLength(1);
@@ -267,7 +267,7 @@ describe('setStyle', () => {
             })
         });
 
-        const loadedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
+        const loadedStyle = assertedNotNullish(map.style?.serialize());
         expect('maplibre' in loadedStyle.sources).toBeTruthy();
         expect(assertedNotNullish(loadedStyle.layers[0]).id).toBe(style.layers[0].id);
         expect(loadedStyle.layers).toHaveLength(1);
@@ -301,7 +301,7 @@ describe('setStyle', () => {
         });
 
         await map.once('style.load');
-        const loadedStyle = assertedNotNullish(assertedNotNullish(map.style).serialize());
+        const loadedStyle = assertedNotNullish(map.style?.serialize());
         expect('maplibre' in loadedStyle.sources).toBeTruthy();
         expect(assertedNotNullish(loadedStyle.layers[0]).id).toBe('layerId0');
     });

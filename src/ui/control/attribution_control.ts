@@ -122,7 +122,7 @@ export class AttributionControl implements IControl {
     };
 
     _updateAttributions() {
-        if (!assertedNotNullish(this._map, 'Expected map to be defined').style) return;
+        if (!this._map?.style) return;
         let attributions: Array<string> = [];
         if (this.options.customAttribution) {
             if (Array.isArray(this.options.customAttribution)) {
@@ -137,13 +137,13 @@ export class AttributionControl implements IControl {
             }
         }
 
-        if (assertedNotNullish(assertedNotNullish(this._map, 'Expected map to be defined').style, 'Expected style to be defined').stylesheet) {
-            const stylesheet = assertedNotNullish(assertedNotNullish(this._map).style, 'Expected style to be defined').stylesheet as StyleSpecification & { owner: string; id: string };
+        if (this._map.style.stylesheet) {
+            const stylesheet = this._map.style.stylesheet as StyleSpecification & { owner: string; id: string };
             this.styleOwner = stylesheet.owner;
             this.styleId = stylesheet.id;
         }
 
-        const tileManagers = assertedNotNullish(assertedNotNullish(this._map).style, 'Expected style to be defined').tileManagers;
+        const tileManagers = this._map.style.tileManagers;
         for (const id in tileManagers) {
             const tileManager = tileManagers[id];
             if (tileManager.used || tileManager.usedForTerrain) {
@@ -188,7 +188,7 @@ export class AttributionControl implements IControl {
         if (assertedNotNullish(this._map, 'Expected map to be defined').getCanvasContainer().offsetWidth <= 640 || this._compact) {
             if (this._compact === false) {
                 assertedNotNullish(this._container).setAttribute('open', '');
-            } else if (!assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-compact') && !assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-attrib-empty')) {
+            } else if (!assertedNotNullish(this._container) && !assertedNotNullish(this._container, 'Expected container to be defined').classList.contains('maplibregl-attrib-empty')) {
                 assertedNotNullish(this._container).setAttribute('open', '');
                 assertedNotNullish(this._container).classList.add('maplibregl-compact', 'maplibregl-compact-show');
             }

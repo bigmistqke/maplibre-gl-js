@@ -7,7 +7,7 @@ import {TransferableGridIndex} from '../util/transferable_grid_index';
 import {DictionaryCoder} from '../util/dictionary_coder';
 import Protobuf from 'pbf';
 import {GeoJSONFeature} from '../util/vectortile_to_geojson';
-import {mapObject, extend, assertedNotNullish} from '../util/util';
+import {mapObject, extend, assertedNotNullish, assertNotNullish} from '../util/util';
 import {register} from '../util/web_worker_transfer';
 import {EvaluationParameters} from '../style/evaluation_parameters';
 import {polygonIntersectsBox} from '../util/intersection_tests';
@@ -311,7 +311,9 @@ export class FeatureIndex {
     }
 
     hasLayer(id: string) {
-        for (const layerIDs of assertedNotNullish(this.bucketLayerIDs)) {
+        assertNotNullish(this.bucketLayerIDs);
+
+        for (const layerIDs of this.bucketLayerIDs) {
             for (const layerID of layerIDs) {
                 if (id === layerID) return true;
             }

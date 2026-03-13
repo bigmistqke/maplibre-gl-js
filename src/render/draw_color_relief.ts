@@ -85,7 +85,7 @@ function renderColorRelief(
         context.activeTexture.set(gl.TEXTURE0);
 
         context.pixelStoreUnpackPremultiplyAlpha.set(false);
-        tile.demTexture = tile.demTexture || assertedNotNullish(painter.getTileTexture(assertedNotNullish(textureStride)), 'Expected painter.getTileTexture to return defined value');
+        tile.demTexture = tile.demTexture || assertedNotNullish(painter.getTileTexture(assertedNotNullish(textureStride))) ;
         if (tile.demTexture) {
             const demTexture = tile.demTexture;
             demTexture.update(pixelData, {premultiply: false});

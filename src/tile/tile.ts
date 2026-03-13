@@ -205,7 +205,15 @@ export class Tile {
      * @param painter - the painter
      * @param justReloaded - `true` to just reload
      */
-    loadVectorData(data: WorkerTileResult | null | undefined, painter: Painter, justReloaded?: boolean | null) {
+
+    loadVectorData(
+        data: WorkerTileResult | null | undefined,
+        // NOTE:    Unclear if painter should accept undefined too
+        //          - deserializeBucket(data.buckets, painter?.style) already had an optional access
+        //          - but painter.style.getLayer(id).queryRadius(bucket) was accessed without nullable checking
+        painter: Painter | undefined,
+        justReloaded?: boolean | null
+    ) {
         if (data?.etagUnmodified === true) {
             this.state = 'loaded';
             return;
@@ -271,8 +279,7 @@ export class Tile {
         this.queryPadding = 0;
         for (const id in this.buckets) {
             const bucket = this.buckets[id];
-            // @ts-expect-error - original code accessed painter.style.getLayer(id).queryRadius(bucket) directly
-            this.queryPadding = Math.max(this.queryPadding, painter.style.getLayer(id).queryRadius(bucket));
+            this.queryPadding = Math.max(this.queryPadding, assertedNotNullish(painter?.style?.getLayer(id)?.queryRadius)(bucket));
         }
 
         if (data.imageAtlas) {

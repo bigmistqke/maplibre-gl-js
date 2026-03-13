@@ -491,7 +491,7 @@ export interface IReadonlyTransform extends ITransformGetters {
      * @internal
      * Projects a point in tile coordinates to clip space. Used in symbol rendering.
      */
-    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: (x: number, y: number) => number): PointProjection;
+    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileID, getElevation?: ((x: number, y: number) => number) | null): PointProjection;
 
     /**
      * Returns a matrix that will place, rotate and scale a model to display at the given location and altitude

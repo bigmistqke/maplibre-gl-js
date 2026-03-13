@@ -3,7 +3,7 @@ import {type Color, supportsPropertyExpression} from '@maplibre/maplibre-gl-styl
 import {register} from '../util/web_worker_transfer';
 import {PossiblyEvaluatedPropertyValue} from '../style/properties';
 import {StructArrayLayout1f4, StructArrayLayout2f8, StructArrayLayout4f16, PatternLayoutArray, DashLayoutArray} from './array_types.g';
-import {assertedNotNullish, clamp} from '../util/util';
+import {assertedNotNullish, assertNotNullish, clamp} from '../util/util';
 import {patternAttributes} from './bucket/pattern_attributes';
 import {dashAttributes} from './bucket/dash_attributes';
 import {EvaluationParameters} from '../style/evaluation_parameters';
@@ -507,7 +507,8 @@ export class ProgramConfiguration {
 
         const keys = [];
 
-        for (const property in assertedNotNullish(layer.paint)._values) {
+        assertNotNullish(layer.paint);
+        for (const property in layer.paint._values) {
             if (!filterProperties(property)) continue;
             const value = (layer.paint as any).get(property);
             if (!(value instanceof PossiblyEvaluatedPropertyValue) || !supportsPropertyExpression(value.property.specification)) {

@@ -671,7 +671,7 @@ export class Painter {
         this.id = layer.id;
 
         if (isSymbolStyleLayer(layer)) {
-            drawSymbols(painter, tileManager, layer, coords, assertedNotNullish(assertedNotNullish(this.style).placement).variableOffsets, renderOptions);
+            drawSymbols(painter, tileManager, layer, coords, assertedNotNullish(this.style?.placement).variableOffsets, renderOptions);
         } else if (isCircleStyleLayer(layer)) {
             drawCircles(painter, tileManager, layer, coords, renderOptions);
         } else if (isHeatmapStyleLayer(layer)) {

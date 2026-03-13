@@ -247,7 +247,7 @@ function makeXMLHttpRequest(requestParameters: RequestParameters, abortControlle
  * @param abortController - The abort controller allowing to cancel the request
  * @returns a promise resolving to the response, including cache control and expiry data
  */
-export const makeRequest = function(requestParameters: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<any>> {
+export const makeRequest = function(requestParameters: RequestParameters, abortController: AbortController | undefined): Promise<GetResourceResponse<any>> {
     if (/:\/\//.test(requestParameters.url) && !(/^https?:|^file:/.test(requestParameters.url))) {
         const protocolLoadFn = getProtocol(requestParameters.url);
         if (protocolLoadFn) {

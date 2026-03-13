@@ -21,15 +21,15 @@ export type DEMEncoding = 'mapbox' | 'terrarium' | 'custom';
  */
 export class DEMData {
     uid: string | number;
-    data?: Uint32Array<ArrayBuffer>;
-    stride?: number;
-    dim?: number;
-    min?: number;
-    max?: number;
-    redFactor?: number;
-    greenFactor?: number;
-    blueFactor?: number;
-    baseShift?: number;
+    data: Uint32Array<ArrayBuffer>;
+    stride: number;
+    dim: number;
+    min: number;
+    max: number;
+    redFactor: number;
+    greenFactor: number;
+    blueFactor: number;
+    baseShift: number;
 
     /**
      * Constructs a `DEMData` object
@@ -46,8 +46,10 @@ export class DEMData {
         this.uid = uid;
         if (data.height !== data.width) throw new RangeError('DEM tiles must be square');
         if (encoding && !['mapbox', 'terrarium', 'custom'].includes(encoding)) {
-            warnOnce(`"${encoding}" is not a valid encoding type. Valid types include "mapbox", "terrarium" and "custom".`);
-            return;
+            // NOTE:    Orginally warned and returned, but this forced all the properties to be optional
+            //          warnOnce(`"${encoding}" is not a valid encoding type. Valid types include "mapbox", "terrarium" and "custom".`);
+            //          return
+            throw new Error(`"${encoding}" is not a valid encoding type. Valid types include "mapbox", "terrarium" and "custom".`);
         }
         this.stride = data.height;
         const dim = this.dim = data.height - 2;
@@ -81,7 +83,7 @@ export class DEMData {
         // in order to avoid flashing seams between tiles, here we are initially populating a 1px border of pixels around the image
         // with the data of the nearest pixel from the image. this data is eventually replaced when the tile's neighboring
         // tiles are loaded and the accurate data can be backfilled using DEMData#backfillBorder
-        const dataArr = assertedNotNullish(this.data, 'DEM data array must be initialized');
+        const dataArr = this.data;
         for (let x = 0; x < dim; x++) {
             // left vertical border
             dataArr[this._idx(-1, x)] = dataArr[this._idx(0, x)];
@@ -113,24 +115,24 @@ export class DEMData {
     }
 
     get(x: number, y: number) {
-        const pixels = new Uint8Array(assertedNotNullish(this.data).buffer);
+        const pixels = new Uint8Array(this.data.buffer);
         const index = this._idx(x, y) * 4;
         return this.unpack(pixels[index], pixels[index + 1], pixels[index + 2]);
     }
 
     getUnpackVector() {
-        return [assertedNotNullish(this.redFactor), assertedNotNullish(this.greenFactor), assertedNotNullish(this.blueFactor), assertedNotNullish(this.baseShift)];
+        return [this.redFactor, this.greenFactor, this.blueFactor, this.baseShift];
     }
 
     _idx(x: number, y: number) {
-        const dim = assertedNotNullish(this.dim);
-        const stride = assertedNotNullish(this.stride);
+        const dim = this.dim;
+        const stride = this.stride;
         if (x < -1 || x >= dim + 1 ||  y < -1 || y >= dim + 1) throw new RangeError(`Out of range source coordinates for DEM data. x: ${x}, y: ${y}, dim: ${dim}`);
         return (y + 1) * stride + (x + 1);
     }
 
     unpack(r: number, g: number, b: number) {
-        return (r * assertedNotNullish(this.redFactor) + g * assertedNotNullish(this.greenFactor) + b * assertedNotNullish(this.blueFactor) - assertedNotNullish(this.baseShift));
+        return (r * this.redFactor + g * this.greenFactor + b * this.blueFactor - this.baseShift);
     }
 
     pack(v: number): {r: number; g: number; b: number} {
@@ -138,13 +140,13 @@ export class DEMData {
     }
 
     getPixels() {
-        const stride = assertedNotNullish(this.stride);
-        return new RGBAImage({width: stride, height: stride}, new Uint8Array(assertedNotNullish(this.data).buffer));
+        const stride = this.stride;
+        return new RGBAImage({width: stride, height: stride}, new Uint8Array(this.data.buffer));
     }
 
     backfillBorder(borderTile: DEMData, dx: number, dy: number) {
         if (this.dim !== borderTile.dim) throw new Error('dem dimension mismatch');
-        const dim = assertedNotNullish(this.dim);
+        const dim = this.dim;
 
         let xMin = dx * dim,
             xMax = dx * dim + dim,
@@ -171,8 +173,8 @@ export class DEMData {
 
         const ox = -dx * dim;
         const oy = -dy * dim;
-        const targetData = assertedNotNullish(this.data);
-        const sourceData = assertedNotNullish(borderTile.data);
+        const targetData = this.data;
+        const sourceData = borderTile.data;
         for (let y = yMin; y < yMax; y++) {
             for (let x = xMin; x < xMax; x++) {
                 targetData[this._idx(x, y)] = sourceData[this._idx(x + ox, y + oy)];

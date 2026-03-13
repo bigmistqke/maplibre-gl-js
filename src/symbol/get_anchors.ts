@@ -17,7 +17,7 @@ function getLineLength(line: Array<Point>): number {
 }
 
 function getAngleWindowSize(
-    shapedText: Shaping,
+    shapedText: Shaping | null | undefined,
     glyphSize: number,
     boxScale: number
 ): number {
@@ -34,8 +34,8 @@ function getShapedLabelLength(shapedText?: Shaping | null, shapedIcon?: Position
 
 function getCenterAnchor(line: Array<Point>,
     maxAngle: number,
-    shapedText: Shaping,
-    shapedIcon: PositionedIcon,
+    shapedText: Shaping | null | undefined,
+    shapedIcon: PositionedIcon | null | undefined,
     glyphSize: number,
     boxScale: number) {
     const angleWindowSize = getAngleWindowSize(shapedText, glyphSize, boxScale);
@@ -73,8 +73,8 @@ function getCenterAnchor(line: Array<Point>,
 function getAnchors(line: Array<Point>,
     spacing: number,
     maxAngle: number,
-    shapedText: Shaping,
-    shapedIcon: PositionedIcon,
+    shapedText: Shaping | null | undefined,
+    shapedIcon: PositionedIcon | null | undefined,
     glyphSize: number,
     boxScale: number,
     overscaling: number,

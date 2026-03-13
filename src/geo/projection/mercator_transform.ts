@@ -291,7 +291,7 @@ export class MercatorTransform implements ITransform {
     }
 
     getCameraFrustum(): Frustum {
-        return Frustum.fromInvProjectionMatrix(assertedNotNullish(this._invViewProjMatrix, 'Expected this._invViewProjMatrix to be defined'), this.worldSize);
+        return Frustum.fromInvProjectionMatrix(assertedNotNullish(this._invViewProjMatrix), this.worldSize);
     }
     getClippingPlane(): vec4 | null {
         return null;
@@ -602,7 +602,7 @@ export class MercatorTransform implements ITransform {
 
         // Calculate the camera to sea-level distance in pixel in respect of terrain
         const limitedPitchRadians = degreesToRadians(Math.min(this.pitch, maxMercatorHorizonAngle));
-        const cameraToSeaLevelDistance = Math.max(assertedNotNullish(this._helper.cameraToCenterDistance, 'Expected this._helper.cameraToCenterDistance to be defined') / 2, assertedNotNullish(this._helper.cameraToCenterDistance) + this._helper._elevation * this._helper._pixelPerMeter / Math.cos(limitedPitchRadians));
+        const cameraToSeaLevelDistance = Math.max(assertedNotNullish(this._helper.cameraToCenterDistance) / 2, assertedNotNullish(this._helper.cameraToCenterDistance) + this._helper._elevation * this._helper._pixelPerMeter / Math.cos(limitedPitchRadians));
 
         this._calculateNearFarZIfNeeded(cameraToSeaLevelDistance, limitedPitchRadians, offset);
 
@@ -619,7 +619,7 @@ export class MercatorTransform implements ITransform {
         this._projectionMatrix = mat4.clone(m);
 
         mat4.scale(m, m, [1, -1, 1]);
-        mat4.translate(m, m, [0, 0, -assertedNotNullish(this._helper.cameraToCenterDistance, 'Expected this._helper.cameraToCenterDistance to be defined')]);
+        mat4.translate(m, m, [0, 0, -assertedNotNullish(this._helper.cameraToCenterDistance)]);
         mat4.rotateZ(m, m, -this.rollInRadians);
         mat4.rotateX(m, m, this.pitchInRadians);
         mat4.rotateZ(m, m, -this.bearingInRadians);
@@ -655,7 +655,7 @@ export class MercatorTransform implements ITransform {
         _fogMatrix[8] = -offset.x * 2 / this.width;
         _fogMatrix[9] = offset.y * 2 / this.height;
         mat4.scale(_fogMatrix, _fogMatrix, [1, -1, 1]);
-        mat4.translate(_fogMatrix, _fogMatrix, [0, 0, -assertedNotNullish(this.cameraToCenterDistance, 'Expected this.cameraToCenterDistance to be defined')]);
+        mat4.translate(_fogMatrix, _fogMatrix, [0, 0, -assertedNotNullish(this.cameraToCenterDistance)]);
         mat4.rotateZ(_fogMatrix, _fogMatrix, -this.rollInRadians);
         mat4.rotateX(_fogMatrix, _fogMatrix, this.pitchInRadians);
         mat4.rotateZ(_fogMatrix, _fogMatrix, -this.bearingInRadians);

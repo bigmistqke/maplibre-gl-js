@@ -23,7 +23,7 @@ export class FillExtrusionStyleLayer extends StyleLayer {
     _transitioningPaint: Transitioning<FillExtrusionPaintProps> | undefined;
     paint: PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated> | undefined;
 
-    constructor(layer: LayerSpecification, globalState: Record<string, any>) {
+    constructor(layer: LayerSpecification, globalState: Record<string, any> | undefined) {
         super(layer, properties, globalState);
     }
 
