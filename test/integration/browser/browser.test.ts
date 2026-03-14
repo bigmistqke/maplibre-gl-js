@@ -7,7 +7,6 @@ import type {AddressInfo} from 'net';
 
 import {sleep} from '../../../src/util/test/util';
 import {launchPuppeteer} from '../lib/puppeteer_config';
-// @ts-expect-error - dist types not available during type checking
 import type {default as MapLibreGL, Map} from '../../../dist/maplibre-gl';
 
 const testWidth = 800;
@@ -17,8 +16,8 @@ const deviceScaleFactor = 2;
 let server: Server;
 let browser: Browser;
 let page: Page;
-let map: Map;
-let maplibregl: typeof MapLibreGL;
+let map!: Map;
+let maplibregl!: typeof MapLibreGL;
 
 describe('Browser tests', () => {
 
@@ -340,7 +339,7 @@ describe('Browser tests', () => {
                 return new Promise(resolve => setTimeout(resolve, milliseconds));
             }
 
-            let map: Map;
+            let map!: Map;
             class MapLibre extends HTMLElement {
                 async connectedCallback() {
                     const maplibreCSS = await (await fetch('/../../../../dist/maplibre-gl.css')).text();
@@ -505,8 +504,8 @@ describe('Browser tests', () => {
         const pixel = await page.evaluate(async () => {
             function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
             const canvas = map.getCanvas();
-            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-            const ext = gl && gl.getExtension('WEBGL_lose_context');
+            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')!;
+            const ext = gl.getExtension('WEBGL_lose_context')!;
             // Context loss and restore
             const restored: Promise<void> = new Promise(resolve => {
                 const onRestored = () => {
@@ -574,8 +573,8 @@ describe('Browser tests', () => {
     test('Map canvas is not blank after context lost, resize map and context restored', {retry: 3, timeout: 20000}, async () => {
         await page.evaluate(async () => {
             const canvas = map.getCanvas();
-            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-            const ext = gl && gl.getExtension('WEBGL_lose_context');
+            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')!;
+            const ext = gl.getExtension('WEBGL_lose_context')!;
             (window as any).ext = ext;
             ext.loseContext();
         });
@@ -585,7 +584,7 @@ describe('Browser tests', () => {
 
         const pixel = await page.evaluate(async () => {
             const canvas = map.getCanvas();
-            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')!;
             const ext = (window as any).ext;
             ext.restoreContext();
 

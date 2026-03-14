@@ -15,7 +15,7 @@ import {localizeURLs} from '../lib/localize-urls';
 import {launchPuppeteer} from '../lib/puppeteer_config';
 import type {default as MapLibreGL} from '../../../dist/maplibre-gl';
 
-let maplibregl: typeof MapLibreGL;
+let maplibregl!: typeof MapLibreGL;
 
 declare namespace maplibregl {
     type Map = any;
