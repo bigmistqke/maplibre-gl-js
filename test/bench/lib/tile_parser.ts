@@ -1,18 +1,17 @@
 import Protobuf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-
+import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {derefLayers} from '@maplibre/maplibre-gl-style-spec'
+
 import {Style} from '../../../src/style/style';
 import {IReadonlyTransform} from '../../../src/geo/transform_interface';
 import {Evented} from '../../../src/util/evented';
 import {RequestManager} from '../../../src/util/request_manager';
 import {WorkerTile} from '../../../src/source/worker_tile';
 import {StyleLayerIndex} from '../../../src/style/style_layer_index';
-
-import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {WorkerTileResult} from '../../../src/source/worker_source';
 import type {OverscaledTileID} from '../../../src/tile/tile_id';
-import {assertedNotNullish, type TileJSON} from '../../../src/util/util';
+import type {TileJSON} from '../../../src/util/util';
 import type {Map} from '../../../src/ui/map';
 import type {IActor} from '../../../src/util/actor';
 import {SubdivisionGranularitySetting} from '../../../src/render/subdivision_granularity_settings';
@@ -56,48 +55,24 @@ function createStyle(styleJSON: StyleSpecification): Promise<Style> {
 
 export default class TileParser {
     styleJSON: StyleSpecification;
-    tileJSON: TileJSON | undefined;
+    tileJSON: TileJSON;
     sourceID: string;
     layerIndex: StyleLayerIndex;
     icons: any;
     glyphs: any;
     dashes: any;
-    style: Style | undefined;
-    actor!: IActor;
+    style: Style;
+    actor: IActor;
 
-    constructor(styleJSON: StyleSpecification, sourceID: string) {
+    constructor(styleJSON: StyleSpecification, sourceID: string, style: Style, tileJSON: TileJSON) {
         this.styleJSON = styleJSON;
         this.sourceID = sourceID;
         this.layerIndex = new StyleLayerIndex(derefLayers(this.styleJSON.layers));
         this.glyphs = {};
         this.icons = {};
-    }
+        this.style = style;
+        this.tileJSON = tileJSON;
 
-    async loadImages(params: any) {
-        const key = JSON.stringify(params);
-        if (!this.icons[key]) {
-            this.icons[key] = await assertedNotNullish(this.style).getImages('', params);
-        }
-        return this.icons[key] ?? undefined;
-    }
-
-    async loadGlyphs(params: any) {
-        const key = JSON.stringify(params);
-        if (!this.glyphs[key]) {
-            this.glyphs[key] = await assertedNotNullish(this.style).getGlyphs('', params);
-        }
-        return this.glyphs[key] ?? undefined;
-    }
-
-    async loadDashes(params: any) {
-        const key = JSON.stringify(params);
-        if (!this.dashes[key]) {
-            this.dashes[key] = await assertedNotNullish(this.style).getDashes('', params);
-        }
-        return this.dashes[key] ?? undefined;
-    }
-
-    setup(): Promise<void> {
         const parser = this;
         this.actor = {
             sendAsync(message: any) {
@@ -113,24 +88,34 @@ export default class TileParser {
                 throw new Error(`Invalid action ${message.type}`);
             }
         } as any as IActor;
+    }
 
-        const source = this.styleJSON.sources[this.sourceID];
-        const sourceUrl = (source as any)?.url;
-        if (!sourceUrl || typeof sourceUrl !== 'string') {
-            return Promise.reject(new Error(`Source ${this.sourceID} has invalid URL`));
+    async loadImages(params: any) {
+        const key = JSON.stringify(params);
+        if (!this.icons[key]) {
+            this.icons[key] = await this.style.getImages('', params);
         }
+        return this.icons[key] ?? undefined;
+    }
 
-        return Promise.all([
-            createStyle(this.styleJSON),
-            fetch(sourceUrl).then(response => response.json())
-        ]).then(([style, tileJSON]) => {
-            this.style = style;
-            this.tileJSON = tileJSON;
-        });
+    async loadGlyphs(params: any) {
+        const key = JSON.stringify(params);
+        if (!this.glyphs[key]) {
+            this.glyphs[key] = await this.style.getGlyphs('', params);
+        }
+        return this.glyphs[key] ?? undefined;
+    }
+
+    async loadDashes(params: any) {
+        const key = JSON.stringify(params);
+        if (!this.dashes[key]) {
+            this.dashes[key] = await this.style.getDashes('', params);
+        }
+        return this.dashes[key] ?? undefined;
     }
 
     fetchTile(tileID: OverscaledTileID) {
-        return fetch(tileID.canonical.url(assertedNotNullish(this.tileJSON).tiles, devicePixelRatio))
+        return fetch(tileID.canonical.url(this.tileJSON.tiles, devicePixelRatio))
             .then(response => response.arrayBuffer())
             .then(buffer => ({tileID, buffer}));
     }
@@ -162,4 +147,19 @@ export default class TileParser {
 
         return workerTile.parse(vectorTile, this.layerIndex, [], this.actor, SubdivisionGranularitySetting.noSubdivision);
     }
+}
+
+export async function createTileParser(styleJSON: StyleSpecification, sourceID: string): Promise<TileParser> {
+    const source = styleJSON.sources[sourceID];
+    const sourceUrl = (source as any)?.url;
+    if (!sourceUrl || typeof sourceUrl !== 'string') {
+        throw new Error(`Source ${sourceID} has invalid URL`);
+    }
+
+    const [style, tileJSON] = await Promise.all([
+        createStyle(styleJSON),
+        fetch(sourceUrl).then(response => response.json())
+    ]);
+
+    return new TileParser(styleJSON, sourceID, style, tileJSON);
 }

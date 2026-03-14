@@ -1,7 +1,7 @@
 import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import Benchmark from '../lib/benchmark';
 import fetchStyle from '../lib/fetch_style';
-import TileParser from '../lib/tile_parser';
+import TileParser, {createTileParser} from '../lib/tile_parser';
 import {OverscaledTileID} from '../../../src/tile/tile_id';
 
 export default class Layout extends Benchmark {
@@ -26,8 +26,7 @@ export default class Layout extends Benchmark {
 
     async setup(): Promise<void> {
         const styleJSON = await fetchStyle(this.style);
-        this.parser = new TileParser(styleJSON, 'openmaptiles');
-        await this.parser.setup();
+        this.parser = await createTileParser(styleJSON, 'openmaptiles');
         this.tiles = await Promise.all(this.tileIDs.map(tileID => this.parser.fetchTile(tileID)));
         await Promise.all(this.tiles.map(tile => this.parser.parseTile(tile)));
     }
