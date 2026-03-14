@@ -172,7 +172,7 @@ export function getTileSkewVectors(transform: IReadonlyTransform): {vecEast: vec
  * Projects a point using a specified matrix, including the perspective divide.
  * Uses a fast path if `getElevation` is undefined.
  */
-export function projectWithMatrix(x: number, y: number, matrix: mat4, getElevation?: (x: number, y: number) => number): PointProjection {
+export function projectWithMatrix(x: number, y: number, matrix: mat4, getElevation?: ((x: number, y: number) => number) | null): PointProjection {
     let pos;
     if (getElevation) { // slow because of handle z-index
         pos = [x, y, getElevation(x, y), 1] as vec4;
@@ -590,7 +590,7 @@ export type SymbolProjectionContext = {
      * @param x - the x coordinate
      * @param y - the y coordinate
     */
-    getElevation?: (x: number, y: number) => number;
+    getElevation?: ((x: number, y: number) => number) | null;
     /**
      * Only for creating synthetic vertices if vertex would otherwise project behind plane of camera,
      * but still convenient to pass it inside this type.

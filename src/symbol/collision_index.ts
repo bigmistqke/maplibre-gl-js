@@ -212,7 +212,7 @@ export class CollisionIndex {
         const lineOffsetY = symbol.lineOffsetY * labelPlaneFontScale;
 
         const projectionContext: SymbolProjectionContext = {
-            getElevation: getElevation ?? undefined,
+            getElevation,
             pitchedLabelPlaneMatrix,
             lineVertexArray,
             pitchWithMap,
@@ -512,7 +512,7 @@ export class CollisionIndex {
         rotateWithMap: boolean,
         translation: [number, number],
         projectedPoint: {x: number; y: number; perspectiveRatio: number; signedDistanceFromCamera: number},
-        getElevation?: (x: number, y: number) => number,
+        getElevation?: ((x: number, y: number) => number) | null,
         shift?: Point,
         simpleProjectionMatrix?: mat4,
     ): ProjectedBox {

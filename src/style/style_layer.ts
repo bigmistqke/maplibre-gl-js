@@ -125,7 +125,7 @@ export abstract class StyleLayer extends Evented {
         this.type = layer.type;
         this._globalState = globalState;
         this._featureFilter = {filter: () => true, needGeometry: false, getGlobalStateRefs: () => new Set<string>()};
-        this._visibilityExpression = createVisibilityExpression(this.visibility ?? 'visible', globalState);
+        this._visibilityExpression = createVisibilityExpression(this.visibility ?? 'visible', globalState ?? {});
 
         if (layer.type === 'custom') return;
 

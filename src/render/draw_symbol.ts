@@ -167,7 +167,7 @@ function updateVariableAnchors(coords: Array<OverscaledTileID>,
             const tileScale = Math.pow(2, transform.zoom - tile.tileID.overscaledZ);
             const getElevation = terrain ? (x: number, y: number) => terrain.getElevation(coord, x, y) : null;
             const translation = translatePosition(transform, tile, translate, translateAnchor);
-            updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets,
+            updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets ?? {},
                 transform, pitchedLabelPlaneMatrix, tileScale, size, !!updateTextFitIcon, translation, coord.toUnwrapped(), getElevation);
         }
     }

@@ -139,7 +139,7 @@ export const getReferrer = () => isWorker(self) ?
  */
 const isFileURL = (url: string) => /^file:/.test(url) || (/^file:/.test(assertedNotNullish(getReferrer())) && !/^\w+:/.test(url));
 
-async function makeFetchRequest(requestParameters: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<any>> {
+async function makeFetchRequest(requestParameters: RequestParameters, abortController?: AbortController): Promise<GetResourceResponse<any>> {
     const request = new Request(requestParameters.url, {
         method: requestParameters.method || 'GET',
         body: requestParameters.body,
@@ -147,7 +147,7 @@ async function makeFetchRequest(requestParameters: RequestParameters, abortContr
         headers: requestParameters.headers,
         cache: requestParameters.cache,
         referrer: getReferrer(),
-        signal: abortController.signal
+        signal: abortController?.signal
     });
 
     // If the user has already set an Accept header, do not overwrite it here
@@ -184,11 +184,11 @@ async function makeFetchRequest(requestParameters: RequestParameters, abortContr
         parsePromise = response.text();
     }
     const result = await parsePromise;
-    abortController.signal.throwIfAborted();
+    abortController?.signal.throwIfAborted();
     return {data: result, cacheControl: response.headers.get('Cache-Control') ?? undefined, expires: response.headers.get('Expires') ?? undefined, etag: response.headers.get('ETag') ?? undefined};
 }
 
-function makeXMLHttpRequest(requestParameters: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<any>> {
+function makeXMLHttpRequest(requestParameters: RequestParameters, abortController: AbortController | undefined): Promise<GetResourceResponse<any>> {
     return new Promise((resolve, reject) => {
         const xhr: XMLHttpRequest = new XMLHttpRequest();
 
@@ -211,7 +211,7 @@ function makeXMLHttpRequest(requestParameters: RequestParameters, abortControlle
             reject(new Error(xhr.statusText));
         };
         xhr.onload = () => {
-            if (abortController.signal.aborted) {
+            if (abortController?.signal.aborted) {
                 return;
             }
             if (((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) && xhr.response !== null) {
@@ -231,7 +231,7 @@ function makeXMLHttpRequest(requestParameters: RequestParameters, abortControlle
                 reject(new AJAXError(xhr.status, xhr.statusText, requestParameters.url, body));
             }
         };
-        abortController.signal.addEventListener('abort', () => {
+        abortController?.signal.addEventListener('abort', () => {
             xhr.abort();
             reject(new AbortError(abortController.signal.reason));
         });

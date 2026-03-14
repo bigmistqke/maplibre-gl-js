@@ -94,7 +94,7 @@ describe('maplibre', () => {
     test('addProtocol - Cancel request', async () => {
         let cancelCalled = false;
         addProtocol('custom', (_req, abortController) => {
-            abortController.signal.addEventListener('abort', () => {
+            abortController?.signal.addEventListener('abort', () => {
                 cancelCalled = true;
             });
             return Promise.resolve({} as any);
