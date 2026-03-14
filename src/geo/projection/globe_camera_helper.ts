@@ -8,7 +8,7 @@ import type {IReadonlyTransform, ITransform} from '../transform_interface';
 import type {GlobeProjection} from './globe_projection';
 import type {CameraForBoundsOptions} from '../../ui/camera';
 import type {LngLatBounds} from '../lng_lat_bounds';
-import type {PaddingOptions} from '../edge_insets';
+import type {RequiredPaddingOptions} from '../edge_insets';
 
 /**
  * @internal
@@ -45,7 +45,7 @@ export class GlobeCameraHelper implements ICameraHelper {
         this.currentHelper.handleMapControlsPan(deltas, tr, preZoomAroundLoc);
     }
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: ITransform): CameraForBoxAndBearingHandlerResult | null | undefined{
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: RequiredPaddingOptions, bounds: LngLatBounds, bearing: number, tr: ITransform): CameraForBoxAndBearingHandlerResult | null | undefined{
         return this.currentHelper.cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
     }
 

@@ -13,7 +13,7 @@ import type {ITransform} from '../geo/transform_interface';
 import type {LngLatLike} from '../geo/lng_lat';
 import type {LngLatBoundsLike} from '../geo/lng_lat_bounds';
 import type {TaskID} from '../util/task_queue';
-import type {PaddingOptions} from '../geo/edge_insets';
+import type {PaddingOptions, RequiredPaddingOptions} from '../geo/edge_insets';
 import type {HandlerManager} from './handler_manager';
 import type {ICameraHelper} from '../geo/projection/camera_helper';
 
@@ -835,7 +835,7 @@ export abstract class Camera extends Evented {
             };
         }
 
-        const padding = extend(defaultPadding, options.padding) as PaddingOptions;
+        const padding = extend(defaultPadding, options.padding) as RequiredPaddingOptions;
         options.padding = padding;
         const tr = this.transform;
         const bounds = new LngLatBounds(p0, p1);

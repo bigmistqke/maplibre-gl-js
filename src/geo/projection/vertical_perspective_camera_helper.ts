@@ -10,7 +10,7 @@ import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 import type {IReadonlyTransform, ITransform} from '../transform_interface';
 import type {CameraForBoundsOptions} from '../../ui/camera';
 import type {LngLatBounds} from '../lng_lat_bounds';
-import type {PaddingOptions} from '../edge_insets';
+import type {RequiredPaddingOptions} from '../edge_insets';
 
 /**
  * @internal
@@ -138,7 +138,7 @@ export class VerticalPerspectiveCameraHelper implements ICameraHelper {
         tr.setZoom(oldZoom + getZoomAdjustment(oldLat, tr.center.lat));
     }
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: ITransform): CameraForBoxAndBearingHandlerResult | null | undefined {
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: RequiredPaddingOptions, bounds: LngLatBounds, bearing: number, tr: ITransform): CameraForBoxAndBearingHandlerResult | null | undefined {
         const result = assertedNotNullish(cameraForBoxAndBearing(options, padding, bounds, bearing, tr));
         // If globe is enabled, we use the parameters computed for mercator, and just update the zoom to fit the bounds.
 

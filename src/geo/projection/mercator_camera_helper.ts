@@ -8,7 +8,7 @@ import {interpolates} from '@maplibre/maplibre-gl-style-spec';
 
 import type {IReadonlyTransform, ITransform} from '../transform_interface';
 import type {CameraForBoundsOptions} from '../../ui/camera';
-import type {PaddingOptions} from '../edge_insets';
+import type {RequiredPaddingOptions} from '../edge_insets';
 import type {LngLatBounds} from '../lng_lat_bounds';
 
 /**
@@ -50,7 +50,7 @@ export class MercatorCameraHelper implements ICameraHelper {
         tr.setLocationAtPoint(preZoomAroundLoc, deltas.around);
     }
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: RequiredPaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
         return cameraForBoxAndBearing(options, padding, bounds, bearing, tr);
     }
 

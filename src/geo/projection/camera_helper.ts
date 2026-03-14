@@ -2,7 +2,7 @@ import Point from '@mapbox/point-geometry';
 import {type IReadonlyTransform, type ITransform} from '../transform_interface';
 import {type LngLat, type LngLatLike} from '../lng_lat';
 import {type CameraForBoundsOptions, type PointLike} from '../../ui/camera';
-import {type PaddingOptions} from '../edge_insets';
+import type {RequiredPaddingOptions, PaddingOptions} from '../edge_insets';
 import {type LngLatBounds} from '../lng_lat_bounds';
 import {degreesToRadians, getRollPitchBearing, type RollPitchBearing, rollPitchBearingToQuat, scaleZoom, warnOnce, zoomScale} from '../../util/util';
 import {quat} from 'gl-matrix';
@@ -115,7 +115,7 @@ export interface ICameraHelper {
 
     handleMapControlsPan(deltas: MapControlsDeltas, tr: ITransform, preZoomAroundLoc: LngLat): void;
 
-    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null | undefined;
+    cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: RequiredPaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null | undefined;
 
     handleJumpToCenterZoom(tr: ITransform, options: { zoom?: number; center?: LngLatLike }): void;
 
@@ -153,7 +153,7 @@ export function updateRotation(args: UpdateRotationArgs) {
     }
 }
 
-export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: PaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
+export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding: RequiredPaddingOptions, bounds: LngLatBounds, bearing: number, tr: IReadonlyTransform): CameraForBoxAndBearingHandlerResult | null {
     const edgePadding = tr.padding;
 
     // Consider all corners of the rotated bounding box derived from the given points
@@ -202,9 +202,7 @@ export function cameraForBoxAndBearing(options: CameraForBoundsOptions, padding:
     // Calculate center: apply the zoom, the configured offset, as well as offset that exists as a result of padding.
     // @ts-expect-error - UNEXPECTED BEHAVIOR: options.offset can be undefined, Point.convert may fail
     const offset = Point.convert(options.offset);
-    // @ts-expect-error - UNEXPECTED BEHAVIOR: padding.left/right can be undefined, subtracting undefined results in NaN
     const paddingOffsetX = (padding.left - padding.right) / 2;
-    // @ts-expect-error - UNEXPECTED BEHAVIOR: padding.top/bottom can be undefined, subtracting undefined results in NaN
     const paddingOffsetY = (padding.top - padding.bottom) / 2;
     const paddingOffset = new Point(paddingOffsetX, paddingOffsetY);
     const rotatedPaddingOffset = paddingOffset.rotate(degreesToRadians(bearing));
