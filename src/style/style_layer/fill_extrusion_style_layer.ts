@@ -4,7 +4,7 @@ import {FillExtrusionBucket} from '../../data/bucket/fill_extrusion_bucket';
 import {polygonIntersectsPolygon, polygonIntersectsMultiPolygon} from '../../util/intersection_tests';
 import {translateDistance, translate} from '../query_utils';
 import properties, {type FillExtrusionPaintPropsPossiblyEvaluated} from './fill_extrusion_style_layer_properties.g';
-import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
+import {type Transitionable, type Transitioning, PossiblyEvaluated} from '../properties';
 import {type mat4, vec4} from 'gl-matrix';
 import Point from '@mapbox/point-geometry';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -21,10 +21,11 @@ export const isFillExtrusionStyleLayer = (layer: StyleLayer): layer is FillExtru
 export class FillExtrusionStyleLayer extends StyleLayer {
     _transitionablePaint: Transitionable<FillExtrusionPaintProps> | undefined;
     _transitioningPaint: Transitioning<FillExtrusionPaintProps> | undefined;
-    paint: PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated> | undefined;
+    paint: PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated>;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any> | undefined) {
         super(layer, properties, globalState);
+        this.paint = new PossiblyEvaluated<FillExtrusionPaintProps, FillExtrusionPaintPropsPossiblyEvaluated>(properties.paint);
     }
 
     createBucket(parameters: BucketParameters<FillExtrusionStyleLayer>) {
@@ -32,7 +33,7 @@ export class FillExtrusionStyleLayer extends StyleLayer {
     }
 
     queryRadius(): number {
-        return translateDistance(assertedNotNullish(this.paint).get('fill-extrusion-translate'));
+        return translateDistance(this.paint.get('fill-extrusion-translate'));
     }
 
     is3D(): boolean {
@@ -50,12 +51,12 @@ export class FillExtrusionStyleLayer extends StyleLayer {
     ): boolean | number {
 
         const translatedPolygon = translate(queryGeometry,
-            assertedNotNullish(this.paint).get('fill-extrusion-translate'),
-            assertedNotNullish(this.paint).get('fill-extrusion-translate-anchor'),
+            this.paint.get('fill-extrusion-translate'),
+            this.paint.get('fill-extrusion-translate-anchor'),
             -transform.bearingInRadians, pixelsToTileUnits);
 
-        const height = assertedNotNullish(this.paint).get('fill-extrusion-height').evaluate(feature, featureState);
-        const base = assertedNotNullish(this.paint).get('fill-extrusion-base').evaluate(feature, featureState);
+        const height = this.paint.get('fill-extrusion-height').evaluate(feature, featureState);
+        const base = this.paint.get('fill-extrusion-base').evaluate(feature, featureState);
 
         const projectedQueryGeometry = projectQueryGeometry(translatedPolygon, pixelPosMatrix, 0);
 

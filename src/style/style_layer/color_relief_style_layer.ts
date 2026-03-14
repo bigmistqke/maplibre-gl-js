@@ -1,7 +1,7 @@
 import {StyleLayer} from '../style_layer';
 
 import properties, {type ColorReliefPaintPropsPossiblyEvaluated} from './color_relief_style_layer_properties.g';
-import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
+import {type Transitionable, type Transitioning, PossiblyEvaluated} from '../properties';
 
 import type {ColorReliefPaintProps} from './color_relief_style_layer_properties.g';
 import {Color, Interpolate, ZoomConstantExpression, type LayerSpecification, type EvaluationContext, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
@@ -21,10 +21,11 @@ export class ColorReliefStyleLayer extends StyleLayer {
     colorRampTextures: ColorRampTextures | undefined;
     _transitionablePaint: Transitionable<ColorReliefPaintProps> | undefined;
     _transitioningPaint: Transitioning<ColorReliefPaintProps> | undefined;
-    paint: PossiblyEvaluated<ColorReliefPaintProps, ColorReliefPaintPropsPossiblyEvaluated> | undefined;
+    paint: PossiblyEvaluated<ColorReliefPaintProps, ColorReliefPaintPropsPossiblyEvaluated>;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
+        this.paint = new PossiblyEvaluated<ColorReliefPaintProps, ColorReliefPaintPropsPossiblyEvaluated>(properties.paint);
     }
 
     /**

@@ -8,7 +8,7 @@ import {
     type Transitionable,
     type Transitioning,
     type Layout,
-    type PossiblyEvaluated,
+    PossiblyEvaluated,
     PossiblyEvaluatedPropertyValue,
     type PropertyValue
 } from '../properties';
@@ -30,26 +30,27 @@ import type {EvaluationParameters} from '../evaluation_parameters';
 import type {Expression, Feature, SourceExpression, LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {CanonicalTileID} from '../../tile/tile_id';
 import {FormatSectionOverride} from '../format_section_override';
-import {assertedNotNullish, assertNotNullish, isRecord} from '../../util/util';
+import {assertedNotNullish, isRecord} from '../../util/util';
 
 export const isSymbolStyleLayer = (layer: StyleLayer): layer is SymbolStyleLayer => layer.type === 'symbol';
 
 export class SymbolStyleLayer extends StyleLayer {
     _unevaluatedLayout: Layout<SymbolLayoutProps> | undefined;
-    layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated> | undefined;
+    layout: PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>;
 
     _transitionablePaint: Transitionable<SymbolPaintProps> | undefined;
     _transitioningPaint: Transitioning<SymbolPaintProps> | undefined;
-    paint: PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated> | undefined;
+    paint: PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated>;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
+        this.paint = new PossiblyEvaluated<SymbolPaintProps, SymbolPaintPropsPossiblyEvaluated>(properties.paint);
+        this.layout = new PossiblyEvaluated<SymbolLayoutProps, SymbolLayoutPropsPossiblyEvaluated>(properties.layout);
     }
 
     recalculate(parameters: EvaluationParameters, availableImages: Array<string> | undefined) {
         super.recalculate(parameters, availableImages);
 
-        assertNotNullish(this.layout);
         const layoutValues = this.layout._values as Record<string, any>;
 
         if (this.layout.get('icon-rotation-alignment') === 'auto') {
@@ -94,7 +95,7 @@ export class SymbolStyleLayer extends StyleLayer {
     }
 
     getValueAndResolveTokens(name: keyof SymbolLayoutPropsPossiblyEvaluated, feature: Feature, canonical: CanonicalTileID, availableImages: Array<string>) {
-        const layoutValue = assertedNotNullish(this.layout).get(name);
+        const layoutValue = this.layout.get(name);
         const value = isRecord(layoutValue) && 'evaluate' in layoutValue
             ? layoutValue.evaluate(feature, {}, canonical, availableImages)
             : layoutValue;
@@ -123,10 +124,9 @@ export class SymbolStyleLayer extends StyleLayer {
     }
 
     _setPaintOverrides() {
-        assertNotNullish(this.paint);
         const paintValues = this.paint._values as unknown as Record<string, PossiblyEvaluatedPropertyValue<any>>;
         for (const overridable of properties.paint.overridableProperties) {
-            if (!SymbolStyleLayer.hasPaintOverride(assertedNotNullish(this.layout), overridable)) {
+            if (!SymbolStyleLayer.hasPaintOverride(this.layout, overridable)) {
                 continue;
             }
             const overridden = this.paint.get(overridable as keyof SymbolPaintPropsPossiblyEvaluated) as PossiblyEvaluatedPropertyValue<number>;
@@ -147,7 +147,7 @@ export class SymbolStyleLayer extends StyleLayer {
     }
 
     _handleOverridablePaintPropertyUpdate<T, R>(name: string, oldValue: PropertyValue<T, R>, newValue: PropertyValue<T, R>): boolean {
-        if (!this.layout || oldValue.isDataDriven() || newValue.isDataDriven()) {
+        if (oldValue.isDataDriven() || newValue.isDataDriven()) {
             return false;
         }
         return SymbolStyleLayer.hasPaintOverride(this.layout, name);

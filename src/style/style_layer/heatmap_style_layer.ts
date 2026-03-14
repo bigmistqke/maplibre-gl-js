@@ -4,7 +4,7 @@ import {HeatmapBucket} from '../../data/bucket/heatmap_bucket';
 import {type RGBAImage} from '../../util/image';
 import properties, {type HeatmapPaintPropsPossiblyEvaluated} from './heatmap_style_layer_properties.g';
 import {renderColorRamp} from '../../util/color_ramp';
-import {type Transitionable, type Transitioning, type PossiblyEvaluated} from '../properties';
+import {type Transitionable, type Transitioning, PossiblyEvaluated} from '../properties';
 
 import type {Texture} from '../../render/texture';
 import type {Framebuffer} from '../../gl/framebuffer';
@@ -30,7 +30,7 @@ export class HeatmapStyleLayer extends StyleLayer {
 
     _transitionablePaint: Transitionable<HeatmapPaintProps> | undefined;
     _transitioningPaint: Transitioning<HeatmapPaintProps> | undefined;
-    paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated> | undefined;
+    paint: PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated>;
 
     createBucket(options: any) {
         return new HeatmapBucket(options);
@@ -38,6 +38,7 @@ export class HeatmapStyleLayer extends StyleLayer {
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
+        this.paint = new PossiblyEvaluated<HeatmapPaintProps, HeatmapPaintPropsPossiblyEvaluated>(properties.paint);
 
         this.heatmapFbos = new Map();
         // make sure color ramp texture is generated for default heatmap color too
@@ -82,7 +83,7 @@ export class HeatmapStyleLayer extends StyleLayer {
     ): boolean {
         return circleIntersection({
             queryGeometry,
-            size: assertedNotNullish(this.paint).get('heatmap-radius').evaluate(feature, featureState) * pixelsToTileUnits,
+            size: this.paint.get('heatmap-radius').evaluate(feature, featureState) * pixelsToTileUnits,
             transform,
             unwrappedTileID,
             getElevation
@@ -90,6 +91,6 @@ export class HeatmapStyleLayer extends StyleLayer {
     }
 
     hasOffscreenPass() {
-        return assertedNotNullish(this.paint).get('heatmap-opacity') !== 0 && !this.isHidden();
+        return this.paint.get('heatmap-opacity') !== 0 && !this.isHidden();
     }
 }

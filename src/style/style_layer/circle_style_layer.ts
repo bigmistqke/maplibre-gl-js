@@ -4,11 +4,10 @@ import {StyleLayer, type QueryIntersectsFeatureParams} from '../style_layer';
 import {CircleBucket} from '../../data/bucket/circle_bucket';
 import {circleIntersection, getMaximumPaintValue, projectQueryGeometry, translateDistance, translate} from '../query_utils';
 import properties, {type CircleLayoutPropsPossiblyEvaluated, type CirclePaintPropsPossiblyEvaluated} from './circle_style_layer_properties.g';
-import {type Transitionable, type Transitioning, type Layout, type PossiblyEvaluated} from '../properties';
+import {type Transitionable, type Transitioning, type Layout, PossiblyEvaluated} from '../properties';
 import type {LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Bucket, BucketParameters} from '../../data/bucket';
 import type {CircleLayoutProps, CirclePaintProps} from './circle_style_layer_properties.g';
-import {assertedNotNullish} from '../../util/util';
 
 export const isCircleStyleLayer = (layer: StyleLayer): layer is CircleStyleLayer => layer.type === 'circle';
 
@@ -17,14 +16,16 @@ export const isCircleStyleLayer = (layer: StyleLayer): layer is CircleStyleLayer
  */
 export class CircleStyleLayer extends StyleLayer {
     _unevaluatedLayout: Layout<CircleLayoutProps> | undefined;
-    layout: PossiblyEvaluated<CircleLayoutProps, CircleLayoutPropsPossiblyEvaluated> | undefined;
+    layout: PossiblyEvaluated<CircleLayoutProps, CircleLayoutPropsPossiblyEvaluated>;
 
     _transitionablePaint: Transitionable<CirclePaintProps> | undefined;
     _transitioningPaint: Transitioning<CirclePaintProps> | undefined;
-    paint: PossiblyEvaluated<CirclePaintProps, CirclePaintPropsPossiblyEvaluated> | undefined;
+    paint: PossiblyEvaluated<CirclePaintProps, CirclePaintPropsPossiblyEvaluated>;
 
     constructor(layer: LayerSpecification, globalState: Record<string, any>) {
         super(layer, properties, globalState);
+        this.paint = new PossiblyEvaluated<CirclePaintProps, CirclePaintPropsPossiblyEvaluated>(properties.paint);
+        this.layout = new PossiblyEvaluated<CircleLayoutProps, CircleLayoutPropsPossiblyEvaluated>(properties.layout);
     }
 
     createBucket(parameters: BucketParameters<any>) {
@@ -35,7 +36,7 @@ export class CircleStyleLayer extends StyleLayer {
         const circleBucket: CircleBucket<CircleStyleLayer> = (bucket as any);
         return getMaximumPaintValue('circle-radius', this, circleBucket) +
             getMaximumPaintValue('circle-stroke-width', this, circleBucket) +
-            translateDistance(assertedNotNullish(this.paint).get('circle-translate'));
+            translateDistance(this.paint.get('circle-translate'));
     }
 
     queryIntersectsFeature({
@@ -49,11 +50,11 @@ export class CircleStyleLayer extends StyleLayer {
         getElevation}: QueryIntersectsFeatureParams
     ): boolean {
         const translatedPolygon = translate(queryGeometry,
-            assertedNotNullish(this.paint).get('circle-translate'),
-            assertedNotNullish(this.paint).get('circle-translate-anchor'),
+            this.paint.get('circle-translate'),
+            this.paint.get('circle-translate-anchor'),
             -transform.bearingInRadians, pixelsToTileUnits);
-        const radius = assertedNotNullish(this.paint).get('circle-radius').evaluate(feature, featureState);
-        const stroke = assertedNotNullish(this.paint).get('circle-stroke-width').evaluate(feature, featureState);
+        const radius = this.paint.get('circle-radius').evaluate(feature, featureState);
+        const stroke = this.paint.get('circle-stroke-width').evaluate(feature, featureState);
         const size  = radius + stroke;
 
         // For pitch-alignment: map, compare feature geometry to query geometry in the plane of the tile
@@ -61,8 +62,8 @@ export class CircleStyleLayer extends StyleLayer {
         // A circle with fixed scaling relative to the viewport gets larger in tile space as it moves into the distance
         // A circle with fixed scaling relative to the map gets smaller in viewport space as it moves into the distance
 
-        const pitchScale = assertedNotNullish(this.paint).get('circle-pitch-scale');
-        const pitchAlignment = assertedNotNullish(this.paint).get('circle-pitch-alignment');
+        const pitchScale = this.paint.get('circle-pitch-scale');
+        const pitchAlignment = this.paint.get('circle-pitch-alignment');
 
         let transformedPolygon: Array<Point>;
         let transformedSize: number;
@@ -85,4 +86,3 @@ export class CircleStyleLayer extends StyleLayer {
         }, geometry);
     }
 }
-
