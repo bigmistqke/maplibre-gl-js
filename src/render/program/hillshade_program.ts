@@ -20,7 +20,7 @@ import type {Painter} from '../painter';
 import type {HillshadeStyleLayer} from '../../style/style_layer/hillshade_style_layer';
 import type {DEMData} from '../../data/dem_data';
 import type {OverscaledTileID} from '../../tile/tile_id';
-import {assertedNotNullish} from '../../util/util';
+
 
 export type HillshadeUniformsType = {
     'u_image': Uniform1i;
@@ -67,9 +67,9 @@ const hillshadeUniformValues = (
     tile: Tile,
     layer: HillshadeStyleLayer,
 ): UniformValues<HillshadeUniformsType> => {
-    const accent = assertedNotNullish(layer.paint).get('hillshade-accent-color');
+    const accent = layer.paint.get('hillshade-accent-color');
     let method;
-    switch (assertedNotNullish(layer.paint).get('hillshade-method')) {
+    switch (layer.paint.get('hillshade-method')) {
         case 'basic':
             method = 4;
             break;
@@ -92,14 +92,14 @@ const hillshadeUniformValues = (
 
     for (let i = 0; i < illumination.directionRadians.length; i++) {
         // modify azimuthal angle by map rotation if light is anchored at the viewport
-        if (assertedNotNullish(layer.paint).get('hillshade-illumination-anchor') === 'viewport') {
+        if (layer.paint.get('hillshade-illumination-anchor') === 'viewport') {
             illumination.directionRadians[i] += painter.transform.bearingInRadians;
         }
     }
     return {
         'u_image': 0,
         'u_latrange': getTileLatRange(painter, tile.tileID),
-        'u_exaggeration': assertedNotNullish(layer.paint).get('hillshade-exaggeration'),
+        'u_exaggeration': layer.paint.get('hillshade-exaggeration'),
         'u_altitudes': illumination.altitudeRadians,
         'u_azimuths': illumination.directionRadians,
         'u_accent': accent,

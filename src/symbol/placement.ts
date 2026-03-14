@@ -1040,7 +1040,7 @@ export class Placement {
         if (bucket.hasTextCollisionBoxData()) assertedNotNullish(bucket.textCollisionBox).collisionVertexArray.clear();
 
         const layer = bucket.layers[0];
-        const layout = assertedNotNullish(layer.layout);
+        const layout = layer.layout;
         const duplicateOpacityState = new JointOpacityState(null, 0, false, false, true);
         const textAllowOverlap = layout.get('text-allow-overlap');
         const iconAllowOverlap = layout.get('icon-allow-overlap');

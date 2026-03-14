@@ -617,7 +617,7 @@ export class LineBucket implements Bucket {
 
     private hasLineDasharray(layers: Array<LineStyleLayer>): boolean {
         for (const layer of layers) {
-            const dasharrayProperty = assertedNotNullish(layer.paint).get('line-dasharray');
+            const dasharrayProperty = layer.paint.get('line-dasharray');
             if (dasharrayProperty && !dasharrayProperty.isConstant()) {
                 return true;
             }
@@ -627,13 +627,13 @@ export class LineBucket implements Bucket {
 
     private addLineDashDependencies(layers: Array<LineStyleLayer>, bucketFeature: BucketFeature, zoom: number, options: PopulateParameters) {
         for (const layer of layers) {
-            const dasharrayProperty = assertedNotNullish(layer.paint).get('line-dasharray');
+            const dasharrayProperty = layer.paint.get('line-dasharray');
 
             if (!dasharrayProperty || dasharrayProperty.value.kind === 'constant') {
                 continue;
             }
 
-            const round = assertedNotNullish(layer.layout).get('line-cap') === 'round';
+            const round = layer.layout.get('line-cap') === 'round';
 
             const min = {
                 dasharray: dasharrayProperty.value.evaluate({zoom: zoom - 1}, bucketFeature, {}),

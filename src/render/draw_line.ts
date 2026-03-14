@@ -144,19 +144,19 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
 
     const {isRenderingToTexture} = renderOptions;
 
-    const opacity = assertedNotNullish(layer.paint).get('line-opacity');
-    const width = assertedNotNullish(layer.paint).get('line-width');
+    const opacity = layer.paint.get('line-opacity');
+    const width = layer.paint.get('line-width');
     if (opacity.constantOr(1) === 0 || width.constantOr(1) === 0) return;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
     const colorMode = painter.colorModeForRenderPass();
 
-    const dasharrayProperty = assertedNotNullish(layer.paint).get('line-dasharray');
+    const dasharrayProperty = layer.paint.get('line-dasharray');
     const dasharray = dasharrayProperty.constantOr(1 as any);
-    const patternProperty = assertedNotNullish(layer.paint).get('line-pattern');
+    const patternProperty = layer.paint.get('line-pattern');
     const image = patternProperty.constantOr(1 as any);
 
-    const gradient = assertedNotNullish(layer.paint).get('line-gradient');
+    const gradient = layer.paint.get('line-gradient');
     const crossfade = layer.getCrossfadeParameters();
 
     let programId: string;
@@ -197,7 +197,7 @@ export function drawLine(painter: Painter, tileManager: TileManager, layer: Line
             if (posTo && posFrom) programConfiguration.setConstantPatternPositions(posTo, posFrom);
 
         } else if (constantDasharray) {
-            const round = assertedNotNullish(layer.layout).get('line-cap') === 'round';
+            const round = layer.layout.get('line-cap') === 'round';
             const dashTo = assertedNotNullish(painter.lineAtlas?.getDash(constantDasharray.to, round));
             const dashFrom = assertedNotNullish(painter.lineAtlas?.getDash(constantDasharray.from, round));
             programConfiguration.setConstantDashPositions(dashTo, dashFrom);

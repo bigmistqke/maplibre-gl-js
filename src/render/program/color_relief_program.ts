@@ -9,7 +9,7 @@ import type {Context} from '../../gl/context';
 import type {UniformValues, UniformLocations} from '../uniform_binding';
 import type {ColorReliefStyleLayer} from '../../style/style_layer/color_relief_style_layer';
 import type {DEMData} from '../../data/dem_data';
-import {assertedNotNullish} from '../../util/util';
+
 
 export type ColorReliefUniformsType = {
     'u_image': Uniform1i;
@@ -44,7 +44,7 @@ const colorReliefUniformValues = (
         'u_elevation_stops': 1,
         'u_color_stops': 4,
         'u_color_ramp_size': colorRampSize,
-        'u_opacity': assertedNotNullish(layer.paint).get('color-relief-opacity')
+        'u_opacity': layer.paint.get('color-relief-opacity')
     };
 };
 

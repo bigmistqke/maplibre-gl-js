@@ -432,7 +432,7 @@ export class SymbolBucket implements Bucket {
 
     populate(features: Array<IndexedFeature>, options: PopulateParameters, canonical: CanonicalTileID) {
         const layer = this.layers[0];
-        const layout = assertedNotNullish(layer.layout);
+        const layout = layer.layout;
 
         const textFont = layout.get('text-font');
         const textField = layout.get('text-field');

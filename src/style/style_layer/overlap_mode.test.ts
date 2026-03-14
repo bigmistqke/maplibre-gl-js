@@ -4,7 +4,7 @@ import {SymbolStyleLayer} from './symbol_style_layer';
 import {type ZoomHistory} from '../zoom_history';
 import {type EvaluationParameters} from '../evaluation_parameters';
 import {type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
-import {assertedNotNullish} from '../../util/util';
+
 
 function createSymbolLayer(layerProperties: Record<string, unknown>): SymbolStyleLayer {
     const layer = new SymbolStyleLayer(layerProperties as LayerSpecification, {});
@@ -17,30 +17,30 @@ describe('getOverlapMode', () => {
         const props = {};
         const layer = createSymbolLayer(props);
 
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'icon-overlap', 'icon-allow-overlap')).toBe('never');
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'text-overlap', 'text-allow-overlap')).toBe('never');
+        expect(getOverlapMode(layer.layout, 'icon-overlap', 'icon-allow-overlap')).toBe('never');
+        expect(getOverlapMode(layer.layout, 'text-overlap', 'text-allow-overlap')).toBe('never');
     });
 
     test('-allow-overlap set', () => {
         const props = {layout: {'icon-allow-overlap': false, 'text-allow-overlap': true}};
         const layer = createSymbolLayer(props);
 
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'icon-overlap', 'icon-allow-overlap')).toBe('never');
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'text-overlap', 'text-allow-overlap')).toBe('always');
+        expect(getOverlapMode(layer.layout, 'icon-overlap', 'icon-allow-overlap')).toBe('never');
+        expect(getOverlapMode(layer.layout, 'text-overlap', 'text-allow-overlap')).toBe('always');
     });
 
     test('-overlap set', () => {
         let props = {layout: {'icon-overlap': 'never', 'text-overlap': 'always'}};
         let layer = createSymbolLayer(props);
 
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'icon-overlap', 'icon-allow-overlap')).toBe('never');
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'text-overlap', 'text-allow-overlap')).toBe('always');
+        expect(getOverlapMode(layer.layout, 'icon-overlap', 'icon-allow-overlap')).toBe('never');
+        expect(getOverlapMode(layer.layout, 'text-overlap', 'text-allow-overlap')).toBe('always');
 
         props = {layout: {'icon-overlap': 'always', 'text-overlap': 'cooperative'}};
         layer = createSymbolLayer(props);
 
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'icon-overlap', 'icon-allow-overlap')).toBe('always');
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'text-overlap', 'text-allow-overlap')).toBe('cooperative');
+        expect(getOverlapMode(layer.layout, 'icon-overlap', 'icon-allow-overlap')).toBe('always');
+        expect(getOverlapMode(layer.layout, 'text-overlap', 'text-allow-overlap')).toBe('cooperative');
     });
 
     test('-overlap beats -allow-overlap', () => {
@@ -54,7 +54,7 @@ describe('getOverlapMode', () => {
         };
         const layer = createSymbolLayer(props);
 
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'icon-overlap', 'icon-allow-overlap')).toBe('never');
-        expect(getOverlapMode(assertedNotNullish(layer.layout), 'text-overlap', 'text-allow-overlap')).toBe('cooperative');
+        expect(getOverlapMode(layer.layout, 'icon-overlap', 'icon-allow-overlap')).toBe('never');
+        expect(getOverlapMode(layer.layout, 'text-overlap', 'text-allow-overlap')).toBe('cooperative');
     });
 });

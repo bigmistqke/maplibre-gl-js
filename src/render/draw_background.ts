@@ -14,7 +14,7 @@ import {coveringTiles} from '../geo/projection/covering_tiles';
 import {assertedNotNullish} from '../util/util';
 
 export function drawBackground(painter: Painter, tileManager: TileManager, layer: BackgroundStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const layerPaint = assertedNotNullish(layer.paint);
+    const layerPaint = layer.paint;
     const color = layerPaint.get('background-color');
     const opacity = layerPaint.get('background-opacity');
 

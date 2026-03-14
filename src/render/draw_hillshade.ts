@@ -61,7 +61,7 @@ function renderHillshade(
     const transform = painter.transform;
     const gl = context.gl;
 
-    const defines = [`#define NUM_ILLUMINATION_SOURCES ${assertedNotNullish(layer.paint).get('hillshade-highlight-color').values.length}`];
+    const defines = [`#define NUM_ILLUMINATION_SOURCES ${layer.paint.get('hillshade-highlight-color').values.length}`];
     const program = painter.useProgram('hillshade', null, false, defines);
     const align = !assertedNotNullish(painter.options).moving;
 
@@ -104,7 +104,7 @@ function prepareHillshade(
     const context = painter.context;
     const gl = context.gl;
 
-    const textureFilter = assertedNotNullish(layer.paint).get('resampling') === 'nearest' ?  gl.NEAREST : gl.LINEAR;
+    const textureFilter = layer.paint.get('resampling') === 'nearest' ?  gl.NEAREST : gl.LINEAR;
 
     for (const coord of tileIDs) {
         const tile = tileManager.getTile(coord);

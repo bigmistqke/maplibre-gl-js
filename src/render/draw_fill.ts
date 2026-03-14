@@ -18,8 +18,8 @@ import {updatePatternPositionsInProgram} from './update_pattern_positions_in_pro
 import {translatePosition, assertedNotNullish} from '../util/util';
 
 export function drawFill(painter: Painter, tileManager: TileManager, layer: FillStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const color = assertedNotNullish(layer.paint).get('fill-color');
-    const opacity = assertedNotNullish(layer.paint).get('fill-opacity');
+    const color = layer.paint.get('fill-color');
+    const opacity = layer.paint.get('fill-opacity');
 
     if (opacity.constantOr(1) === 0) {
         return;
@@ -27,7 +27,7 @@ export function drawFill(painter: Painter, tileManager: TileManager, layer: Fill
 
     const {isRenderingToTexture} = renderOptions;
     const colorMode = painter.colorModeForRenderPass();
-    const pattern = assertedNotNullish(layer.paint).get('fill-pattern');
+    const pattern = layer.paint.get('fill-pattern');
     const pass = painter.opaquePassEnabledForLayer() &&
         (!pattern.constantOr(1 as any) &&
             color.constantOr(Color.transparent).a === 1 &&
@@ -41,7 +41,7 @@ export function drawFill(painter: Painter, tileManager: TileManager, layer: Fill
     }
 
     // Draw stroke
-    if (painter.renderPass === 'translucent' && assertedNotNullish(layer.paint).get('fill-antialias')) {
+    if (painter.renderPass === 'translucent' && layer.paint.get('fill-antialias')) {
 
         // If we defined a different color for the fill outline, we are
         // going to ignore the bits in 0x07 and just care about the global
@@ -68,15 +68,15 @@ function drawFillTiles(
     isRenderingToTexture: boolean) {
     const gl = painter.context.gl;
     const fillPropertyName = 'fill-pattern';
-    const patternProperty = assertedNotNullish(layer.paint).get(fillPropertyName);
+    const patternProperty = layer.paint.get(fillPropertyName);
     const image = patternProperty && patternProperty.constantOr(1 as any);
     const crossfade = layer.getCrossfadeParameters();
     let drawMode, programName, uniformValues, indexBuffer, segments;
 
     const transform = painter.transform;
 
-    const propertyFillTranslate = assertedNotNullish(layer.paint).get('fill-translate');
-    const propertyFillTranslateAnchor = assertedNotNullish(layer.paint).get('fill-translate-anchor');
+    const propertyFillTranslate = layer.paint.get('fill-translate');
+    const propertyFillTranslateAnchor = layer.paint.get('fill-translate-anchor');
 
     if (!isOutline) {
         programName = image ? 'fillPattern' : 'fill';

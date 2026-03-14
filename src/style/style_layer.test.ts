@@ -1,7 +1,7 @@
 import {describe, test, expect} from 'vitest';
 import {createStyleLayer} from './create_style_layer';
 import {FillStyleLayer} from './style_layer/fill_style_layer';
-import {assertedNotNullish, extend} from '../util/util';
+import {extend} from '../util/util';
 import {Color, type Feature, type LayerSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {type EvaluationParameters} from './evaluation_parameters';
 import {type TransitionParameters} from './properties';
@@ -57,9 +57,9 @@ describe('StyleLayer.setPaintProperty', () => {
         layer.updateTransitions({} as TransitionParameters);
         layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(assertedNotNullish(layer.paint).get('background-color')).toEqual(new Color(0, 0, 0, 1));
+        expect(layer.paint.get('background-color')).toEqual(new Color(0, 0, 0, 1));
         expect(layer.getPaintProperty('background-color')).toBeUndefined();
-        expect(assertedNotNullish(layer.paint).get('background-opacity')).toBe(1);
+        expect(layer.paint.get('background-opacity')).toBe(1);
         expect(layer.getPaintProperty('background-opacity')).toBe(1);
     });
 
@@ -136,12 +136,12 @@ describe('StyleLayer.setPaintProperty', () => {
         layer.setPaintProperty('fill-outline-color', '#f00');
         layer.updateTransitions({} as TransitionParameters);
         layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
-        expect(assertedNotNullish(layer.paint).get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(1, 0, 0, 1)});
+        expect(layer.paint.get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(1, 0, 0, 1)});
 
         layer.setPaintProperty('fill-outline-color', undefined);
         layer.updateTransitions({} as TransitionParameters);
         layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
-        expect(assertedNotNullish(layer.paint).get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(0, 0, 1, 1)});
+        expect(layer.paint.get('fill-outline-color').value).toEqual({kind: 'constant', value: new Color(0, 0, 1, 1)});
 
     });
 
@@ -171,7 +171,7 @@ describe('StyleLayer.setPaintProperty', () => {
         layer.updateTransitions({} as TransitionParameters);
         layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        assertedNotNullish(layer.paint).get('fill-outline-color');
+        layer.paint.get('fill-outline-color');
 
     });
 
@@ -238,7 +238,7 @@ describe('StyleLayer.setLayoutProperty', () => {
         layer.setLayoutProperty('text-transform', null);
         layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(assertedNotNullish(layer.layout).get('text-transform').value).toEqual({kind: 'constant', value: 'none'});
+        expect(layer.layout.get('text-transform').value).toEqual({kind: 'constant', value: 'none'});
         expect(layer.getLayoutProperty('text-transform')).toBeUndefined();
     });
 });
@@ -487,8 +487,8 @@ describe('StyleLayer.globalState', () => {
 
         layer.recalculate({zoom: 0, zoomHistory: {}} as EvaluationParameters, []);
 
-        expect(assertedNotNullish(layer.layout).get('text-size').evaluate(undefined as any, {})).toBe(15);
-        expect(assertedNotNullish(layer.layout).get('text-transform').evaluate(undefined as any, {})).toBe('uppercase');
+        expect(layer.layout.get('text-size').evaluate(undefined as any, {})).toBe(15);
+        expect(layer.layout.get('text-transform').evaluate(undefined as any, {})).toBe('uppercase');
     });
 
     test('uses layer global state when recalculating paint properties', () => {
@@ -503,8 +503,8 @@ describe('StyleLayer.globalState', () => {
 
         layer.recalculate({zoom: 0} as EvaluationParameters, []);
 
-        expect(assertedNotNullish(layer.paint).get('circle-color').evaluate(undefined as any, {})).toEqual(new Color(1, 0, 0, 1));
-        expect(assertedNotNullish(layer.paint).get('circle-radius').evaluate(undefined as any, {})).toBe(15);
+        expect(layer.paint.get('circle-color').evaluate(undefined as any, {})).toEqual(new Color(1, 0, 0, 1));
+        expect(layer.paint.get('circle-radius').evaluate(undefined as any, {})).toBe(15);
     });
 
     test('uses layer global state when recalculating visiblity', () => {

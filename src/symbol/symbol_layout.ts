@@ -458,7 +458,7 @@ function addTextVertices(bucket: SymbolBucket,
 
     if (sizeData.kind === 'source') {
         textSizeData = [
-            SIZE_PACK_FACTOR * assertedNotNullish(layer.layout).get('text-size').evaluate(feature, {})
+            SIZE_PACK_FACTOR * layer.layout.get('text-size').evaluate(feature, {})
         ];
         if (textSizeData[0] > MAX_PACKED_SIZE) {
             warnOnce(`${bucket.layerIds[0]}: Value for "text-size" is >= ${MAX_GLYPH_ICON_SIZE}. Reduce your "text-size".`);
@@ -550,7 +550,7 @@ function addSymbol(bucket: SymbolBucket,
     let key = murmur3('');
 
     if (bucket.allowVerticalPlacement && shapedTextOrientations.vertical) {
-        const textRotation = assertedNotNullish(layer.layout).get('text-rotate').evaluate(feature, {}, canonical);
+        const textRotation = layer.layout.get('text-rotate').evaluate(feature, {}, canonical);
         const verticalTextRotation = textRotation + 90.0;
         const verticalShaping = shapedTextOrientations.vertical;
         verticalTextCollisionFeature = new CollisionFeature(collisionBoxArray, anchor, featureIndex, sourceLayerIndex, bucketIndex, verticalShaping, textBoxScale, textPadding, textAlongLine, verticalTextRotation);
@@ -565,8 +565,8 @@ function addSymbol(bucket: SymbolBucket,
     //If the style specifies an `icon-text-fit` then the icon would have to shift along with it.
     // For more info check `updateVariableAnchors` in `draw_symbol.js` .
     if (shapedIcon) {
-        const iconRotate = assertedNotNullish(layer.layout).get('icon-rotate').evaluate(feature, {});
-        const hasIconTextFit = assertedNotNullish(layer.layout).get('icon-text-fit') !== 'none';
+        const iconRotate = layer.layout.get('icon-rotate').evaluate(feature, {});
+        const hasIconTextFit = layer.layout.get('icon-text-fit') !== 'none';
         const iconQuads = getIconQuads(shapedIcon, iconRotate, isSDFIcon, hasIconTextFit);
         const verticalIconQuads = verticallyShapedIcon ? getIconQuads(verticallyShapedIcon, iconRotate, isSDFIcon, hasIconTextFit) : undefined;
         iconCollisionFeature = new CollisionFeature(collisionBoxArray, anchor, featureIndex, sourceLayerIndex, bucketIndex, shapedIcon, iconBoxScale, iconPadding, /*align boxes to line*/false, iconRotate);
@@ -578,7 +578,7 @@ function addSymbol(bucket: SymbolBucket,
 
         if (sizeData.kind === 'source') {
             iconSizeData = [
-                SIZE_PACK_FACTOR * assertedNotNullish(layer.layout).get('icon-size').evaluate(feature, {})
+                SIZE_PACK_FACTOR * layer.layout.get('icon-size').evaluate(feature, {})
             ];
             if (iconSizeData[0] > MAX_PACKED_SIZE) {
                 warnOnce(`${bucket.layerIds[0]}: Value for "icon-size" is >= ${MAX_GLYPH_ICON_SIZE}. Reduce your "icon-size".`);
@@ -636,7 +636,7 @@ function addSymbol(bucket: SymbolBucket,
 
         if (!textCollisionFeature) {
             key = murmur3(shaping.text);
-            const textRotate = assertedNotNullish(layer.layout).get('text-rotate').evaluate(feature, {}, canonical);
+            const textRotate = layer.layout.get('text-rotate').evaluate(feature, {}, canonical);
             // As a collision approximation, we can use either the vertical or any of the horizontal versions of the feature
             // We're counting on all versions having similar dimensions
             textCollisionFeature = new CollisionFeature(collisionBoxArray, anchor, featureIndex, sourceLayerIndex, bucketIndex, shaping, textBoxScale, textPadding, textAlongLine, textRotate);

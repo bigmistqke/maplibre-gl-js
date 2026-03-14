@@ -21,7 +21,7 @@ import type {OverscaledTileID} from '../tile/tile_id';
 import {assertedNotNullish} from '../util/util';
 
 export function drawHeatmap(painter: Painter, tileManager: TileManager, layer: HeatmapStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    if (assertedNotNullish(layer.paint).get('heatmap-opacity') === 0) {
+    if (layer.paint.get('heatmap-opacity') === 0) {
         return;
     }
     const context = painter.context;
@@ -86,7 +86,7 @@ function prepareHeatmapFlat(painter: Painter, tileManager: TileManager, layer: H
         const radiusCorrectionFactor = transform.getCircleRadiusCorrection();
 
         program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.backCCW,
-            heatmapUniformValues(tile, transform.zoom, assertedNotNullish(layer.paint).get('heatmap-intensity'), radiusCorrectionFactor),
+            heatmapUniformValues(tile, transform.zoom, layer.paint.get('heatmap-intensity'), radiusCorrectionFactor),
             null, projectionData,
             layer.id, assertedNotNullish(bucket.layoutVertexBuffer), bucket.indexBuffer ?? null,
             bucket.segments, layer.paint, transform.zoom,
@@ -151,7 +151,7 @@ function prepareHeatmapTerrain(painter: Painter, tile: Tile, layer: HeatmapStyle
     const painterStyle = assertedNotNullish(painter.style);
     const terrainData = assertedNotNullish(painterStyle.map.terrain).getTerrainData(coord);
     program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled,
-        heatmapUniformValues(tile, painter.transform.zoom, assertedNotNullish(layer.paint).get('heatmap-intensity'), 1.0), terrainData, projectionData,
+        heatmapUniformValues(tile, painter.transform.zoom, layer.paint.get('heatmap-intensity'), 1.0), terrainData, projectionData,
         layer.id, assertedNotNullish(bucket.layoutVertexBuffer), bucket.indexBuffer,
         bucket.segments, layer.paint, painter.transform.zoom,
         programConfiguration);

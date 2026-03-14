@@ -39,10 +39,10 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
     if (painter.renderPass !== 'translucent') return;
 
     const {isRenderingToTexture} = renderOptions;
-    const opacity = assertedNotNullish(layer.paint).get('circle-opacity');
-    const strokeWidth = assertedNotNullish(layer.paint).get('circle-stroke-width');
-    const strokeOpacity = assertedNotNullish(layer.paint).get('circle-stroke-opacity');
-    const sortFeaturesByKey = !assertedNotNullish(layer.layout).get('circle-sort-key').isConstant();
+    const opacity = layer.paint.get('circle-opacity');
+    const strokeWidth = layer.paint.get('circle-stroke-width');
+    const strokeOpacity = layer.paint.get('circle-stroke-opacity');
+    const sortFeaturesByKey = !layer.layout.get('circle-sort-key').isConstant();
 
     if (opacity.constantOr(1) === 0 && (strokeWidth.constantOr(1) === 0 || strokeOpacity.constantOr(1) === 0)) {
         return;
@@ -64,7 +64,7 @@ export function drawCircles(painter: Painter, tileManager: TileManager, layer: C
     const radiusCorrectionFactor = transform.getCircleRadiusCorrection();
 
     const painterStyle = assertedNotNullish(painter.style);
-    const layerPaint = assertedNotNullish(layer.paint);
+    const layerPaint = layer.paint;
 
     for (let i = 0; i < coords.length; i++) {
         const coord = coords[i];

@@ -17,7 +17,7 @@ import {updatePatternPositionsInProgram} from './update_pattern_positions_in_pro
 import {translatePosition, assertedNotNullish} from '../util/util';
 
 export function drawFillExtrusion(painter: Painter, tileManager: TileManager, layer: FillExtrusionStyleLayer, coords: Array<OverscaledTileID>, renderOptions: RenderOptions) {
-    const opacity = assertedNotNullish(layer.paint).get('fill-extrusion-opacity');
+    const opacity = layer.paint.get('fill-extrusion-opacity');
     if (opacity === 0) {
         return;
     }
@@ -26,7 +26,7 @@ export function drawFillExtrusion(painter: Painter, tileManager: TileManager, la
     if (painter.renderPass === 'translucent') {
         const depthMode = new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, assertedNotNullish(painter.depthRangeFor3D));
 
-        if (opacity === 1 && !assertedNotNullish(layer.paint).get('fill-extrusion-pattern').constantOr(1)) {
+        if (opacity === 1 && !layer.paint.get('fill-extrusion-pattern').constantOr(1)) {
             const colorMode = painter.colorModeForRenderPass();
             drawExtrusionTiles(painter, tileManager, layer, coords, depthMode, StencilMode.disabled, colorMode, isRenderingToTexture);
 
@@ -59,10 +59,10 @@ function drawExtrusionTiles(
     const context = painter.context;
     const gl = context.gl;
     const fillPropertyName = 'fill-extrusion-pattern';
-    const patternProperty = assertedNotNullish(layer.paint).get(fillPropertyName);
+    const patternProperty = layer.paint.get(fillPropertyName);
     const image = patternProperty.constantOr(1);
     const crossfade = layer.getCrossfadeParameters();
-    const opacity = assertedNotNullish(layer.paint).get('fill-extrusion-opacity');
+    const opacity = layer.paint.get('fill-extrusion-opacity');
     const constantPattern = patternProperty.constantOr(null);
     const transform = painter.transform;
     const painterStyle = assertedNotNullish(painter.style);
@@ -88,11 +88,11 @@ function drawExtrusionTiles(
         const translate = translatePosition(
             transform,
             tile,
-            assertedNotNullish(layer.paint).get('fill-extrusion-translate'),
-            assertedNotNullish(layer.paint).get('fill-extrusion-translate-anchor')
+            layer.paint.get('fill-extrusion-translate'),
+            layer.paint.get('fill-extrusion-translate-anchor')
         );
 
-        const shouldUseVerticalGradient = assertedNotNullish(layer.paint).get('fill-extrusion-vertical-gradient');
+        const shouldUseVerticalGradient = layer.paint.get('fill-extrusion-vertical-gradient');
         const uniformValues = image ?
             fillExtrusionPatternUniformValues(painter, shouldUseVerticalGradient, opacity, translate, coord, assertedNotNullish(crossfade), tile) :
             fillExtrusionUniformValues(painter, shouldUseVerticalGradient, opacity, translate);

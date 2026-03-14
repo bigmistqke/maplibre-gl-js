@@ -4,7 +4,7 @@ import type {Context} from '../../gl/context';
 import type {UniformValues, UniformLocations} from '../uniform_binding';
 import type {RasterStyleLayer} from '../../style/style_layer/raster_style_layer';
 import type Point from '@mapbox/point-geometry';
-import {assertedNotNullish} from '../../util/util';
+
 
 export type RasterUniformsType = {
     'u_tl_parent': Uniform2f;
@@ -58,14 +58,14 @@ const rasterUniformValues = (
     // Right now the coordinates are placed right at the texture border.
     'u_buffer_scale': 1,
     'u_fade_t': fade.mix,
-    'u_opacity': fade.opacity * assertedNotNullish(layer.paint).get('raster-opacity'),
+    'u_opacity': fade.opacity * layer.paint.get('raster-opacity'),
     'u_image0': 0,
     'u_image1': 1,
-    'u_brightness_low': assertedNotNullish(layer.paint).get('raster-brightness-min'),
-    'u_brightness_high': assertedNotNullish(layer.paint).get('raster-brightness-max'),
-    'u_saturation_factor': saturationFactor(assertedNotNullish(layer.paint).get('raster-saturation')),
-    'u_contrast_factor': contrastFactor(assertedNotNullish(layer.paint).get('raster-contrast')),
-    'u_spin_weights': spinWeights(assertedNotNullish(layer.paint).get('raster-hue-rotate')),
+    'u_brightness_low': layer.paint.get('raster-brightness-min'),
+    'u_brightness_high': layer.paint.get('raster-brightness-max'),
+    'u_saturation_factor': saturationFactor(layer.paint.get('raster-saturation')),
+    'u_contrast_factor': contrastFactor(layer.paint.get('raster-contrast')),
+    'u_spin_weights': spinWeights(layer.paint.get('raster-hue-rotate')),
     'u_coords_top': [cornerCoords[0].x, cornerCoords[0].y, cornerCoords[1].x, cornerCoords[1].y],
     'u_coords_bottom': [cornerCoords[3].x, cornerCoords[3].y, cornerCoords[2].x, cornerCoords[2].y]
 });

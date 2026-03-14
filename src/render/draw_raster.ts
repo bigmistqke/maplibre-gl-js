@@ -38,7 +38,7 @@ const cornerCoords = [
 
 export function drawRaster(painter: Painter, tileManager: TileManager, layer: RasterStyleLayer, tileIDs: Array<OverscaledTileID>, renderOptions: RenderOptions) {
     if (painter.renderPass !== 'translucent') return;
-    if (assertedNotNullish(layer.paint).get('raster-opacity') === 0) return;
+    if (layer.paint.get('raster-opacity') === 0) return;
     if (!tileIDs.length) return;
 
     const {isRenderingToTexture} = renderOptions;
@@ -94,10 +94,10 @@ function drawTiles(
 
     const colorMode = painter.colorModeForRenderPass();
     const align = !assertedNotNullish(painter.options).moving;
-    const rasterOpacity = assertedNotNullish(layer.paint).get('raster-opacity');
-    const resampling = assertedNotNullish(layer.paint).get('resampling') ?? assertedNotNullish(layer.paint).get('raster-resampling');
+    const rasterOpacity = layer.paint.get('raster-opacity');
+    const resampling = layer.paint.get('resampling') ?? layer.paint.get('raster-resampling');
     const textureFilter = resampling === 'nearest' ?  gl.NEAREST : gl.LINEAR;
-    const fadeDuration = assertedNotNullish(layer.paint).get('raster-fade-duration');
+    const fadeDuration = layer.paint.get('raster-fade-duration');
     const isTerrain = !!assertedNotNullish(painter.style).map.terrain;
 
     // Draw all tiles

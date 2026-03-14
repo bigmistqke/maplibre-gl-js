@@ -11,7 +11,7 @@ import type {Feature} from '@maplibre/maplibre-gl-style-spec';
 import type {StyleImage} from '../style/style_image';
 import ONE_EM from './one_em';
 import {type Rect} from '../render/glyph_atlas';
-import {assertedNotNullish} from '../util/util';
+
 
 /**
  * A textured quad for rendering a single icon or glyph.
@@ -242,7 +242,7 @@ export function getGlyphQuads(
     allowVerticalPlacement: boolean
 ): Array<SymbolQuad> {
 
-    const textRotate = assertedNotNullish(layer.layout).get('text-rotate').evaluate(feature, {}) * Math.PI / 180;
+    const textRotate = layer.layout.get('text-rotate').evaluate(feature, {}) * Math.PI / 180;
     const quads = [];
 
     for (const line of shaping.positionedLines) {

@@ -235,8 +235,8 @@ function calculateTranslation(painter: Painter, tile: Tile, layer: LineStyleLaye
     return translatePosition(
         painter.transform,
         tile,
-        assertedNotNullish(layer.paint).get('line-translate'),
-        assertedNotNullish(layer.paint).get('line-translate-anchor')
+        layer.paint.get('line-translate'),
+        layer.paint.get('line-translate-anchor')
     );
 }
 

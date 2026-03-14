@@ -86,32 +86,32 @@ export function drawSymbols(painter: Painter, tileManager: TileManager, layer: S
     // depend on each other in this case.
     if (hasVariablePlacement) {
         updateVariableAnchors(coords, painter, layer, tileManager,
-            assertedNotNullish(layer.layout).get('text-rotation-alignment'),
-            assertedNotNullish(layer.layout).get('text-pitch-alignment'),
-            assertedNotNullish(layer.paint).get('text-translate'),
-            assertedNotNullish(layer.paint).get('text-translate-anchor'),
+            layer.layout.get('text-rotation-alignment'),
+            layer.layout.get('text-pitch-alignment'),
+            layer.paint.get('text-translate'),
+            layer.paint.get('text-translate-anchor'),
             variableOffsets
         );
     }
 
-    if (assertedNotNullish(layer.paint).get('icon-opacity').constantOr(1) !== 0) {
+    if (layer.paint.get('icon-opacity').constantOr(1) !== 0) {
         drawLayerSymbols(painter, tileManager, layer, coords, false,
-            assertedNotNullish(layer.paint).get('icon-translate'),
-            assertedNotNullish(layer.paint).get('icon-translate-anchor'),
-            assertedNotNullish(layer.layout).get('icon-rotation-alignment'),
-            assertedNotNullish(layer.layout).get('icon-pitch-alignment'),
-            assertedNotNullish(layer.layout).get('icon-keep-upright'),
+            layer.paint.get('icon-translate'),
+            layer.paint.get('icon-translate-anchor'),
+            layer.layout.get('icon-rotation-alignment'),
+            layer.layout.get('icon-pitch-alignment'),
+            layer.layout.get('icon-keep-upright'),
             stencilMode, colorMode, isRenderingToTexture
         );
     }
 
-    if (assertedNotNullish(layer.paint).get('text-opacity').constantOr(1) !== 0) {
+    if (layer.paint.get('text-opacity').constantOr(1) !== 0) {
         drawLayerSymbols(painter, tileManager, layer, coords, true,
-            assertedNotNullish(layer.paint).get('text-translate'),
-            assertedNotNullish(layer.paint).get('text-translate-anchor'),
-            assertedNotNullish(layer.layout).get('text-rotation-alignment'),
-            assertedNotNullish(layer.layout).get('text-pitch-alignment'),
-            assertedNotNullish(layer.layout).get('text-keep-upright'),
+            layer.paint.get('text-translate'),
+            layer.paint.get('text-translate-anchor'),
+            layer.layout.get('text-rotation-alignment'),
+            layer.layout.get('text-pitch-alignment'),
+            layer.layout.get('text-keep-upright'),
             stencilMode, colorMode, isRenderingToTexture
         );
     }
@@ -161,7 +161,7 @@ function updateVariableAnchors(coords: Array<OverscaledTileID>,
 
         const pixelToTileScale = pixelsToTileUnits(tile, 1, painter.transform.zoom);
         const pitchedLabelPlaneMatrix = getPitchedLabelPlaneMatrix(rotateWithMap, painter.transform, pixelToTileScale);
-        const updateTextFitIcon = assertedNotNullish(layer.layout).get('icon-text-fit') !== 'none' && bucket.hasIconData();
+        const updateTextFitIcon = layer.layout.get('icon-text-fit') !== 'none' && bucket.hasIconData();
 
         if (size) {
             const tileScale = Math.pow(2, transform.zoom - tile.tileID.overscaledZ);
@@ -324,13 +324,13 @@ function drawLayerSymbols(
 
     const rotateWithMap = rotationAlignment === 'map';
     const pitchWithMap = pitchAlignment === 'map';
-    const alongLine = rotationAlignment !== 'viewport' && assertedNotNullish(layer.layout).get('symbol-placement') !== 'point';
+    const alongLine = rotationAlignment !== 'viewport' && layer.layout.get('symbol-placement') !== 'point';
     // Line label rotation happens in `updateLineLabels`
     // Pitched point labels are automatically rotated by the pitchedLabelPlaneMatrix projection
     // Unpitched point labels need to have their rotation applied after projection
     const rotateInShader = rotateWithMap && !pitchWithMap && !alongLine;
 
-    const hasSortKey = !assertedNotNullish(layer.layout).get('symbol-sort-key').isConstant();
+    const hasSortKey = !layer.layout.get('symbol-sort-key').isConstant();
     let sortFeaturesByKey = false;
 
     const depthMode = painter.getDepthModeForSublayer(0, DepthMode.ReadOnly);
@@ -382,7 +382,7 @@ function drawLayerSymbols(
             assertNotNullish(painter.options);
             assertNotNullish(tile.imageAtlasTexture);
 
-            const iconScaled = assertedNotNullish(layer.layout).get('icon-size').constantOr(0) !== 1 || bucket.iconsNeedLinear;
+            const iconScaled = layer.layout.get('icon-size').constantOr(0) !== 1 || bucket.iconsNeedLinear;
             atlasTexture = tile.imageAtlasTexture;
             atlasInterpolation = isSDF || painter.options.rotating || painter.options.zooming || iconScaled || transformed ?
                 gl.LINEAR :
@@ -401,14 +401,14 @@ function drawLayerSymbols(
         const projectionData = transform.getProjectionData({overscaledTileID: coord, applyGlobeMatrix: !isRenderingToTexture, applyTerrainMatrix: true});
 
         const hasVariableAnchors = hasVariablePlacement && bucket.hasTextData();
-        const updateTextFitIcon = assertedNotNullish(layer.layout).get('icon-text-fit') !== 'none' &&
+        const updateTextFitIcon = layer.layout.get('icon-text-fit') !== 'none' &&
             hasVariableAnchors &&
             bucket.hasIconData();
 
         if (alongLine) {
             const terrain = assertedNotNullish(painter.style).map.terrain;
             const getElevation = terrain ? (x: number, y: number) => terrain.getElevation(coord, x, y) : (_x: number, _y: number) => 0;
-            const rotateToLine = assertedNotNullish(layer.layout).get('text-rotation-alignment') === 'map';
+            const rotateToLine = layer.layout.get('text-rotation-alignment') === 'map';
             updateLineLabels(bucket, painter, isText, pitchedLabelPlaneMatrix, pitchedLabelPlaneMatrixInverse, pitchWithMap, keepUpright, rotateToLine, coord.toUnwrapped(), transform.width, transform.height, translation, getElevation);
         }
 
@@ -420,7 +420,7 @@ function drawLayerSymbols(
         const noLabelPlane = (alongLine || shaderVariableAnchor);
         const uLabelPlaneMatrix = noLabelPlane ? identityMat4 : combinedLabelPlaneMatrix;
 
-        const hasHalo = isSDF && assertedNotNullish(layer.paint).get(isText ? 'text-halo-width' : 'icon-halo-width').constantOr(1) !== 0;
+        const hasHalo = isSDF && layer.paint.get(isText ? 'text-halo-width' : 'icon-halo-width').constantOr(1) !== 0;
 
         const base = {
             program,
