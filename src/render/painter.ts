@@ -51,6 +51,7 @@ type PainterOptions = {
     zooming: boolean;
     moving: boolean;
     fadeDuration: number;
+    anisotropicFilterPitch: number;
 };
 
 export type RenderOptions = {
