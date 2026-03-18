@@ -2,42 +2,61 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { RasterLayer, RasterTileService } from './raster.ts'
 import type { DrawContext } from '../core/render-extension.ts'
+import type { TileID } from '../core/types.ts'
 
 // — RasterTileService tests —
 
 describe('RasterTileService', () => {
+  const FAKE_TILE: TileID = { z: 10, x: 1, y: 2, key: '10/1/2' }
+  const FAKE_URL = 'https://tile.example.com/10/1/2.png'
+  const FAKE_BITMAP = {} as ImageBitmap
+
   beforeEach(() => {
-    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+    }))
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(FAKE_BITMAP))
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('process() resolves to an array containing one ImageBitmap', async () => {
+  it('request() returns [ImageBitmap] on success', async () => {
     const service = new RasterTileService()
-    const tileID = { z: 10, x: 528, y: 341, key: '10/528/341' }
-    const buffer = new ArrayBuffer(8)
-    const controller = new AbortController()
-
-    const result = await service.process(tileID, buffer, [], controller.signal)
+    const result = await service.request(FAKE_TILE, FAKE_URL)
     expect(result).toHaveLength(1)
-    expect(result[0]).toBeDefined()
+    expect(result[0]).toBe(FAKE_BITMAP)
   })
 
-  it('process() returns [] and calls bitmap.close() if signal is already aborted', async () => {
-    const fakeBitmap = { close: vi.fn() }
-    ;(createImageBitmap as ReturnType<typeof vi.fn>).mockResolvedValue(fakeBitmap)
-
+  it('request() returns [] when fetch is aborted', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' })))
     const service = new RasterTileService()
-    const tileID = { z: 10, x: 528, y: 341, key: '10/528/341' }
-    const buffer = new ArrayBuffer(8)
-    const controller = new AbortController()
-    controller.abort()
-
-    const result = await service.process(tileID, buffer, [], controller.signal)
+    const result = await service.request(FAKE_TILE, FAKE_URL)
     expect(result).toHaveLength(0)
-    expect(fakeBitmap.close).toHaveBeenCalled()
+  })
+
+  it('cancel() causes request() to return []', async () => {
+    let resolve!: (v: Response) => void
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(r => { resolve = r })))
+    const service = new RasterTileService()
+    const promise = service.request(FAKE_TILE, FAKE_URL)
+    service.cancel(FAKE_TILE.key)
+    resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) } as any)
+    const result = await promise
+    expect(result).toHaveLength(0)
+  })
+
+  it('destroy() aborts all in-flight requests and they return []', async () => {
+    let resolve!: (v: Response) => void
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(r => { resolve = r })))
+    const service = new RasterTileService()
+    const promise = service.request(FAKE_TILE, FAKE_URL)
+    service.destroy()
+    resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) } as any)
+    const result = await promise
+    expect(result).toHaveLength(0)
   })
 })
 

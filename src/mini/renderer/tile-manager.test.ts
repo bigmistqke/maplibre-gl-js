@@ -1,5 +1,5 @@
 // src/mini/renderer/tile-manager.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { TileManager } from './tile-manager.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 import type { CameraState, TileID } from '../core/types.ts'
@@ -25,24 +25,16 @@ function makeProjection(tiles: TileID[]): Projection {
   }
 }
 
-function makeTileService(): TileService {
+function makeTileService(bitmap?: ImageBitmap): TileService {
+  const defaultBitmap = bitmap ?? ({ close: vi.fn() } as unknown as ImageBitmap)
   return {
-    process: vi.fn().mockResolvedValue([{ close: vi.fn() }]),
+    request: vi.fn().mockResolvedValue([defaultBitmap]),
+    cancel: vi.fn(),
+    destroy: vi.fn(),
   }
 }
 
 describe('TileManager', () => {
-  beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-    }))
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   it('update() calls projection.getVisibleTiles() with the camera and viewport', () => {
     const projection = makeProjection([FAKE_TILE])
     const tileService = makeTileService()
@@ -58,72 +50,58 @@ describe('TileManager', () => {
     expect(projection.getVisibleTiles).toHaveBeenCalledWith(CAMERA, VIEWPORT)
   })
 
-  it('update() calls fetch() for each visible tile not already in cache', async () => {
+  it('update() calls tileService.request() for each visible tile not already in cache', async () => {
     const projection = makeProjection([FAKE_TILE])
     const tileService = makeTileService()
-    const onTileReady = vi.fn()
     const manager = new TileManager(
       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileService,
       projection,
-      onTileReady,
-      vi.fn(),  // onEvict
+      vi.fn(),
+      vi.fn(),
     )
     manager.update(CAMERA, VIEWPORT)
-    expect(fetch).toHaveBeenCalledOnce()
-    expect(fetch).toHaveBeenCalledWith(
+    expect(tileService.request).toHaveBeenCalledOnce()
+    expect(tileService.request).toHaveBeenCalledWith(
+      FAKE_TILE,
       'https://tile.openstreetmap.org/10/528/341.png',
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
   })
 
-  it('update() does not fetch a tile already in cache', async () => {
+  it('update() does not request a tile already in cache', async () => {
     const projection = makeProjection([FAKE_TILE])
     const tileService = makeTileService()
-    const onTileReady = vi.fn()
     const manager = new TileManager(
       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileService,
       projection,
-      onTileReady,
-      vi.fn(),  // onEvict
+      vi.fn(),
+      vi.fn(),
     )
     manager.update(CAMERA, VIEWPORT)
     manager.update(CAMERA, VIEWPORT)
-    // fetch should only be called once — tile already in cache on second update
-    expect(fetch).toHaveBeenCalledOnce()
+    expect(tileService.request).toHaveBeenCalledOnce()
   })
 
-  it('update() cancels in-flight requests for tiles no longer in visible set', () => {
-    const abortSpy = vi.spyOn(AbortController.prototype, 'abort')
-
+  it('update() calls tileService.cancel() for tiles no longer in visible set', () => {
     const projection = makeProjection([FAKE_TILE])
     const tileService = makeTileService()
-    const onTileReady = vi.fn()
     const manager = new TileManager(
       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileService,
       projection,
-      onTileReady,
-      vi.fn(),  // onEvict
+      vi.fn(),
+      vi.fn(),
     )
-
-    // First update: FAKE_TILE is visible → fetch starts
     manager.update(CAMERA, VIEWPORT)
-
-    // Second update: nothing visible → FAKE_TILE is cancelled
     ;(projection.getVisibleTiles as ReturnType<typeof vi.fn>).mockReturnValue([])
     manager.update(CAMERA, VIEWPORT)
-
-    expect(abortSpy).toHaveBeenCalled()
-    abortSpy.mockRestore()
+    expect(tileService.cancel).toHaveBeenCalledWith(FAKE_TILE.key)
   })
 
   it('getReadyTiles() returns only tiles with status ready that are in current visible set', async () => {
     const fakeBitmap = { close: vi.fn() } as unknown as ImageBitmap
-    const tileService: TileService = {
-      process: vi.fn().mockResolvedValue([fakeBitmap]),
-    }
+    const tileService = makeTileService(fakeBitmap)
     const projection = makeProjection([FAKE_TILE])
     const onTileReady = vi.fn()
     const manager = new TileManager(
@@ -147,9 +125,7 @@ describe('TileManager', () => {
 
   it('getReadyTiles() does not return tiles outside the current visible set', async () => {
     const fakeBitmap = { close: vi.fn() } as unknown as ImageBitmap
-    const tileService: TileService = {
-      process: vi.fn().mockResolvedValue([fakeBitmap]),
-    }
+    const tileService = makeTileService(fakeBitmap)
     const projection = makeProjection([FAKE_TILE])
     const onTileReady = vi.fn()
     const manager = new TileManager(
@@ -173,9 +149,7 @@ describe('TileManager', () => {
 
   it('onTileReady callback is called when a tile finishes processing', async () => {
     const fakeBitmap = { close: vi.fn() } as unknown as ImageBitmap
-    const tileService: TileService = {
-      process: vi.fn().mockResolvedValue([fakeBitmap]),
-    }
+    const tileService = makeTileService(fakeBitmap)
     const projection = makeProjection([FAKE_TILE])
     const onTileReady = vi.fn()
     const manager = new TileManager(
@@ -190,39 +164,26 @@ describe('TileManager', () => {
     await vi.waitFor(() => expect(onTileReady).toHaveBeenCalled())
   })
 
-  it('destroy() cancels all in-flight requests', () => {
-    const abortSpy = vi.spyOn(AbortController.prototype, 'abort')
+  it('destroy() calls tileService.cancel() for all loading tiles and tileService.destroy()', () => {
     const projection = makeProjection([FAKE_TILE, FAKE_TILE_2])
     const tileService = makeTileService()
-    const onTileReady = vi.fn()
     const manager = new TileManager(
       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileService,
       projection,
-      onTileReady,
+      vi.fn(),
       vi.fn(),  // onEvict
     )
 
     manager.update(CAMERA, VIEWPORT)
     manager.destroy()
-
-    expect(abortSpy).toHaveBeenCalled()
-    abortSpy.mockRestore()
+    expect(tileService.cancel).toHaveBeenCalledWith(FAKE_TILE.key)
+    expect(tileService.cancel).toHaveBeenCalledWith(FAKE_TILE_2.key)
+    expect(tileService.destroy).toHaveBeenCalled()
   })
 })
 
 describe('TileManager — eviction', () => {
-  beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-    }))
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   it('does not evict tiles before updateCacheSize is called', () => {
     const projection = makeProjection([])
     const onEvict = vi.fn()
@@ -239,7 +200,6 @@ describe('TileManager — eviction', () => {
       tiles.set(`tile-${i}`, {
         status: 'ready',
         imageBitmap: { close: vi.fn() },
-        controller: new AbortController(),
       })
     }
 
@@ -260,9 +220,9 @@ describe('TileManager — eviction', () => {
     )
 
     const tiles = (manager as any)._tiles as Map<string, unknown>
-    tiles.set('tile-A', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
-    tiles.set('tile-B', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
-    tiles.set('tile-C', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+    tiles.set('tile-A', { status: 'ready', imageBitmap: { close: vi.fn() } })
+    tiles.set('tile-B', { status: 'ready', imageBitmap: { close: vi.fn() } })
+    tiles.set('tile-C', { status: 'ready', imageBitmap: { close: vi.fn() } })
 
     ;(manager as any)._maxCacheSize = 1
     manager.update(CAMERA, VIEWPORT)
@@ -290,10 +250,9 @@ describe('TileManager — eviction', () => {
     tiles.set(FAKE_TILE.key, {
       status: 'ready',
       imageBitmap: { close: vi.fn() },
-      controller: new AbortController(),
     })
-    tiles.set('extra-1', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
-    tiles.set('extra-2', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+    tiles.set('extra-1', { status: 'ready', imageBitmap: { close: vi.fn() } })
+    tiles.set('extra-2', { status: 'ready', imageBitmap: { close: vi.fn() } })
 
     ;(manager as any)._maxCacheSize = 1
     manager.update(CAMERA, VIEWPORT)
@@ -304,26 +263,25 @@ describe('TileManager — eviction', () => {
     expect(onEvict).toHaveBeenCalledWith('extra-2')
   })
 
-  it('aborts in-flight requests for evicted loading tiles', () => {
+  it('calls tileService.cancel() for evicted loading tiles', () => {
     const projection = makeProjection([])
+    const tileService = makeTileService()
     const onEvict = vi.fn()
     const manager = new TileManager(
       'https://t/{z}/{x}/{y}.png',
-      makeTileService(),
+      tileService,
       projection,
       vi.fn(),
       onEvict,
     )
 
-    const controller = new AbortController()
-    const abortSpy = vi.spyOn(controller, 'abort')
     const tiles = (manager as any)._tiles as Map<string, unknown>
-    tiles.set('loading-tile', { status: 'loading', controller })
+    tiles.set('loading-tile', { status: 'loading' })
 
     ;(manager as any)._maxCacheSize = 0
     manager.update(CAMERA, VIEWPORT)
 
-    expect(abortSpy).toHaveBeenCalled()
+    expect(tileService.cancel).toHaveBeenCalledWith('loading-tile')
     expect(onEvict).toHaveBeenCalledWith('loading-tile')
   })
 
@@ -343,7 +301,6 @@ describe('TileManager — eviction', () => {
     tiles.set('tile-A', {
       status: 'ready',
       imageBitmap: { close: closeSpy },
-      controller: new AbortController(),
     })
 
     ;(manager as any)._maxCacheSize = 0
@@ -367,7 +324,6 @@ describe('TileManager — eviction', () => {
     tiles.set('tile-A', {
       status: 'ready',
       imageBitmap: { close: vi.fn() },
-      controller: new AbortController(),
     })
 
     ;(manager as any)._maxCacheSize = 0

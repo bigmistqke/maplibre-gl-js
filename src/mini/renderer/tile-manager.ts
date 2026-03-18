@@ -6,7 +6,6 @@ import type { Projection, Viewport } from '../core/projection.ts'
 interface TileEntry {
   status: 'loading' | 'ready' | 'error'
   imageBitmap?: ImageBitmap
-  controller: AbortController
 }
 
 function tileKey(t: TileID): string {
@@ -59,7 +58,7 @@ export class TileManager {
       if (!newVisibleSet.has(key)) {
         const entry = this._tiles.get(key)
         if (entry && entry.status === 'loading') {
-          entry.controller.abort()
+          this._tileService.cancel(key)
         }
       }
     }
@@ -71,11 +70,20 @@ export class TileManager {
       const key = tileKey(tileID)
       if (this._tiles.has(key)) continue
 
-      const controller = new AbortController()
-      const entry: TileEntry = { status: 'loading', controller }
+      const entry: TileEntry = { status: 'loading' }
       this._tiles.set(key, entry)
 
-      this._fetchTile(tileID, controller.signal, entry)
+      this._tileService.request(tileID, buildURL(this._urlTemplate, tileID))
+        .then(transferables => {
+          if (!this._tiles.has(key)) return          // evicted while loading
+          if (transferables.length === 0) {
+            entry.status = 'error'
+            return
+          }
+          entry.status = 'ready'
+          entry.imageBitmap = transferables[0] as ImageBitmap
+          this._onTileReady()
+        })
     }
 
     this._evict()
@@ -86,30 +94,13 @@ export class TileManager {
     for (const [key, entry] of this._tiles) {
       if (this._tiles.size <= this._maxCacheSize) break
       if (this._visibleSet.has(key)) continue
-      entry.controller.abort()
+      if (entry.status === 'loading') {
+        this._tileService.cancel(key)
+      }
       entry.imageBitmap?.close()
       this._onEvict(key)
       this._tiles.delete(key)
     }
-  }
-
-  private _fetchTile(tileID: TileID, signal: AbortSignal, entry: TileEntry): void {
-    const url = buildURL(this._urlTemplate, tileID)
-    fetch(url, { signal })
-      .then((res) => res.arrayBuffer())
-      .then((buffer) => this._tileService.process(tileID, buffer, [], signal))
-      .then((transferables) => {
-        if (signal.aborted) return
-        const bitmap = transferables[0] as ImageBitmap
-        entry.status = 'ready'
-        entry.imageBitmap = bitmap
-        this._onTileReady()
-      })
-      .catch(() => {
-        if (!signal.aborted) {
-          entry.status = 'error'
-        }
-      })
   }
 
   getReadyTiles(): Array<{ tileID: TileID; imageBitmap: ImageBitmap }> {
@@ -125,12 +116,14 @@ export class TileManager {
   }
 
   destroy(): void {
-    for (const entry of this._tiles.values()) {
+    for (const [key, entry] of this._tiles) {
       if (entry.status === 'loading') {
-        entry.controller.abort()
+        this._tileService.cancel(key)
       }
+      entry.imageBitmap?.close()
     }
     this._tiles.clear()
     this._visibleSet.clear()
+    this._tileService.destroy()
   }
 }
