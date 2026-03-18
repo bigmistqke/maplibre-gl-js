@@ -1,0 +1,160 @@
+// src/mini/layers/raster.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { RasterLayer, RasterTileService } from './raster.ts'
+import type { DrawContext } from '../core/render-extension.ts'
+
+// — RasterTileService tests —
+
+describe('RasterTileService', () => {
+  beforeEach(() => {
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('process() resolves to an array containing one ImageBitmap', async () => {
+    const service = new RasterTileService()
+    const tileID = { z: 10, x: 528, y: 341, key: '10/528/341' }
+    const buffer = new ArrayBuffer(8)
+    const controller = new AbortController()
+
+    const result = await service.process(tileID, buffer, [], controller.signal)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toBeDefined()
+  })
+
+  it('process() returns [] and calls bitmap.close() if signal is already aborted', async () => {
+    const fakeBitmap = { close: vi.fn() }
+    ;(createImageBitmap as ReturnType<typeof vi.fn>).mockResolvedValue(fakeBitmap)
+
+    const service = new RasterTileService()
+    const tileID = { z: 10, x: 528, y: 341, key: '10/528/341' }
+    const buffer = new ArrayBuffer(8)
+    const controller = new AbortController()
+    controller.abort()
+
+    const result = await service.process(tileID, buffer, [], controller.signal)
+    expect(result).toHaveLength(0)
+    expect(fakeBitmap.close).toHaveBeenCalled()
+  })
+})
+
+// — RasterLayer tests —
+
+function makeGL() {
+  return {
+    createBuffer: vi.fn().mockReturnValue({}),
+    bindBuffer: vi.fn(),
+    bufferData: vi.fn(),
+    getAttribLocation: vi.fn().mockReturnValue(0),
+    enableVertexAttribArray: vi.fn(),
+    vertexAttribPointer: vi.fn(),
+    useProgram: vi.fn(),
+    getUniformLocation: vi.fn().mockReturnValue({}),
+    uniformMatrix4fv: vi.fn(),
+    uniform1i: vi.fn(),
+    uniform1f: vi.fn(),
+    activeTexture: vi.fn(),
+    bindTexture: vi.fn(),
+    drawArrays: vi.fn(),
+    ARRAY_BUFFER: 34962,
+    STATIC_DRAW: 35044,
+    FLOAT: 5126,
+    TRIANGLE_STRIP: 5,
+    TEXTURE_2D: 3553,
+    TEXTURE0: 33984,
+  } as unknown as WebGLRenderingContext
+}
+
+function makeDrawContext(gl: WebGLRenderingContext, overrides: Partial<DrawContext & { tileTexture: WebGLTexture }> = {}) {
+  const fakeProgram = {} as WebGLProgram
+  const fakeUniformLoc = {} as WebGLUniformLocation
+  return {
+    gl,
+    programs: {
+      get: vi.fn().mockReturnValue(fakeProgram),
+    },
+    tileID: { z: 10, x: 528, y: 341, key: '10/528/341' },
+    matrix: new Float32Array(16),
+    zoom: 10,
+    paint: { opacity: 1 },
+    frameIndex: 0,
+    imageAtlas: {},
+    lineDashAtlas: {},
+    tileTexture: {} as WebGLTexture,
+    ...overrides,
+  }
+}
+
+describe('RasterLayer', () => {
+  it('has type "raster"', () => {
+    const layer = new RasterLayer({ source: 'osm' })
+    expect(layer.type).toBe('raster')
+  })
+
+  it('has static programs array with a "raster" program definition', () => {
+    expect(RasterLayer.programs).toBeInstanceOf(Array)
+    expect(RasterLayer.programs.length).toBeGreaterThan(0)
+    expect(RasterLayer.programs[0].name).toBe('raster')
+    expect(typeof RasterLayer.programs[0].vertex).toBe('string')
+    expect(typeof RasterLayer.programs[0].fragment).toBe('string')
+  })
+
+  it('has static TileService pointing to RasterTileService', () => {
+    expect(RasterLayer.TileService).toBe(RasterTileService)
+  })
+
+  it('draw() calls gl.useProgram', () => {
+    const gl = makeGL()
+    const layer = new RasterLayer({ source: 'osm' })
+    // Set up quadBuffer via onAdd mock
+    const fakeQuadBuffer = {}
+    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
+    const ctx = makeDrawContext(gl)
+    layer.draw(ctx as any)
+    expect(gl.useProgram).toHaveBeenCalled()
+  })
+
+  it('draw() calls gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)', () => {
+    const gl = makeGL()
+    const layer = new RasterLayer({ source: 'osm' })
+    const fakeQuadBuffer = {}
+    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
+    const ctx = makeDrawContext(gl)
+    layer.draw(ctx as any)
+    expect(gl.drawArrays).toHaveBeenCalledWith(gl.TRIANGLE_STRIP, 0, 4)
+  })
+
+  it('draw() calls gl.uniformMatrix4fv with the tile matrix', () => {
+    const gl = makeGL()
+    const layer = new RasterLayer({ source: 'osm' })
+    const fakeQuadBuffer = {}
+    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
+    const matrix = new Float32Array(16)
+    matrix[0] = 2  // distinguishable
+    const ctx = makeDrawContext(gl, { matrix })
+    layer.draw(ctx as any)
+    expect(gl.uniformMatrix4fv).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+      matrix,
+    )
+  })
+
+  it('draw() calls gl.uniform1f for opacity', () => {
+    const gl = makeGL()
+    const layer = new RasterLayer({ source: 'osm', opacity: 0.7 })
+    const fakeQuadBuffer = {}
+    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
+    const ctx = makeDrawContext(gl, { paint: { opacity: 0.7 } })
+    layer.draw(ctx as any)
+    expect(gl.uniform1f).toHaveBeenCalled()
+  })
+
+  it('opacity defaults to 1', () => {
+    const layer = new RasterLayer({ source: 'osm' })
+    expect(layer.opacity).toBe(1)
+  })
+})
