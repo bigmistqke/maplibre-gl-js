@@ -9,7 +9,8 @@ import { FrameLoop } from './frame-loop.ts'
 import { StyleEvaluator } from './style-evaluator.ts'
 import { RenderExtensions } from './render-extensions.ts'
 import { TileManager } from './tile-manager.ts'
-import { RasterLayer, RasterTileService } from '../layers/raster.ts'
+import { RasterLayer } from '../layers/raster.ts'
+import { WorkerRasterTileService } from '../layers/raster-worker-service.ts'
 
 interface LayerEntry {
   id: string
@@ -80,7 +81,7 @@ export class Renderer implements RendererAPI {
       const rasterSource = source as RasterSourceDefinition
       const tm = new TileManager(
         rasterSource.url,
-        rasterSource.tileService ?? new RasterTileService(),
+        rasterSource.tileService ?? new WorkerRasterTileService(),
         this._projection,
         () => this._frameLoop.markDirty(),
         (key) => this._webgl.destroyTexture(key),
