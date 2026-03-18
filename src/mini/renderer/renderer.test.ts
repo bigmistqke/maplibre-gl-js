@@ -96,6 +96,43 @@ describe('Renderer', () => {
   it('queryRenderedFeatures returns empty array (phase 1 stub)', () => {
     expect(renderer.queryRenderedFeatures({ x: 100, y: 100 })).toEqual([])
   })
+
+  it('calls destroyTexture when TileManager evicts a tile', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+    }))
+
+    const webgl = (renderer as any)._webgl
+    const destroySpy = vi.spyOn(webgl, 'destroyTexture')
+
+    renderer.addSource('osm', { type: 'raster', url: 'https://t/{z}/{x}/{y}.png' })
+
+    const tm = (renderer as any)._tileManagers.get('osm')
+    const tiles = tm._tiles as Map<string, unknown>
+    // Canvas is 512×512 → updateCacheSize gives (2+1)*(2+1)*5 = 45.
+    // Inject 51 tiles so eviction fires even after updateCacheSize recomputes the limit.
+    for (let i = 0; i < 51; i++) {
+      tiles.set(`tile-${i}`, {
+        status: 'ready',
+        imageBitmap: { close: vi.fn() },
+        controller: new AbortController(),
+      })
+    }
+
+    renderer.setCamera({
+      center: { lng: 0, lat: 0 },
+      zoom: 0,
+      bearing: 0,
+      pitch: 0,
+      groundElevation: 0,
+    })
+    // setCamera → updateCacheSize (sets _maxCacheSize=45) → update → _evict fires (51 > 45)
+
+    expect(destroySpy).toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+  })
 })
 
 describe('Renderer — Phase 2 tile pipeline', () => {

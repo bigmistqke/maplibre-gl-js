@@ -58,6 +58,10 @@ export class Renderer implements RendererAPI {
   resize(width: number, height: number): void {
     this._width = width
     this._height = height
+    const viewport: Viewport = { width, height }
+    for (const tm of this._tileManagers.values()) {
+      tm.updateCacheSize(viewport)
+    }
     this._frameLoop.markDirty()
   }
 
@@ -77,6 +81,7 @@ export class Renderer implements RendererAPI {
         new RasterTileService(),
         this._projection,
         () => this._frameLoop.markDirty(),
+        (key) => this._webgl.destroyTexture(key),
       )
       this._tileManagers.set(id, tm)
     }
@@ -153,6 +158,7 @@ export class Renderer implements RendererAPI {
     this._camera = state
     const viewport: Viewport = { width: this._width, height: this._height }
     for (const tm of this._tileManagers.values()) {
+      tm.updateCacheSize(viewport)   // must come before update()
       tm.update(state, viewport)
     }
     this._frameLoop.markDirty()
