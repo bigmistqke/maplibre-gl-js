@@ -164,7 +164,7 @@ describe('TileManager', () => {
     await vi.waitFor(() => expect(onTileReady).toHaveBeenCalled())
   })
 
-  it('destroy() calls tileService.cancel() for all loading tiles and tileService.destroy()', () => {
+  it('destroy() closes bitmaps for ready tiles and calls tileService.destroy()', () => {
     const projection = makeProjection([FAKE_TILE, FAKE_TILE_2])
     const tileService = makeTileService()
     const manager = new TileManager(
@@ -172,14 +172,15 @@ describe('TileManager', () => {
       tileService,
       projection,
       vi.fn(),
-      vi.fn(),  // onEvict
+      vi.fn(),
     )
 
     manager.update(CAMERA, VIEWPORT)
     manager.destroy()
-    expect(tileService.cancel).toHaveBeenCalledWith(FAKE_TILE.key)
-    expect(tileService.cancel).toHaveBeenCalledWith(FAKE_TILE_2.key)
+
     expect(tileService.destroy).toHaveBeenCalled()
+    // cancel() is NOT called individually — destroy() handles cleanup internally
+    expect(tileService.cancel).not.toHaveBeenCalled()
   })
 })
 

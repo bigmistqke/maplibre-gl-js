@@ -84,6 +84,11 @@ export class TileManager {
           entry.imageBitmap = transferables[0] as ImageBitmap
           this._onTileReady()
         })
+        .catch(() => {
+          if (this._tiles.has(key)) {
+            entry.status = 'error'
+          }
+        })
     }
 
     this._evict()
@@ -116,14 +121,11 @@ export class TileManager {
   }
 
   destroy(): void {
-    for (const [key, entry] of this._tiles) {
-      if (entry.status === 'loading') {
-        this._tileService.cancel(key)
-      }
+    for (const entry of this._tiles.values()) {
       entry.imageBitmap?.close()
     }
+    this._tileService.destroy()
     this._tiles.clear()
     this._visibleSet.clear()
-    this._tileService.destroy()
   }
 }
