@@ -33,19 +33,30 @@ void main() {
 // ──────────────────────────────────────────────
 
 export class RasterTileService implements TileService {
-  async process(
-    _tileID: TileID,
-    data: ArrayBuffer,
-    _layerTypes: string[],
-    signal: AbortSignal,
-  ): Promise<Transferable[]> {
-    const blob = new Blob([data])
-    const bitmap = await createImageBitmap(blob)
-    if (signal.aborted) {
-      bitmap.close()
+  private _pending = new globalThis.Map<string, AbortController>()
+
+  async request(tileID: TileID, url: string): Promise<Transferable[]> {
+    const controller = new AbortController()
+    this._pending.set(tileID.key, controller)
+    try {
+      const buf = await fetch(url, { signal: controller.signal }).then(r => r.arrayBuffer())
+      const bitmap = await createImageBitmap(new Blob([buf]))
+      this._pending.delete(tileID.key)
+      return [bitmap]
+    } catch {
+      this._pending.delete(tileID.key)
       return []
     }
-    return [bitmap]
+  }
+
+  cancel(key: string): void {
+    this._pending.get(key)?.abort()
+    this._pending.delete(key)
+  }
+
+  destroy(): void {
+    for (const controller of this._pending.values()) controller.abort()
+    this._pending.clear()
   }
 }
 
