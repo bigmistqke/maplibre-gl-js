@@ -1,7 +1,7 @@
 export class FrameLoop {
   private _render: () => void
   private _dirty = false
-  private _timerId: ReturnType<typeof setTimeout> | null = null
+  private _rafId: number | null = null
   private _running = false
 
   constructor(render: () => void) {
@@ -14,9 +14,9 @@ export class FrameLoop {
 
   stop(): void {
     this._running = false
-    if (this._timerId !== null) {
-      clearTimeout(this._timerId)
-      this._timerId = null
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId)
+      this._rafId = null
     }
     this._dirty = false
   }
@@ -24,11 +24,11 @@ export class FrameLoop {
   markDirty(): void {
     if (this._dirty || !this._running) return
     this._dirty = true
-    this._timerId = setTimeout(() => {
-      this._timerId = null
+    this._rafId = requestAnimationFrame(() => {
+      this._rafId = null
       if (!this._running) return
       this._dirty = false
       this._render()
-    }, 0)
+    })
   }
 }
