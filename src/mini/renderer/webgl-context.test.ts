@@ -109,6 +109,7 @@ describe('WebGLContext — Phase 2 additions', () => {
       texImage2D: vi.fn(),
       texParameteri: vi.fn(),
       generateMipmap: vi.fn(),
+      deleteTexture: vi.fn(),
       ARRAY_BUFFER: 34962,
       STATIC_DRAW: 35044,
       FLOAT: 5126,
@@ -167,5 +168,25 @@ describe('WebGLContext — Phase 2 additions', () => {
     const tex1 = ctx.getOrCreateTexture('10/512/341', bitmap)
     const tex2 = ctx.getOrCreateTexture('10/512/342', bitmap)
     expect(tex1).not.toBe(tex2)
+  })
+
+  it('destroyTexture calls gl.deleteTexture and removes the texture from cache', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const bitmap = {} as ImageBitmap
+    const tex = ctx.getOrCreateTexture('10/1/2', bitmap)
+
+    ctx.destroyTexture('10/1/2')
+
+    expect(gl.deleteTexture).toHaveBeenCalledWith(tex)
+    // After destroy, a second getOrCreateTexture call re-uploads (calls texImage2D again)
+    gl.texImage2D.mockClear()
+    ctx.getOrCreateTexture('10/1/2', bitmap)
+    expect(gl.texImage2D).toHaveBeenCalledOnce()
+  })
+
+  it('destroyTexture is a no-op for unknown keys', () => {
+    const ctx = new WebGLContext(canvas as any)
+    expect(() => ctx.destroyTexture('nonexistent')).not.toThrow()
+    expect(gl.deleteTexture).not.toHaveBeenCalled()
   })
 })

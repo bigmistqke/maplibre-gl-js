@@ -48,6 +48,13 @@ export class WebGLContext {
     return tex
   }
 
+  destroyTexture(key: string): void {
+    const tex = this._textures.get(key)
+    if (!tex) return
+    this.gl.deleteTexture(tex)
+    this._textures.delete(key)
+  }
+
   private _compile(vertSrc: string, fragSrc: string): WebGLProgram {
     const { gl } = this
     const vert = this._compileShader(gl.VERTEX_SHADER, vertSrc)
