@@ -1,8 +1,8 @@
-# MapLibre Clean-Room — Phase 3: LRU Tile Eviction
+# MapLibre Clean-Room — Phase 3: FIFO Tile Eviction
 
 **Date:** 2026-03-18
 **Status:** Draft
-**Goal:** Bound memory usage by evicting least-recently-inserted (oldest) tiles from TileManager and freeing their GPU textures when the cache exceeds a viewport-derived limit.
+**Goal:** Bound memory usage by evicting oldest-inserted tiles from TileManager and freeing their GPU textures when the cache exceeds a viewport-derived limit.
 
 ---
 
@@ -26,11 +26,15 @@
 
 **Visible tiles are never evicted.** A tile currently in `_visibleSet` is always safe regardless of cache pressure.
 
-**Dynamic cache size.** The limit scales with the viewport so larger screens get larger caches:
+**Only `ready` tiles are evicted.** Tiles with status `loading` or `error` are skipped. This avoids needing to abort in-flight requests during eviction — the fetch will complete normally but the entry will already be gone (the closure holds a reference to the deleted entry object, which becomes orphaned; the bitmap is leaked in this rare case, which is acceptable). Only `ready` tiles have a GPU texture to destroy, so this is correct in all cases.
+
+**Dynamic cache size.** The limit scales with the viewport so larger screens get larger caches. Tile size is always 256 px in Phase 3:
 ```
-maxCacheSize = (ceil(width/tileSize) + 1) × (ceil(height/tileSize) + 1) × MAX_ZOOM_LEVELS
+maxCacheSize = (ceil(width / 256) + 1) × (ceil(height / 256) + 1) × MAX_ZOOM_LEVELS
 ```
 `MAX_ZOOM_LEVELS = 5` (matches MapLibre default).
+
+**`resize()` defers eviction.** `resize()` calls `updateCacheSize()` but not `update()`. Eviction fires on the next `setCamera()` call. This is intentional — resize without a camera change is rare, and eviction is cheap to defer.
 
 ---
 
@@ -49,19 +53,24 @@ maxCacheSize = (ceil(width/tileSize) + 1) × (ceil(height/tileSize) + 1) × MAX_
 
 ## Interfaces
 
-### TileManager constructor (updated signature)
+### TileManager — updated class fields and constructor
 
 ```ts
+// New private fields added to the class:
+private _maxCacheSize: number = Infinity  // Infinity until updateCacheSize() is first called
+private _onEvict: (key: string) => void
+
 constructor(
   urlTemplate: string,
   tileService: TileService,
   projection: Projection,
   onTileReady: () => void,
-  onEvict: (key: string) => void,  // NEW — called when a tile is evicted
-)
+  onEvict: (key: string) => void,  // NEW — called when a ready tile is evicted
+) {
+  // ... existing assignments ...
+  this._onEvict = onEvict
+}
 ```
-
-`_maxCacheSize` starts at `Infinity` until `updateCacheSize` is first called.
 
 ### New public method: `updateCacheSize(viewport: Viewport): void`
 
@@ -73,16 +82,26 @@ updateCacheSize(viewport: Viewport): void {
 }
 ```
 
-Called by Renderer in `setCamera` and `resize` (after constructing `viewport`).
+Tile size is always 256 px in Phase 3. Called by Renderer in `setCamera` and `resize`.
+
+### Updated `update()` — calls `_evict()` at the end
+
+```ts
+update(camera: CameraState, viewport: Viewport): void {
+  // ... existing: compute visible tiles, cancel out-of-view, fetch new ...
+  this._evict()  // NEW — runs after visible set and fetches are updated
+}
+```
+
+Order matters: `_visibleSet` must be updated before `_evict()` runs, so eviction always sees
+the current visible set. In `setCamera`, `updateCacheSize` fires first, then `update` (which
+calls `_evict`). This is the correct order.
 
 ### Private: `_evict(): void`
 
-Called at the end of `update()`. Iterates `_tiles` in insertion order (oldest first). Skips any key in `_visibleSet`. For each evicted tile:
-1. `entry.imageBitmap?.close()` — free CPU memory
-2. `this._onEvict(key)` — notify Renderer to destroy GPU texture
-3. `this._tiles.delete(key)` — remove from cache
-
-Stops once `_tiles.size <= _maxCacheSize`.
+Only evicts tiles with `status === 'ready'`. Iterates `_tiles` in insertion order (oldest
+first). JavaScript `Map` iteration is safe for deleting the current key inside `for...of`.
+Skips visible tiles. Stops once `_tiles.size <= _maxCacheSize`.
 
 ```ts
 private _evict(): void {
@@ -90,6 +109,7 @@ private _evict(): void {
   for (const [key, entry] of this._tiles) {
     if (this._tiles.size <= this._maxCacheSize) break
     if (this._visibleSet.has(key)) continue
+    if (entry.status !== 'ready') continue  // never evict loading/error tiles
     entry.imageBitmap?.close()
     this._onEvict(key)
     this._tiles.delete(key)
@@ -102,7 +122,7 @@ private _evict(): void {
 ```ts
 destroyTexture(key: string): void {
   const tex = this._textures.get(key)
-  if (!tex) return
+  if (!tex) return                  // no-op for unknown keys
   this.gl.deleteTexture(tex)
   this._textures.delete(key)
 }
@@ -123,27 +143,28 @@ const tm = new TileManager(
 )
 ```
 
-`setCamera` calls `updateCacheSize` after constructing viewport:
+`setCamera` calls `updateCacheSize` before `update` (so `_maxCacheSize` is current when
+`_evict()` runs at the end of `update`):
 ```ts
 setCamera(state: CameraState): void {
   this._camera = state
   const viewport: Viewport = { width: this._width, height: this._height }
   for (const tm of this._tileManagers.values()) {
-    tm.updateCacheSize(viewport)   // NEW
+    tm.updateCacheSize(viewport)   // NEW — must come before update()
     tm.update(state, viewport)
   }
   this._frameLoop.markDirty()
 }
 ```
 
-`resize` also calls `updateCacheSize`:
+`resize` updates cache size only (eviction deferred to next `setCamera`):
 ```ts
 resize(width: number, height: number): void {
   this._width = width
   this._height = height
   const viewport: Viewport = { width, height }
   for (const tm of this._tileManagers.values()) {
-    tm.updateCacheSize(viewport)   // NEW
+    tm.updateCacheSize(viewport)   // NEW — eviction deferred to next setCamera
   }
   this._frameLoop.markDirty()
 }
@@ -158,22 +179,32 @@ All tests in `vitest.config.mini.ts` (node environment, manual mocks).
 ### TileManager eviction tests
 
 ```ts
+it('eviction does not fire before updateCacheSize is called', ...)
+// Fill _tiles with many ready entries, never call updateCacheSize.
+// Confirm no tiles are evicted (_tiles.size unchanged).
+
 it('_evict() removes oldest non-visible tiles when over maxCacheSize', ...)
-// Manually fill _tiles with N entries, set _visibleSet to empty,
-// call updateCacheSize with a small viewport → _evict() fires,
-// oldest tiles removed until under limit.
+// Insert tiles A, B, C (all ready, none visible).
+// Call updateCacheSize with a viewport that sets maxCacheSize = 1.
+// Call update() → _evict() fires.
+// Only tile A (oldest) is removed; B and C remain.
+// Confirms oldest-first eviction order.
 
 it('_evict() never removes tiles in _visibleSet', ...)
-// Fill cache over limit, put all tiles in _visibleSet → none evicted.
+// Fill cache over limit with all tiles in _visibleSet → none evicted.
+
+it('_evict() skips loading/error tiles', ...)
+// Mix of ready and loading entries; only ready tiles are evicted.
 
 it('_evict() calls imageBitmap.close() on evicted tiles', ...)
 // Verify close() called for each evicted entry that has an imageBitmap.
+// A tile without imageBitmap (imageBitmap === undefined) does not throw.
 
 it('_evict() calls onEvict callback with the tile key', ...)
-// onEvict spy receives the correct key string.
+// onEvict spy receives the correct key string(s).
 
 it('updateCacheSize sets maxCacheSize based on viewport dimensions', ...)
-// viewport 512×512, tileSize 256: (2+1)×(2+1)×5 = 45. Verify internal _maxCacheSize.
+// viewport 512×512: (2+1)×(2+1)×5 = 45. Verify internal _maxCacheSize.
 ```
 
 ### WebGLContext `destroyTexture` tests
@@ -191,7 +222,11 @@ it('destroyTexture is a no-op for unknown keys', ...)
 
 ```ts
 it('Renderer calls destroyTexture when TileManager evicts a tile', ...)
-// Set up small cache, trigger eviction, verify _webgl.destroyTexture called.
+// Construct Renderer. Access its _webgl via (renderer as any)._webgl and spy on destroyTexture.
+// Call addSource (creates TileManager with onEvict wired to destroyTexture).
+// Manually fill (renderer as any)._tileManagers.get('src')._tiles with ready entries.
+// Call setCamera with a small viewport → updateCacheSize + update → _evict fires.
+// Verify destroyTexture spy was called with the evicted tile key.
 ```
 
 ---
