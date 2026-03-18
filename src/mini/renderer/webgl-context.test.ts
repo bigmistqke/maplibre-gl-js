@@ -27,11 +27,18 @@ function makeGLMock() {
 }
 
 describe('WebGLContext', () => {
-  let gl: WebGLRenderingContext
+  let gl: any
   let canvas: { getContext: ReturnType<typeof vi.fn> }
 
   beforeEach(() => {
-    gl = makeGLMock()
+    const base = makeGLMock()
+    gl = Object.assign(base, {
+      createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      ARRAY_BUFFER: 34962,
+      STATIC_DRAW: 35044,
+    })
     canvas = { getContext: vi.fn().mockReturnValue(gl) }
   })
 
@@ -62,5 +69,103 @@ describe('WebGLContext', () => {
   it('programs.get returns undefined for unknown program', () => {
     const ctx = new WebGLContext(canvas as any)
     expect(ctx.programs.get('nonexistent')).toBeUndefined()
+  })
+})
+
+describe('WebGLContext — Phase 2 additions', () => {
+  let gl: ReturnType<typeof makeGLMock> & {
+    createBuffer: ReturnType<typeof vi.fn>
+    bindBuffer: ReturnType<typeof vi.fn>
+    bufferData: ReturnType<typeof vi.fn>
+    createTexture: ReturnType<typeof vi.fn>
+    bindTexture: ReturnType<typeof vi.fn>
+    texImage2D: ReturnType<typeof vi.fn>
+    texParameteri: ReturnType<typeof vi.fn>
+    generateMipmap: ReturnType<typeof vi.fn>
+    ARRAY_BUFFER: number
+    STATIC_DRAW: number
+    FLOAT: number
+    TEXTURE_2D: number
+    TEXTURE0: number
+    UNSIGNED_BYTE: number
+    RGBA: number
+    LINEAR: number
+    CLAMP_TO_EDGE: number
+    TEXTURE_MIN_FILTER: number
+    TEXTURE_MAG_FILTER: number
+    TEXTURE_WRAP_S: number
+    TEXTURE_WRAP_T: number
+  }
+  let canvas: { getContext: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    const base = makeGLMock()
+    gl = Object.assign(base, {
+      createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      createTexture: vi.fn().mockReturnValue({ _tex: true }),
+      bindTexture: vi.fn(),
+      texImage2D: vi.fn(),
+      texParameteri: vi.fn(),
+      generateMipmap: vi.fn(),
+      ARRAY_BUFFER: 34962,
+      STATIC_DRAW: 35044,
+      FLOAT: 5126,
+      TEXTURE_2D: 3553,
+      TEXTURE0: 33984,
+      UNSIGNED_BYTE: 5121,
+      RGBA: 6408,
+      LINEAR: 9729,
+      CLAMP_TO_EDGE: 33071,
+      TEXTURE_MIN_FILTER: 10241,
+      TEXTURE_MAG_FILTER: 10240,
+      TEXTURE_WRAP_S: 10242,
+      TEXTURE_WRAP_T: 10243,
+    }) as any
+    canvas = { getContext: vi.fn().mockReturnValue(gl) }
+  })
+
+  it('quadBuffer is defined after construction', () => {
+    const ctx = new WebGLContext(canvas as any)
+    expect(ctx.quadBuffer).toBeDefined()
+    expect(gl.createBuffer).toHaveBeenCalled()
+    expect(gl.bufferData).toHaveBeenCalled()
+  })
+
+  it('getOrCreateTexture returns a WebGLTexture', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const bitmap = {} as ImageBitmap
+    const tex = ctx.getOrCreateTexture('10/512/341', bitmap)
+    expect(tex).toBeDefined()
+  })
+
+  it('getOrCreateTexture called twice with same key returns same texture object', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const bitmap = {} as ImageBitmap
+    const tex1 = ctx.getOrCreateTexture('10/512/341', bitmap)
+    const tex2 = ctx.getOrCreateTexture('10/512/341', bitmap)
+    expect(tex1).toBe(tex2)
+  })
+
+  it('getOrCreateTexture calls gl.texImage2D only on first call for a key', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const bitmap = {} as ImageBitmap
+    ctx.getOrCreateTexture('10/512/341', bitmap)
+    const callsAfterFirst = gl.texImage2D.mock.calls.length
+    ctx.getOrCreateTexture('10/512/341', bitmap)
+    expect(gl.texImage2D.mock.calls.length).toBe(callsAfterFirst)
+  })
+
+  it('getOrCreateTexture creates different textures for different keys', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const bitmap = {} as ImageBitmap
+    // Reset mock to return distinct objects for each createTexture call
+    gl.createTexture
+      .mockReturnValueOnce({ _tex: 'A' })
+      .mockReturnValueOnce({ _tex: 'B' })
+    const tex1 = ctx.getOrCreateTexture('10/512/341', bitmap)
+    const tex2 = ctx.getOrCreateTexture('10/512/342', bitmap)
+    expect(tex1).not.toBe(tex2)
   })
 })
