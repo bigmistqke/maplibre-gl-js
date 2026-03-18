@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createRenderer } from './renderer/index.ts'
-import { Renderer } from './renderer/renderer.ts'
 import { MapGL } from './core/map.ts'
 import { BackgroundLayer } from './layers/background.ts'
 
@@ -25,7 +24,7 @@ function makeCanvas() {
     clearColor: vi.fn(),
     clear: vi.fn(),
   } as unknown as WebGLRenderingContext
-  return { getContext: vi.fn().mockReturnValue(gl), width: 512, height: 512, _gl: gl } as any
+  return { getContext: vi.fn().mockReturnValue(gl), width: 512, height: 512 } as unknown as HTMLCanvasElement
 }
 
 describe('Phase 1 integration', () => {
@@ -45,8 +44,10 @@ describe('Phase 1 integration', () => {
 
   it('createRenderer returns a RendererAPI with addLayer and setCamera', async () => {
     const renderer = await createRenderer(canvas)
-    expect(typeof renderer.addLayer).toBe('function')
-    expect(typeof renderer.setCamera).toBe('function')
+    const layer = new BackgroundLayer({ color: '#ffffff', opacity: 1 })
+    expect(() => renderer.addLayer(layer)).not.toThrow()
+    const map = new MapGL({ renderer })
+    expect(() => map.setCamera({ center: { lng: 0, lat: 0 }, zoom: 1 })).not.toThrow()
   })
 
   it('MapGL renders a background color frame — drawBackground is called with paint props', async () => {
@@ -57,11 +58,13 @@ describe('Phase 1 integration', () => {
     const drawBackground = vi.spyOn(layer, 'drawBackground')
     map.addLayer(layer)
 
-    ;(renderer as any).renderFrame()
+    await vi.advanceTimersByTimeAsync(16)
 
     expect(drawBackground).toHaveBeenCalledOnce()
     const [ctx] = drawBackground.mock.calls[0]!
     expect(ctx.paint).toBeDefined()
+    expect(ctx.paint.color).toBe('#ff0000')
+    expect(ctx.paint.opacity).toBe(1)
   })
 
   it('setCamera propagates from MapGL to Renderer', async () => {
