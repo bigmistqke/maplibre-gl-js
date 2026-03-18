@@ -41,6 +41,11 @@ export class RasterTileService implements TileService {
     try {
       const buf = await fetch(url, { signal: controller.signal }).then(r => r.arrayBuffer())
       const bitmap = await createImageBitmap(new Blob([buf]))
+      if (!this._pending.has(tileID.key)) {
+        // Cancelled between fetch completing and createImageBitmap completing
+        bitmap.close()
+        return []
+      }
       this._pending.delete(tileID.key)
       return [bitmap]
     } catch {
