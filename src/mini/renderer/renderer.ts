@@ -3,6 +3,7 @@ import type { CameraState, ScreenPoint, Feature, ResolvedPaintProperties } from 
 import type { RendererAPI, LayerInstance, SourceDefinition } from '../core/renderer-api.ts'
 import type { RenderExtension, RenderContext } from '../core/render-extension.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
+import type { TileService } from '../core/tile-service.ts'
 import { WebGLContext } from './webgl-context.ts'
 import { FrameLoop } from './frame-loop.ts'
 import { StyleEvaluator } from './style-evaluator.ts'
@@ -27,6 +28,7 @@ interface RasterSourceDefinition extends SourceDefinition {
   type: 'raster'
   url: string
   tileSize?: number
+  tileService?: TileService  // injected in tests; defaults to WorkerRasterTileService in Task 9
 }
 
 export class Renderer implements RendererAPI {
@@ -78,7 +80,7 @@ export class Renderer implements RendererAPI {
       const rasterSource = source as RasterSourceDefinition
       const tm = new TileManager(
         rasterSource.url,
-        new RasterTileService(),
+        rasterSource.tileService ?? new RasterTileService(),
         this._projection,
         () => this._frameLoop.markDirty(),
         (key) => this._webgl.destroyTexture(key),

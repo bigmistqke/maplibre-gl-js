@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Renderer } from './renderer.ts'
 import { BackgroundLayer } from '../layers/background.ts'
 import { RasterLayer } from '../layers/raster.ts'
+import type { TileService } from '../core/tile-service.ts'
+
+function makeFakeTileService(): TileService {
+  return {
+    request: vi.fn().mockResolvedValue([]),
+    cancel: vi.fn(),
+    destroy: vi.fn(),
+  }
+}
 
 function makeCanvas() {
   const gl = {
@@ -106,7 +115,7 @@ describe('Renderer', () => {
     const webgl = (renderer as any)._webgl
     const destroySpy = vi.spyOn(webgl, 'destroyTexture')
 
-    renderer.addSource('osm', { type: 'raster', url: 'https://t/{z}/{x}/{y}.png' })
+    renderer.addSource('osm', { type: 'raster', url: 'https://t/{z}/{x}/{y}.png', tileService: makeFakeTileService() })
 
     const tm = (renderer as any)._tileManagers.get('osm')
     const tiles = tm._tiles as Map<string, unknown>
@@ -210,6 +219,7 @@ describe('Renderer — Phase 2 tile pipeline', () => {
       type: 'raster',
       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileSize: 256,
+      tileService: makeFakeTileService(),
     })
     // Verify internal state — TileManager should exist for 'osm'
     expect((renderer as any)._tileManagers.has('osm')).toBe(true)
@@ -219,6 +229,7 @@ describe('Renderer — Phase 2 tile pipeline', () => {
     renderer.addSource('osm', {
       type: 'raster',
       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      tileService: makeFakeTileService(),
     })
     const layer = new RasterLayer({ source: 'osm' })
     renderer.addLayer(layer)
@@ -231,6 +242,7 @@ describe('Renderer — Phase 2 tile pipeline', () => {
     renderer.addSource('osm', {
       type: 'raster',
       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      tileService: makeFakeTileService(),
     })
     const tileManager = (renderer as any)._tileManagers.get('osm')
     const updateSpy = vi.spyOn(tileManager, 'update')
@@ -246,6 +258,7 @@ describe('Renderer — Phase 2 tile pipeline', () => {
     renderer.addSource('osm', {
       type: 'raster',
       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      tileService: { request: vi.fn().mockResolvedValue([fakeBitmap]), cancel: vi.fn(), destroy: vi.fn() },
     })
     const layer = new RasterLayer({ source: 'osm' })
     const drawSpy = vi.spyOn(layer, 'draw')
