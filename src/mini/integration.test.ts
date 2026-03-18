@@ -10,6 +10,8 @@ function makeCanvas() {
     LINK_STATUS: 35714,
     COMPILE_STATUS: 35713,
     COLOR_BUFFER_BIT: 16384,
+    ARRAY_BUFFER: 34962,
+    STATIC_DRAW: 35044,
     createProgram: vi.fn(() => ({})),
     createShader: vi.fn(() => ({})),
     shaderSource: vi.fn(),
@@ -23,6 +25,9 @@ function makeCanvas() {
     viewport: vi.fn(),
     clearColor: vi.fn(),
     clear: vi.fn(),
+    createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+    bindBuffer: vi.fn(),
+    bufferData: vi.fn(),
   } as unknown as WebGLRenderingContext
   return { getContext: vi.fn().mockReturnValue(gl), width: 512, height: 512 } as unknown as HTMLCanvasElement
 }
