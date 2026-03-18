@@ -26,7 +26,7 @@
 
 **Visible tiles are never evicted.** A tile currently in `_visibleSet` is always safe regardless of cache pressure.
 
-**Only `ready` tiles are evicted.** Tiles with status `loading` or `error` are skipped. This avoids needing to abort in-flight requests during eviction — the fetch will complete normally but the entry will already be gone (the closure holds a reference to the deleted entry object, which becomes orphaned; the bitmap is leaked in this rare case, which is acceptable). Only `ready` tiles have a GPU texture to destroy, so this is correct in all cases.
+**All non-visible tiles can be evicted, including `loading` ones.** The abort mechanism already exists from Phase 2 — `update()` calls `entry.controller.abort()` to cancel out-of-view tiles, and the fetch/process chain checks `signal.aborted` and bails out cleanly. `_evict()` reuses the same pattern: call `entry.controller.abort()` before deleting. This avoids any bitmap leak and keeps eviction simple — no status check needed.
 
 **Dynamic cache size.** The limit scales with the viewport so larger screens get larger caches. Tile size is always 256 px in Phase 3:
 ```
@@ -109,9 +109,9 @@ private _evict(): void {
   for (const [key, entry] of this._tiles) {
     if (this._tiles.size <= this._maxCacheSize) break
     if (this._visibleSet.has(key)) continue
-    if (entry.status !== 'ready') continue  // never evict loading/error tiles
-    entry.imageBitmap?.close()
-    this._onEvict(key)
+    entry.controller.abort()       // cancel in-flight fetch if loading
+    entry.imageBitmap?.close()     // free CPU memory if ready
+    this._onEvict(key)             // notify Renderer to free GPU texture if any
     this._tiles.delete(key)
   }
 }
@@ -193,8 +193,8 @@ it('_evict() removes oldest non-visible tiles when over maxCacheSize', ...)
 it('_evict() never removes tiles in _visibleSet', ...)
 // Fill cache over limit with all tiles in _visibleSet → none evicted.
 
-it('_evict() skips loading/error tiles', ...)
-// Mix of ready and loading entries; only ready tiles are evicted.
+it('_evict() aborts in-flight requests on loading tiles', ...)
+// Insert a loading tile, trigger eviction → verify controller.abort() was called.
 
 it('_evict() calls imageBitmap.close() on evicted tiles', ...)
 // Verify close() called for each evicted entry that has an imageBitmap.
