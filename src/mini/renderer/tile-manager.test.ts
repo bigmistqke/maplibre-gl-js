@@ -52,6 +52,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
     manager.update(CAMERA, VIEWPORT)
     expect(projection.getVisibleTiles).toHaveBeenCalledWith(CAMERA, VIEWPORT)
@@ -66,6 +67,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
     manager.update(CAMERA, VIEWPORT)
     expect(fetch).toHaveBeenCalledOnce()
@@ -84,6 +86,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
     manager.update(CAMERA, VIEWPORT)
     manager.update(CAMERA, VIEWPORT)
@@ -102,6 +105,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
 
     // First update: FAKE_TILE is visible → fetch starts
@@ -127,6 +131,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
 
     manager.update(CAMERA, VIEWPORT)
@@ -152,6 +157,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
 
     manager.update(CAMERA, VIEWPORT)
@@ -177,6 +183,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
 
     manager.update(CAMERA, VIEWPORT)
@@ -193,6 +200,7 @@ describe('TileManager', () => {
       tileService,
       projection,
       onTileReady,
+      vi.fn(),  // onEvict
     )
 
     manager.update(CAMERA, VIEWPORT)
@@ -200,5 +208,186 @@ describe('TileManager', () => {
 
     expect(abortSpy).toHaveBeenCalled()
     abortSpy.mockRestore()
+  })
+})
+
+describe('TileManager — eviction', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+    }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('does not evict tiles before updateCacheSize is called', () => {
+    const projection = makeProjection([])
+    const onEvict = vi.fn()
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      onEvict,
+    )
+
+    const tiles = (manager as any)._tiles as Map<string, unknown>
+    for (let i = 0; i < 100; i++) {
+      tiles.set(`tile-${i}`, {
+        status: 'ready',
+        imageBitmap: { close: vi.fn() },
+        controller: new AbortController(),
+      })
+    }
+
+    manager.update(CAMERA, VIEWPORT) // _maxCacheSize = Infinity → no eviction
+    expect(onEvict).not.toHaveBeenCalled()
+    expect(tiles.size).toBe(100)
+  })
+
+  it('evicts oldest inserted tiles first (FIFO order)', () => {
+    const projection = makeProjection([])
+    const onEvict = vi.fn()
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      onEvict,
+    )
+
+    const tiles = (manager as any)._tiles as Map<string, unknown>
+    tiles.set('tile-A', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+    tiles.set('tile-B', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+    tiles.set('tile-C', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+
+    ;(manager as any)._maxCacheSize = 1
+    manager.update(CAMERA, VIEWPORT)
+
+    // A (oldest) and B evicted; C (newest) survives
+    expect(onEvict).toHaveBeenCalledWith('tile-A')
+    expect(onEvict).toHaveBeenCalledWith('tile-B')
+    expect(onEvict).not.toHaveBeenCalledWith('tile-C')
+    expect(tiles.size).toBe(1)
+  })
+
+  it('never evicts tiles currently in the visible set', () => {
+    const projection = makeProjection([FAKE_TILE]) // FAKE_TILE stays visible
+    const onEvict = vi.fn()
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      onEvict,
+    )
+
+    // Pre-populate: FAKE_TILE first (oldest), then two non-visible extras
+    const tiles = (manager as any)._tiles as Map<string, unknown>
+    tiles.set(FAKE_TILE.key, {
+      status: 'ready',
+      imageBitmap: { close: vi.fn() },
+      controller: new AbortController(),
+    })
+    tiles.set('extra-1', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+    tiles.set('extra-2', { status: 'ready', imageBitmap: { close: vi.fn() }, controller: new AbortController() })
+
+    ;(manager as any)._maxCacheSize = 1
+    manager.update(CAMERA, VIEWPORT)
+    // _visibleSet = {FAKE_TILE.key} → FAKE_TILE skipped, extras evicted
+
+    expect(onEvict).not.toHaveBeenCalledWith(FAKE_TILE.key)
+    expect(onEvict).toHaveBeenCalledWith('extra-1')
+    expect(onEvict).toHaveBeenCalledWith('extra-2')
+  })
+
+  it('aborts in-flight requests for evicted loading tiles', () => {
+    const projection = makeProjection([])
+    const onEvict = vi.fn()
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      onEvict,
+    )
+
+    const controller = new AbortController()
+    const abortSpy = vi.spyOn(controller, 'abort')
+    const tiles = (manager as any)._tiles as Map<string, unknown>
+    tiles.set('loading-tile', { status: 'loading', controller })
+
+    ;(manager as any)._maxCacheSize = 0
+    manager.update(CAMERA, VIEWPORT)
+
+    expect(abortSpy).toHaveBeenCalled()
+    expect(onEvict).toHaveBeenCalledWith('loading-tile')
+  })
+
+  it('calls imageBitmap.close() on evicted ready tiles', () => {
+    const projection = makeProjection([])
+    const onEvict = vi.fn()
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      onEvict,
+    )
+
+    const closeSpy = vi.fn()
+    const tiles = (manager as any)._tiles as Map<string, unknown>
+    tiles.set('tile-A', {
+      status: 'ready',
+      imageBitmap: { close: closeSpy },
+      controller: new AbortController(),
+    })
+
+    ;(manager as any)._maxCacheSize = 0
+    manager.update(CAMERA, VIEWPORT)
+
+    expect(closeSpy).toHaveBeenCalled()
+  })
+
+  it('calls onEvict with the correct tile key', () => {
+    const projection = makeProjection([])
+    const onEvict = vi.fn()
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      onEvict,
+    )
+
+    const tiles = (manager as any)._tiles as Map<string, unknown>
+    tiles.set('tile-A', {
+      status: 'ready',
+      imageBitmap: { close: vi.fn() },
+      controller: new AbortController(),
+    })
+
+    ;(manager as any)._maxCacheSize = 0
+    manager.update(CAMERA, VIEWPORT)
+
+    expect(onEvict).toHaveBeenCalledWith('tile-A')
+  })
+
+  it('updateCacheSize computes maxCacheSize from viewport dimensions', () => {
+    const projection = makeProjection([])
+    const manager = new TileManager(
+      'https://t/{z}/{x}/{y}.png',
+      makeTileService(),
+      projection,
+      vi.fn(),
+      vi.fn(),
+    )
+
+    manager.updateCacheSize({ width: 512, height: 512 })
+    // ceil(512/256)+1 = 3, 3 × 3 × 5 = 45
+    expect((manager as any)._maxCacheSize).toBe(45)
   })
 })

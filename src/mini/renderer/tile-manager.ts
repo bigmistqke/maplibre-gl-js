@@ -27,17 +27,27 @@ export class TileManager {
   private _tileService: TileService
   private _projection: Projection
   private _onTileReady: () => void
+  private _maxCacheSize: number = Infinity
+  private _onEvict: (key: string) => void
 
   constructor(
     urlTemplate: string,
     tileService: TileService,
     projection: Projection,
     onTileReady: () => void,
+    onEvict: (key: string) => void,
   ) {
     this._urlTemplate = urlTemplate
     this._tileService = tileService
     this._projection = projection
     this._onTileReady = onTileReady
+    this._onEvict = onEvict
+  }
+
+  updateCacheSize(viewport: Viewport): void {
+    const tilesX = Math.ceil(viewport.width / 256) + 1
+    const tilesY = Math.ceil(viewport.height / 256) + 1
+    this._maxCacheSize = tilesX * tilesY * 5
   }
 
   update(camera: CameraState, viewport: Viewport): void {
@@ -66,6 +76,20 @@ export class TileManager {
       this._tiles.set(key, entry)
 
       this._fetchTile(tileID, controller.signal, entry)
+    }
+
+    this._evict()
+  }
+
+  private _evict(): void {
+    if (this._tiles.size <= this._maxCacheSize) return
+    for (const [key, entry] of this._tiles) {
+      if (this._tiles.size <= this._maxCacheSize) break
+      if (this._visibleSet.has(key)) continue
+      entry.controller.abort()
+      entry.imageBitmap?.close()
+      this._onEvict(key)
+      this._tiles.delete(key)
     }
   }
 
