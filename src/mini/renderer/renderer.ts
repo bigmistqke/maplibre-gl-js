@@ -11,6 +11,7 @@ import { RenderExtensions } from './render-extensions.ts'
 import { TileManager } from './tile-manager.ts'
 import { RasterLayer } from '../layers/raster.ts'
 import { WorkerRasterTileService } from '../layers/raster-worker-service.ts'
+import { WorkerVectorTileService } from '../layers/vector-worker-service.ts'
 
 interface LayerEntry {
   id: string
@@ -104,8 +105,7 @@ export class Renderer implements RendererAPI {
     }
     if (source.type === 'vector') {
       const vectorSource = source as VectorSourceDefinition
-      const svc = vectorSource.tileService
-      if (!svc) throw new Error('vector source requires tileService (WorkerVectorTileService not yet wired)')
+      const svc = vectorSource.tileService ?? new WorkerVectorTileService()
       const tm = new TileManager(
         vectorSource.url,
         svc,
