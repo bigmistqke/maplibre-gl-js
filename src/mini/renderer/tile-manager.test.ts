@@ -20,8 +20,13 @@ const VIEWPORT: Viewport = { width: 512, height: 512 }
 
 function makeProjection(tiles: TileID[]): Projection {
   return {
+    vertexShaderPrelude: 'vec4 projectTile(vec2 p){return vec4(p,0.0,1.0);}',
     getVisibleTiles: vi.fn().mockReturnValue(tiles),
-    getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
+    setTileUniforms: vi.fn(),
+    getMeshForTile: vi.fn().mockReturnValue({
+      vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
+      indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
+    }),
   }
 }
 
