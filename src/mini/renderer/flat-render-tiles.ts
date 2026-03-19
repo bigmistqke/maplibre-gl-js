@@ -5,6 +5,7 @@ export const ELEVATION_PRELUDE = /* glsl */`
 #ifdef TERRAIN3D
 uniform float u_elevation_scale;
 #endif
+#ifndef PROJECT_TILE_WITH_ELEVATION_DEFINED
 vec4 projectTileWithElevation(vec2 posInTile, float elevation) {
 #ifdef TERRAIN3D
   return projectTile(posInTile + vec2(0.0, elevation * u_elevation_scale));
@@ -12,6 +13,7 @@ vec4 projectTileWithElevation(vec2 posInTile, float elevation) {
   return projectTile(posInTile);
 #endif
 }
+#endif
 `
 
 export function flatRenderTiles(internals: RendererInternals): void {

@@ -13,6 +13,16 @@ import { ELEVATION_PRELUDE } from '../../renderer/flat-render-tiles.ts'
 const FBO_SIZE = 512
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
 
+// Orthographic matrix mapping tile coords [0,4096]×[0,4096] → NDC [-1,1]×[-1,1].
+// Used in Pass 1 so each tile fills its 512×512 FBO regardless of camera view.
+// Column-major float32: sx=2/4096, sy=-2/4096, tx=-1, ty=1
+const TILE_ORTHO_MATRIX = new Float32Array([
+  2 / 4096, 0,         0, 0,
+  0,        -2 / 4096, 0, 0,
+  0,        0,         1, 0,
+  -1,       1,         0, 1,
+])
+
 export interface TerrainPluginOptions {
   /** Source ID of the terrain-RGB raster DEM source. */
   source: string
@@ -95,10 +105,9 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
             const program = internals.programs.get((layer.constructor as any).programs?.[0]?.name)
             if (program) {
               gl.useProgram(program)
-              // Use FBO dimensions as the viewport so projection uniforms match the 512×512 FBO
-              internals.projection.setTileUniforms(
-                gl as any, program, srcTileID, internals.camera, { width: FBO_SIZE, height: FBO_SIZE },
-              )
+              // Tile-local ortho: maps [0,4096]×[0,4096] → NDC so the tile fills the FBO.
+              // Camera-view projection would place tiles relative to the camera, not the FBO.
+              gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_matrix'), false, TILE_ORTHO_MATRIX)
             }
             ;(layer as any).draw({
               gl,

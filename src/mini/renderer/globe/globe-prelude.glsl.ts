@@ -147,6 +147,7 @@ vec4 projectTile(vec2 posInTile, vec2 rawPos) {
 // Uses elevation to compute final screenspace projection
 // and **replaces Z** with a custom value that clips geometry
 // on the backfacing side of the planet.
+#define PROJECT_TILE_WITH_ELEVATION_DEFINED
 vec4 projectTileWithElevation(vec2 posInTile, float elevation) {
     return interpolateProjection(posInTile, projectToSphere(posInTile), elevation);
 }
