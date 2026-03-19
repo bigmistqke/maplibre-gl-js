@@ -51,3 +51,8 @@ export interface RendererAPI {
   queryRenderedFeatures(point: ScreenPoint): Feature[]
   setSurface(surface: Surface): void
 }
+
+/** Branded subtype — prevents accidental structural assignment from plain RendererAPI. */
+export interface WebGL2RendererAPI extends RendererAPI {
+  readonly __webgl2: true
+}

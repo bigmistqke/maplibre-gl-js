@@ -1,19 +1,25 @@
 import type { CameraState, AnimationOptions } from './types.ts'
 import type { RendererAPI, LayerInstance, CustomLayer } from './renderer-api.ts'
-import type { Plugin } from './plugin.ts'
 import { CameraController } from './camera.ts'
 
-export interface MapGLOptions {
-  renderer: RendererAPI
+/** Structural type — a plugin is compatible if its onAdd accepts R. */
+export type Plugin<R extends RendererAPI = RendererAPI> = {
+  getElevation?: (lngLat: import('./types.ts').LngLat) => number
+  readonly renderExtension?: import('./render-extension.ts').RenderExtension
+  onAdd?: (map: MapGL<R>, renderer: R) => void
+}
+
+export interface MapGLOptions<R extends RendererAPI = RendererAPI> {
+  renderer: R
   initialCamera?: Partial<CameraState>
 }
 
-export class MapGL {
-  readonly renderer: RendererAPI
+export class MapGL<R extends RendererAPI = RendererAPI> {
+  readonly renderer: R
   private _camera: CameraController
   private _listeners: globalThis.Map<string, Set<Function>> = new globalThis.Map()
 
-  constructor(options: MapGLOptions) {
+  constructor(options: MapGLOptions<R>) {
     this.renderer = options.renderer
     this._camera = new CameraController(
       options.initialCamera ?? {},
@@ -24,7 +30,6 @@ export class MapGL {
         },
       },
     )
-    // Push initial state — CameraController doesn't call onChange on construction
     this.renderer.setCamera(this._camera.getState())
   }
 
@@ -52,12 +57,15 @@ export class MapGL {
     this._camera.setCamera(state, options)
   }
 
-  addPlugin(plugin: Plugin): void {
+  addPlugin(plugin: Plugin<R>): void {
     if (plugin.getElevation) {
       this._camera.setElevationProvider({ getElevation: plugin.getElevation.bind(plugin) })
     }
     if (plugin.renderExtension) {
       this.renderer.addRenderExtension(plugin.renderExtension)
+    }
+    if (plugin.onAdd) {
+      plugin.onAdd(this, this.renderer)
     }
   }
 

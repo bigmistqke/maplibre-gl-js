@@ -1,24 +1,34 @@
 // src/mini/renderer/index.ts
-import type { RendererAPI } from '../core/renderer-api.ts'
+import type { RendererAPI, WebGL2RendererAPI } from '../core/renderer-api.ts'
 import type { Projection } from '../core/projection.ts'
 import { Renderer } from './renderer.ts'
 import { MercatorProjection } from './mercator.ts'
 
-export type { RendererAPI, CustomLayer, CustomLayerRenderArgs } from '../core/renderer-api.ts'
+export type { RendererAPI, WebGL2RendererAPI, CustomLayer, CustomLayerRenderArgs } from '../core/renderer-api.ts'
 
 export interface RendererOptions {
   /** Custom projection — defaults to MercatorProjection (web mercator). */
   projection?: Projection
+  /** WebGL context type — default 'webgl'. Use 'webgl2' for TerrainPlugin. */
+  contextType?: 'webgl' | 'webgl2'
 }
 
-/**
- * Async factory — no constructor+init smell.
- * Accepts an optional projection (default: MercatorProjection).
- * In Phase 3+: accepts OffscreenCanvas for worker-mode rendering.
- */
+export async function createRenderer(
+  canvas: HTMLCanvasElement,
+  options: RendererOptions & { contextType: 'webgl2' },
+): Promise<WebGL2RendererAPI>
+export async function createRenderer(
+  canvas: HTMLCanvasElement,
+  options?: RendererOptions,
+): Promise<RendererAPI>
 export async function createRenderer(
   canvas: HTMLCanvasElement,
   options?: RendererOptions,
 ): Promise<RendererAPI> {
-  return new Renderer(canvas, options?.projection ?? new MercatorProjection())
+  const renderer = new Renderer(
+    canvas,
+    options?.projection ?? new MercatorProjection(),
+    options?.contextType ?? 'webgl',
+  )
+  return renderer as unknown as RendererAPI
 }
