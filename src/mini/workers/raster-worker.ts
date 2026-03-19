@@ -8,15 +8,21 @@ export class RasterWorker {
     const controller = new AbortController()
     this._pending.set(key, controller)
     try {
-      const buf = await fetch(url, { signal: controller.signal }).then(r => r.arrayBuffer())
-      const bitmap = await createImageBitmap(new Blob([buf]))
+      console.log('[RasterWorker] fetching', url)
+      const res = await fetch(url, { signal: controller.signal })
+      console.log('[RasterWorker] response', res.status, res.ok, res.url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const buf = await res.arrayBuffer()
+      console.log('[RasterWorker] arrayBuffer bytes', buf.byteLength)
+      const bitmap = await createImageBitmap(new Blob([buf], { type: 'image/png' }))
+      console.log('[RasterWorker] bitmap created', bitmap.width, bitmap.height)
       if (!this._pending.has(key)) {
         bitmap.close()
         return null
       }
       this._pending.delete(key)
-      return Comlink.transfer(bitmap, [bitmap])
-    } catch {
+      return bitmap
+    } catch (err) {
       this._pending.delete(key)
       return null
     }

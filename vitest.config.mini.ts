@@ -7,6 +7,9 @@ export default defineConfig({
         include: [
             'src/mini/**/*.test.{ts,js}'
         ],
+        exclude: [
+            'src/mini/**/*.browser.test.{ts,js}'
+        ],
         coverage: {
             provider: 'v8',
             reporter: ['json', 'html'],
