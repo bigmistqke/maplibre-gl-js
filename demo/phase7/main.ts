@@ -20,11 +20,11 @@ const renderer = await createRenderer(canvas, { contextType: 'webgl2' })
 const map = new MapGL({
   renderer,
   initialCamera: {
-    // Swiss Alps — good terrain showcase
-    center: { lng: 8.0, lat: 46.5 },
-    zoom: 8,
+    // Innsbruck — matches MapLibre's 3d-terrain.html demo for direct comparison
+    center: { lng: 11.39085, lat: 47.27574 },
+    zoom: 12,
     bearing: 0,
-    pitch: 45,
+    pitch: 70,
     groundElevation: 0,
   },
 })
@@ -37,13 +37,14 @@ map.addSource('osm', {
 })
 map.addLayer(new RasterLayer({ source: 'osm', opacity: 1.0 }))
 
-// DEM source — JAXA AW3D30 terrain-RGB, free, no API key required
+// DEM source — same as MapLibre's 3d-terrain.html demo, tiles available up to zoom 8
 map.addSource('dem', {
   type: 'raster',
   url: 'https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png',
+  maxZoom: 8,
 })
 
-const terrain = new TerrainPlugin({ source: 'dem', exaggeration: 1.5 })
+const terrain = new TerrainPlugin({ source: 'dem', exaggeration: 1 })
 map.addPlugin(terrain)
 
 status.textContent = 'Ready — 3D terrain'

@@ -35,6 +35,8 @@ export class TileManager {
   private _onTileReady: () => void
   private _maxCacheSize: number = Infinity
   private _onEvict: (key: string) => void
+  private _minZoom: number
+  private _maxZoom: number
 
   constructor(
     urlTemplate: string,
@@ -42,12 +44,16 @@ export class TileManager {
     projection: Projection,
     onTileReady: () => void,
     onEvict: (key: string) => void,
+    minZoom = 0,
+    maxZoom = 22,
   ) {
     this._urlTemplate = urlTemplate
     this._tileService = tileService
     this._projection = projection
     this._onTileReady = onTileReady
     this._onEvict = onEvict
+    this._minZoom = minZoom
+    this._maxZoom = maxZoom
   }
 
   updateCacheSize(viewport: Viewport): void {
@@ -57,7 +63,11 @@ export class TileManager {
   }
 
   update(camera: CameraState, viewport: Viewport): void {
-    const visibleTiles = this._projection.getVisibleTiles(camera, viewport)
+    // Clamp zoom to [minZoom, maxZoom] — mirrors MapLibre SourceCache reading maxzoom from tiles.json.
+    // Without clamping, requests above maxZoom 404 and the tile is never ready.
+    const clampedZoom = Math.max(this._minZoom, Math.min(this._maxZoom, camera.zoom))
+    const clampedCamera = clampedZoom === camera.zoom ? camera : { ...camera, zoom: clampedZoom }
+    const visibleTiles = this._projection.getVisibleTiles(clampedCamera, viewport)
     const newVisibleSet = new globalThis.Set(visibleTiles.map(tileKey))
 
     // Compute retain set using MapLibre's strategy: children preferred, parents as fallback.

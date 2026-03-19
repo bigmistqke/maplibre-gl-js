@@ -37,6 +37,8 @@ interface RasterSourceDefinition extends SourceDefinition {
   type: 'raster'
   url: string
   tileSize?: number
+  minZoom?: number
+  maxZoom?: number
   tileService?: TileService  // injected in tests; defaults to WorkerRasterTileService in Task 9
 }
 
@@ -44,6 +46,8 @@ interface VectorSourceDefinition extends SourceDefinition {
   type: 'vector'
   url: string
   tileSize?: number
+  minZoom?: number
+  maxZoom?: number
   tileService?: TileService  // defaults to WorkerVectorTileService (wired in Task 8)
 }
 
@@ -108,6 +112,8 @@ export class Renderer implements RendererAPI {
         this._projection,
         () => this._frameLoop.markDirty(),
         (key) => this._webgl.destroyTexture(key),
+        rasterSource.minZoom,
+        rasterSource.maxZoom,
       )
       this._tileManagers.set(id, tm)
       this._sourceTypes.set(id, 'raster')
@@ -131,6 +137,8 @@ export class Renderer implements RendererAPI {
             (layer as any).evictTile?.(key)
           }
         },
+        vectorSource.minZoom,
+        vectorSource.maxZoom,
       )
       this._tileManagers.set(id, tm)
       this._sourceTypes.set(id, 'vector')
