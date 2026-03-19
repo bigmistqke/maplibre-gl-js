@@ -86,6 +86,7 @@ export class Renderer implements RendererAPI {
     const viewport: Viewport = { width, height }
     for (const tm of this._tileManagers.values()) {
       tm.updateCacheSize(viewport)
+      if (this._camera) tm.update(this._camera, viewport)
     }
     this._frameLoop.markDirty()
   }
@@ -303,11 +304,6 @@ export class Renderer implements RendererAPI {
         const paint = this._styleEvaluator.evaluate(layer, camera.zoom)
         layer.drawBackground({ gl, paint })
       }
-    }
-
-    // Update tile managers before delegating to surface
-    for (const tm of this._tileManagers.values()) {
-      tm.update(camera, viewport)
     }
 
     const internals: RendererInternals = {

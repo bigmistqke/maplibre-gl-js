@@ -31,6 +31,11 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   private _meshIdx: WebGLBuffer | null = null
   private _meshIndexCount = 0
   private _gl: WebGL2RenderingContext | null = null  // set on first renderTiles call
+  // Cached uniform locations (set once after _ensureProgram)
+  private _uMapTexture: WebGLUniformLocation | null = null
+  private _uDem: WebGLUniformLocation | null = null
+  private _uExaggeration: WebGLUniformLocation | null = null
+  private _uElevationScale: WebGLUniformLocation | null = null
 
   constructor(opts: TerrainPluginOptions) {
     this._source = opts.source
@@ -55,12 +60,8 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     const demManager = internals.tileManagers.get(this._source)
     if (!demManager) return
 
-    // Compute union of retained keys for FBO eviction
-    const allRetained = new globalThis.Set<string>()
-    for (const tm of internals.tileManagers.values()) {
-      for (const key of tm.getRetainedKeys()) allRetained.add(key)
-    }
-    this._rttPool.evict(allRetained)
+    // Evict FBOs for DEM tiles no longer retained — keyed by DEM source only
+    this._rttPool.evict(demManager.getRetainedKeys())
 
     const demTiles = demManager.getReadyTiles()
 
@@ -94,8 +95,9 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
             const program = internals.programs.get((layer.constructor as any).programs?.[0]?.name)
             if (program) {
               gl.useProgram(program)
+              // Use FBO dimensions as the viewport so projection uniforms match the 512×512 FBO
               internals.projection.setTileUniforms(
-                gl as any, program, srcTileID, internals.camera, internals.viewport,
+                gl as any, program, srcTileID, internals.camera, { width: FBO_SIZE, height: FBO_SIZE },
               )
             }
             ;(layer as any).draw({
@@ -149,17 +151,17 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       // u_map_texture = FBO color texture (rendered tile layers)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, fbo.texture)
-      gl.uniform1i(gl.getUniformLocation(prog, 'u_map_texture'), 0)
+      gl.uniform1i(this._uMapTexture, 0)
 
       // u_dem = DEM tile texture
       // Use key + ':dem' to avoid collision with visual raster tiles at same coordinates
       gl.activeTexture(gl.TEXTURE1)
       gl.bindTexture(gl.TEXTURE_2D, internals.getOrCreateTexture(tileID.key + ':dem', demData as ImageBitmap))
-      gl.uniform1i(gl.getUniformLocation(prog, 'u_dem'), 1)
+      gl.uniform1i(this._uDem, 1)
 
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_exaggeration'), this._exaggeration)
+      gl.uniform1f(this._uExaggeration, this._exaggeration)
       // u_elevation_scale: convert meters to tile units (rough mercator constant)
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_elevation_scale'), 1.0 / 4096.0)
+      gl.uniform1f(this._uElevationScale, 1.0 / 4096.0)
 
       // Draw terrain mesh (the 32x32 grid VBO, not the projection mesh)
       gl.bindBuffer(gl.ARRAY_BUFFER, this._meshVert!)
@@ -253,6 +255,11 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       throw new Error(`Terrain program link error: ${gl.getProgramInfoLog(prog)}`)
     }
     this._terrainProgram = prog
+    // Cache uniform locations — querying per-frame is wasteful
+    this._uMapTexture = gl.getUniformLocation(prog, 'u_map_texture')
+    this._uDem = gl.getUniformLocation(prog, 'u_dem')
+    this._uExaggeration = gl.getUniformLocation(prog, 'u_exaggeration')
+    this._uElevationScale = gl.getUniformLocation(prog, 'u_elevation_scale')
   }
 
   private _compileShader(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {
