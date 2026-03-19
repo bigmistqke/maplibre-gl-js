@@ -87,6 +87,11 @@ export class Renderer implements RendererAPI {
         (key) => this._webgl.destroyTexture(key),
       )
       this._tileManagers.set(id, tm)
+      if (this._camera) {
+        const viewport: Viewport = { width: this._width, height: this._height }
+        tm.updateCacheSize(viewport)
+        tm.update(this._camera, viewport)
+      }
     }
     this._frameLoop.markDirty()
   }

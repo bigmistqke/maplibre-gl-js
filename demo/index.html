@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MapLibre Mini — Demos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0d;
+      color: #eee;
+      font-family: system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      padding: 40px;
+    }
+    h1 { font-size: 22px; opacity: 0.9; letter-spacing: -0.01em; }
+    h1 span { opacity: 0.35; font-weight: 400; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 280px);
+      gap: 16px;
+    }
+    a.card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 20px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    a.card:hover { border-color: #555; background: #222; }
+    .card-phase { font-size: 11px; opacity: 0.35; text-transform: uppercase; letter-spacing: 0.1em; }
+    .card-title { font-size: 15px; font-weight: 600; }
+    .card-desc { font-size: 12px; opacity: 0.5; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>MapLibre Mini <span>/ demos</span></h1>
+  <div class="grid">
+    <a class="card" href="./phase1/">
+      <span class="card-phase">Phase 1</span>
+      <span class="card-title">Background Layer</span>
+      <span class="card-desc">Solid color fill, camera controls, the render loop.</span>
+    </a>
+    <a class="card" href="./phase2/">
+      <span class="card-phase">Phase 2</span>
+      <span class="card-title">Raster Tiles</span>
+      <span class="card-desc">WebGL tile rendering with MercatorProjection. Tiles fetched on the main thread.</span>
+    </a>
+    <a class="card" href="./phase3/">
+      <span class="card-phase">Phase 3</span>
+      <span class="card-title">Tile Eviction</span>
+      <span class="card-desc">FIFO tile cache with GPU memory eviction. Watch tile count stay bounded as you zoom.</span>
+    </a>
+    <a class="card" href="./phase4/">
+      <span class="card-phase">Phase 4</span>
+      <span class="card-title">Worker Tile Service</span>
+      <span class="card-desc">Tile fetching and ImageBitmap decoding offloaded to a Comlink Web Worker.</span>
+    </a>
+  </div>
+</body>
+</html>

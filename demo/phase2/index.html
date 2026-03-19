@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phase 2 — Raster Tiles</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #eee; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
+    canvas { display: block; flex: 1; }
+    #sidebar {
+      width: 220px;
+      padding: 16px;
+      background: #1a1a1a;
+      border-left: 1px solid #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .back { font-size: 11px; opacity: 0.4; text-decoration: none; color: inherit; }
+    .back:hover { opacity: 0.8; }
+    .phase-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.3; }
+    h2 { font-size: 14px; }
+    label { font-size: 12px; opacity: 0.6; display: block; margin-bottom: 4px; }
+    input[type=range] { width: 100%; accent-color: #4af; }
+    .field { display: flex; flex-direction: column; gap: 2px; }
+    .value { font-size: 11px; opacity: 0.4; }
+    select { width: 100%; background: #222; color: #eee; border: 1px solid #333; border-radius: 4px; padding: 6px; font-size: 12px; }
+    #status { font-size: 11px; opacity: 0.35; margin-top: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div id="sidebar">
+    <a class="back" href="../">← all demos</a>
+    <div>
+      <div class="phase-badge">Phase 2</div>
+      <h2>Raster Tiles</h2>
+    </div>
+    <div class="field">
+      <label>Tile source</label>
+      <select id="source">
+        <option value="osm">OpenStreetMap</option>
+        <option value="satellite">Stamen Terrain</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Opacity</label>
+      <input type="range" id="opacity" min="0" max="1" step="0.01" value="1" />
+      <span class="value" id="opacity-val">1.00</span>
+    </div>
+    <div class="field">
+      <label>Zoom</label>
+      <input type="range" id="zoom" min="0" max="18" step="0.1" value="5" />
+      <span class="value" id="zoom-val">5.0</span>
+    </div>
+    <div id="status">Initializing…</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
