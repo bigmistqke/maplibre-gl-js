@@ -5,8 +5,6 @@ import { GLOBE_PRELUDE } from './globe-prelude.glsl.ts'
 import { SubdivisionGranularityExpression, SubdivisionGranularitySetting } from './subdivision_granularity_settings.ts'
 import { subdividePolygon } from './subdivision.ts'
 import { computeGlobeMatrix, computeGlobeClippingPlane, computeTileMercatorCoords } from './globe-transform.ts'
-import { MercatorProjection } from '../mercator.ts'
-
 // Copied from MapLibre's vertical_perspective_projection.ts (granularitySettingsGlobe)
 const GLOBE_GRANULARITY = new SubdivisionGranularitySetting({
   fill:    new SubdivisionGranularityExpression(128, 2),
@@ -16,7 +14,6 @@ const GLOBE_GRANULARITY = new SubdivisionGranularitySetting({
   circle:  3,
 })
 
-const _mercator = new MercatorProjection()
 const IDENTITY_MATRIX = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1])
 
 export class GlobeProjection implements Projection {
@@ -24,9 +21,42 @@ export class GlobeProjection implements Projection {
 
   private _meshCache = new globalThis.Map<string, TileMesh>()
 
-  getVisibleTiles(camera: CameraState, viewport: Viewport): TileID[] {
-    // MVP: reuse mercator tile coverage; back-facing tiles discarded by clipping plane in shader
-    return _mercator.getVisibleTiles(camera, viewport)
+  getVisibleTiles(camera: CameraState, _viewport: Viewport): TileID[] {
+    const { center, zoom } = camera
+    const z = Math.floor(zoom)
+    const n = Math.pow(2, z)  // tiles per axis
+
+    // At very low zoom all tiles fit easily — skip the hemisphere test
+    if (n <= 8) {
+      const tiles: TileID[] = []
+      for (let x = 0; x < n; x++)
+        for (let y = 0; y < n; y++)
+          tiles.push({ z, x, y, key: `${z}/${x}/${y}` })
+      return tiles
+    }
+
+    // Camera direction as unit vector on the unit sphere
+    const DEG = Math.PI / 180
+    const cLng = center.lng * DEG
+    const cLat = center.lat * DEG
+    const cx = Math.cos(cLat) * Math.cos(cLng)
+    const cy = Math.cos(cLat) * Math.sin(cLng)
+    const cz = Math.sin(cLat)
+
+    // Include any tile whose center dot-product with camera direction > -0.2
+    // (covers the full visible hemisphere + a small buffer for edge tiles).
+    const tiles: TileID[] = []
+    for (let x = 0; x < n; x++) {
+      for (let y = 0; y < n; y++) {
+        const tLng = ((x + 0.5) / n * 360 - 180) * DEG
+        const tLat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / n)))
+        const dot = Math.cos(tLat) * Math.cos(tLng) * cx +
+                    Math.cos(tLat) * Math.sin(tLng) * cy +
+                    Math.sin(tLat) * cz
+        if (dot > -0.2) tiles.push({ z, x, y, key: `${z}/${x}/${y}` })
+      }
+    }
+    return tiles
   }
 
   setTileUniforms(
