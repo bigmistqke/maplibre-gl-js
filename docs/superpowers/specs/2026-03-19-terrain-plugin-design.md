@@ -75,17 +75,27 @@ export interface MeshBuffers {
 
 ## Renderer Changes
 
-### WebGL2 upgrade
+### WebGL2 — terrain only, core stays WebGL1
 
-`WebGLContext` calls `canvas.getContext('webgl2')` instead of `getContext('webgl')`. The `gl` field becomes `WebGL2RenderingContext`. All existing interfaces (`DrawContext`, `RenderContext`, `CustomLayerRenderArgs`) update their `gl` field types to `WebGL2RenderingContext`. WebGL2 is a strict superset — no existing draw call breaks.
+The core renderer stays on `WebGLRenderingContext` (WebGL1). This preserves compatibility with older devices for applications that don't use terrain.
 
-All existing shaders gain a `#version 300 es` header and the syntax migration:
-- `attribute` → `in`
-- `varying` → `out` (vertex) / `in` (fragment)
-- `texture2D(...)` → `texture(...)`
-- `gl_FragColor` → a declared `out vec4 fragColor`
+`TerrainPlugin` requires WebGL2. When `onAdd` is called, it checks:
 
-This is mechanical and applies uniformly to all existing shaders.
+```typescript
+onAdd(_map: MapGL, renderer: RendererAPI): void {
+  const gl = renderer.getGL()  // new method on RendererAPI returning WebGLRenderingContext
+  if (!(gl instanceof WebGL2RenderingContext)) {
+    throw new Error('TerrainPlugin requires a WebGL2 context. Pass { contextType: "webgl2" } to createRenderer.')
+  }
+  renderer.setSurface(this)
+}
+```
+
+`createRenderer` accepts an optional `{ contextType: 'webgl2' | 'webgl' }` option (default `'webgl'`). Applications that need terrain opt in explicitly. All existing shaders, interfaces, and `DrawContext` remain `WebGLRenderingContext` — no migration required.
+
+`RendererInternals.gl` is typed `WebGL2RenderingContext` since `TerrainSurface` is the only consumer of `renderTiles(internals)` that touches WebGL2 APIs. This is a safe narrowing — `TerrainPlugin.onAdd` verified the context is WebGL2 before calling `setSurface`.
+
+`RendererAPI` gains one new method: `getGL(): WebGLRenderingContext` — returns the underlying context so plugins can inspect it.
 
 ### Surface field and setSurface
 
@@ -302,7 +312,7 @@ One new public method: `getRetainedKeys(): Set<string>` — returns the current 
 
 ```
 src/mini/core/surface.ts                  — Surface interface, RendererInternals, FramebufferObject, MeshBuffers
-src/mini/core/renderer-api.ts             — add setSurface(surface: Surface): void
+src/mini/core/renderer-api.ts             — add setSurface(surface: Surface): void, getGL(): WebGLRenderingContext
 src/mini/core/plugin.ts                   — add onAdd?(map, renderer): void
 src/mini/renderer/renderer.ts             — _surface field, setSurface(), WebGL2 upgrade, assemble RendererInternals
 src/mini/renderer/webgl-context.ts        — WebGL2 context, createFramebuffer(), upgrade all gl types
@@ -319,9 +329,9 @@ demo/phase7/
   index.html
 ```
 
-## WebGL2 migration scope
+## WebGL2 scope
 
-All files touching `gl: WebGLRenderingContext` are updated to `gl: WebGL2RenderingContext`. All existing GLSL shaders gain `#version 300 es` and the mechanical syntax migration (`attribute`→`in`, `varying`→appropriate direction, `texture2D`→`texture`, `gl_FragColor`→`out vec4 fragColor`). This is a prerequisite task before terrain work begins.
+MapLibre carries a `WebGLRenderingContext | WebGL2RenderingContext` union throughout and uses `isWebGL2()` to branch at runtime. Mini-clean takes a cleaner stance: the **core is WebGL1, terrain is WebGL2-only**. Applications that don't use terrain continue to work on older devices unchanged. The terrain plugin verifies the context at `onAdd` and throws a descriptive error if WebGL2 is unavailable. No existing shader needs migration.
 
 ## What is explicitly out of scope
 
