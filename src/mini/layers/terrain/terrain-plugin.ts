@@ -143,9 +143,10 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     for (const { tileID, data: demData } of demTiles) {
       const fbo = this._rttPool.getOrCreate(tileID.key, internals)
 
-      // Write stencil for this tile — must set u_matrix on stencil program first
+      // Write stencil for this tile — bind stencil program first, then set uniforms
       const mesh = internals.projection.getMeshForTile(tileID)
       const meshBuffers = internals.getOrCreateMeshBuffers(tileID.key, mesh)
+      gl.useProgram(internals.stencilProgram)
       internals.projection.setTileUniforms(
         gl as any, internals.stencilProgram, tileID, internals.camera, internals.viewport,
       )
