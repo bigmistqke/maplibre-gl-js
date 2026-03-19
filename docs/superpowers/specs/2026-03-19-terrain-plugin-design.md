@@ -122,7 +122,7 @@ export class MapGL<R extends RendererAPI = RendererAPI> {
   readonly renderer: R
 
   constructor(options: MapGLOptions<R>)
-  addPlugin(plugin: CompatiblePlugin<R>): void
+  addPlugin(plugin: Plugin<R>): void
   // ... rest unchanged
 }
 
@@ -132,7 +132,7 @@ export interface MapGLOptions<R extends RendererAPI = RendererAPI> {
 }
 
 // Structural constraint — a plugin is compatible if its onAdd accepts R
-export type CompatiblePlugin<R extends RendererAPI> = {
+export type Plugin<R extends RendererAPI> = {
   getElevation?: (lngLat: LngLat) => number
   renderExtension?: RenderExtension
   onAdd?: (map: MapGL<R>, renderer: R) => void
@@ -245,7 +245,7 @@ renderFrame(): void {
 
 ## Plugin system change
 
-`plugin.ts` is replaced by the `CompatiblePlugin<R>` structural type defined alongside `MapGL`. The old `Plugin` interface is deleted — it was a named interface for what is now captured generically. `MapGL.addPlugin` calls `plugin.onAdd(this, this.renderer)` if present, after the existing elevation/renderExtension wiring. `this.renderer` is already `public readonly` on `MapGL`.
+`plugin.ts` is replaced by the `Plugin<R>` structural type defined alongside `MapGL`. The old `Plugin` interface is deleted — it was a named interface for what is now captured generically. `MapGL.addPlugin` calls `plugin.onAdd(this, this.renderer)` if present, after the existing elevation/renderExtension wiring. `this.renderer` is already `public readonly` on `MapGL`.
 
 ## TerrainPlugin
 
@@ -378,8 +378,8 @@ One new public method: `getRetainedKeys(): Set<string>` — returns the current 
 ```
 src/mini/core/surface.ts                  — Surface interface, RendererInternals, FramebufferObject, MeshBuffers
 src/mini/core/renderer-api.ts             — add WebGL2RendererAPI interface, setSurface()
-src/mini/core/map.ts                      — MapGL<R>, MapGLOptions<R>, CompatiblePlugin<R>; delete Plugin interface
-src/mini/core/plugin.ts                   — deleted (replaced by CompatiblePlugin<R> in map.ts)
+src/mini/core/map.ts                      — MapGL<R>, MapGLOptions<R>, Plugin<R>; delete Plugin interface
+src/mini/core/plugin.ts                   — deleted (replaced by Plugin<R> in map.ts)
 src/mini/renderer/renderer.ts             — _surface field, setSurface(), assemble RendererInternals
 src/mini/renderer/webgl-context.ts        — contextType param, createFramebuffer()
 src/mini/renderer/flat-surface.ts         — FLAT_SURFACE constant
