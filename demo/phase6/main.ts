@@ -65,3 +65,27 @@ map.on('move', (state: { zoom: number; bearing: number; pitch: number }) => {
   pitchInput.value = String(state.pitch.toFixed(0))
   pitchVal.textContent = state.pitch.toFixed(0) + '°'
 })
+
+const rotateBtn = document.getElementById('rotate-btn') as HTMLButtonElement
+let rotating = false
+let lastTime: number | null = null
+
+function rotateFrame(now: number) {
+  if (!rotating) return
+  if (lastTime !== null) {
+    const delta = now - lastTime
+    const current = map.getCamera()
+    map.setCamera({ bearing: (current.bearing + delta * 0.02) % 360 })
+  }
+  lastTime = now
+  requestAnimationFrame(rotateFrame)
+}
+
+rotateBtn.addEventListener('click', () => {
+  rotating = !rotating
+  rotateBtn.classList.toggle('active', rotating)
+  if (rotating) {
+    lastTime = null
+    requestAnimationFrame(rotateFrame)
+  }
+})
