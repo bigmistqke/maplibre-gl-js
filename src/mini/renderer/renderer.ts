@@ -32,6 +32,13 @@ interface RasterSourceDefinition extends SourceDefinition {
   tileService?: TileService  // injected in tests; defaults to WorkerRasterTileService in Task 9
 }
 
+interface VectorSourceDefinition extends SourceDefinition {
+  type: 'vector'
+  url: string
+  tileSize?: number
+  tileService?: TileService  // defaults to WorkerVectorTileService (wired in Task 8)
+}
+
 export class Renderer implements RendererAPI {
   private _webgl: WebGLContext
   private _frameLoop: FrameLoop
@@ -41,6 +48,7 @@ export class Renderer implements RendererAPI {
   private _sources = new globalThis.Map<string, SourceDefinition>()
   private _tileManagers = new globalThis.Map<string, TileManager>()
   private _tileLayers = new globalThis.Map<string, LayerInstance[]>()
+  private _sourceTypes = new globalThis.Map<string, 'raster' | 'vector'>()
   private _camera: CameraState | null = null
   private _projection: Projection
   private _frameIndex = 0
@@ -87,6 +95,26 @@ export class Renderer implements RendererAPI {
         (key) => this._webgl.destroyTexture(key),
       )
       this._tileManagers.set(id, tm)
+      this._sourceTypes.set(id, 'raster')
+      if (this._camera) {
+        const viewport: Viewport = { width: this._width, height: this._height }
+        tm.updateCacheSize(viewport)
+        tm.update(this._camera, viewport)
+      }
+    }
+    if (source.type === 'vector') {
+      const vectorSource = source as VectorSourceDefinition
+      const svc = vectorSource.tileService
+      if (!svc) throw new Error('vector source requires tileService (WorkerVectorTileService not yet wired)')
+      const tm = new TileManager(
+        vectorSource.url,
+        svc,
+        this._projection,
+        () => this._frameLoop.markDirty(),
+        (key) => this._webgl.destroyGeometryBuffers(`tile:${key}`),
+      )
+      this._tileManagers.set(id, tm)
+      this._sourceTypes.set(id, 'vector')
       if (this._camera) {
         const viewport: Viewport = { width: this._width, height: this._height }
         tm.updateCacheSize(viewport)
@@ -103,6 +131,7 @@ export class Renderer implements RendererAPI {
       this._tileManagers.delete(id)
     }
     this._sources.delete(id)
+    this._sourceTypes.delete(id)
     this._frameLoop.markDirty()
   }
 
@@ -220,9 +249,16 @@ export class Renderer implements RendererAPI {
     for (const [sourceId, tileManager] of this._tileManagers) {
       const readyTiles = tileManager.getReadyTiles()
       const layers = this._tileLayers.get(sourceId) ?? []
-      for (const { tileID, imageBitmap } of readyTiles) {
-        const tileTexture = this._webgl.getOrCreateTexture(tileID.key, imageBitmap)
+      const sourceType = this._sourceTypes.get(sourceId) ?? 'raster'
+
+      for (const { tileID, data } of readyTiles) {
         const matrix = this._projection.getTileMatrix(tileID, camera, viewport)
+
+        let tileTexture: WebGLTexture | undefined
+        if (sourceType === 'raster') {
+          tileTexture = this._webgl.getOrCreateTexture(tileID.key, data as ImageBitmap)
+        }
+
         for (const layer of layers) {
           const paint = this._styleEvaluator.evaluate(layer, camera.zoom)
           ;(layer as any).draw({
@@ -234,6 +270,7 @@ export class Renderer implements RendererAPI {
             paint,
             frameIndex: this._frameIndex,
             tileTexture,
+            tileData: sourceType === 'vector' ? data : undefined,
             imageAtlas: {},
             lineDashAtlas: {},
           })

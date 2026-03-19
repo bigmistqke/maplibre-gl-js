@@ -144,6 +144,62 @@ describe('Renderer', () => {
   })
 })
 
+function makeProjection(tiles = [{ z: 10, x: 528, y: 341, key: '10/528/341' }]) {
+  return {
+    getVisibleTiles: vi.fn().mockReturnValue(tiles),
+    getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
+  }
+}
+
+describe('Renderer — Phase 5 vector pipeline', () => {
+  it('addSource with type "vector" creates a TileManager internally', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => setTimeout(cb, 16))
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id))
+    const renderer = new Renderer(makeCanvas(), makeProjection())
+    renderer.addSource('mvt', {
+      type: 'vector',
+      url: 'https://tiles.example.com/{z}/{x}/{y}.pbf',
+      tileService: makeFakeTileService(),
+    })
+    expect((renderer as any)._tileManagers.has('mvt')).toBe(true)
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('renderFrame passes tileData (not tileTexture) to vector layer draw()', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => setTimeout(cb, 16))
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id))
+
+    const fakeBuffer = new ArrayBuffer(100)
+    const tileService = {
+      request: vi.fn().mockResolvedValue([fakeBuffer]),
+      cancel: vi.fn(),
+      destroy: vi.fn(),
+    }
+    const renderer = new Renderer(makeCanvas(), makeProjection())
+    renderer.addSource('mvt', { type: 'vector', url: 'https://t/{z}/{x}/{y}.pbf', tileService })
+    const layer = { id: 'fill', type: 'fill', source: 'mvt', draw: vi.fn() }
+    renderer.addLayer(layer as any)
+    renderer.setCamera({ center: { lng: 0, lat: 0 }, zoom: 5, bearing: 0, pitch: 0, groundElevation: 0 })
+
+    await vi.waitFor(() => {
+      const tm = (renderer as any)._tileManagers.get('mvt')
+      if (tm.getReadyTiles().length === 0) throw new Error('not ready')
+    })
+    renderer.renderFrame()
+
+    expect(layer.draw).toHaveBeenCalled()
+    const ctx = layer.draw.mock.calls[0][0]
+    expect(ctx.tileData).toBe(fakeBuffer)
+    expect(ctx.tileTexture).toBeUndefined()
+
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+})
+
 describe('Renderer — Phase 2 tile pipeline', () => {
   let canvas: ReturnType<typeof makeCanvas>
   let renderer: Renderer
@@ -187,13 +243,6 @@ describe('Renderer — Phase 2 tile pipeline', () => {
     }
     Object.assign(base._gl, extraGL)
     return base
-  }
-
-  function makeProjection(tiles = [{ z: 10, x: 528, y: 341, key: '10/528/341' }]) {
-    return {
-      getVisibleTiles: vi.fn().mockReturnValue(tiles),
-      getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
-    }
   }
 
   beforeEach(() => {
