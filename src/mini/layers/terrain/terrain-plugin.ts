@@ -90,7 +90,33 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     // Evict FBOs for DEM tiles no longer retained — keyed by DEM source only
     this._rttPool.evict(demManager.getRetainedKeys())
 
-    const demTiles = demManager.getReadyTiles()
+    const allDemTiles = demManager.getReadyTiles()
+
+    // Build a non-overlapping tile set matching MapLibre's coveringTiles() guarantee.
+    // getReadyTiles() can return both a parent and its children for the same world area
+    // (the retain set keeps fallbacks alongside freshly-loaded tiles). Overlapping terrain
+    // meshes cause depth conflicts even with LEQUAL + painter's sort.
+    //
+    // Algorithm: iterate the ideal-zoom tile grid; use the exact tile if loaded, otherwise
+    // walk up to the nearest loaded ancestor — same as MapLibre's coveringTiles() fallback logic.
+    // A Map keyed by tile key prevents duplicate parents when multiple children share one.
+    const idealZ = Math.floor(internals.camera.zoom)
+    const tileMap = new Map(allDemTiles.map(t => [t.tileID.key, t]))
+    const selected = new Map<string, typeof allDemTiles[0]>()
+    for (const tileID of internals.projection.getVisibleTiles(internals.camera, internals.viewport)) {
+      if (tileID.z !== idealZ) continue
+      if (tileMap.has(tileID.key)) {
+        selected.set(tileID.key, tileMap.get(tileID.key)!)
+      } else {
+        // Fallback: walk up to find the nearest loaded ancestor
+        for (let pz = idealZ - 1; pz >= 0; pz--) {
+          const dz = idealZ - pz
+          const parentKey = `${pz}/${tileID.x >> dz}/${tileID.y >> dz}`
+          if (tileMap.has(parentKey)) { selected.set(parentKey, tileMap.get(parentKey)!); break }
+        }
+      }
+    }
+    const demTiles = [...selected.values()]
 
     // Fall back to flat rendering while DEM tiles are still loading
     if (demTiles.length === 0) {
@@ -166,15 +192,20 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     // is small; at higher exaggeration we must sort explicitly.
     // Depth along the view direction in tile space: dot((tile_center − cam_center), forward_tile)
     // where forward_tile = (sin(bearing), −cos(bearing)) — bearing 0 = north = −y in tile space.
+    // Painter's sort: further tiles first so closer tiles overwrite with ALWAYS depth func.
+    // Normalise all tile centres to zoom-0 space so coarse+fine tiles compare correctly.
     const { center, bearing: brg = 0 } = internals.camera
-    const tileZ = demTiles[0]?.tileID.z ?? 0
-    const camTx = lngToTileX(center.lng, tileZ)
-    const camTy = latToTileY(center.lat, tileZ)
+    const camNx = lngToTileX(center.lng, 0)
+    const camNy = latToTileY(center.lat, 0)
     const brgRad = brg * Math.PI / 180
     const sinB = Math.sin(brgRad), cosB = Math.cos(brgRad)
     const sortedDemTiles = [...demTiles].sort((a, b) => {
-      const depA = (a.tileID.x + 0.5 - camTx) * sinB - (a.tileID.y + 0.5 - camTy) * cosB
-      const depB = (b.tileID.x + 0.5 - camTx) * sinB - (b.tileID.y + 0.5 - camTy) * cosB
+      const nxA = (a.tileID.x + 0.5) / Math.pow(2, a.tileID.z)
+      const nyA = (a.tileID.y + 0.5) / Math.pow(2, a.tileID.z)
+      const nxB = (b.tileID.x + 0.5) / Math.pow(2, b.tileID.z)
+      const nyB = (b.tileID.y + 0.5) / Math.pow(2, b.tileID.z)
+      const depA = (nxA - camNx) * sinB - (nyA - camNy) * cosB
+      const depB = (nxB - camNx) * sinB - (nyB - camNy) * cosB
       return depB - depA  // descending: further tiles first
     })
 
@@ -188,7 +219,10 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     const numLayers = internals.tileLayers.size
     const maxDepth = 1 - ((numLayers + 2) * numSublayers * depthEpsilon)
     gl.enable(gl.DEPTH_TEST)
-    gl.depthFunc(gl.LEQUAL)  // matches MapLibre's getDepthModeFor3D()
+    // ALWAYS not LEQUAL: back-face culling (below) handles intra-tile self-occlusion on steep
+    // slopes; LEQUAL causes adjacent mesh rows to z-fight at high pitch+exaggeration (their
+    // projected depths are nearly equal). Inter-tile ordering is handled by painter's sort above.
+    gl.depthFunc(gl.ALWAYS)
     gl.depthRange(0, maxDepth)
     gl.clear(gl.DEPTH_BUFFER_BIT)
 
