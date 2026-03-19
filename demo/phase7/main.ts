@@ -37,12 +37,13 @@ map.addSource('osm', {
 })
 map.addLayer(new RasterLayer({ source: 'osm', opacity: 1.0 }))
 
-// DEM source — same as MapLibre's 3d-terrain.html demo, tiles available up to zoom 8
-map.addSource('dem', {
-  type: 'raster',
+// DEM source — decoded in worker (matching MapLibre's RasterDEMTileSource approach).
+// TerrainPlugin.createDEMSource() injects WorkerDEMTileService so tiles arrive as
+// ArrayBuffers with 1px-padded RGBA pixel data rather than ImageBitmaps.
+map.addSource('dem', TerrainPlugin.createDEMSource({
   url: 'https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png',
   maxZoom: 8,
-})
+}))
 
 const terrain = new TerrainPlugin({ source: 'dem', exaggeration: 1 })
 map.addPlugin(terrain)

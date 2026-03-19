@@ -1,20 +1,28 @@
 // src/mini/layers/terrain/terrain-plugin.ts
-import type { LngLat } from '../../core/types.ts'
+import type { LngLat, TileID } from '../../core/types.ts'
 import type { RendererInternals } from '../../core/surface.ts'
+import type { SourceDefinition } from '../../core/renderer-api.ts'
 import type { MapGL } from '../../core/map.ts'
 import type { WebGL2RendererAPI } from '../../core/renderer-api.ts'
 import type { Plugin } from '../../core/map.ts'
 import { RTTPool, FBO_SIZE } from './rtt-pool.ts'
+import { WorkerDEMTileService } from './worker-dem-tile-service.ts'
 import { buildTerrainMesh } from './terrain-mesh.ts'
 import { TERRAIN_VERT, TERRAIN_FRAG } from './terrain-shaders.ts'
 // ELEVATION_PRELUDE defines projectTileWithElevation used by TERRAIN_VERT
 import { ELEVATION_PRELUDE, flatRenderTiles } from '../../renderer/flat-render-tiles.ts'
 import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 
+// Mapbox terrain-RGB unpack factors — matches MapLibre DEMData.getUnpackVector()
+// Shader formula: (texture * 255) * unpack.xyz → rgb.r + rgb.g + rgb.b - unpack.a
+const DEM_UNPACK: [number, number, number, number] = [6553.6, 25.6, 0.1, 10000]
+
 // numSublayers matches MapLibre painter.ts line 127: SourceCache.maxUnderzooming + maxOverzooming + 1
 // (mirrors MAX_UNDERZOOMING=3 + MAX_OVERZOOMING=10 + 1 from tile-manager.ts)
 const NUM_SUBLAYERS = 14
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
+// Header size in the DEM ArrayBuffer: [dim, stride] as two Uint32 values = 8 bytes
+const DEM_HEADER_BYTES = 8
 
 /**
  * Compute an orthographic matrix that renders the portion of srcTile that covers
@@ -60,6 +68,12 @@ export interface TerrainPluginOptions {
   exaggeration?: number
 }
 
+interface DEMTileData {
+  bytes: Uint8Array  // pixel data (RGBA, stride×stride), without the 8-byte header
+  dim: number        // core tile dimension (e.g. 256)
+  stride: number     // dim + 2 (includes 1px padding border)
+}
+
 export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   readonly shaderDefines = ['#define TERRAIN3D']
 
@@ -71,27 +85,79 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   private _meshIdx: WebGLBuffer | null = null
   private _meshIndexCount = 0
   private _gl: WebGL2RenderingContext | null = null  // set on first renderTiles call
+
+  // DEM tile GPU textures — managed directly to control NEAREST filter and lifecycle
+  private _demTextures = new globalThis.Map<string, WebGLTexture>()
+  // DEM tile pixel data for CPU elevation queries (getElevation)
+  private _demData = new globalThis.Map<string, DEMTileData>()
+
   // Cached uniform/attrib locations (set once after _ensureProgram)
   private _uMapTexture: WebGLUniformLocation | null = null
   private _uDem: WebGLUniformLocation | null = null
   private _uExaggeration: WebGLUniformLocation | null = null
+  private _uTerrainUnpack: WebGLUniformLocation | null = null
+  private _uTerrainDim: WebGLUniformLocation | null = null
   private _aPos = -1
   // Per-program u_matrix location cache — stable for program lifetime
-  private _uMatrixCache = new Map<WebGLProgram, WebGLUniformLocation | null>()
+  private _uMatrixCache = new globalThis.Map<WebGLProgram, WebGLUniformLocation | null>()
 
   constructor(opts: TerrainPluginOptions) {
     this._source = opts.source
     this._exaggeration = opts.exaggeration ?? 1.0
   }
 
+  /**
+   * Create a source definition that uses WorkerDEMTileService to decode terrain-RGB
+   * tiles in a worker — matching MapLibre's RasterDEMTileSource approach.
+   * Use this instead of a plain raster source for the DEM source.
+   */
+  static createDEMSource(opts: {
+    url: string
+    minZoom?: number
+    maxZoom?: number
+    tileSize?: number
+  }): SourceDefinition {
+    return { type: 'raster', tileService: new WorkerDEMTileService(), ...opts }
+  }
+
   setExaggeration(value: number): void {
     this._exaggeration = value
   }
 
-  // ElevationProvider — duck-typed by CameraController
+  // ElevationProvider — duck-typed by CameraController.
   // TODO: implement real DEM tile lookup so camera ground-clamping works over mountains.
   // Until then this silently returns 0, so camera elevation clamping treats terrain as flat.
-  getElevation(_lngLat: LngLat): number {
+  //
+  // Port of MapLibre terrain.ts getDEMElevation() — bilinear interpolation in elevation space.
+  getElevation(lngLat: LngLat): number {
+    for (const [key, { bytes, dim, stride }] of this._demData) {
+      const [z, tileX, tileY] = key.split('/').map(Number)
+      const nx = lngToTileX(lngLat.lng, z)
+      const ny = latToTileY(lngLat.lat, z)
+      if (Math.floor(nx) !== tileX || Math.floor(ny) !== tileY) continue
+
+      // Fractional pixel position within tile
+      const px = (nx - tileX) * dim
+      const py = (ny - tileY) * dim
+      const cx = Math.floor(px)
+      const cy = Math.floor(py)
+      const dx = px - cx
+      const dy = py - cy
+
+      // Sample elevation at padded pixel (col, row) — matches MapLibre DEMData.get()
+      const sample = (col: number, row: number): number => {
+        const i = ((row + 1) * stride + (col + 1)) * 4
+        return bytes[i] * DEM_UNPACK[0] + bytes[i + 1] * DEM_UNPACK[1] + bytes[i + 2] * DEM_UNPACK[2] - DEM_UNPACK[3]
+      }
+
+      // Bilinear interpolation in elevation space — matches MapLibre getDEMElevation()
+      return (
+        sample(cx,     cy    ) * (1 - dx) * (1 - dy) +
+        sample(cx + 1, cy    ) * dx       * (1 - dy) +
+        sample(cx,     cy + 1) * (1 - dx) * dy       +
+        sample(cx + 1, cy + 1) * dx       * dy
+      )
+    }
     return 0
   }
 
@@ -106,10 +172,13 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     const demManager = internals.tileManagers.get(this._source)
     if (!demManager) return
 
-    // Evict FBOs for DEM tiles no longer retained — also destroy the ':dem' GPU texture
-    // to avoid a leak (the renderer's onEvict only destroys the bare-key texture).
-    this._rttPool.evict(demManager.getRetainedKeys(), (key) => {
-      internals.destroyTexture(key + ':dem')
+    // Evict FBOs and DEM GPU textures / pixel data for tiles no longer retained
+    const retainedKeys = demManager.getRetainedKeys()
+    this._rttPool.evict(retainedKeys, (key) => {
+      const tex = this._demTextures.get(key)
+      if (tex) gl.deleteTexture(tex)
+      this._demTextures.delete(key)
+      this._demData.delete(key)
     })
 
     const allDemTiles = demManager.getReadyTiles()
@@ -123,8 +192,8 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     // walk up to the nearest loaded ancestor — same as MapLibre's coveringTiles() fallback logic.
     // A Map keyed by tile key prevents duplicate parents when multiple children share one.
     const idealZ = Math.floor(internals.camera.zoom)
-    const tileMap = new Map(allDemTiles.map(t => [t.tileID.key, t]))
-    const selected = new Map<string, typeof allDemTiles[0]>()
+    const tileMap = new globalThis.Map(allDemTiles.map(t => [t.tileID.key, t]))
+    const selected = new globalThis.Map<string, typeof allDemTiles[0]>()
     for (const tileID of internals.projection.getVisibleTiles(internals.camera, internals.viewport)) {
       if (tileID.z !== idealZ) continue
       if (tileMap.has(tileID.key)) {
@@ -261,20 +330,27 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     gl.enableVertexAttribArray(this._aPos)
     gl.vertexAttribPointer(this._aPos, 2, gl.FLOAT, false, 0, 0)
 
+    // u_terrain_unpack is constant for all tiles (mapbox encoding)
+    gl.uniform4fv(this._uTerrainUnpack, DEM_UNPACK)
+
     for (const { tileID, data: demData } of sortedDemTiles) {
       const fbo = this._rttPool.getOrCreate(tileID.key, internals)
+      const demTex = this._getOrCreateDEMTexture(gl, tileID, demData as ArrayBuffer)
 
       internals.projection.setTileUniforms(gl as any, prog, tileID, internals.camera, internals.viewport)
+
+      // u_terrain_dim: unpadded tile dimension (e.g. 256.0)
+      const dem = this._demData.get(tileID.key)
+      gl.uniform1f(this._uTerrainDim, dem ? dem.dim : 256)
 
       // u_map_texture = FBO color texture (rendered tile layers)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, fbo.texture)
       gl.uniform1i(this._uMapTexture, 0)
 
-      // u_dem = DEM tile texture
-      // Use key + ':dem' to avoid collision with visual raster tiles at same coordinates
+      // u_dem = DEM tile texture (NEAREST filter — bilinear done in elevation space by shader)
       gl.activeTexture(gl.TEXTURE1)
-      gl.bindTexture(gl.TEXTURE_2D, internals.getOrCreateTexture(tileID.key + ':dem', demData as ImageBitmap))
+      gl.bindTexture(gl.TEXTURE_2D, demTex)
       gl.uniform1i(this._uDem, 1)
 
       gl.uniform1f(this._uExaggeration, this._exaggeration)
@@ -307,12 +383,15 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   destroy(): void {
     // Free RTT FBOs — RTTPool.destroy() uses internally stored _destroyFn (no internals needed).
     this._rttPool.destroy()
-    // Free mesh buffers and program if we have the gl context from a previous renderTiles call.
     if (this._gl) {
+      // Free DEM GPU textures
+      for (const tex of this._demTextures.values()) this._gl.deleteTexture(tex)
       if (this._meshVert) this._gl.deleteBuffer(this._meshVert)
       if (this._meshIdx) this._gl.deleteBuffer(this._meshIdx)
       if (this._terrainProgram) this._gl.deleteProgram(this._terrainProgram)
     }
+    this._demTextures.clear()
+    this._demData.clear()
     this._terrainProgram = null
     this._meshVert = null
     this._meshIdx = null
@@ -329,6 +408,44 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       )
     }
     renderer.setSurface(this)
+  }
+
+  // Upload the DEM ArrayBuffer to a GPU texture (NEAREST, CLAMP_TO_EDGE) the first time
+  // we see a tile, and cache the pixel bytes for CPU-side getElevation() queries.
+  // Matches MapLibre's terrain.ts Texture upload with premultiply:false + NEAREST filter.
+  private _getOrCreateDEMTexture(
+    gl: WebGL2RenderingContext,
+    tileID: TileID,
+    buffer: ArrayBuffer,
+  ): WebGLTexture {
+    const key = tileID.key
+    const cached = this._demTextures.get(key)
+    if (cached) return cached
+
+    // Parse the 8-byte header: [dim (Uint32), stride (Uint32)]
+    const header = new Uint32Array(buffer, 0, 2)
+    const dim = header[0]
+    const stride = header[1]
+    const bytes = new Uint8Array(buffer, DEM_HEADER_BYTES, stride * stride * 4)
+
+    // Store for CPU-side getElevation()
+    this._demData.set(key, { bytes, dim, stride })
+
+    // Upload as RGBA UNSIGNED_BYTE texture with NEAREST filter — matches MapLibre terrain.ts.
+    // NEAREST avoids interpolating across encoded RGB values; bilinear interpolation is done
+    // in elevation space by the shader's get_elevation() function.
+    const tex = gl.createTexture()!
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, stride, stride, 0, gl.RGBA, gl.UNSIGNED_BYTE, bytes)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    this._demTextures.set(key, tex)
+    return tex
   }
 
   private _ensureMesh(gl: WebGL2RenderingContext): void {
@@ -372,6 +489,8 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     this._uMapTexture = gl.getUniformLocation(prog, 'u_map_texture')
     this._uDem = gl.getUniformLocation(prog, 'u_dem')
     this._uExaggeration = gl.getUniformLocation(prog, 'u_exaggeration')
+    this._uTerrainUnpack = gl.getUniformLocation(prog, 'u_terrain_unpack')
+    this._uTerrainDim = gl.getUniformLocation(prog, 'u_terrain_dim')
     this._aPos = gl.getAttribLocation(prog, 'a_pos')
   }
 
