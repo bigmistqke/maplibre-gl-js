@@ -51,21 +51,27 @@ map.on('move', (state: { zoom: number }) => {
   zoomVal.textContent = state.zoom.toFixed(1)
 })
 
-const toggleFill = document.getElementById('toggle-fill') as HTMLInputElement
-const toggleLines = document.getElementById('toggle-lines') as HTMLInputElement
+let fillVisible = true
+let linesVisible = true
 
-toggleFill.addEventListener('change', () => {
-  if (toggleFill.checked) {
+document.getElementById('toggle-fill')!.addEventListener('change', (e) => {
+  const checked = (e.target as HTMLInputElement).checked
+  if (checked && !fillVisible) {
     map.addLayer(fillLayer)
-  } else {
+    fillVisible = true
+  } else if (!checked && fillVisible) {
     map.removeLayer('fill')
+    fillVisible = false
   }
 })
 
-toggleLines.addEventListener('change', () => {
-  if (toggleLines.checked) {
+document.getElementById('toggle-lines')!.addEventListener('change', (e) => {
+  const checked = (e.target as HTMLInputElement).checked
+  if (checked && !linesVisible) {
     map.addLayer(lineLayer)
-  } else {
+    linesVisible = true
+  } else if (!checked && linesVisible) {
     map.removeLayer('lines')
+    linesVisible = false
   }
 })
