@@ -91,7 +91,16 @@ onAdd(_map: MapGL, renderer: RendererAPI): void {
 }
 ```
 
-`createRenderer` accepts an optional `{ contextType: 'webgl2' | 'webgl' }` option (default `'webgl'`). Applications that need terrain opt in explicitly. All existing shaders, interfaces, and `DrawContext` remain `WebGLRenderingContext` — no migration required.
+`RendererOptions` (in `src/mini/renderer/index.ts`) gains a `contextType` field:
+
+```typescript
+export interface RendererOptions {
+  projection?: Projection
+  contextType?: 'webgl' | 'webgl2'  // default: 'webgl'
+}
+```
+
+`WebGLContext` constructor accepts `contextType` and calls `canvas.getContext(contextType)`. The returned context is stored as `WebGLRenderingContext` (which WebGL2 satisfies as a subtype). Applications that need terrain pass `{ contextType: 'webgl2' }` to `createRenderer`. All existing shaders, interfaces, and `DrawContext` remain `WebGLRenderingContext` — no migration required.
 
 `RendererInternals.gl` is typed `WebGL2RenderingContext` since `TerrainSurface` is the only consumer of `renderTiles(internals)` that touches WebGL2 APIs. This is a safe narrowing — `TerrainPlugin.onAdd` verified the context is WebGL2 before calling `setSurface`.
 
