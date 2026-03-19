@@ -55,17 +55,51 @@ void main() { gl_FragColor = u_color; }
 interface Point { x: number; y: number }
 export interface TessellationResult { vertices: Float32Array; indices: Uint16Array }
 
-export function tessellatePolygon(rings: Point[][]): TessellationResult {
-  const flat: number[] = []
-  const holes: number[] = []
-  let vi = 0
-  for (let r = 0; r < rings.length; r++) {
-    if (r > 0) holes.push(vi)
-    for (const p of rings[r]) { flat.push(p.x, p.y); vi++ }
+/** Shoelace signed area. Negative = clockwise in y-down tile space = outer ring (MVT spec). */
+function signedArea(ring: Point[]): number {
+  let area = 0
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    area += (ring[j].x + ring[i].x) * (ring[j].y - ring[i].y)
   }
+  return area / 2
+}
+
+/**
+ * Tessellate a polygon with support for multi-polygons and holes.
+ * MVT: clockwise rings are outer rings, counter-clockwise rings are holes.
+ * Each new clockwise ring starts a new polygon and is tessellated independently.
+ */
+export function tessellatePolygon(rings: Point[][]): TessellationResult {
+  const allVerts: number[] = []
+  const allIdx: number[] = []
+  let flat: number[] = []
+  let holeIndices: number[] = []
+  let vi = 0
+
+  function flush() {
+    if (flat.length === 0) return
+    const idxOffset = allVerts.length / 2
+    const localIdx = earcut(flat, holeIndices.length ? holeIndices : undefined, 2)
+    for (const v of flat) allVerts.push(v)
+    for (const idx of localIdx) allIdx.push(idx + idxOffset)
+    flat = []
+    holeIndices = []
+    vi = 0
+  }
+
+  for (const ring of rings) {
+    if (signedArea(ring) < 0) {
+      flush()  // CW in tile coords = new outer ring — flush previous polygon first
+    } else {
+      holeIndices.push(vi)  // CCW in tile coords = hole for current outer ring
+    }
+    for (const p of ring) { flat.push(p.x, p.y); vi++ }
+  }
+  flush()
+
   return {
-    vertices: new Float32Array(flat),
-    indices: new Uint16Array(earcut(flat, holes.length ? holes : undefined, 2)),
+    vertices: new Float32Array(allVerts),
+    indices: new Uint16Array(allIdx),
   }
 }
 
