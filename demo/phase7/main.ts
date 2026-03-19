@@ -37,11 +37,10 @@ map.addSource('osm', {
 })
 map.addLayer(new RasterLayer({ source: 'osm', opacity: 1.0 }))
 
-// DEM source — terrain-RGB encoded elevation
-// Replace YOUR_MAPTILER_KEY with a real key from maptiler.com
+// DEM source — JAXA AW3D30 terrain-RGB, free, no API key required
 map.addSource('dem', {
   type: 'raster',
-  url: 'https://api.maptiler.com/tiles/terrain-rgb/{z}/{x}/{y}.png?key=YOUR_MAPTILER_KEY',
+  url: 'https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png',
 })
 
 const terrain = new TerrainPlugin({ source: 'dem', exaggeration: 1.5 })
