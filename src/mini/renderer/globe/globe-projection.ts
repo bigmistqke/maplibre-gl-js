@@ -37,7 +37,7 @@ export class GlobeProjection implements Projection {
     viewport: Viewport,
   ): void {
     const matrix = computeGlobeMatrix(camera, viewport)
-    const clippingPlane = computeGlobeClippingPlane(camera)
+    const clippingPlane = computeGlobeClippingPlane(camera, viewport)
     const mercatorCoords = computeTileMercatorCoords(tileID.z, tileID.x, tileID.y)
 
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projection_matrix'), false, matrix)

@@ -276,6 +276,7 @@ export class Renderer implements RendererAPI {
 
     const viewport: Viewport = { width: this._width, height: this._height }
     for (const [sourceId, tileManager] of this._tileManagers) {
+      tileManager.update(camera, viewport)
       const readyTiles = tileManager.getReadyTiles()
       const layers = this._tileLayers.get(sourceId) ?? []
       const sourceType = this._sourceTypes.get(sourceId) ?? 'raster'

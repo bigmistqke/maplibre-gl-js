@@ -1,3 +1,4 @@
+// @ts-nocheck — verbatim copy from MapLibre; strict errors suppressed intentionally
 import earcut from 'earcut'
 import Point from '@mapbox/point-geometry'
 import type { SubdivisionGranularityExpression } from './subdivision_granularity_settings'
