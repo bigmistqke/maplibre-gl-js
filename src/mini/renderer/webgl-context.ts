@@ -10,7 +10,7 @@ export class WebGLContext {
 
   constructor(canvas: HTMLCanvasElement, contextType: 'webgl' | 'webgl2' = 'webgl') {
     const gl = canvas.getContext(contextType, { antialias: true, stencil: true }) as WebGLRenderingContext
-    if (!gl) throw new Error(`${contextType} not supported`)
+    if (!gl) throw new Error(`${contextType === 'webgl2' ? 'WebGL2' : 'WebGL'} not supported`)
     gl.getExtension?.('OES_element_index_uint')
     this.gl = gl
 
