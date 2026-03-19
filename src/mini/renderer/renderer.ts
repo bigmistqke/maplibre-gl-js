@@ -287,8 +287,10 @@ export class Renderer implements RendererAPI {
         const ref = nextStencilRef++
         if (nextStencilRef > 255) nextStencilRef = 1
 
-        // Phase 1: write stencil mask for this tile (no color output)
-        // IMPORTANT: setTileUniforms BEFORE writeTileStencil
+        // Phase 1: write stencil mask for this tile (no color output).
+        // gl.useProgram must come before setTileUniforms — WebGL silently ignores
+        // uniform calls whose location doesn't belong to the currently active program.
+        gl.useProgram(stencilProg)
         this._projection.setTileUniforms(gl, stencilProg, tileID, camera, viewport)
         this._webgl.writeTileStencil(stencilProg, meshBuffers.vert, meshBuffers.idx, meshBuffers.indexCount, ref)
 
@@ -305,7 +307,10 @@ export class Renderer implements RendererAPI {
         for (const layer of layers) {
           const paint = this._styleEvaluator.evaluate(layer, camera.zoom)
           const program = programs.get((layer.constructor as any).programs?.[0]?.name)
-          if (program) this._projection.setTileUniforms(gl, program, tileID, camera, viewport)
+          if (program) {
+            gl.useProgram(program)
+            this._projection.setTileUniforms(gl, program, tileID, camera, viewport)
+          }
           ;(layer as any).draw({
             gl,
             programs,
