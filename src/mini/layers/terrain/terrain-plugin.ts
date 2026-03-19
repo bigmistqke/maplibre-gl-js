@@ -9,6 +9,7 @@ import { buildTerrainMesh } from './terrain-mesh.ts'
 import { TERRAIN_VERT, TERRAIN_FRAG } from './terrain-shaders.ts'
 // ELEVATION_PRELUDE defines projectTileWithElevation used by TERRAIN_VERT
 import { ELEVATION_PRELUDE, flatRenderTiles } from '../../renderer/flat-render-tiles.ts'
+import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 
 const FBO_SIZE = 512
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
@@ -156,10 +157,26 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
 
     // ── Pass 2: Terrain mesh ─────────────────────────────────────────────────
     // Draw 3D terrain mesh per tile, draping FBO texture over DEM displacement.
-    // No stencil — the elevated terrain mesh doesn't match a flat stencil quad at pitch>0,
-    // causing gaps wherever vertices are displaced. Use depth buffer ordering instead:
-    // sort coarser (lower-z) tiles first so finer tiles overwrite them.
-    const sortedDemTiles = [...demTiles].sort((a, b) => a.tileID.z - b.tileID.z)
+    // No stencil — the elevated terrain mesh doesn't match a flat stencil quad at pitch>0.
+    //
+    // Painter's algorithm (back-to-front) — matches MapLibre's LEQUAL+depth approach.
+    // At pitch, tiles from different rows project to overlapping screen positions, so we must
+    // render further tiles first so that closer tiles correctly overwrite them with LEQUAL.
+    // MapLibre doesn't need an explicit sort at typical exaggeration (1x–2x) because overlap
+    // is small; at higher exaggeration we must sort explicitly.
+    // Depth along the view direction in tile space: dot((tile_center − cam_center), forward_tile)
+    // where forward_tile = (sin(bearing), −cos(bearing)) — bearing 0 = north = −y in tile space.
+    const { center, bearing: brg = 0 } = internals.camera
+    const tileZ = demTiles[0]?.tileID.z ?? 0
+    const camTx = lngToTileX(center.lng, tileZ)
+    const camTy = latToTileY(center.lat, tileZ)
+    const brgRad = brg * Math.PI / 180
+    const sinB = Math.sin(brgRad), cosB = Math.cos(brgRad)
+    const sortedDemTiles = [...demTiles].sort((a, b) => {
+      const depA = (a.tileID.x + 0.5 - camTx) * sinB - (a.tileID.y + 0.5 - camTy) * cosB
+      const depB = (b.tileID.x + 0.5 - camTx) * sinB - (b.tileID.y + 0.5 - camTy) * cosB
+      return depB - depA  // descending: further tiles first
+    })
 
     const prog = this._terrainProgram!
     gl.useProgram(prog)
@@ -171,7 +188,7 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     const numLayers = internals.tileLayers.size
     const maxDepth = 1 - ((numLayers + 2) * numSublayers * depthEpsilon)
     gl.enable(gl.DEPTH_TEST)
-    gl.depthFunc(gl.LEQUAL)
+    gl.depthFunc(gl.LEQUAL)  // matches MapLibre's getDepthModeFor3D()
     gl.depthRange(0, maxDepth)
     gl.clear(gl.DEPTH_BUFFER_BIT)
 
@@ -209,7 +226,7 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     }
 
     gl.disable(gl.CULL_FACE)
-    gl.depthFunc(gl.LESS)
+    gl.depthFunc(gl.LESS)  // restore default
     gl.depthRange(0, 1)
     gl.disable(gl.DEPTH_TEST)
 
