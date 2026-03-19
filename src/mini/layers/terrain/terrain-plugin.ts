@@ -23,18 +23,32 @@ const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
  */
 function tileOrthoMatrix(srcTileID: { z: number; x: number; y: number }, demTileID: { z: number; x: number; y: number }): Float32Array | null {
   const dz = demTileID.z - srcTileID.z
-  if (dz < 0) return null  // src is finer than DEM — not handled
-  const scale = 1 << dz   // 2^dz
-  if ((demTileID.x >> dz) !== srcTileID.x || (demTileID.y >> dz) !== srcTileID.y) return null
-  // Sub-tile position of demTile within srcTile
-  const xi = demTileID.x - (srcTileID.x * scale)
-  const yi = demTileID.y - (srcTileID.y * scale)
-  // Scale and translate so the demTile sub-area of srcTile fills NDC [-1,1]
-  const sx = (2 * scale) / 4096
-  const sy = -(2 * scale) / 4096
-  const tx = -1 - xi * 2
-  const ty = 1 + yi * 2
-  return new Float32Array([sx, 0, 0, 0,  0, sy, 0, 0,  0, 0, 1, 0,  tx, ty, 0, 1])
+
+  if (dz >= 0) {
+    // src is coarser or equal: crop the srcTile to the sub-area that covers demTile
+    const scale = 1 << dz   // 2^dz
+    if ((demTileID.x >> dz) !== srcTileID.x || (demTileID.y >> dz) !== srcTileID.y) return null
+    const xi = demTileID.x - (srcTileID.x * scale)
+    const yi = demTileID.y - (srcTileID.y * scale)
+    const sx = (2 * scale) / 4096
+    const sy = -(2 * scale) / 4096
+    const tx = -1 - xi * 2
+    const ty = 1 + yi * 2
+    return new Float32Array([sx, 0, 0, 0,  0, sy, 0, 0,  0, 0, 1, 0,  tx, ty, 0, 1])
+  } else {
+    // src is finer than DEM (e.g. camera zoom 12, DEM maxZoom 8): src covers a sub-area of demTile.
+    // Scale and translate so srcTile's [0,4096]² maps to its sub-area of the FBO NDC [-1,1]².
+    const dz2 = srcTileID.z - demTileID.z   // positive
+    const scale = 1 << dz2                  // src tiles per DEM tile per axis
+    if ((srcTileID.x >> dz2) !== demTileID.x || (srcTileID.y >> dz2) !== demTileID.y) return null
+    const xi = srcTileID.x - (demTileID.x * scale)
+    const yi = srcTileID.y - (demTileID.y * scale)
+    const sx = 2 / (scale * 4096)
+    const sy = -2 / (scale * 4096)
+    const tx = -1 + (xi * 2) / scale
+    const ty = 1 - (yi * 2) / scale
+    return new Float32Array([sx, 0, 0, 0,  0, sy, 0, 0,  0, 0, 1, 0,  tx, ty, 0, 1])
+  }
 }
 
 export interface TerrainPluginOptions {
