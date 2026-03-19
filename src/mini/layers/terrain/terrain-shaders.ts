@@ -27,6 +27,8 @@ in vec2 v_uv;
 out vec4 fragColor;
 
 void main() {
-  fragColor = texture(u_map_texture, v_uv);
+  // FBO texture Y=0 is at the bottom (OpenGL convention), but the tile was rendered
+  // into the FBO with Y=0 at the top (tile space). Flip v_uv.y to correct the orientation.
+  fragColor = texture(u_map_texture, vec2(v_uv.x, 1.0 - v_uv.y));
 }
 `

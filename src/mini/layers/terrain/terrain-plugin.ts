@@ -13,15 +13,28 @@ import { ELEVATION_PRELUDE } from '../../renderer/flat-render-tiles.ts'
 const FBO_SIZE = 512
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
 
-// Orthographic matrix mapping tile coords [0,4096]×[0,4096] → NDC [-1,1]×[-1,1].
-// Used in Pass 1 so each tile fills its 512×512 FBO regardless of camera view.
-// Column-major float32: sx=2/4096, sy=-2/4096, tx=-1, ty=1
-const TILE_ORTHO_MATRIX = new Float32Array([
-  2 / 4096, 0,         0, 0,
-  0,        -2 / 4096, 0, 0,
-  0,        0,         1, 0,
-  -1,       1,         0, 1,
-])
+/**
+ * Compute an orthographic matrix that renders the portion of srcTile that covers
+ * demTile into the entire FBO [-1,1]×[-1,1]. Returns null if srcTile doesn't cover demTile.
+ *
+ * For an exact match (same z/x/y), this is the standard tile-fill ortho.
+ * For a parent tile (srcTile.z < demTile.z), the matrix crops to the sub-area.
+ */
+function tileOrthoMatrix(srcTileID: { z: number; x: number; y: number }, demTileID: { z: number; x: number; y: number }): Float32Array | null {
+  const dz = demTileID.z - srcTileID.z
+  if (dz < 0) return null  // src is finer than DEM — not handled
+  const scale = 1 << dz   // 2^dz
+  if ((demTileID.x >> dz) !== srcTileID.x || (demTileID.y >> dz) !== srcTileID.y) return null
+  // Sub-tile position of demTile within srcTile
+  const xi = demTileID.x - (srcTileID.x * scale)
+  const yi = demTileID.y - (srcTileID.y * scale)
+  // Scale and translate so the demTile sub-area of srcTile fills NDC [-1,1]
+  const sx = (2 * scale) / 4096
+  const sy = -(2 * scale) / 4096
+  const tx = -1 - xi * 2
+  const ty = 1 + yi * 2
+  return new Float32Array([sx, 0, 0, 0,  0, sy, 0, 0,  0, 0, 1, 0,  tx, ty, 0, 1])
+}
 
 export interface TerrainPluginOptions {
   /** Source ID of the terrain-RGB raster DEM source. */
@@ -50,6 +63,10 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   constructor(opts: TerrainPluginOptions) {
     this._source = opts.source
     this._exaggeration = opts.exaggeration ?? 1.0
+  }
+
+  setExaggeration(value: number): void {
+    this._exaggeration = value
   }
 
   // ElevationProvider — duck-typed by CameraController
@@ -90,7 +107,9 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
         const readyTiles = tileManager.getReadyTiles()
 
         for (const { tileID: srcTileID, data } of readyTiles) {
-          if (srcTileID.key !== tileID.key) continue  // only the matching tile
+          // Accept exact match or ancestor tiles (src at lower zoom covering the DEM tile).
+          const ortho = tileOrthoMatrix(srcTileID, tileID)
+          if (!ortho) continue
 
           const mesh = internals.projection.getMeshForTile(srcTileID)
           const meshBuffers = internals.getOrCreateMeshBuffers(srcTileID.key, mesh)
@@ -105,9 +124,8 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
             const program = internals.programs.get((layer.constructor as any).programs?.[0]?.name)
             if (program) {
               gl.useProgram(program)
-              // Tile-local ortho: maps [0,4096]×[0,4096] → NDC so the tile fills the FBO.
-              // Camera-view projection would place tiles relative to the camera, not the FBO.
-              gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_matrix'), false, TILE_ORTHO_MATRIX)
+              // Tile-local ortho: maps the srcTile's sub-area that covers demTile → NDC [-1,1].
+              gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_matrix'), false, ortho)
             }
             ;(layer as any).draw({
               gl,

@@ -69,7 +69,8 @@ pitchInput.addEventListener('input', () => {
 exaggerationInput.addEventListener('input', () => {
   const v = parseFloat(exaggerationInput.value)
   exaggerationVal.textContent = v.toFixed(1) + '×'
-  // TerrainPlugin doesn't support live exaggeration update yet — reload to see change
+  terrain.setExaggeration(v)
+  map.setCamera(map.getCamera())  // trigger re-render
 })
 
 map.on('move', (state: { zoom: number; pitch: number }) => {
