@@ -8,7 +8,7 @@ import { RTTPool } from './rtt-pool.ts'
 import { buildTerrainMesh } from './terrain-mesh.ts'
 import { TERRAIN_VERT, TERRAIN_FRAG } from './terrain-shaders.ts'
 // ELEVATION_PRELUDE defines projectTileWithElevation used by TERRAIN_VERT
-import { ELEVATION_PRELUDE } from '../../renderer/flat-render-tiles.ts'
+import { ELEVATION_PRELUDE, flatRenderTiles } from '../../renderer/flat-render-tiles.ts'
 
 const FBO_SIZE = 512
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
@@ -58,7 +58,6 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   private _uMapTexture: WebGLUniformLocation | null = null
   private _uDem: WebGLUniformLocation | null = null
   private _uExaggeration: WebGLUniformLocation | null = null
-  private _uElevationScale: WebGLUniformLocation | null = null
 
   constructor(opts: TerrainPluginOptions) {
     this._source = opts.source
@@ -91,6 +90,12 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     this._rttPool.evict(demManager.getRetainedKeys())
 
     const demTiles = demManager.getReadyTiles()
+
+    // Fall back to flat rendering while DEM tiles are still loading
+    if (demTiles.length === 0) {
+      flatRenderTiles(internals)
+      return
+    }
 
     // ── Pass 1: RTT ──────────────────────────────────────────────────────────
     // Render all tile-based layers to per-tile FBOs. No stencil needed (one FBO = one tile).
@@ -193,8 +198,6 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       gl.uniform1i(this._uDem, 1)
 
       gl.uniform1f(this._uExaggeration, this._exaggeration)
-      // u_elevation_scale: convert meters to tile units (rough mercator constant)
-      gl.uniform1f(this._uElevationScale, 1.0 / 4096.0)
 
       // Draw terrain mesh (the 32x32 grid VBO, not the projection mesh)
       gl.bindBuffer(gl.ARRAY_BUFFER, this._meshVert!)
@@ -292,7 +295,6 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     this._uMapTexture = gl.getUniformLocation(prog, 'u_map_texture')
     this._uDem = gl.getUniformLocation(prog, 'u_dem')
     this._uExaggeration = gl.getUniformLocation(prog, 'u_exaggeration')
-    this._uElevationScale = gl.getUniformLocation(prog, 'u_elevation_scale')
   }
 
   private _compileShader(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {

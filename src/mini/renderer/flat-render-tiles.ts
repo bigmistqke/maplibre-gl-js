@@ -2,15 +2,13 @@
 import type { RendererInternals } from '../core/surface.ts'
 
 export const ELEVATION_PRELUDE = /* glsl */`
-#ifdef TERRAIN3D
-uniform float u_elevation_scale;
-#endif
 #ifndef PROJECT_TILE_WITH_ELEVATION_DEFINED
+// elevation is in metres; u_matrix Z-scale converts metres → world pixels.
 vec4 projectTileWithElevation(vec2 posInTile, float elevation) {
 #ifdef TERRAIN3D
-  return projectTile(posInTile + vec2(0.0, elevation * u_elevation_scale));
+  return u_matrix * vec4(posInTile, elevation, 1.0);
 #else
-  return projectTile(posInTile);
+  return u_matrix * vec4(posInTile, 0.0, 1.0);
 #endif
 }
 #endif

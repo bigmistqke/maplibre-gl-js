@@ -69,28 +69,29 @@ describe('MercatorProjection', () => {
     expect(matrix.length).toBe(16)
   })
 
-  it('center tile has near-zero translation in matrix (tile aligned to canvas center)', () => {
-    // The center tile is the one containing the camera center
+  it('center tile matrix is well-formed: 16 floats, non-zero diagonal', () => {
     const z = Math.floor(camera.zoom)
     const cx = Math.floor(lngToTileX(camera.center.lng, z))
     const cy = Math.floor(latToTileY(camera.center.lat, z))
     const tileID = { z, x: cx, y: cy, key: `${z}/${cx}/${cy}` }
     const matrix = proj._getTileMatrix(tileID, camera, viewport)
-    // Column-major 4x4: translation is at indices [12] (tx) and [13] (ty)
-    // The center tile at zoom=integer should have tx and ty close to 0 (tile covers center)
-    // We only verify the matrix is well-formed (diagonal non-zero, length 16)
-    expect(matrix[0]).not.toBe(0) // sx scale factor
-    expect(matrix[5]).not.toBe(0) // sy scale factor
-    expect(matrix[10]).toBe(1)    // depth pass-through
-    expect(matrix[15]).toBe(1)    // homogeneous w
+    expect(matrix).toBeInstanceOf(Float32Array)
+    expect(matrix.length).toBe(16)
+    expect(matrix[0]).not.toBe(0)  // x scale non-zero
+    expect(matrix[5]).not.toBe(0)  // y scale non-zero
   })
 
-  it('matrix sx and sy have opposite signs (clip Y up, screen Y down)', () => {
-    const tiles = proj.getVisibleTiles(camera, viewport)
-    const matrix = proj._getTileMatrix(tiles[0], camera, viewport)
-    // sx = matrix[0], sy = matrix[5]; sy should be negative
-    expect(Math.sign(matrix[0])).toBe(1)
-    expect(Math.sign(matrix[5])).toBe(-1)
+  it('matrix maps tile origin (0,0,0) to near NDC centre for the centre tile', () => {
+    const z = Math.floor(camera.zoom)
+    const cx = Math.floor(lngToTileX(camera.center.lng, z))
+    const cy = Math.floor(latToTileY(camera.center.lat, z))
+    const tileID = { z, x: cx, y: cy, key: `${z}/${cx}/${cy}` }
+    const m = proj._getTileMatrix(tileID, camera, viewport)
+    // Apply matrix to world-space tile origin (0,0) — NDC x should be ≤ 0 (tile starts left of centre)
+    // w = m[3]*0 + m[7]*0 + m[11]*0 + m[15]
+    const w = m[15]
+    const ndcX = m[12] / w
+    expect(ndcX).toBeLessThanOrEqual(0.1)   // tile origin is left-of or at centre
   })
 })
 

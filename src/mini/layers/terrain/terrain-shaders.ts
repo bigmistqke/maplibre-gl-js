@@ -10,12 +10,13 @@ out vec2 v_uv;
 
 void main() {
   vec4 dem = texture(u_dem, a_pos);
-  // Mapbox terrain-RGB decoding
+  // Mapbox terrain-RGB decoding — result is metres above sea level
   float elevation = (dem.r * 255.0 * 65536.0
                    + dem.g * 255.0 * 256.0
                    + dem.b * 255.0) * 0.1 - 10000.0;
   vec2 tilePos = a_pos * 4096.0;
-  gl_Position = projectTileWithElevation(tilePos, elevation * u_exaggeration * u_elevation_scale);
+  // elevation in metres; u_matrix Z-scale (pixelsPerMeter) converts to world pixels
+  gl_Position = projectTileWithElevation(tilePos, elevation * u_exaggeration);
   v_uv = a_pos;
 }
 `

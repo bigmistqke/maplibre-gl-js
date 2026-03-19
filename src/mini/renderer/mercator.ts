@@ -1,4 +1,5 @@
 // src/mini/renderer/mercator.ts
+import { mat4 } from 'gl-matrix'
 import type { CameraState, TileID, TileMesh } from '../core/types.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 
@@ -16,6 +17,14 @@ const FLAT_QUAD_MESH: TileMesh = {
   vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
   indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
 }
+
+const DEG = Math.PI / 180
+const EXTENT = 4096
+const TILE_SIZE = 256
+// Same FOV as globe / MapLibre default
+const FOV = 0.6435011087932844  // Math.atan(1) * 2 ≈ 36.87°
+// Earth circumference in metres (equatorial)
+const EARTH_CIRC = 2 * Math.PI * 6371008.8
 
 export class MercatorProjection implements Projection {
   readonly vertexShaderPrelude = /* glsl */`
@@ -35,9 +44,13 @@ export class MercatorProjection implements Projection {
 
     const maxTile = Math.pow(2, z) - 1
 
+    // Expand the bounding box when pitched so the visible frustum is covered
+    const pitch = camera.pitch ?? 0
+    const extraY = Math.round(pitch / 10)  // ~1 extra tile row per 10° of pitch
+
     const xMin = Math.max(0, Math.floor((cx - width / 2) / tileW))
     const xMax = Math.min(maxTile, Math.floor((cx + width / 2) / tileW))
-    const yMin = Math.max(0, Math.floor((cy - height / 2) / tileW))
+    const yMin = Math.max(0, Math.floor((cy - height / 2) / tileW) - extraY)
     const yMax = Math.min(maxTile, Math.floor((cy + height / 2) / tileW))
 
     const tiles: TileID[] = []
@@ -68,28 +81,52 @@ export class MercatorProjection implements Projection {
   /** @internal Used by setTileUniforms */
   _getTileMatrix(tileID: TileID, camera: CameraState, viewport: Viewport): Float32Array {
     const { center, zoom } = camera
+    const pitch   = camera.pitch   ?? 0
+    const bearing = camera.bearing ?? 0
     const { width, height } = viewport
-    const z = tileID.z
-    const tileW = 256 * Math.pow(2, zoom - z)
 
-    const cx = lngToTileX(center.lng, zoom) * 256
-    const cy = latToTileY(center.lat, zoom) * 256
+    const worldSize = TILE_SIZE * Math.pow(2, zoom)
 
-    // Bake 1/4096 into the matrix so shaders can use raw MVT coords [0,4096]
-    // without a per-vertex division. All scaling is done here in float64.
-    const MVT = 4096
-    const sx = (2 * tileW) / (width * MVT)
-    const sy = -(2 * tileW) / (height * MVT)  // negative: clip Y up, screen Y down
-    const tx = (2 * (tileID.x * tileW - cx)) / width
-    const ty = (2 * (cy - tileID.y * tileW)) / height
+    // Camera-to-centre distance — same formula as globe/MapLibre
+    const cameraToCenterDistance = (height / 2) / Math.tan(FOV / 2)
 
-    // Column-major 4×4 matrix
-    // col0=[sx,0,0,0], col1=[0,sy,0,0], col2=[0,0,1,0], col3=[tx,ty,0,1]
-    return new Float32Array([
-      sx,  0,  0, 0,
-       0, sy,  0, 0,
-       0,  0,  1, 0,
-      tx, ty,  0, 1,
-    ])
+    // Centre in world pixels
+    const cx = lngToTileX(center.lng, zoom) * TILE_SIZE
+    const cy = latToTileY(center.lat, zoom) * TILE_SIZE
+
+    // pixelsPerMeter: scale elevation (in metres) to the same world-pixel units
+    // used for X/Y.  At latitude `lat` the horizontal world spans
+    // EARTH_CIRC * cos(lat) metres over `worldSize` pixels.
+    const latRad = center.lat * DEG
+    const pixelsPerMeter = worldSize / (EARTH_CIRC * Math.cos(latRad))
+
+    const nearZ = 0.5
+    const farZ  = cameraToCenterDistance * 10
+
+    // ── Perspective × view matrix (MapLibre mercator order) ──────────────────
+    // 1. Perspective projection
+    // 2. Flip Y  (world Y increases south; clip Y increases up)
+    // 3. Translate camera back from the centre point
+    // 4. Pitch  — rotate around X to tilt the camera down
+    // 5. Bearing — rotate around Z for compass heading
+    // 6. Translate so the map centre lands at the world origin
+    // 7. Scale Z so elevation in metres maps to world-pixel units
+    const m = mat4.create()
+    mat4.perspective(m as any, FOV, width / height, nearZ, farZ)
+    mat4.scale    (m as any, m as any, [1, -1, 1])
+    mat4.translate(m as any, m as any, [0, 0, -cameraToCenterDistance])
+    mat4.rotateX  (m as any, m as any,  pitch   * DEG)
+    mat4.rotateZ  (m as any, m as any, -bearing * DEG)
+    mat4.translate(m as any, m as any, [-cx, -cy, 0])
+    mat4.scale    (m as any, m as any, [1, 1, pixelsPerMeter])
+
+    // ── Tile matrix: place tile [0,EXTENT]² in world space ───────────────────
+    const tileScale = worldSize / Math.pow(2, tileID.z)
+    const t = mat4.create()
+    mat4.translate(t as any, t as any, [tileID.x * tileScale, tileID.y * tileScale, 0])
+    mat4.scale    (t as any, t as any, [tileScale / EXTENT, tileScale / EXTENT, 1])
+
+    mat4.multiply(m as any, m as any, t as any)
+    return m as Float32Array
   }
 }
