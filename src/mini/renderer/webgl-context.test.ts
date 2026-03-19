@@ -190,3 +190,54 @@ describe('WebGLContext — Phase 2 additions', () => {
     expect(gl.deleteTexture).not.toHaveBeenCalled()
   })
 })
+
+describe('WebGLContext — geometry buffers', () => {
+  let gl: any
+  let canvas: { getContext: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    const base = makeGLMock()
+    gl = Object.assign(base, {
+      createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      deleteBuffer: vi.fn(),
+      ARRAY_BUFFER: 34962,
+      ELEMENT_ARRAY_BUFFER: 34963,
+      STATIC_DRAW: 35044,
+    }) as any
+    canvas = { getContext: vi.fn().mockReturnValue(gl) }
+  })
+
+  it('createGeometryBuffer returns a WebGLBuffer', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const buf = ctx.createGeometryBuffer('tile:10/1/2:fill:verts', new Float32Array([0, 0, 1, 0, 0.5, 1]), gl.ARRAY_BUFFER)
+    expect(buf).toBeDefined()
+    expect(gl.createBuffer).toHaveBeenCalled()
+    expect(gl.bufferData).toHaveBeenCalled()
+  })
+
+  it('createGeometryBuffer returns same buffer for same key', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const data = new Float32Array([0, 0, 1, 0])
+    const b1 = ctx.createGeometryBuffer('key1', data, gl.ARRAY_BUFFER)
+    const b2 = ctx.createGeometryBuffer('key1', data, gl.ARRAY_BUFFER)
+    expect(b1).toBe(b2)
+  })
+
+  it('destroyGeometryBuffers removes all buffers with matching prefix', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const data = new Float32Array([0, 0, 1, 0])
+    ctx.createGeometryBuffer('tile:10/1/2:fill:verts', data, gl.ARRAY_BUFFER)
+    ctx.createGeometryBuffer('tile:10/1/2:fill:idx', data, gl.ARRAY_BUFFER)
+    ctx.createGeometryBuffer('tile:10/5/5:fill:verts', data, gl.ARRAY_BUFFER)
+    ctx.destroyGeometryBuffers('tile:10/1/2')
+    expect(gl.deleteBuffer).toHaveBeenCalledTimes(2)
+  })
+
+  it('destroyGeometryBuffers is a no-op for unknown prefix', () => {
+    const ctx = new WebGLContext(canvas as any)
+    expect(() => ctx.destroyGeometryBuffers('nonexistent')).not.toThrow()
+    expect(gl.deleteBuffer).not.toHaveBeenCalled()
+  })
+})

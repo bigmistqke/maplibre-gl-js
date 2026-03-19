@@ -5,6 +5,7 @@ export class WebGLContext {
   readonly gl: WebGLRenderingContext
   private _programs = new globalThis.Map<string, WebGLProgram>()
   private _textures = new globalThis.Map<string, WebGLTexture>()
+  private _geometryBuffers = new globalThis.Map<string, WebGLBuffer>()
   readonly quadBuffer: WebGLBuffer
 
   readonly programs: ProgramCache = {
@@ -53,6 +54,27 @@ export class WebGLContext {
     if (!tex) return
     this.gl.deleteTexture(tex)
     this._textures.delete(key)
+  }
+
+  createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer {
+    const cached = this._geometryBuffers.get(key)
+    if (cached) return cached
+    const { gl } = this
+    const buf = gl.createBuffer()!
+    gl.bindBuffer(target, buf)
+    gl.bufferData(target, data, gl.STATIC_DRAW)
+    this._geometryBuffers.set(key, buf)
+    return buf
+  }
+
+  destroyGeometryBuffers(prefix: string): void {
+    const { gl } = this
+    for (const [key, buf] of this._geometryBuffers) {
+      if (key.startsWith(prefix)) {
+        gl.deleteBuffer(buf)
+        this._geometryBuffers.delete(key)
+      }
+    }
   }
 
   private _compile(vertSrc: string, fragSrc: string): WebGLProgram {
