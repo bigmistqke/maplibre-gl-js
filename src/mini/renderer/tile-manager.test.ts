@@ -25,10 +25,10 @@ function makeProjection(tiles: TileID[]): Projection {
   }
 }
 
-function makeTileService(bitmap?: ImageBitmap): TileService {
-  const defaultBitmap = bitmap ?? ({ close: vi.fn() } as unknown as ImageBitmap)
+function makeTileService(data?: Transferable): TileService {
+  const defaultData = data ?? ({ close: vi.fn() } as unknown as Transferable)
   return {
-    request: vi.fn().mockResolvedValue([defaultBitmap]),
+    request: vi.fn().mockResolvedValue([defaultData]),
     cancel: vi.fn(),
     destroy: vi.fn(),
   }
@@ -100,8 +100,8 @@ describe('TileManager', () => {
   })
 
   it('getReadyTiles() returns only tiles with status ready that are in current visible set', async () => {
-    const fakeBitmap = { close: vi.fn() } as unknown as ImageBitmap
-    const tileService = makeTileService(fakeBitmap)
+    const fakeData = { close: vi.fn() } as unknown as Transferable
+    const tileService = makeTileService(fakeData)
     const projection = makeProjection([FAKE_TILE])
     const onTileReady = vi.fn()
     const manager = new TileManager(
@@ -120,12 +120,12 @@ describe('TileManager', () => {
     await vi.waitFor(() => expect(onTileReady).toHaveBeenCalled())
     expect(manager.getReadyTiles()).toHaveLength(1)
     expect(manager.getReadyTiles()[0].tileID).toEqual(FAKE_TILE)
-    expect(manager.getReadyTiles()[0].imageBitmap).toBe(fakeBitmap)
+    expect(manager.getReadyTiles()[0].data).toBe(fakeData)
   })
 
   it('getReadyTiles() does not return tiles outside the current visible set', async () => {
-    const fakeBitmap = { close: vi.fn() } as unknown as ImageBitmap
-    const tileService = makeTileService(fakeBitmap)
+    const fakeData = { close: vi.fn() } as unknown as Transferable
+    const tileService = makeTileService(fakeData)
     const projection = makeProjection([FAKE_TILE])
     const onTileReady = vi.fn()
     const manager = new TileManager(
@@ -148,8 +148,8 @@ describe('TileManager', () => {
   })
 
   it('onTileReady callback is called when a tile finishes processing', async () => {
-    const fakeBitmap = { close: vi.fn() } as unknown as ImageBitmap
-    const tileService = makeTileService(fakeBitmap)
+    const fakeData = { close: vi.fn() } as unknown as Transferable
+    const tileService = makeTileService(fakeData)
     const projection = makeProjection([FAKE_TILE])
     const onTileReady = vi.fn()
     const manager = new TileManager(
@@ -200,7 +200,7 @@ describe('TileManager — eviction', () => {
     for (let i = 0; i < 100; i++) {
       tiles.set(`tile-${i}`, {
         status: 'ready',
-        imageBitmap: { close: vi.fn() },
+        data: { close: vi.fn() },
       })
     }
 
@@ -221,9 +221,9 @@ describe('TileManager — eviction', () => {
     )
 
     const tiles = (manager as any)._tiles as Map<string, unknown>
-    tiles.set('tile-A', { status: 'ready', imageBitmap: { close: vi.fn() } })
-    tiles.set('tile-B', { status: 'ready', imageBitmap: { close: vi.fn() } })
-    tiles.set('tile-C', { status: 'ready', imageBitmap: { close: vi.fn() } })
+    tiles.set('tile-A', { status: 'ready', data: { close: vi.fn() } })
+    tiles.set('tile-B', { status: 'ready', data: { close: vi.fn() } })
+    tiles.set('tile-C', { status: 'ready', data: { close: vi.fn() } })
 
     ;(manager as any)._maxCacheSize = 1
     manager.update(CAMERA, VIEWPORT)
@@ -250,10 +250,10 @@ describe('TileManager — eviction', () => {
     const tiles = (manager as any)._tiles as Map<string, unknown>
     tiles.set(FAKE_TILE.key, {
       status: 'ready',
-      imageBitmap: { close: vi.fn() },
+      data: { close: vi.fn() },
     })
-    tiles.set('extra-1', { status: 'ready', imageBitmap: { close: vi.fn() } })
-    tiles.set('extra-2', { status: 'ready', imageBitmap: { close: vi.fn() } })
+    tiles.set('extra-1', { status: 'ready', data: { close: vi.fn() } })
+    tiles.set('extra-2', { status: 'ready', data: { close: vi.fn() } })
 
     ;(manager as any)._maxCacheSize = 1
     manager.update(CAMERA, VIEWPORT)
@@ -286,7 +286,7 @@ describe('TileManager — eviction', () => {
     expect(onEvict).toHaveBeenCalledWith('loading-tile')
   })
 
-  it('calls imageBitmap.close() on evicted ready tiles', () => {
+  it('calls data.close() on evicted ready tiles', () => {
     const projection = makeProjection([])
     const onEvict = vi.fn()
     const manager = new TileManager(
@@ -301,7 +301,7 @@ describe('TileManager — eviction', () => {
     const tiles = (manager as any)._tiles as Map<string, unknown>
     tiles.set('tile-A', {
       status: 'ready',
-      imageBitmap: { close: closeSpy },
+      data: { close: closeSpy },
     })
 
     ;(manager as any)._maxCacheSize = 0
@@ -324,7 +324,7 @@ describe('TileManager — eviction', () => {
     const tiles = (manager as any)._tiles as Map<string, unknown>
     tiles.set('tile-A', {
       status: 'ready',
-      imageBitmap: { close: vi.fn() },
+      data: { close: vi.fn() },
     })
 
     ;(manager as any)._maxCacheSize = 0

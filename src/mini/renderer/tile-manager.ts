@@ -5,7 +5,7 @@ import type { Projection, Viewport } from '../core/projection.ts'
 
 interface TileEntry {
   status: 'loading' | 'ready' | 'error'
-  imageBitmap?: ImageBitmap
+  data?: Transferable
 }
 
 function tileKey(t: TileID): string {
@@ -81,7 +81,7 @@ export class TileManager {
             return
           }
           entry.status = 'ready'
-          entry.imageBitmap = transferables[0] as ImageBitmap
+          entry.data = transferables[0]
           this._onTileReady()
         })
         .catch(() => {
@@ -102,19 +102,21 @@ export class TileManager {
       if (entry.status === 'loading') {
         this._tileService.cancel(key)
       }
-      entry.imageBitmap?.close()
+      if (entry.data && typeof (entry.data as ImageBitmap).close === 'function') {
+        ;(entry.data as ImageBitmap).close()
+      }
       this._onEvict(key)
       this._tiles.delete(key)
     }
   }
 
-  getReadyTiles(): Array<{ tileID: TileID; imageBitmap: ImageBitmap }> {
-    const result: Array<{ tileID: TileID; imageBitmap: ImageBitmap }> = []
+  getReadyTiles(): Array<{ tileID: TileID; data: Transferable }> {
+    const result: Array<{ tileID: TileID; data: Transferable }> = []
     for (const key of this._visibleSet) {
       const entry = this._tiles.get(key)
-      if (entry && entry.status === 'ready' && entry.imageBitmap) {
+      if (entry && entry.status === 'ready' && entry.data !== undefined) {
         const [z, x, y] = key.split('/').map(Number)
-        result.push({ tileID: { z, x, y, key }, imageBitmap: entry.imageBitmap })
+        result.push({ tileID: { z, x, y, key }, data: entry.data })
       }
     }
     return result
@@ -122,7 +124,9 @@ export class TileManager {
 
   destroy(): void {
     for (const entry of this._tiles.values()) {
-      entry.imageBitmap?.close()
+      if (entry.data && typeof (entry.data as ImageBitmap).close === 'function') {
+        ;(entry.data as ImageBitmap).close()
+      }
     }
     this._tileService.destroy()
     this._tiles.clear()
