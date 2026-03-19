@@ -1,4 +1,5 @@
-import type { CameraState, TileID, ResolvedPaintProperties } from './types.ts'
+import type { CameraState, TileID, ResolvedPaintProperties, TileMesh } from './types.ts'
+export type { TileMesh } from './types.ts'
 
 export interface ProgramCache {
   get(name: string): WebGLProgram | undefined
@@ -17,7 +18,8 @@ export interface DrawContext {
   gl: WebGLRenderingContext
   programs: ProgramCache
   tileID: TileID
-  matrix: Float32Array
+  /** Vertex + index buffers for the tile mesh (flat quad for mercator, subdivided for globe). */
+  meshBuffers: { vert: WebGLBuffer; idx: WebGLBuffer; indexCount: number }
   zoom: number
   paint: ResolvedPaintProperties
   frameIndex: number
@@ -36,11 +38,6 @@ export interface RenderContext {
   camera: CameraState
   visibleTiles: TileID[]
   frameIndex: number
-}
-
-export interface TileMesh {
-  vertices: Float32Array
-  indices: Uint16Array
 }
 
 export interface RenderExtension {

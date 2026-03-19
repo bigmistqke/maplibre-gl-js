@@ -42,3 +42,8 @@ export interface ProgramDefinition {
 }
 
 export type ResolvedPaintProperties = Record<string, unknown>
+
+export interface TileMesh {
+  vertices: Float32Array  // MVT coords [0,4096], interleaved xy
+  indices: Uint16Array
+}
