@@ -79,32 +79,98 @@ export interface MeshBuffers {
 
 The core renderer stays on `WebGLRenderingContext` (WebGL1). This preserves compatibility with older devices for applications that don't use terrain.
 
-`TerrainPlugin` requires WebGL2. When `onAdd` is called, it checks:
+#### Type-safe context inference
+
+`RendererAPI` is extended with a narrowed subtype:
 
 ```typescript
-onAdd(_map: MapGL, renderer: RendererAPI): void {
-  const gl = renderer.getGL()  // new method on RendererAPI returning WebGLRenderingContext
-  if (!(gl instanceof WebGL2RenderingContext)) {
-    throw new Error('TerrainPlugin requires a WebGL2 context. Pass { contextType: "webgl2" } to createRenderer.')
-  }
-  renderer.setSurface(this)
+// src/mini/core/renderer-api.ts
+export interface RendererAPI {
+  // ... existing methods
+  setSurface(surface: Surface): void
+}
+
+export interface WebGL2RendererAPI extends RendererAPI {
+  readonly __webgl2: true  // brand — prevents accidental assignment from RendererAPI
 }
 ```
 
-`RendererOptions` (in `src/mini/renderer/index.ts`) gains a `contextType` field:
+`createRenderer` uses overloads so the return type narrows based on `contextType`:
 
 ```typescript
+// src/mini/renderer/index.ts
 export interface RendererOptions {
   projection?: Projection
   contextType?: 'webgl' | 'webgl2'  // default: 'webgl'
 }
+
+export async function createRenderer(
+  canvas: HTMLCanvasElement,
+  options: RendererOptions & { contextType: 'webgl2' }
+): Promise<WebGL2RendererAPI>
+export async function createRenderer(
+  canvas: HTMLCanvasElement,
+  options?: RendererOptions
+): Promise<RendererAPI>
 ```
 
-`WebGLContext` constructor accepts `contextType` and calls `canvas.getContext(contextType)`. The returned context is stored as `WebGLRenderingContext` (which WebGL2 satisfies as a subtype). Applications that need terrain pass `{ contextType: 'webgl2' }` to `createRenderer`. All existing shaders, interfaces, and `DrawContext` remain `WebGLRenderingContext` — no migration required.
+`MapGL` becomes generic on the renderer type:
 
-`RendererInternals.gl` is typed `WebGL2RenderingContext` since `TerrainSurface` is the only consumer of `renderTiles(internals)` that touches WebGL2 APIs. This is a safe narrowing — `TerrainPlugin.onAdd` verified the context is WebGL2 before calling `setSurface`.
+```typescript
+// src/mini/core/map.ts
+export class MapGL<R extends RendererAPI = RendererAPI> {
+  readonly renderer: R
 
-`RendererAPI` gains one new method: `getGL(): WebGLRenderingContext` — returns the underlying context so plugins can inspect it.
+  constructor(options: MapGLOptions<R>)
+  addPlugin(plugin: CompatiblePlugin<R>): void
+  // ... rest unchanged
+}
+
+export interface MapGLOptions<R extends RendererAPI = RendererAPI> {
+  renderer: R
+  initialCamera?: Partial<CameraState>
+}
+
+// Structural constraint — a plugin is compatible if its onAdd accepts R
+export type CompatiblePlugin<R extends RendererAPI> = {
+  getElevation?: (lngLat: LngLat) => number
+  renderExtension?: RenderExtension
+  onAdd?: (map: MapGL<R>, renderer: R) => void
+}
+```
+
+`TerrainPlugin.onAdd` is typed to require `WebGL2RendererAPI`:
+
+```typescript
+onAdd(_map: MapGL<WebGL2RendererAPI>, renderer: WebGL2RendererAPI): void {
+  renderer.setSurface(this)
+}
+```
+
+TypeScript enforces the constraint at the call site:
+
+```typescript
+// ✅ WebGL2 renderer — TerrainPlugin accepted
+const renderer = await createRenderer(canvas, { contextType: 'webgl2' })
+// renderer: WebGL2RendererAPI
+const map = new MapGL({ renderer })
+// map: MapGL<WebGL2RendererAPI>
+map.addPlugin(new TerrainPlugin({ source: 'dem' }))  // ✓
+
+// ❌ WebGL1 renderer — compile-time error
+const renderer = await createRenderer(canvas)
+// renderer: RendererAPI
+const map = new MapGL({ renderer })
+// map: MapGL<RendererAPI>
+map.addPlugin(new TerrainPlugin({ source: 'dem' }))
+// TS error: TerrainPlugin.onAdd requires WebGL2RendererAPI, not RendererAPI
+```
+
+The `__webgl2` brand on `WebGL2RendererAPI` prevents accidental structural equivalence — a plain `RendererAPI` cannot satisfy `WebGL2RendererAPI` even if it happens to have the same methods.
+
+`WebGLContext` constructor accepts `contextType` and calls `canvas.getContext(contextType)`. When `contextType` is `'webgl2'` the `Renderer` class marks itself as `WebGL2RendererAPI` (the brand field is set at construction, not runtime-checked). All existing shaders, interfaces, and `DrawContext` remain `WebGLRenderingContext` — no migration required.
+
+`RendererInternals.gl` is typed `WebGL2RenderingContext` since `TerrainSurface` is the only consumer of `renderTiles(internals)`. The `Renderer` casts `this._webgl.gl as WebGL2RenderingContext` when assembling internals — this is safe because `setSurface` can only be called on a `WebGL2RendererAPI`, which was created with `contextType: 'webgl2'`.
 
 ### Surface field and setSurface
 
@@ -179,18 +245,7 @@ renderFrame(): void {
 
 ## Plugin system change
 
-`Plugin` interface gains an optional `onAdd`:
-
-```typescript
-// src/mini/core/plugin.ts
-export interface Plugin {
-  getElevation?: ElevationProvider['getElevation']
-  renderExtension?: RenderExtension
-  onAdd?(map: MapGL, renderer: RendererAPI): void
-}
-```
-
-`MapGL.addPlugin` calls `plugin.onAdd(this, this.renderer)` if present, after the existing elevation/renderExtension wiring. `this.renderer` is already `public readonly` on `MapGL`.
+`plugin.ts` is replaced by the `CompatiblePlugin<R>` structural type defined alongside `MapGL`. The old `Plugin` interface is deleted — it was a named interface for what is now captured generically. `MapGL.addPlugin` calls `plugin.onAdd(this, this.renderer)` if present, after the existing elevation/renderExtension wiring. `this.renderer` is already `public readonly` on `MapGL`.
 
 ## TerrainPlugin
 
@@ -212,7 +267,8 @@ export class TerrainPlugin {
 
   // Plugin lifecycle — elevation wiring happens automatically via addPlugin's
   // existing getElevation duck-type check; onAdd only needs to set the surface.
-  onAdd(_map: MapGL, renderer: RendererAPI): void {
+  // Typed to require WebGL2RendererAPI — enforced at compile time via MapGL<R>.
+  onAdd(_map: MapGL<WebGL2RendererAPI>, renderer: WebGL2RendererAPI): void {
     renderer.setSurface(this)
   }
 }
@@ -321,10 +377,11 @@ One new public method: `getRetainedKeys(): Set<string>` — returns the current 
 
 ```
 src/mini/core/surface.ts                  — Surface interface, RendererInternals, FramebufferObject, MeshBuffers
-src/mini/core/renderer-api.ts             — add setSurface(surface: Surface): void, getGL(): WebGLRenderingContext
-src/mini/core/plugin.ts                   — add onAdd?(map, renderer): void
-src/mini/renderer/renderer.ts             — _surface field, setSurface(), WebGL2 upgrade, assemble RendererInternals
-src/mini/renderer/webgl-context.ts        — WebGL2 context, createFramebuffer(), upgrade all gl types
+src/mini/core/renderer-api.ts             — add WebGL2RendererAPI interface, setSurface()
+src/mini/core/map.ts                      — MapGL<R>, MapGLOptions<R>, CompatiblePlugin<R>; delete Plugin interface
+src/mini/core/plugin.ts                   — deleted (replaced by CompatiblePlugin<R> in map.ts)
+src/mini/renderer/renderer.ts             — _surface field, setSurface(), assemble RendererInternals
+src/mini/renderer/webgl-context.ts        — contextType param, createFramebuffer()
 src/mini/renderer/flat-surface.ts         — FLAT_SURFACE constant
 src/mini/renderer/flat-render-tiles.ts    — current tile loop extracted verbatim
 src/mini/renderer/tile-manager.ts         — add getRetainedKeys()
