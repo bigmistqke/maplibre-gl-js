@@ -146,6 +146,8 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       nextRef++
       if (nextRef > 255) nextRef = 1
 
+      // writeTileStencil binds the stencil program — re-bind terrain program before setting uniforms
+      gl.useProgram(prog)
       internals.projection.setTileUniforms(gl as any, prog, tileID, internals.camera, internals.viewport)
 
       // u_map_texture = FBO color texture (rendered tile layers)
