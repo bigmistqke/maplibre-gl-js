@@ -4,7 +4,7 @@ import type { Projection } from '../core/projection.ts'
 import { Renderer } from './renderer.ts'
 import { MercatorProjection } from './mercator.ts'
 
-export type { RendererAPI }
+export type { RendererAPI, CustomLayer, CustomLayerRenderArgs } from '../core/renderer-api.ts'
 
 export interface RendererOptions {
   /** Custom projection — defaults to MercatorProjection (web mercator). */

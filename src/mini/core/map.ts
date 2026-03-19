@@ -1,5 +1,5 @@
 import type { CameraState, AnimationOptions } from './types.ts'
-import type { RendererAPI, LayerInstance } from './renderer-api.ts'
+import type { RendererAPI, LayerInstance, CustomLayer } from './renderer-api.ts'
 import type { Plugin } from './plugin.ts'
 import { CameraController } from './camera.ts'
 
@@ -28,7 +28,7 @@ export class MapGL {
     this.renderer.setCamera(this._camera.getState())
   }
 
-  addLayer(layer: LayerInstance, beforeId?: string): void {
+  addLayer(layer: LayerInstance | CustomLayer, beforeId?: string): void {
     this.renderer.addLayer(layer, beforeId)
   }
 

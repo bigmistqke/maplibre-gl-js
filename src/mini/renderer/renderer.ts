@@ -1,6 +1,6 @@
 // src/mini/renderer/renderer.ts
 import type { CameraState, ScreenPoint, Feature, ResolvedPaintProperties } from '../core/types.ts'
-import type { RendererAPI, LayerInstance, SourceDefinition } from '../core/renderer-api.ts'
+import type { RendererAPI, LayerInstance, SourceDefinition, CustomLayer } from '../core/renderer-api.ts'
 import type { RenderExtension, RenderContext, ProgramCache } from '../core/render-extension.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 import type { TileService } from '../core/tile-service.ts'
@@ -12,6 +12,12 @@ import { TileManager } from './tile-manager.ts'
 import { RasterLayer } from '../layers/raster.ts'
 import { WorkerRasterTileService } from '../layers/raster-worker-service.ts'
 import { WorkerVectorTileService } from '../layers/vector-worker-service.ts'
+
+const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
+
+function isCustomLayer(layer: LayerInstance | CustomLayer): layer is CustomLayer {
+  return layer.type === 'custom'
+}
 
 interface LayerEntry {
   id: string
@@ -46,6 +52,7 @@ export class Renderer implements RendererAPI {
   private _styleEvaluator: StyleEvaluator
   private _renderExtensions: RenderExtensions
   private _layers: LayerEntry[] = []
+  private _customLayers: CustomLayer[] = []
   private _sources = new globalThis.Map<string, SourceDefinition>()
   private _tileManagers = new globalThis.Map<string, TileManager>()
   private _tileLayers = new globalThis.Map<string, LayerInstance[]>()
@@ -142,7 +149,17 @@ export class Renderer implements RendererAPI {
     this._frameLoop.markDirty()
   }
 
-  addLayer(layer: LayerInstance, beforeId?: string): void {
+  addLayer(layer: LayerInstance | CustomLayer, beforeId?: string): void {
+    if (isCustomLayer(layer)) {
+      this._customLayers.push(layer)
+      if (layer.onAdd) {
+        const { stencil: _s, layers: _l } = this._getOrCompilePrograms()
+        layer.onAdd(this._webgl.gl, this._projection.vertexShaderPrelude)
+      }
+      this._frameLoop.markDirty()
+      return
+    }
+
     const id = (layer as any).id ?? `__layer_${this._layers.length}`
     if (beforeId) {
       const idx = this._layers.findIndex(e => e.id === beforeId)
@@ -167,6 +184,15 @@ export class Renderer implements RendererAPI {
   }
 
   removeLayer(id: string): void {
+    const customIdx = this._customLayers.findIndex(l => l.id === id)
+    if (customIdx !== -1) {
+      const layer = this._customLayers[customIdx]
+      layer.onRemove?.(this._webgl.gl)
+      this._customLayers.splice(customIdx, 1)
+      this._frameLoop.markDirty()
+      return
+    }
+
     const entry = this._layers.find(e => e.id === id)
     if (entry) {
       const sourceId = (entry.layer as any).source
@@ -330,6 +356,25 @@ export class Renderer implements RendererAPI {
     }
 
     gl.disable(gl.STENCIL_TEST)
+
+    // Custom layers — rendered after all tiles, stencil off
+    if (this._customLayers.length > 0) {
+      const prelude = this._projection.vertexShaderPrelude
+      const proj = this._projection
+      for (const layer of this._customLayers) {
+        layer.render({
+          gl,
+          camera,
+          viewport,
+          vertexShaderPrelude: prelude,
+          setProjectionUniforms: (program: WebGLProgram) => {
+            gl.useProgram(program)
+            proj.setTileUniforms(gl, program, WORLD_TILE, camera, viewport)
+          },
+        })
+      }
+    }
+
     this._renderExtensions.runAfterTiles(renderCtx)
     this._frameIndex++
   }

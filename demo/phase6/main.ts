@@ -3,6 +3,7 @@ import { GlobeProjection } from '../../src/mini/renderer/globe/globe-projection.
 import { MapGL } from '../../src/mini/core/map.ts'
 import { BackgroundLayer } from '../../src/mini/layers/background.ts'
 import { RasterLayer } from '../../src/mini/layers/raster.ts'
+import { MarkersLayer } from './markers-layer.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
 const status = document.getElementById('status')!
@@ -30,6 +31,15 @@ map.addSource('osm', {
   url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 })
 map.addLayer(new RasterLayer({ source: 'osm', opacity: 1.0 }))
+
+// Random markers spread across the globe
+const markers = Array.from({ length: 200 }, () => ({
+  lng: Math.random() * 360 - 180,
+  lat: Math.random() * 140 - 70,
+  size: 8 + Math.random() * 16,
+}))
+map.addLayer(new MarkersLayer('markers', markers))
+
 status.textContent = 'Ready — globe projection with raster tiles'
 
 const zoomInput = document.getElementById('zoom') as HTMLInputElement
