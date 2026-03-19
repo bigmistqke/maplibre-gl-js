@@ -49,6 +49,11 @@ function makeCanvas() {
     createBuffer: vi.fn().mockReturnValue({ _buf: true }),
     bindBuffer: vi.fn(),
     bufferData: vi.fn(),
+    ELEMENT_ARRAY_BUFFER: 34963,
+    UNSIGNED_SHORT: 5123,
+    TRIANGLES: 4,
+    drawElements: vi.fn(),
+    deleteProgram: vi.fn(),
   } as unknown as WebGLRenderingContext
   return { getContext: vi.fn().mockReturnValue(gl), width: 512, height: 512 } as unknown as HTMLCanvasElement
 }

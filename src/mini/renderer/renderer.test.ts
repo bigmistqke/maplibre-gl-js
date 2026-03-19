@@ -59,6 +59,11 @@ function makeCanvas() {
     createBuffer: vi.fn().mockReturnValue({ _buf: true }),
     bindBuffer: vi.fn(),
     bufferData: vi.fn(),
+    ELEMENT_ARRAY_BUFFER: 34963,
+    UNSIGNED_SHORT: 5123,
+    TRIANGLES: 4,
+    drawElements: vi.fn(),
+    deleteProgram: vi.fn(),
   } as unknown as WebGLRenderingContext
   return { getContext: vi.fn().mockReturnValue(gl), width: 512, height: 512, _gl: gl } as any
 }
@@ -73,8 +78,13 @@ describe('Renderer', () => {
     vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id))
     canvas = makeCanvas()
     renderer = new Renderer(canvas, {
+      vertexShaderPrelude: 'vec4 projectTile(vec2 p){return vec4(p,0.0,1.0);}',
       getVisibleTiles: vi.fn().mockReturnValue([]),
-      getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
+      setTileUniforms: vi.fn(),
+      getMeshForTile: vi.fn().mockReturnValue({
+        vertices: new Float32Array([0,0,4096,0,0,4096,4096,4096]),
+        indices: new Uint16Array([0,1,2,1,3,2]),
+      }),
     })
   })
 
@@ -168,8 +178,13 @@ describe('Renderer', () => {
 
 function makeProjection(tiles = [{ z: 10, x: 528, y: 341, key: '10/528/341' }]) {
   return {
+    vertexShaderPrelude: 'vec4 projectTile(vec2 p){return vec4(p,0.0,1.0);}',
     getVisibleTiles: vi.fn().mockReturnValue(tiles),
-    getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
+    setTileUniforms: vi.fn(),
+    getMeshForTile: vi.fn().mockReturnValue({
+      vertices: new Float32Array([0,0,4096,0,0,4096,4096,4096]),
+      indices: new Uint16Array([0,1,2,1,3,2]),
+    }),
   }
 }
 

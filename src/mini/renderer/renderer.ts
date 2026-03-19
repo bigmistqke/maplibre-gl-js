@@ -1,7 +1,7 @@
 // src/mini/renderer/renderer.ts
 import type { CameraState, ScreenPoint, Feature, ResolvedPaintProperties } from '../core/types.ts'
 import type { RendererAPI, LayerInstance, SourceDefinition } from '../core/renderer-api.ts'
-import type { RenderExtension, RenderContext } from '../core/render-extension.ts'
+import type { RenderExtension, RenderContext, ProgramCache } from '../core/render-extension.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 import type { TileService } from '../core/tile-service.ts'
 import { WebGLContext } from './webgl-context.ts'
@@ -55,6 +55,8 @@ export class Renderer implements RendererAPI {
   private _frameIndex = 0
   private _width: number
   private _height: number
+  private _compiledPrograms = new WeakMap<Projection, { layers: ProgramCache; stencil: WebGLProgram }>()
+  private _allPrograms: WebGLProgram[] = []
 
   constructor(canvas: HTMLCanvasElement, projection: Projection) {
     this._width = canvas.width
@@ -79,9 +81,9 @@ export class Renderer implements RendererAPI {
 
   destroy(): void {
     this._frameLoop.stop()
-    for (const tm of this._tileManagers.values()) {
-      tm.destroy()
-    }
+    for (const tm of this._tileManagers.values()) tm.destroy()
+    const { gl } = this._webgl
+    for (const prog of this._allPrograms) gl.deleteProgram?.(prog)
   }
 
   addSource(id: string, source: SourceDefinition): void {
@@ -161,10 +163,6 @@ export class Renderer implements RendererAPI {
     if (typeof (layer as any).onAdd === 'function') {
       ;(layer as any).onAdd(this)
     }
-    const programs = (layer.constructor as any).programs
-    if (programs?.length > 0) {
-      this._webgl.compilePrograms(programs)
-    }
     this._frameLoop.markDirty()
   }
 
@@ -219,6 +217,22 @@ export class Renderer implements RendererAPI {
     return []
   }
 
+  private _getOrCompilePrograms(): { layers: ProgramCache; stencil: WebGLProgram } {
+    if (!this._compiledPrograms.has(this._projection)) {
+      const prelude = this._projection.vertexShaderPrelude
+      const defs = this._layers.flatMap(e => (e.layer.constructor as any).programs ?? [])
+      const layers = this._webgl.compilePrograms(defs, prelude)
+      const stencil = this._webgl.compileStencilProgram(prelude)
+      for (const def of defs) {
+        const p = layers.get(def.name)
+        if (p) this._allPrograms.push(p)
+      }
+      this._allPrograms.push(stencil)
+      this._compiledPrograms.set(this._projection, { layers, stencil })
+    }
+    return this._compiledPrograms.get(this._projection)!
+  }
+
   renderFrame(): void {
     const { gl } = this._webgl
     gl.viewport(0, 0, this._width, this._height)
@@ -231,9 +245,11 @@ export class Renderer implements RendererAPI {
       groundElevation: 0,
     }
 
+    const { layers: programs, stencil: stencilProg } = this._getOrCompilePrograms()
+
     const renderCtx: RenderContext = {
       gl,
-      programs: this._webgl.programs,
+      programs,
       camera,
       visibleTiles: [],
       frameIndex: this._frameIndex,
@@ -265,13 +281,16 @@ export class Renderer implements RendererAPI {
       const sourceType = this._sourceTypes.get(sourceId) ?? 'raster'
 
       for (const { tileID, data } of readyTiles) {
-        const matrix = this._projection.getTileMatrix(tileID, camera, viewport)
+        const mesh = this._projection.getMeshForTile(tileID)
+        const meshBuffers = this._webgl.getOrCreateMeshBuffers(tileID.key, mesh)
 
         const ref = nextStencilRef++
         if (nextStencilRef > 255) nextStencilRef = 1
 
         // Phase 1: write stencil mask for this tile (no color output)
-        this._webgl.writeTileStencil(matrix, ref)
+        // IMPORTANT: setTileUniforms BEFORE writeTileStencil
+        this._projection.setTileUniforms(gl, stencilProg, tileID, camera, viewport)
+        this._webgl.writeTileStencil(stencilProg, meshBuffers.vert, meshBuffers.idx, meshBuffers.indexCount, ref)
 
         // Phase 2: draw layers — only fragments where stencil === ref pass
         gl.stencilFunc(gl.EQUAL, ref, 0xFF)
@@ -285,11 +304,13 @@ export class Renderer implements RendererAPI {
 
         for (const layer of layers) {
           const paint = this._styleEvaluator.evaluate(layer, camera.zoom)
+          const program = programs.get((layer.constructor as any).programs?.[0]?.name)
+          if (program) this._projection.setTileUniforms(gl, program, tileID, camera, viewport)
           ;(layer as any).draw({
             gl,
-            programs: this._webgl.programs,
+            programs,
             tileID,
-            matrix,
+            meshBuffers,
             zoom: camera.zoom,
             paint,
             frameIndex: this._frameIndex,
