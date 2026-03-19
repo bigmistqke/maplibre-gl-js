@@ -1,5 +1,5 @@
 // src/mini/renderer/mercator.test.ts
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { MercatorProjection, lngToTileX, latToTileY } from './mercator.ts'
 
 describe('lngToTileX', () => {
@@ -64,7 +64,7 @@ describe('MercatorProjection', () => {
 
   it('getTileMatrix returns Float32Array of length 16', () => {
     const tiles = proj.getVisibleTiles(camera, viewport)
-    const matrix = proj.getTileMatrix(tiles[0], camera, viewport)
+    const matrix = proj._getTileMatrix(tiles[0], camera, viewport)
     expect(matrix).toBeInstanceOf(Float32Array)
     expect(matrix.length).toBe(16)
   })
@@ -75,7 +75,7 @@ describe('MercatorProjection', () => {
     const cx = Math.floor(lngToTileX(camera.center.lng, z))
     const cy = Math.floor(latToTileY(camera.center.lat, z))
     const tileID = { z, x: cx, y: cy, key: `${z}/${cx}/${cy}` }
-    const matrix = proj.getTileMatrix(tileID, camera, viewport)
+    const matrix = proj._getTileMatrix(tileID, camera, viewport)
     // Column-major 4x4: translation is at indices [12] (tx) and [13] (ty)
     // The center tile at zoom=integer should have tx and ty close to 0 (tile covers center)
     // We only verify the matrix is well-formed (diagonal non-zero, length 16)
@@ -87,9 +87,42 @@ describe('MercatorProjection', () => {
 
   it('matrix sx and sy have opposite signs (clip Y up, screen Y down)', () => {
     const tiles = proj.getVisibleTiles(camera, viewport)
-    const matrix = proj.getTileMatrix(tiles[0], camera, viewport)
+    const matrix = proj._getTileMatrix(tiles[0], camera, viewport)
     // sx = matrix[0], sy = matrix[5]; sy should be negative
     expect(Math.sign(matrix[0])).toBe(1)
     expect(Math.sign(matrix[5])).toBe(-1)
+  })
+})
+
+describe('MercatorProjection — new Projection interface methods', () => {
+  const proj = new MercatorProjection()
+  const camera = { center: { lng: 4.9, lat: 52.37 }, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0 }
+  const viewport = { width: 512, height: 512 }
+  const tileID = { z: 10, x: 525, y: 336, key: '10/525/336' }
+
+  it('vertexShaderPrelude defines projectTile function', () => {
+    expect(proj.vertexShaderPrelude).toContain('projectTile')
+    expect(proj.vertexShaderPrelude).toContain('u_matrix')
+  })
+
+  it('setTileUniforms calls uniformMatrix4fv with u_matrix', () => {
+    const gl = { getUniformLocation: vi.fn().mockReturnValue({}), uniformMatrix4fv: vi.fn() } as any
+    proj.setTileUniforms(gl, {} as any, tileID, camera, viewport)
+    expect(gl.uniformMatrix4fv).toHaveBeenCalledOnce()
+  })
+
+  it('getMeshForTile returns a flat quad with 4 vertices and 6 indices', () => {
+    const mesh = proj.getMeshForTile(tileID)
+    expect(mesh.vertices.length).toBe(8)   // 4 vertices × 2 floats
+    expect(mesh.indices.length).toBe(6)    // 2 triangles × 3 indices
+  })
+
+  it('getMeshForTile always returns the same object (singleton)', () => {
+    expect(proj.getMeshForTile(tileID)).toBe(proj.getMeshForTile({ z:0, x:0, y:0, key:'0/0/0' }))
+  })
+
+  it('getMeshForTile vertices are [0,0, 4096,0, 0,4096, 4096,4096]', () => {
+    const mesh = proj.getMeshForTile(tileID)
+    expect(Array.from(mesh.vertices)).toEqual([0, 0, 4096, 0, 0, 4096, 4096, 4096])
   })
 })
