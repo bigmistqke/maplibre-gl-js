@@ -16,8 +16,6 @@ import { WorkerVectorTileService } from '../layers/vector-worker-service.ts'
 import { FLAT_SURFACE } from './flat-surface.ts'
 import { ELEVATION_PRELUDE } from './flat-render-tiles.ts'
 
-const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
-
 function isCustomLayer(layer: LayerInstance | CustomLayer): layer is CustomLayer {
   return layer.type === 'custom'
 }
@@ -71,6 +69,7 @@ export class Renderer implements RendererAPI {
   private _allPrograms: WebGLProgram[] = []
 
   constructor(canvas: HTMLCanvasElement, projection: Projection, contextType: 'webgl' | 'webgl2' = 'webgl') {
+    this.__webgl2 = contextType === 'webgl2'
     this._width = canvas.width
     this._height = canvas.height
     this._projection = projection
@@ -320,6 +319,7 @@ export class Renderer implements RendererAPI {
       stencilProgram: stencilProg,
       layers: this._layers,
       tileLayers: this._tileLayers,
+      // TODO Task 4: TileManager gains getRetainedKeys() — remove 'as any' then
       tileManagers: this._tileManagers as any,
       sourceTypes: this._sourceTypes,
       customLayers: this._customLayers,
