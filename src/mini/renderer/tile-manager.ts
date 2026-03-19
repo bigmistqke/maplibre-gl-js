@@ -3,7 +3,7 @@ import type { CameraState, TileID } from '../core/types.ts'
 import type { TileService } from '../core/tile-service.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 
-const MAX_FALLBACK_LEVELS = 3
+const MAX_FALLBACK_LEVELS = 8
 
 interface TileEntry {
   status: 'loading' | 'ready' | 'error'
