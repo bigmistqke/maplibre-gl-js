@@ -75,7 +75,8 @@ function rotateFrame(now: number) {
   if (lastTime !== null) {
     const delta = now - lastTime
     const current = map.getCamera()
-    map.setCamera({ bearing: (current.bearing + delta * 0.02) % 360 })
+    const lng = ((current.center.lng + delta * 0.02) + 180) % 360 - 180
+    map.setCamera({ center: { lng, lat: current.center.lat } })
   }
   lastTime = now
   requestAnimationFrame(rotateFrame)
