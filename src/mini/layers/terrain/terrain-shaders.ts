@@ -6,7 +6,6 @@ export const TERRAIN_VERT = /* glsl */`
 in vec2 a_pos;           // grid position [0,1]×[0,1]
 uniform sampler2D u_dem;
 uniform float u_exaggeration;
-uniform float u_elevation_scale;
 out vec2 v_uv;
 
 void main() {
