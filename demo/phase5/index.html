@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phase 5 — Vector Tiles</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #eee; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
+    canvas { display: block; flex: 1; }
+    #sidebar { width: 220px; padding: 16px; background: #1a1a1a; border-left: 1px solid #2a2a2a; display: flex; flex-direction: column; gap: 16px; }
+    .back { font-size: 11px; opacity: 0.4; text-decoration: none; color: inherit; }
+    .back:hover { opacity: 0.8; }
+    .phase-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.3; }
+    h2 { font-size: 14px; }
+    label { font-size: 12px; opacity: 0.6; display: block; margin-bottom: 4px; }
+    input[type=range] { width: 100%; accent-color: #4af; }
+    .field { display: flex; flex-direction: column; gap: 2px; }
+    .value { font-size: 11px; opacity: 0.4; }
+    .layer-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+    .layer-toggle input { accent-color: #4af; }
+    #status { font-size: 11px; opacity: 0.35; margin-top: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div id="sidebar">
+    <a class="back" href="../">← all demos</a>
+    <div>
+      <div class="phase-badge">Phase 5</div>
+      <h2>Vector Tiles</h2>
+    </div>
+    <div class="field">
+      <label>Zoom</label>
+      <input type="range" id="zoom" min="0" max="8" step="0.1" value="1" />
+      <span class="value" id="zoom-val">1.0</span>
+    </div>
+    <div class="field">
+      <label>Layers</label>
+      <label class="layer-toggle"><input type="checkbox" id="toggle-fill" checked /> Fill (countries)</label>
+      <label class="layer-toggle"><input type="checkbox" id="toggle-lines" checked /> Lines (borders)</label>
+    </div>
+    <div id="status">Initializing…</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

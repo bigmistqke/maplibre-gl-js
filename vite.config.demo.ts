@@ -11,6 +11,7 @@ export default defineConfig({
         phase2: resolve(__dirname, 'demo/phase2/index.html'),
         phase3: resolve(__dirname, 'demo/phase3/index.html'),
         phase4: resolve(__dirname, 'demo/phase4/index.html'),
+        phase5: resolve(__dirname, 'demo/phase5/index.html'),
       },
     },
   },
