@@ -111,7 +111,12 @@ export class Renderer implements RendererAPI {
         svc,
         this._projection,
         () => this._frameLoop.markDirty(),
-        (key) => this._webgl.destroyGeometryBuffers(`tile:${key}`),
+        (key) => {
+          this._webgl.destroyGeometryBuffers(`tile:${key}`)
+          for (const layer of this._tileLayers.get(id) ?? []) {
+            (layer as any).evictTile?.(key)
+          }
+        },
       )
       this._tileManagers.set(id, tm)
       this._sourceTypes.set(id, 'vector')

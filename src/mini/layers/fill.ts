@@ -127,7 +127,6 @@ export class FillLayer {
   readonly opacity: number
 
   private _tileBuffers = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number }>()
-  private _decoded = new globalThis.Set<string>()
   private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
 
   constructor(options: FillLayerOptions) {
@@ -141,6 +140,10 @@ export class FillLayer {
     this._webgl = (renderer as any)._webgl
   }
 
+  evictTile(key: string): void {
+    this._tileBuffers.delete(key)
+  }
+
   draw(ctx: DrawContext): void {
     const { gl, programs, matrix, paint, tileID, tileData } = ctx
     if (!tileData) return
@@ -148,8 +151,7 @@ export class FillLayer {
     if (!program) return
 
     const key = tileID.key
-    if (!this._decoded.has(key)) {
-      this._decoded.add(key)
+    if (!this._tileBuffers.has(key)) {
       const tile = new VectorTile(new Pbf(tileData as ArrayBuffer))
       const layer = tile.layers[this.sourceLayer]
       if (!layer || layer.length === 0) return
