@@ -7,6 +7,9 @@ import { playwright } from '@vitest/browser-playwright'
 const FAKE_PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC'
 
+// Empty PBF buffer for vector tile tests.
+const FAKE_PBF = Buffer.alloc(0)
+
 function testTileServerPlugin(): Plugin {
   return {
     name: 'test-tile-server',
@@ -16,6 +19,10 @@ function testTileServerPlugin(): Plugin {
         if (req.url.startsWith('/error')) {
           res.statusCode = 500
           res.end()
+        } else if (req.url.endsWith('.pbf')) {
+          res.setHeader('Content-Type', 'application/x-protobuf')
+          res.setHeader('Content-Length', '0')
+          res.end(FAKE_PBF)
         } else {
           const png = Buffer.from(FAKE_PNG_B64, 'base64')
           res.setHeader('Content-Type', 'image/png')
