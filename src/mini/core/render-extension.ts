@@ -23,6 +23,10 @@ export interface DrawContext {
   frameIndex: number
   imageAtlas: ImageAtlas
   lineDashAtlas: LineDashAtlas
+  /** Texture for raster layers. Optional — vector layers will not have this. */
+  tileTexture?: WebGLTexture
+  /** Raw tile data (ArrayBuffer for vector tiles). Optional — raster layers will not have this. */
+  tileData?: Transferable
 }
 
 /** Passed to RenderExtension hooks and full-frame layers. */
