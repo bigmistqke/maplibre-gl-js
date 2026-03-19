@@ -8,13 +8,14 @@ import Pbf from 'pbf'
 const lineVert = `
 attribute vec2 a_pos;
 uniform mat4 u_matrix;
-void main() { gl_Position = u_matrix * vec4(a_pos / 4096.0, 0.0, 1.0); }
+void main() { gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }
 `
 const lineFrag = `
 precision mediump float;
 uniform vec4 u_color;
 void main() { gl_FragColor = u_color; }
 `
+
 
 function parseColor(c: string): [number, number, number, number] {
   const h = c.replace('#', '')
@@ -64,7 +65,7 @@ export class LineLayer {
       const verts: number[] = []
       for (let i = 0; i < layer.length; i++) {
         const feat = layer.feature(i)
-        if (feat.type !== 2) continue
+        if (feat.type !== 2 && feat.type !== 3) continue
         for (const ring of feat.loadGeometry()) {
           for (let j = 0; j < ring.length - 1; j++) {
             verts.push(ring[j].x, ring[j].y, ring[j+1].x, ring[j+1].y)

@@ -44,7 +44,7 @@ describe('WebGLContext', () => {
 
   it('calls canvas.getContext("webgl")', () => {
     new WebGLContext(canvas as any)
-    expect(canvas.getContext).toHaveBeenCalledWith('webgl')
+    expect(canvas.getContext).toHaveBeenCalledWith('webgl', { antialias: true })
   })
 
   it('throws if WebGL is not supported', () => {

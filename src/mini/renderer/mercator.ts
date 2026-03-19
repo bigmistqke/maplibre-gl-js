@@ -47,8 +47,11 @@ export class MercatorProjection implements Projection {
     const cx = lngToTileX(center.lng, zoom) * 256
     const cy = latToTileY(center.lat, zoom) * 256
 
-    const sx = (2 * tileW) / width
-    const sy = -(2 * tileW) / height  // negative: clip Y up, screen Y down
+    // Bake 1/4096 into the matrix so shaders can use raw MVT coords [0,4096]
+    // without a per-vertex division. All scaling is done here in float64.
+    const MVT = 4096
+    const sx = (2 * tileW) / (width * MVT)
+    const sy = -(2 * tileW) / (height * MVT)  // negative: clip Y up, screen Y down
     const tx = (2 * (tileID.x * tileW - cx)) / width
     const ty = (2 * (cy - tileID.y * tileW)) / height
 

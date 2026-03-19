@@ -13,8 +13,9 @@ export class WebGLContext {
   }
 
   constructor(canvas: HTMLCanvasElement) {
-    const gl = canvas.getContext('webgl')
+    const gl = canvas.getContext('webgl', { antialias: true })
     if (!gl) throw new Error('WebGL not supported')
+    gl.getExtension?.('OES_element_index_uint')
     this.gl = gl
 
     // Unit quad VBO — vertices covering [0,1]² as TRIANGLE_STRIP

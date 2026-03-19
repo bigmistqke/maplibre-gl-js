@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phase 5 — MapLibre GL JS Comparison</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #eee; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
+    #map { flex: 1; }
+    #sidebar { width: 220px; padding: 16px; background: #1a1a1a; border-left: 1px solid #2a2a2a; display: flex; flex-direction: column; gap: 16px; }
+    .back { font-size: 11px; opacity: 0.4; text-decoration: none; color: inherit; }
+    .back:hover { opacity: 0.8; }
+    .phase-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.3; }
+    h2 { font-size: 14px; }
+    p { font-size: 12px; opacity: 0.5; line-height: 1.5; }
+    #status { font-size: 11px; opacity: 0.35; margin-top: auto; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="sidebar">
+    <a class="back" href="../">← all demos</a>
+    <div>
+      <div class="phase-badge">Phase 5 — Reference</div>
+      <h2>MapLibre GL JS</h2>
+    </div>
+    <p>Same tile source and style as the mini renderer demo — use this to compare rendering quality.</p>
+    <p>Source: demotiles.maplibre.org</p>
+    <div id="status">Loading…</div>
+  </div>
+  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+  <script>
+    const map = new maplibregl.Map({
+      container: 'map',
+      center: [0, 20],
+      zoom: 1,
+      style: {
+        version: 8,
+        sources: {
+          mvt: {
+            type: 'vector',
+            tiles: ['https://demotiles.maplibre.org/tiles/{z}/{x}/{y}.pbf'],
+            minzoom: 0,
+            maxzoom: 6,
+          },
+        },
+        layers: [
+          {
+            id: 'background',
+            type: 'background',
+            paint: { 'background-color': '#1a1a2e' },
+          },
+          {
+            id: 'fill',
+            type: 'fill',
+            source: 'mvt',
+            'source-layer': 'countries',
+            paint: { 'fill-color': '#2d4a7a', 'fill-opacity': 0.85 },
+          },
+          {
+            id: 'lines',
+            type: 'line',
+            source: 'mvt',
+            'source-layer': 'countries',
+            paint: { 'line-color': '#5b8ed6', 'line-opacity': 1 },
+          },
+        ],
+      },
+    })
+
+    map.on('load', () => {
+      document.getElementById('status').textContent = 'Ready — MapLibre GL JS v5'
+    })
+  </script>
+</body>
+</html>

@@ -42,7 +42,7 @@ const fillVert = `
 attribute vec2 a_pos;
 uniform mat4 u_matrix;
 void main() {
-  gl_Position = u_matrix * vec4(a_pos / 4096.0, 0.0, 1.0);
+  gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
 }
 `
 const fillFrag = `
@@ -53,7 +53,7 @@ void main() { gl_FragColor = u_color; }
 
 // Tessellation
 interface Point { x: number; y: number }
-export interface TessellationResult { vertices: Float32Array; indices: Uint16Array }
+export interface TessellationResult { vertices: Float32Array; indices: Uint32Array }
 
 /** Shoelace signed area. Negative = clockwise in y-down tile space = outer ring (MVT spec). */
 function signedArea(ring: Point[]): number {
@@ -99,7 +99,7 @@ export function tessellatePolygon(rings: Point[][]): TessellationResult {
 
   return {
     vertices: new Float32Array(allVerts),
-    indices: new Uint16Array(allIdx),
+    indices: new Uint32Array(allIdx),
   }
 }
 
@@ -172,7 +172,7 @@ export class FillLayer {
       if (allIdx.length === 0) return
 
       const vertBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:verts`, new Float32Array(allVerts), gl.ARRAY_BUFFER)
-      const idxBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:idx`, new Uint16Array(allIdx), gl.ELEMENT_ARRAY_BUFFER)
+      const idxBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:idx`, new Uint32Array(allIdx), gl.ELEMENT_ARRAY_BUFFER)
       this._tileBuffers.set(key, { verts: vertBuf, idx: idxBuf, count: allIdx.length })
     }
 
@@ -188,6 +188,6 @@ export class FillLayer {
     const [r, g, b, a] = parseColor((paint['fill-color'] as string | undefined) ?? this.color)
     gl.uniform4f(gl.getUniformLocation(program, 'u_color'), r, g, b, a * ((paint['fill-opacity'] as number | undefined) ?? this.opacity))
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx)
-    gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_SHORT, 0)
+    gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_INT, 0)
   }
 }

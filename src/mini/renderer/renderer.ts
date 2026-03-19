@@ -259,6 +259,20 @@ export class Renderer implements RendererAPI {
       for (const { tileID, data } of readyTiles) {
         const matrix = this._projection.getTileMatrix(tileID, camera, viewport)
 
+        // Scissor to the tile's exact screen area — prevents buffer-zone geometry
+        // from bleeding into adjacent tiles (same approach as MapLibre's stencil mask).
+        // matrix maps MVT [0,4096] to clip space; tile corners in clip space:
+        //   left  = matrix[12],              right = matrix[0]*4096 + matrix[12]
+        //   top   = matrix[13],              bottom = matrix[5]*4096 + matrix[13]
+        // Convert clip [-1,1] → screen pixels (WebGL y=0 at bottom):
+        const W = this._width, H = this._height
+        const sx = Math.round((matrix[12] + 1) / 2 * W)
+        const sy = Math.round((matrix[5] * 4096 + matrix[13] + 1) / 2 * H)
+        const sw = Math.round(matrix[0] * 4096 / 2 * W)
+        const sh = Math.round(-matrix[5] * 4096 / 2 * H)
+        gl.enable?.(gl.SCISSOR_TEST)
+        gl.scissor?.(sx, sy, sw, sh)
+
         let tileTexture: WebGLTexture | undefined
         if (sourceType === 'raster') {
           tileTexture = this._webgl.getOrCreateTexture(tileID.key, data as ImageBitmap)
@@ -280,6 +294,8 @@ export class Renderer implements RendererAPI {
             lineDashAtlas: {},
           })
         }
+
+        gl.disable?.(gl.SCISSOR_TEST)
       }
     }
 

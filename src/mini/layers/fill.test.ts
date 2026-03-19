@@ -81,7 +81,7 @@ describe('tessellatePolygon', () => {
     const rings = [[{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }]]
     const { vertices, indices } = tessellatePolygon(rings)
     expect(vertices).toBeInstanceOf(Float32Array)
-    expect(indices).toBeInstanceOf(Uint16Array)
+    expect(indices).toBeInstanceOf(Uint32Array)
     expect(indices.length).toBe(6)
   })
 
