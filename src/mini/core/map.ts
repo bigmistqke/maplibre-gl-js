@@ -24,6 +24,8 @@ export class MapGL {
         },
       },
     )
+    // Push initial state — CameraController doesn't call onChange on construction
+    this.renderer.setCamera(this._camera.getState())
   }
 
   addLayer(layer: LayerInstance, beforeId?: string): void {
