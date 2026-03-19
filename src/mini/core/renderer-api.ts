@@ -1,6 +1,7 @@
 import type { CameraState, ScreenPoint, Feature } from './types.ts'
 import type { RenderExtension } from './render-extension.ts'
 import type { Viewport } from './projection.ts'
+import type { Surface } from './surface.ts'
 
 export interface CustomLayerRenderArgs {
   gl: WebGLRenderingContext
@@ -48,4 +49,5 @@ export interface RendererAPI {
   addRenderExtension(extension: RenderExtension): void
   removeRenderExtension(id: string): void
   queryRenderedFeatures(point: ScreenPoint): Feature[]
+  setSurface(surface: Surface): void
 }

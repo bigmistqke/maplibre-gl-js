@@ -4,6 +4,7 @@ import type { RendererAPI, LayerInstance, SourceDefinition, CustomLayer } from '
 import type { RenderExtension, RenderContext, ProgramCache } from '../core/render-extension.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 import type { TileService } from '../core/tile-service.ts'
+import type { Surface, RendererInternals } from '../core/surface.ts'
 import { WebGLContext } from './webgl-context.ts'
 import { FrameLoop } from './frame-loop.ts'
 import { StyleEvaluator } from './style-evaluator.ts'
@@ -12,6 +13,8 @@ import { TileManager } from './tile-manager.ts'
 import { RasterLayer } from '../layers/raster.ts'
 import { WorkerRasterTileService } from '../layers/raster-worker-service.ts'
 import { WorkerVectorTileService } from '../layers/vector-worker-service.ts'
+import { FLAT_SURFACE } from './flat-surface.ts'
+import { ELEVATION_PRELUDE } from './flat-render-tiles.ts'
 
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
 
@@ -60,16 +63,18 @@ export class Renderer implements RendererAPI {
   private _camera: CameraState | null = null
   private _projection: Projection
   private _frameIndex = 0
+  readonly __webgl2: boolean = false
+  private _surface: Surface = FLAT_SURFACE
   private _width: number
   private _height: number
   private _compiledPrograms = new WeakMap<Projection, { layers: ProgramCache; stencil: WebGLProgram }>()
   private _allPrograms: WebGLProgram[] = []
 
-  constructor(canvas: HTMLCanvasElement, projection: Projection) {
+  constructor(canvas: HTMLCanvasElement, projection: Projection, contextType: 'webgl' | 'webgl2' = 'webgl') {
     this._width = canvas.width
     this._height = canvas.height
     this._projection = projection
-    this._webgl = new WebGLContext(canvas)
+    this._webgl = new WebGLContext(canvas, contextType)
     this._frameLoop = new FrameLoop(() => this.renderFrame())
     this._styleEvaluator = new StyleEvaluator()
     this._renderExtensions = new RenderExtensions()
@@ -239,13 +244,22 @@ export class Renderer implements RendererAPI {
     this._renderExtensions.remove(id)
   }
 
+  setSurface(surface: Surface): void {
+    this._surface.destroy()
+    this._surface = surface
+    // Invalidate compiled programs — will recompile with new shaderDefines on next frame
+    this._compiledPrograms = new WeakMap()
+  }
+
   queryRenderedFeatures(_point: ScreenPoint): Feature[] {
     return []
   }
 
   private _getOrCompilePrograms(): { layers: ProgramCache; stencil: WebGLProgram } {
     if (!this._compiledPrograms.has(this._projection)) {
-      const prelude = this._projection.vertexShaderPrelude
+      const prelude = this._surface.shaderDefines.join('\n') + '\n' +
+                      this._projection.vertexShaderPrelude + '\n' +
+                      ELEVATION_PRELUDE
       const defs = this._layers.flatMap(e => (e.layer.constructor as any).programs ?? [])
       const layers = this._webgl.compilePrograms(defs, prelude)
       const stencil = this._webgl.compileStencilProgram(prelude)
@@ -271,6 +285,7 @@ export class Renderer implements RendererAPI {
       groundElevation: 0,
     }
 
+    const viewport: Viewport = { width: this._width, height: this._height }
     const { layers: programs, stencil: stencilProg } = this._getOrCompilePrograms()
 
     const renderCtx: RenderContext = {
@@ -291,89 +306,34 @@ export class Renderer implements RendererAPI {
       }
     }
 
-    // Per-tile draw loop — stencil-based tile clipping (MapLibre approach).
-    // Each tile writes a unique ID into the stencil buffer (ALWAYS+REPLACE),
-    // then layers draw with an EQUAL test so only fragments inside the tile pass.
-    // This clips buffer-zone geometry without any coordinate filtering, so real
-    // borders that coincide with tile boundaries are preserved at all zoom levels.
-    gl.enable(gl.STENCIL_TEST)
-    gl.clear(gl.STENCIL_BUFFER_BIT)
-    let nextStencilRef = 1
-
-    const viewport: Viewport = { width: this._width, height: this._height }
-    for (const [sourceId, tileManager] of this._tileManagers) {
-      tileManager.update(camera, viewport)
-      const readyTiles = tileManager.getReadyTiles()
-      const layers = this._tileLayers.get(sourceId) ?? []
-      const sourceType = this._sourceTypes.get(sourceId) ?? 'raster'
-
-      for (const { tileID, data } of readyTiles) {
-        const mesh = this._projection.getMeshForTile(tileID)
-        const meshBuffers = this._webgl.getOrCreateMeshBuffers(tileID.key, mesh)
-
-        const ref = nextStencilRef++
-        if (nextStencilRef > 255) nextStencilRef = 1
-
-        // Phase 1: write stencil mask for this tile (no color output).
-        // gl.useProgram must come before setTileUniforms — WebGL silently ignores
-        // uniform calls whose location doesn't belong to the currently active program.
-        gl.useProgram(stencilProg)
-        this._projection.setTileUniforms(gl, stencilProg, tileID, camera, viewport)
-        this._webgl.writeTileStencil(stencilProg, meshBuffers.vert, meshBuffers.idx, meshBuffers.indexCount, ref)
-
-        // Phase 2: draw layers — only fragments where stencil === ref pass
-        gl.stencilFunc(gl.EQUAL, ref, 0xFF)
-        gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-        gl.stencilMask(0x00)
-
-        let tileTexture: WebGLTexture | undefined
-        if (sourceType === 'raster') {
-          tileTexture = this._webgl.getOrCreateTexture(tileID.key, data as ImageBitmap)
-        }
-
-        for (const layer of layers) {
-          const paint = this._styleEvaluator.evaluate(layer, camera.zoom)
-          const program = programs.get((layer.constructor as any).programs?.[0]?.name)
-          if (program) {
-            gl.useProgram(program)
-            this._projection.setTileUniforms(gl, program, tileID, camera, viewport)
-          }
-          ;(layer as any).draw({
-            gl,
-            programs,
-            tileID,
-            meshBuffers,
-            zoom: camera.zoom,
-            paint,
-            frameIndex: this._frameIndex,
-            tileTexture,
-            tileData: sourceType === 'vector' ? data : undefined,
-            imageAtlas: {},
-            lineDashAtlas: {},
-          })
-        }
-      }
+    // Update tile managers before delegating to surface
+    for (const tm of this._tileManagers.values()) {
+      tm.update(camera, viewport)
     }
 
-    gl.disable(gl.STENCIL_TEST)
-
-    // Custom layers — rendered after all tiles, stencil off
-    if (this._customLayers.length > 0) {
-      const prelude = this._projection.vertexShaderPrelude
-      const proj = this._projection
-      for (const layer of this._customLayers) {
-        layer.render({
-          gl,
-          camera,
-          viewport,
-          vertexShaderPrelude: prelude,
-          setProjectionUniforms: (program: WebGLProgram) => {
-            gl.useProgram(program)
-            proj.setTileUniforms(gl, program, WORLD_TILE, camera, viewport)
-          },
-        })
-      }
+    const internals: RendererInternals = {
+      gl: this._webgl.gl as WebGL2RenderingContext,
+      camera,
+      viewport,
+      projection: this._projection,
+      programs,
+      stencilProgram: stencilProg,
+      layers: this._layers,
+      tileLayers: this._tileLayers,
+      tileManagers: this._tileManagers as any,
+      sourceTypes: this._sourceTypes,
+      customLayers: this._customLayers,
+      evaluate: (layer, zoom) => this._styleEvaluator.evaluate(layer, zoom),
+      frameIndex: this._frameIndex,
+      createFramebuffer: (w, h) => this._webgl.createFramebuffer(w, h),
+      destroyFramebuffer: (fb) => this._webgl.destroyFramebuffer(fb),
+      getOrCreateTexture: (key, bitmap) => this._webgl.getOrCreateTexture(key, bitmap),
+      getOrCreateMeshBuffers: (key, mesh) => this._webgl.getOrCreateMeshBuffers(key, mesh),
+      writeTileStencil: (prog, vert, idx, count, ref) =>
+        this._webgl.writeTileStencil(prog, vert, idx, count, ref),
     }
+
+    this._surface.renderTiles(internals)
 
     this._renderExtensions.runAfterTiles(renderCtx)
     this._frameIndex++

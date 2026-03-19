@@ -8,9 +8,9 @@ export class WebGLContext {
   private _meshBuffers = new globalThis.Map<string, { vert: WebGLBuffer; idx: WebGLBuffer; indexCount: number }>()
   readonly quadBuffer: WebGLBuffer
 
-  constructor(canvas: HTMLCanvasElement) {
-    const gl = canvas.getContext('webgl', { antialias: true, stencil: true })
-    if (!gl) throw new Error('WebGL not supported')
+  constructor(canvas: HTMLCanvasElement, contextType: 'webgl' | 'webgl2' = 'webgl') {
+    const gl = canvas.getContext(contextType, { antialias: true, stencil: true }) as WebGLRenderingContext
+    if (!gl) throw new Error(`${contextType} not supported`)
     gl.getExtension?.('OES_element_index_uint')
     this.gl = gl
 
@@ -116,6 +116,38 @@ export class WebGLContext {
     if (!tex) return
     this.gl.deleteTexture(tex)
     this._textures.delete(key)
+  }
+
+  createFramebuffer(width: number, height: number): import('../core/surface.ts').FramebufferObject {
+    const { gl } = this
+    const texture = gl.createTexture()!
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.bindTexture(gl.TEXTURE_2D, null)
+
+    const depth = gl.createRenderbuffer()!
+    gl.bindRenderbuffer(gl.RENDERBUFFER, depth)
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height)
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null)
+
+    const framebuffer = gl.createFramebuffer()!
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
+    return { framebuffer, texture, depth }
+  }
+
+  destroyFramebuffer(fb: import('../core/surface.ts').FramebufferObject): void {
+    const { gl } = this
+    gl.deleteFramebuffer(fb.framebuffer)
+    gl.deleteTexture(fb.texture)
+    gl.deleteRenderbuffer(fb.depth)
   }
 
   createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer {

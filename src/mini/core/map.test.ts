@@ -17,6 +17,7 @@ function makeRenderer(): RendererAPI {
     addRenderExtension: vi.fn(),
     removeRenderExtension: vi.fn(),
     queryRenderedFeatures: vi.fn().mockReturnValue([]),
+    setSurface: vi.fn(),
   }
 }
 
