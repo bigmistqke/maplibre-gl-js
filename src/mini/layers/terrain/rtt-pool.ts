@@ -1,6 +1,6 @@
 import type { FramebufferObject, RendererInternals } from '../../core/surface.ts'
 
-const FBO_SIZE = 512
+export const FBO_SIZE = 512
 
 export class RTTPool {
   private _pool = new globalThis.Map<string, FramebufferObject>()
@@ -17,10 +17,11 @@ export class RTTPool {
   }
 
   /** Matches spec signature — no internals param. Destroyable because _destroyFn is stored. */
-  evict(retainedKeys: Set<string>): void {
+  evict(retainedKeys: Set<string>, onEvict?: (key: string) => void): void {
     for (const [key, fbo] of this._pool) {
       if (!retainedKeys.has(key)) {
         this._destroyFn?.(fbo)
+        onEvict?.(key)
         this._pool.delete(key)
       }
     }

@@ -100,6 +100,7 @@ export class Renderer implements RendererAPI {
     for (const tm of this._tileManagers.values()) tm.destroy()
     const { gl } = this._webgl
     for (const prog of this._allPrograms) gl.deleteProgram?.(prog)
+    this._surface.destroy()
   }
 
   addSource(id: string, source: SourceDefinition): void {
@@ -331,6 +332,7 @@ export class Renderer implements RendererAPI {
       createFramebuffer: (w, h) => this._webgl.createFramebuffer(w, h),
       destroyFramebuffer: (fb) => this._webgl.destroyFramebuffer(fb),
       getOrCreateTexture: (key, bitmap) => this._webgl.getOrCreateTexture(key, bitmap),
+      destroyTexture: (key) => this._webgl.destroyTexture(key),
       getOrCreateMeshBuffers: (key, mesh) => this._webgl.getOrCreateMeshBuffers(key, mesh),
       writeTileStencil: (prog, vert, idx, count, ref) =>
         this._webgl.writeTileStencil(prog, vert, idx, count, ref),

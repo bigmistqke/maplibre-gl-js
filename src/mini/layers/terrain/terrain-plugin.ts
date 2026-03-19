@@ -4,14 +4,16 @@ import type { RendererInternals } from '../../core/surface.ts'
 import type { MapGL } from '../../core/map.ts'
 import type { WebGL2RendererAPI } from '../../core/renderer-api.ts'
 import type { Plugin } from '../../core/map.ts'
-import { RTTPool } from './rtt-pool.ts'
+import { RTTPool, FBO_SIZE } from './rtt-pool.ts'
 import { buildTerrainMesh } from './terrain-mesh.ts'
 import { TERRAIN_VERT, TERRAIN_FRAG } from './terrain-shaders.ts'
 // ELEVATION_PRELUDE defines projectTileWithElevation used by TERRAIN_VERT
 import { ELEVATION_PRELUDE, flatRenderTiles } from '../../renderer/flat-render-tiles.ts'
 import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 
-const FBO_SIZE = 512
+// numSublayers matches MapLibre painter.ts line 127: SourceCache.maxUnderzooming + maxOverzooming + 1
+// (mirrors MAX_UNDERZOOMING=3 + MAX_OVERZOOMING=10 + 1 from tile-manager.ts)
+const NUM_SUBLAYERS = 14
 const WORLD_TILE = { z: 0, x: 0, y: 0, key: '0/0/0' }
 
 /**
@@ -69,10 +71,13 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   private _meshIdx: WebGLBuffer | null = null
   private _meshIndexCount = 0
   private _gl: WebGL2RenderingContext | null = null  // set on first renderTiles call
-  // Cached uniform locations (set once after _ensureProgram)
+  // Cached uniform/attrib locations (set once after _ensureProgram)
   private _uMapTexture: WebGLUniformLocation | null = null
   private _uDem: WebGLUniformLocation | null = null
   private _uExaggeration: WebGLUniformLocation | null = null
+  private _aPos = -1
+  // Per-program u_matrix location cache — stable for program lifetime
+  private _uMatrixCache = new Map<WebGLProgram, WebGLUniformLocation | null>()
 
   constructor(opts: TerrainPluginOptions) {
     this._source = opts.source
@@ -84,9 +89,9 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
   }
 
   // ElevationProvider — duck-typed by CameraController
+  // TODO: implement real DEM tile lookup so camera ground-clamping works over mountains.
+  // Until then this silently returns 0, so camera elevation clamping treats terrain as flat.
   getElevation(_lngLat: LngLat): number {
-    // Stub: returns 0 until DEM tile lookup is implemented.
-    // Camera elevation clamping still works (just flat).
     return 0
   }
 
@@ -101,8 +106,11 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     const demManager = internals.tileManagers.get(this._source)
     if (!demManager) return
 
-    // Evict FBOs for DEM tiles no longer retained — keyed by DEM source only
-    this._rttPool.evict(demManager.getRetainedKeys())
+    // Evict FBOs for DEM tiles no longer retained — also destroy the ':dem' GPU texture
+    // to avoid a leak (the renderer's onEvict only destroys the bare-key texture).
+    this._rttPool.evict(demManager.getRetainedKeys(), (key) => {
+      internals.destroyTexture(key + ':dem')
+    })
 
     const allDemTiles = demManager.getReadyTiles()
 
@@ -171,7 +179,10 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
             if (program) {
               gl.useProgram(program)
               // Tile-local ortho: maps the srcTile's sub-area that covers demTile → NDC [-1,1].
-              gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_matrix'), false, ortho)
+              if (!this._uMatrixCache.has(program)) {
+                this._uMatrixCache.set(program, gl.getUniformLocation(program, 'u_matrix'))
+              }
+              gl.uniformMatrix4fv(this._uMatrixCache.get(program)!, false, ortho)
             }
             ;(layer as any).draw({
               gl,
@@ -227,11 +238,10 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     gl.useProgram(prog)
 
     // Depth setup — matches MapLibre's getDepthModeFor3D() + painter.depthRangeFor3D.
-    // depthEpsilon and numSublayers copied verbatim from painter.ts (lines 127-128).
-    const numSublayers = 1
+    // depthEpsilon from painter.ts line 128; NUM_SUBLAYERS from painter.ts line 127.
     const depthEpsilon = 1 / Math.pow(2, 16)
     const numLayers = internals.tileLayers.size
-    const maxDepth = 1 - ((numLayers + 2) * numSublayers * depthEpsilon)
+    const maxDepth = 1 - ((numLayers + 2) * NUM_SUBLAYERS * depthEpsilon)
     gl.enable(gl.DEPTH_TEST)
     // ALWAYS not LEQUAL: back-face culling (below) handles intra-tile self-occlusion on steep
     // slopes; LEQUAL causes adjacent mesh rows to z-fight at high pitch+exaggeration (their
@@ -246,11 +256,10 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     gl.cullFace(gl.BACK)
     gl.frontFace(gl.CCW)
 
-    const aPos = gl.getAttribLocation(prog, 'a_pos')
     gl.bindBuffer(gl.ARRAY_BUFFER, this._meshVert!)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._meshIdx!)
-    gl.enableVertexAttribArray(aPos)
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+    gl.enableVertexAttribArray(this._aPos)
+    gl.vertexAttribPointer(this._aPos, 2, gl.FLOAT, false, 0, 0)
 
     for (const { tileID, data: demData } of sortedDemTiles) {
       const fbo = this._rttPool.getOrCreate(tileID.key, internals)
@@ -359,10 +368,11 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       throw new Error(`Terrain program link error: ${gl.getProgramInfoLog(prog)}`)
     }
     this._terrainProgram = prog
-    // Cache uniform locations — querying per-frame is wasteful
+    // Cache uniform/attrib locations — querying per-frame is wasteful
     this._uMapTexture = gl.getUniformLocation(prog, 'u_map_texture')
     this._uDem = gl.getUniformLocation(prog, 'u_dem')
     this._uExaggeration = gl.getUniformLocation(prog, 'u_exaggeration')
+    this._aPos = gl.getAttribLocation(prog, 'a_pos')
   }
 
   private _compileShader(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {

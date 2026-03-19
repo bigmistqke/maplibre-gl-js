@@ -38,6 +38,7 @@ export interface RendererInternals {
   createFramebuffer(width: number, height: number): FramebufferObject
   destroyFramebuffer(fb: FramebufferObject): void
   getOrCreateTexture(key: string, bitmap: ImageBitmap): WebGLTexture
+  destroyTexture(key: string): void
   getOrCreateMeshBuffers(key: string, mesh: TileMesh): MeshBuffers
   writeTileStencil(
     prog: WebGLProgram,

@@ -72,7 +72,7 @@ export class TileManager {
 
     // Compute retain set using MapLibre's strategy: children preferred, parents as fallback.
     // Must be done BEFORE cancelling so we don't cancel needed fallback tiles.
-    const retain = this._updateRetainedTiles(visibleTiles, camera)
+    const retain = this._updateRetainedTiles(visibleTiles, clampedCamera)
 
     // Cancel in-flight requests for tiles no longer retained.
     for (const key of this._retainSet) {
