@@ -156,34 +156,40 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
 
     // ── Pass 2: Terrain mesh ─────────────────────────────────────────────────
     // Draw 3D terrain mesh per tile, draping FBO texture over DEM displacement.
+    // No stencil — the elevated terrain mesh doesn't match a flat stencil quad at pitch>0,
+    // causing gaps wherever vertices are displaced. Use depth buffer ordering instead:
+    // sort coarser (lower-z) tiles first so finer tiles overwrite them.
+    const sortedDemTiles = [...demTiles].sort((a, b) => a.tileID.z - b.tileID.z)
+
     const prog = this._terrainProgram!
     gl.useProgram(prog)
 
-    gl.enable(gl.STENCIL_TEST)
-    gl.clear(gl.STENCIL_BUFFER_BIT)
-    let nextRef = 1
+    // Depth setup — matches MapLibre's getDepthModeFor3D() + painter.depthRangeFor3D.
+    // depthEpsilon and numSublayers copied verbatim from painter.ts (lines 127-128).
+    const numSublayers = 1
+    const depthEpsilon = 1 / Math.pow(2, 16)
+    const numLayers = internals.tileLayers.size
+    const maxDepth = 1 - ((numLayers + 2) * numSublayers * depthEpsilon)
+    gl.enable(gl.DEPTH_TEST)
+    gl.depthFunc(gl.LEQUAL)
+    gl.depthRange(0, maxDepth)
+    gl.clear(gl.DEPTH_BUFFER_BIT)
 
-    for (const { tileID, data: demData } of demTiles) {
+    // Back-face culling — matches MapLibre's CullFaceMode.backCCW (cull_face_mode.ts line 33).
+    // Eliminates back-facing triangles on far side of mountains at high pitch, preventing z-fighting.
+    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.BACK)
+    gl.frontFace(gl.CCW)
+
+    const aPos = gl.getAttribLocation(prog, 'a_pos')
+    gl.bindBuffer(gl.ARRAY_BUFFER, this._meshVert!)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._meshIdx!)
+    gl.enableVertexAttribArray(aPos)
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+
+    for (const { tileID, data: demData } of sortedDemTiles) {
       const fbo = this._rttPool.getOrCreate(tileID.key, internals)
 
-      // Write stencil for this tile — bind stencil program first, then set uniforms
-      const mesh = internals.projection.getMeshForTile(tileID)
-      const meshBuffers = internals.getOrCreateMeshBuffers(tileID.key, mesh)
-      gl.useProgram(internals.stencilProgram)
-      internals.projection.setTileUniforms(
-        gl as any, internals.stencilProgram, tileID, internals.camera, internals.viewport,
-      )
-      internals.writeTileStencil(
-        internals.stencilProgram, meshBuffers.vert, meshBuffers.idx, meshBuffers.indexCount, nextRef,
-      )
-      gl.stencilFunc(gl.EQUAL, nextRef, 0xFF)
-      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-      gl.stencilMask(0x00)
-      nextRef++
-      if (nextRef > 255) nextRef = 1
-
-      // writeTileStencil binds the stencil program — re-bind terrain program before setting uniforms
-      gl.useProgram(prog)
       internals.projection.setTileUniforms(gl as any, prog, tileID, internals.camera, internals.viewport)
 
       // u_map_texture = FBO color texture (rendered tile layers)
@@ -199,16 +205,13 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
 
       gl.uniform1f(this._uExaggeration, this._exaggeration)
 
-      // Draw terrain mesh (the 32x32 grid VBO, not the projection mesh)
-      gl.bindBuffer(gl.ARRAY_BUFFER, this._meshVert!)
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._meshIdx!)
-      const aPos = gl.getAttribLocation(prog, 'a_pos')
-      gl.enableVertexAttribArray(aPos)
-      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
       gl.drawElements(gl.TRIANGLES, this._meshIndexCount, gl.UNSIGNED_INT, 0)
     }
 
-    gl.disable(gl.STENCIL_TEST)
+    gl.disable(gl.CULL_FACE)
+    gl.depthFunc(gl.LESS)
+    gl.depthRange(0, 1)
+    gl.disable(gl.DEPTH_TEST)
 
     // ── Pass 3: Custom layers ────────────────────────────────────────────────
     if (internals.customLayers.length > 0) {

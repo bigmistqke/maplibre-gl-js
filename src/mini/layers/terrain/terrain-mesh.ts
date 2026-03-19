@@ -22,8 +22,9 @@ export function buildTerrainMesh(): { vertices: Float32Array; indices: Uint32Arr
       const tr = tl + 1
       const bl = tl + n
       const br = bl + 1
-      indices[ii++] = tl; indices[ii++] = tr; indices[ii++] = bl
-      indices[ii++] = tr; indices[ii++] = br; indices[ii++] = bl
+      // CCW winding (front face) matching MapLibre's terrain.ts getTerrainMesh()
+      indices[ii++] = tl; indices[ii++] = bl; indices[ii++] = br
+      indices[ii++] = tl; indices[ii++] = br; indices[ii++] = tr
     }
   }
 
