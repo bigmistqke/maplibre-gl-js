@@ -249,7 +249,15 @@ export class Renderer implements RendererAPI {
       }
     }
 
-    // Per-tile draw loop
+    // Per-tile draw loop — stencil-based tile clipping (MapLibre approach).
+    // Each tile writes a unique ID into the stencil buffer (ALWAYS+REPLACE),
+    // then layers draw with an EQUAL test so only fragments inside the tile pass.
+    // This clips buffer-zone geometry without any coordinate filtering, so real
+    // borders that coincide with tile boundaries are preserved at all zoom levels.
+    gl.enable(gl.STENCIL_TEST)
+    gl.clear(gl.STENCIL_BUFFER_BIT)
+    let nextStencilRef = 1
+
     const viewport: Viewport = { width: this._width, height: this._height }
     for (const [sourceId, tileManager] of this._tileManagers) {
       const readyTiles = tileManager.getReadyTiles()
@@ -259,19 +267,16 @@ export class Renderer implements RendererAPI {
       for (const { tileID, data } of readyTiles) {
         const matrix = this._projection.getTileMatrix(tileID, camera, viewport)
 
-        // Scissor to the tile's exact screen area — prevents buffer-zone geometry
-        // from bleeding into adjacent tiles (same approach as MapLibre's stencil mask).
-        // matrix maps MVT [0,4096] to clip space; tile corners in clip space:
-        //   left  = matrix[12],              right = matrix[0]*4096 + matrix[12]
-        //   top   = matrix[13],              bottom = matrix[5]*4096 + matrix[13]
-        // Convert clip [-1,1] → screen pixels (WebGL y=0 at bottom):
-        const W = this._width, H = this._height
-        const sx = Math.round((matrix[12] + 1) / 2 * W)
-        const sy = Math.round((matrix[5] * 4096 + matrix[13] + 1) / 2 * H)
-        const sw = Math.round(matrix[0] * 4096 / 2 * W)
-        const sh = Math.round(-matrix[5] * 4096 / 2 * H)
-        gl.enable?.(gl.SCISSOR_TEST)
-        gl.scissor?.(sx, sy, sw, sh)
+        const ref = nextStencilRef++
+        if (nextStencilRef > 255) nextStencilRef = 1
+
+        // Phase 1: write stencil mask for this tile (no color output)
+        this._webgl.writeTileStencil(matrix, ref)
+
+        // Phase 2: draw layers — only fragments where stencil === ref pass
+        gl.stencilFunc(gl.EQUAL, ref, 0xFF)
+        gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
+        gl.stencilMask(0x00)
 
         let tileTexture: WebGLTexture | undefined
         if (sourceType === 'raster') {
@@ -294,11 +299,10 @@ export class Renderer implements RendererAPI {
             lineDashAtlas: {},
           })
         }
-
-        gl.disable?.(gl.SCISSOR_TEST)
       }
     }
 
+    gl.disable(gl.STENCIL_TEST)
     this._renderExtensions.runAfterTiles(renderCtx)
     this._frameIndex++
   }

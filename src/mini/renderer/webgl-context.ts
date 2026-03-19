@@ -7,23 +7,59 @@ export class WebGLContext {
   private _textures = new globalThis.Map<string, WebGLTexture>()
   private _geometryBuffers = new globalThis.Map<string, WebGLBuffer>()
   readonly quadBuffer: WebGLBuffer
+  private _tileQuadBuffer: WebGLBuffer
+  private _stencilProgram: WebGLProgram | null = null
 
   readonly programs: ProgramCache = {
     get: (name) => this._programs.get(name),
   }
 
   constructor(canvas: HTMLCanvasElement) {
-    const gl = canvas.getContext('webgl', { antialias: true })
+    const gl = canvas.getContext('webgl', { antialias: true, stencil: true })
     if (!gl) throw new Error('WebGL not supported')
     gl.getExtension?.('OES_element_index_uint')
     this.gl = gl
 
     // Unit quad VBO — vertices covering [0,1]² as TRIANGLE_STRIP
-    // [0,0, 1,0, 0,1, 1,1]
     const buf = gl.createBuffer()!
     gl.bindBuffer(gl.ARRAY_BUFFER, buf)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW)
     this.quadBuffer = buf
+
+    // Tile quad VBO — MVT extent [0,4096]² as TRIANGLE_STRIP, used for stencil masks
+    const tileQuadBuf = gl.createBuffer()!
+    gl.bindBuffer(gl.ARRAY_BUFFER, tileQuadBuf)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]), gl.STATIC_DRAW)
+    this._tileQuadBuffer = tileQuadBuf
+  }
+
+  /**
+   * Write a unique stencil ID for the tile into the stencil buffer (MapLibre-style tile clipping).
+   * Draws the tile quad ([0,4096]²) with ALWAYS+REPLACE — subsequent layer draws use EQUAL.
+   * Call gl.stencilFunc(EQUAL, ref, 0xFF) + stencilMask(0x00) after this before drawing layers.
+   */
+  writeTileStencil(matrix: Float32Array, ref: number): void {
+    const { gl } = this
+    if (!this._stencilProgram) {
+      this._stencilProgram = this._compile(
+        /* glsl */`attribute vec2 a_pos; uniform mat4 u_matrix;
+          void main() { gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }`,
+        /* glsl */`precision mediump float; void main() { gl_FragColor = vec4(0.0); }`,
+      )
+    }
+    gl.colorMask(false, false, false, false)
+    gl.stencilFunc(gl.ALWAYS, ref, 0xFF)
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
+    gl.stencilMask(0xFF)
+    gl.useProgram(this._stencilProgram)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this._tileQuadBuffer)
+    const aPos = gl.getAttribLocation(this._stencilProgram, 'a_pos')
+    gl.enableVertexAttribArray(aPos)
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+    gl.uniformMatrix4fv(gl.getUniformLocation(this._stencilProgram, 'u_matrix'), false, matrix)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    gl.colorMask(true, true, true, true)
+    gl.stencilMask(0x00)
   }
 
   compilePrograms(defs: ProgramDefinition[]): void {
