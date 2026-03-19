@@ -1,28 +1,43 @@
 // src/mini/core/projection.test.ts
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { Projection } from './projection.ts'
 
 describe('Projection', () => {
   it('Projection interface is satisfied by duck-typed object', () => {
     const proj: Projection = {
+      vertexShaderPrelude: 'vec4 projectTile(vec2 p){return vec4(p,0.0,1.0);}',
       getVisibleTiles: () => [],
-      getTileMatrix: () => new Float32Array(16),
+      setTileUniforms: vi.fn(),
+      getMeshForTile: vi.fn().mockReturnValue({
+        vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
+        indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
+      }),
     }
+    expect(typeof proj.vertexShaderPrelude).toBe('string')
     expect(typeof proj.getVisibleTiles).toBe('function')
-    expect(typeof proj.getTileMatrix).toBe('function')
+    expect(typeof proj.setTileUniforms).toBe('function')
+    expect(typeof proj.getMeshForTile).toBe('function')
   })
 
-  it('getTileMatrix returns a Float32Array of length 16', () => {
-    const proj: Projection = {
-      getVisibleTiles: () => [],
-      getTileMatrix: () => new Float32Array(16),
+  it('getMeshForTile returns a valid tile mesh', () => {
+    const mockMesh = {
+      vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
+      indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
     }
-    const matrix = proj.getTileMatrix(
-      { z: 10, x: 512, y: 341, key: '10/512/341' },
-      { center: { lng: 4.9, lat: 52.37 }, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0 },
-      { width: 512, height: 512 },
-    )
-    expect(matrix).toBeInstanceOf(Float32Array)
-    expect(matrix.length).toBe(16)
+    const proj: Projection = {
+      vertexShaderPrelude: 'vec4 projectTile(vec2 p){return vec4(p,0.0,1.0);}',
+      getVisibleTiles: () => [],
+      setTileUniforms: vi.fn(),
+      getMeshForTile: vi.fn().mockReturnValue(mockMesh),
+    }
+    const mesh = proj.getMeshForTile({ z: 10, x: 512, y: 341, key: '10/512/341' })
+    expect(mesh.vertices).toBeInstanceOf(Float32Array)
+    expect(mesh.indices).toBeInstanceOf(Uint16Array)
+    expect(vi.mocked(proj.getMeshForTile)).toHaveBeenCalledWith({
+      z: 10,
+      x: 512,
+      y: 341,
+      key: '10/512/341',
+    })
   })
 })
