@@ -4,6 +4,7 @@ import type { TileService } from '../core/tile-service.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 
 const MAX_FALLBACK_LEVELS = 8
+const MAX_CHILD_FALLBACK_LEVELS = 4
 
 interface TileEntry {
   status: 'loading' | 'ready' | 'error'
@@ -56,16 +57,29 @@ export class TileManager {
     const visibleTiles = this._projection.getVisibleTiles(camera, viewport)
     const newVisibleSet = new globalThis.Set(visibleTiles.map(tileKey))
 
-    // Build retain set FIRST — ancestor tiles of any not-yet-ready new visible tile.
+    // Build retain set FIRST — ancestor and descendant tiles of any not-yet-ready new visible tile.
     // We need this before cancelling so we don't cancel tiles needed as fallbacks.
     const retainSet = new globalThis.Set<string>()
     for (const tileID of visibleTiles) {
       const entry = this._tiles.get(tileID.key)
       if (!entry || entry.status === 'loading') {
+        // Ancestor tiles (zoom-in fallbacks: parent covers this tile's area)
         for (let dz = 1; dz <= MAX_FALLBACK_LEVELS; dz++) {
           const pz = tileID.z - dz
           if (pz < 0) break
           retainSet.add(`${pz}/${tileID.x >> dz}/${tileID.y >> dz}`)
+        }
+        // Descendant tiles already in cache (zoom-out fallbacks: children cover sub-regions)
+        for (let dz = 1; dz <= MAX_CHILD_FALLBACK_LEVELS; dz++) {
+          const count = 1 << dz
+          const baseX = tileID.x << dz
+          const baseY = tileID.y << dz
+          for (let dx = 0; dx < count; dx++) {
+            for (let dy = 0; dy < count; dy++) {
+              const cKey = `${tileID.z + dz}/${baseX + dx}/${baseY + dy}`
+              if (this._tiles.has(cKey)) retainSet.add(cKey)
+            }
+          }
         }
       }
     }
@@ -132,8 +146,10 @@ export class TileManager {
   }
 
   getReadyTiles(): Array<{ tileID: TileID; data: Transferable }> {
-    // Fallbacks drawn first — child tiles overwrite them via stencil ALWAYS+REPLACE
-    const fallbacks = new globalThis.Map<string, { tileID: TileID; data: Transferable }>()
+    // Draw order: ancestor fallbacks → descendant fallbacks → primary tiles.
+    // Each layer overwrites the previous via stencil ALWAYS+REPLACE, so finer tiles win.
+    const ancestorFallbacks = new globalThis.Map<string, { tileID: TileID; data: Transferable }>()
+    const descendantFallbacks = new globalThis.Map<string, { tileID: TileID; data: Transferable }>()
     const primary: Array<{ tileID: TileID; data: Transferable }> = []
 
     for (const key of this._visibleSet) {
@@ -142,23 +158,49 @@ export class TileManager {
         const [z, x, y] = key.split('/').map(Number)
         primary.push({ tileID: { z, x, y, key }, data: entry.data })
       } else {
-        // Tile not ready — look for a cached ancestor to show in its place
         const [z, x, y] = key.split('/').map(Number)
+
+        // Look for an ancestor tile (zoom-in fallback: one tile covers this whole area)
+        let foundAncestor = false
         for (let dz = 1; dz <= MAX_FALLBACK_LEVELS; dz++) {
           const pz = z - dz
           if (pz < 0) break
           const pKey = `${pz}/${x >> dz}/${y >> dz}`
-          if (fallbacks.has(pKey)) break  // already queued this ancestor
+          if (ancestorFallbacks.has(pKey)) { foundAncestor = true; break }
           const pEntry = this._tiles.get(pKey)
           if (pEntry?.status === 'ready' && pEntry.data !== undefined) {
-            fallbacks.set(pKey, { tileID: { z: pz, x: x >> dz, y: y >> dz, key: pKey }, data: pEntry.data })
+            ancestorFallbacks.set(pKey, { tileID: { z: pz, x: x >> dz, y: y >> dz, key: pKey }, data: pEntry.data })
+            foundAncestor = true
             break
+          }
+        }
+
+        // No ancestor found — look for descendant tiles (zoom-out fallback: children cover sub-regions)
+        if (!foundAncestor) {
+          for (let dz = 1; dz <= MAX_CHILD_FALLBACK_LEVELS; dz++) {
+            const cz = z + dz
+            const count = 1 << dz
+            const baseX = x << dz
+            const baseY = y << dz
+            for (let dx = 0; dx < count; dx++) {
+              for (let dy = 0; dy < count; dy++) {
+                const cKey = `${cz}/${baseX + dx}/${baseY + dy}`
+                if (descendantFallbacks.has(cKey)) continue
+                const cEntry = this._tiles.get(cKey)
+                if (cEntry?.status === 'ready' && cEntry.data !== undefined) {
+                  descendantFallbacks.set(cKey, {
+                    tileID: { z: cz, x: baseX + dx, y: baseY + dy, key: cKey },
+                    data: cEntry.data,
+                  })
+                }
+              }
+            }
           }
         }
       }
     }
 
-    return [...fallbacks.values(), ...primary]
+    return [...ancestorFallbacks.values(), ...descendantFallbacks.values(), ...primary]
   }
 
   destroy(): void {
