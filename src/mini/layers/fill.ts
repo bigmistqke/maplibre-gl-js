@@ -40,10 +40,7 @@ export class VectorTileService implements TileService {
 // GLSL
 const fillVert = `
 attribute vec2 a_pos;
-uniform mat4 u_matrix;
-void main() {
-  gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
-}
+void main() { gl_Position = projectTile(a_pos); }
 `
 const fillFrag = `
 precision mediump float;
@@ -145,7 +142,7 @@ export class FillLayer {
   }
 
   draw(ctx: DrawContext): void {
-    const { gl, programs, matrix, paint, tileID, tileData } = ctx
+    const { gl, programs, paint, tileID, tileData } = ctx
     if (!tileData) return
     const program = programs.get('fill')
     if (!program) return
@@ -184,7 +181,6 @@ export class FillLayer {
     const aPos = gl.getAttribLocation(program, 'a_pos')
     gl.enableVertexAttribArray(aPos)
     gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_matrix'), false, matrix)
     const [r, g, b, a] = parseColor((paint['fill-color'] as string | undefined) ?? this.color)
     gl.uniform4f(gl.getUniformLocation(program, 'u_color'), r, g, b, a * ((paint['fill-opacity'] as number | undefined) ?? this.opacity))
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx)

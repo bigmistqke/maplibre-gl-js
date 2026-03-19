@@ -7,8 +7,7 @@ import Pbf from 'pbf'
 
 const lineVert = `
 attribute vec2 a_pos;
-uniform mat4 u_matrix;
-void main() { gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }
+void main() { gl_Position = projectTile(a_pos); }
 `
 const lineFrag = `
 precision mediump float;
@@ -51,7 +50,7 @@ export class LineLayer {
   }
 
   draw(ctx: DrawContext): void {
-    const { gl, programs, matrix, paint, tileID, tileData } = ctx
+    const { gl, programs, paint, tileID, tileData } = ctx
     if (!tileData) return
     const program = programs.get('line')
     if (!program) return
@@ -86,7 +85,6 @@ export class LineLayer {
     const aPos = gl.getAttribLocation(program, 'a_pos')
     gl.enableVertexAttribArray(aPos)
     gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_matrix'), false, matrix)
     const [r, g, b, a] = parseColor((paint['line-color'] as string | undefined) ?? this.color)
     gl.uniform4f(gl.getUniformLocation(program, 'u_color'), r, g, b, a * ((paint['line-opacity'] as number | undefined) ?? this.opacity))
     gl.drawArrays(gl.LINES, 0, bufs.count)

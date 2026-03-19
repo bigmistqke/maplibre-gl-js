@@ -72,16 +72,17 @@ function makeGL() {
     vertexAttribPointer: vi.fn(),
     useProgram: vi.fn(),
     getUniformLocation: vi.fn().mockReturnValue({}),
-    uniformMatrix4fv: vi.fn(),
     uniform1i: vi.fn(),
     uniform1f: vi.fn(),
     activeTexture: vi.fn(),
     bindTexture: vi.fn(),
-    drawArrays: vi.fn(),
+    drawElements: vi.fn(),
     ARRAY_BUFFER: 34962,
+    ELEMENT_ARRAY_BUFFER: 34963,
     STATIC_DRAW: 35044,
     FLOAT: 5126,
-    TRIANGLE_STRIP: 5,
+    TRIANGLES: 4,
+    UNSIGNED_SHORT: 5123,
     TEXTURE_2D: 3553,
     TEXTURE0: 33984,
   } as unknown as WebGLRenderingContext
@@ -89,14 +90,17 @@ function makeGL() {
 
 function makeDrawContext(gl: WebGLRenderingContext, overrides: Partial<DrawContext & { tileTexture: WebGLTexture }> = {}) {
   const fakeProgram = {} as WebGLProgram
-  const fakeUniformLoc = {} as WebGLUniformLocation
   return {
     gl,
     programs: {
       get: vi.fn().mockReturnValue(fakeProgram),
     },
     tileID: { z: 10, x: 528, y: 341, key: '10/528/341' },
-    matrix: new Float32Array(16),
+    meshBuffers: {
+      vert: {} as WebGLBuffer,
+      idx: {} as WebGLBuffer,
+      indexCount: 6,
+    },
     zoom: 10,
     paint: { opacity: 1 },
     frameIndex: 0,
@@ -128,45 +132,22 @@ describe('RasterLayer', () => {
   it('draw() calls gl.useProgram', () => {
     const gl = makeGL()
     const layer = new RasterLayer({ source: 'osm' })
-    // Set up quadBuffer via onAdd mock
-    const fakeQuadBuffer = {}
-    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
     const ctx = makeDrawContext(gl)
     layer.draw(ctx as any)
     expect(gl.useProgram).toHaveBeenCalled()
   })
 
-  it('draw() calls gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)', () => {
+  it('draw() calls gl.drawElements', () => {
     const gl = makeGL()
     const layer = new RasterLayer({ source: 'osm' })
-    const fakeQuadBuffer = {}
-    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
     const ctx = makeDrawContext(gl)
     layer.draw(ctx as any)
-    expect(gl.drawArrays).toHaveBeenCalledWith(gl.TRIANGLE_STRIP, 0, 4)
-  })
-
-  it('draw() calls gl.uniformMatrix4fv with the tile matrix', () => {
-    const gl = makeGL()
-    const layer = new RasterLayer({ source: 'osm' })
-    const fakeQuadBuffer = {}
-    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
-    const matrix = new Float32Array(16)
-    matrix[0] = 2  // distinguishable
-    const ctx = makeDrawContext(gl, { matrix })
-    layer.draw(ctx as any)
-    expect(gl.uniformMatrix4fv).toHaveBeenCalledWith(
-      expect.anything(),
-      false,
-      matrix,
-    )
+    expect(gl.drawElements).toHaveBeenCalledWith(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
   })
 
   it('draw() calls gl.uniform1f for opacity', () => {
     const gl = makeGL()
     const layer = new RasterLayer({ source: 'osm', opacity: 0.7 })
-    const fakeQuadBuffer = {}
-    layer.onAdd({ _webgl: { quadBuffer: fakeQuadBuffer } } as any)
     const ctx = makeDrawContext(gl, { paint: { opacity: 0.7 } })
     layer.draw(ctx as any)
     expect(gl.uniform1f).toHaveBeenCalled()
