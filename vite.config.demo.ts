@@ -13,6 +13,7 @@ export default defineConfig({
         phase4: resolve(__dirname, 'demo/phase4/index.html'),
         phase5: resolve(__dirname, 'demo/phase5/index.html'),
         'phase5-compare': resolve(__dirname, 'demo/phase5/compare.html'),
+        phase6: resolve(__dirname, 'demo/phase6/index.html'),
       },
     },
   },
