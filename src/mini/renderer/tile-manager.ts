@@ -3,6 +3,8 @@ import type { CameraState, TileID } from '../core/types.ts'
 import type { TileService } from '../core/tile-service.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 
+const MAX_FALLBACK_LEVELS = 3
+
 interface TileEntry {
   status: 'loading' | 'ready' | 'error'
   data?: Transferable
@@ -22,6 +24,7 @@ function buildURL(template: string, t: TileID): string {
 export class TileManager {
   private _tiles = new globalThis.Map<string, TileEntry>()
   private _visibleSet = new globalThis.Set<string>()
+  private _retainSet = new globalThis.Set<string>()
   private _urlTemplate: string
   private _tileService: TileService
   private _projection: Projection
@@ -65,6 +68,21 @@ export class TileManager {
 
     this._visibleSet = newVisibleSet
 
+    // Build retain set: ancestor tiles of any still-loading visible tile.
+    // These won't be evicted so they can serve as fallbacks while children load.
+    const retainSet = new globalThis.Set<string>()
+    for (const tileID of visibleTiles) {
+      const entry = this._tiles.get(tileID.key)
+      if (!entry || entry.status === 'loading') {
+        for (let dz = 1; dz <= MAX_FALLBACK_LEVELS; dz++) {
+          const pz = tileID.z - dz
+          if (pz < 0) break
+          retainSet.add(`${pz}/${tileID.x >> dz}/${tileID.y >> dz}`)
+        }
+      }
+    }
+    this._retainSet = retainSet
+
     // Fetch new visible tiles not already in cache
     for (const tileID of visibleTiles) {
       const key = tileKey(tileID)
@@ -99,6 +117,7 @@ export class TileManager {
     for (const [key, entry] of this._tiles) {
       if (this._tiles.size <= this._maxCacheSize) break
       if (this._visibleSet.has(key)) continue
+      if (this._retainSet.has(key)) continue
       if (entry.status === 'loading') {
         this._tileService.cancel(key)
       }
@@ -111,15 +130,33 @@ export class TileManager {
   }
 
   getReadyTiles(): Array<{ tileID: TileID; data: Transferable }> {
-    const result: Array<{ tileID: TileID; data: Transferable }> = []
+    // Fallbacks drawn first — child tiles overwrite them via stencil ALWAYS+REPLACE
+    const fallbacks = new globalThis.Map<string, { tileID: TileID; data: Transferable }>()
+    const primary: Array<{ tileID: TileID; data: Transferable }> = []
+
     for (const key of this._visibleSet) {
       const entry = this._tiles.get(key)
-      if (entry && entry.status === 'ready' && entry.data !== undefined) {
+      if (entry?.status === 'ready' && entry.data !== undefined) {
         const [z, x, y] = key.split('/').map(Number)
-        result.push({ tileID: { z, x, y, key }, data: entry.data })
+        primary.push({ tileID: { z, x, y, key }, data: entry.data })
+      } else {
+        // Tile not ready — look for a cached ancestor to show in its place
+        const [z, x, y] = key.split('/').map(Number)
+        for (let dz = 1; dz <= MAX_FALLBACK_LEVELS; dz++) {
+          const pz = z - dz
+          if (pz < 0) break
+          const pKey = `${pz}/${x >> dz}/${y >> dz}`
+          if (fallbacks.has(pKey)) break  // already queued this ancestor
+          const pEntry = this._tiles.get(pKey)
+          if (pEntry?.status === 'ready' && pEntry.data !== undefined) {
+            fallbacks.set(pKey, { tileID: { z: pz, x: x >> dz, y: y >> dz, key: pKey }, data: pEntry.data })
+            break
+          }
+        }
       }
     }
-    return result
+
+    return [...fallbacks.values(), ...primary]
   }
 
   destroy(): void {
@@ -131,5 +168,6 @@ export class TileManager {
     this._tileService.destroy()
     this._tiles.clear()
     this._visibleSet.clear()
+    this._retainSet.clear()
   }
 }
