@@ -1013,7 +1013,7 @@ import { MercatorProjection } from '../mercator.ts'
 
 - [ ] **Step 5: Wire subdivision API**
 
-`subdivision.ts` exports `subdividePolygon(polygon, canonical, granularity, addBorderVertices)` which takes a polygon ring (array of `Point` objects) and returns `{ verticesFlattened: number[], indicesTriangles: number[] }`.
+`subdivision.ts` exports `subdividePolygon(polygon, canonical, granularity, generateOutlineLines)` which takes a polygon ring (array of `Point` objects) and returns `{ verticesFlattened: number[], indicesTriangles: number[], indicesLineList: ... }`. We only use `verticesFlattened` and `indicesTriangles`.
 
 Replace the placeholder `generateTileMesh` function with:
 
