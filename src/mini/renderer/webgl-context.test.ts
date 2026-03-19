@@ -62,13 +62,14 @@ describe('WebGLContext', () => {
     const defs: ProgramDefinition[] = [
       { name: 'test-prog', vertex: 'void main(){}', fragment: 'void main(){}' },
     ]
-    ctx.compilePrograms(defs)
-    expect(ctx.programs.get('test-prog')).toBeDefined()
+    const cache = ctx.compilePrograms(defs)
+    expect(cache.get('test-prog')).toBeDefined()
   })
 
   it('programs.get returns undefined for unknown program', () => {
     const ctx = new WebGLContext(canvas as any)
-    expect(ctx.programs.get('nonexistent')).toBeUndefined()
+    const cache = ctx.compilePrograms([])
+    expect(cache.get('nonexistent')).toBeUndefined()
   })
 })
 
@@ -188,6 +189,107 @@ describe('WebGLContext — Phase 2 additions', () => {
     const ctx = new WebGLContext(canvas as any)
     expect(() => ctx.destroyTexture('nonexistent')).not.toThrow()
     expect(gl.deleteTexture).not.toHaveBeenCalled()
+  })
+})
+
+describe('compilePrograms with prelude', () => {
+  let gl: any
+  let canvas: { getContext: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    const base = makeGLMock()
+    gl = Object.assign(base, {
+      createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      ARRAY_BUFFER: 34962,
+      STATIC_DRAW: 35044,
+    })
+    canvas = { getContext: vi.fn().mockReturnValue(gl) }
+  })
+
+  it('prepends prelude to vertex shader before compiling', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const prelude = 'vec4 projectTile(vec2 p) { return vec4(p, 0.0, 1.0); }'
+    const def = { name: 'test', vertex: 'void main(){}', fragment: 'void main(){}' }
+    const cache = ctx.compilePrograms([def], prelude)
+    expect(cache.get('test')).toBeDefined()
+    // vertex source passed to shaderSource should contain the prelude
+    const calls = (gl.shaderSource as any).mock.calls
+    const vertCall = calls.find((c: any[]) => c[1].includes('projectTile'))
+    expect(vertCall).toBeDefined()
+  })
+
+  it('returns ProgramCache with the compiled program', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const cache = ctx.compilePrograms([{ name: 'p', vertex: '', fragment: '' }], '')
+    expect(typeof cache.get).toBe('function')
+    expect(cache.get('p')).toBeDefined()
+  })
+})
+
+describe('compileStencilProgram', () => {
+  let gl: any
+  let canvas: { getContext: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    const base = makeGLMock()
+    gl = Object.assign(base, {
+      createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      ARRAY_BUFFER: 34962,
+      STATIC_DRAW: 35044,
+    })
+    canvas = { getContext: vi.fn().mockReturnValue(gl) }
+  })
+
+  it('returns a WebGLProgram', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const prog = ctx.compileStencilProgram('vec4 projectTile(vec2 p){return vec4(p,0,1);}')
+    expect(prog).toBeDefined()
+  })
+})
+
+describe('getOrCreateMeshBuffers', () => {
+  let gl: any
+  let canvas: { getContext: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    const base = makeGLMock()
+    gl = Object.assign(base, {
+      createBuffer: vi.fn().mockReturnValue({ _buf: true }),
+      bindBuffer: vi.fn(),
+      bufferData: vi.fn(),
+      deleteBuffer: vi.fn(),
+      ARRAY_BUFFER: 34962,
+      ELEMENT_ARRAY_BUFFER: 34963,
+      UNSIGNED_SHORT: 5123,
+      TRIANGLES: 4,
+      STATIC_DRAW: 35044,
+      drawElements: vi.fn(),
+    })
+    canvas = { getContext: vi.fn().mockReturnValue(gl) }
+  })
+
+  it('creates vertex and index buffers for a mesh', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const mesh = {
+      vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
+      indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
+    }
+    const bufs = ctx.getOrCreateMeshBuffers('test-tile', mesh)
+    expect(bufs.vert).toBeDefined()
+    expect(bufs.idx).toBeDefined()
+    expect(bufs.indexCount).toBe(6)
+  })
+
+  it('returns the same buffers on second call (cached)', () => {
+    const ctx = new WebGLContext(canvas as any)
+    const mesh = { vertices: new Float32Array([0,0,4096,0,0,4096,4096,4096]), indices: new Uint16Array([0,1,2,1,3,2]) }
+    const a = ctx.getOrCreateMeshBuffers('k', mesh)
+    const b = ctx.getOrCreateMeshBuffers('k', mesh)
+    expect(a.vert).toBe(b.vert)
   })
 })
 

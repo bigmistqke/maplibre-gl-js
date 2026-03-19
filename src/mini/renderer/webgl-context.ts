@@ -1,18 +1,12 @@
-import type { ProgramDefinition } from '../core/types.ts'
+import type { ProgramDefinition, TileMesh } from '../core/types.ts'
 import type { ProgramCache } from '../core/render-extension.ts'
 
 export class WebGLContext {
   readonly gl: WebGLRenderingContext
-  private _programs = new globalThis.Map<string, WebGLProgram>()
   private _textures = new globalThis.Map<string, WebGLTexture>()
   private _geometryBuffers = new globalThis.Map<string, WebGLBuffer>()
+  private _meshBuffers = new globalThis.Map<string, { vert: WebGLBuffer; idx: WebGLBuffer; indexCount: number }>()
   readonly quadBuffer: WebGLBuffer
-  private _tileQuadBuffer: WebGLBuffer
-  private _stencilProgram: WebGLProgram | null = null
-
-  readonly programs: ProgramCache = {
-    get: (name) => this._programs.get(name),
-  }
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl', { antialias: true, stencil: true })
@@ -20,60 +14,91 @@ export class WebGLContext {
     gl.getExtension?.('OES_element_index_uint')
     this.gl = gl
 
-    // Unit quad VBO — vertices covering [0,1]² as TRIANGLE_STRIP
     const buf = gl.createBuffer()!
     gl.bindBuffer(gl.ARRAY_BUFFER, buf)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW)
     this.quadBuffer = buf
-
-    // Tile quad VBO — MVT extent [0,4096]² as TRIANGLE_STRIP, used for stencil masks
-    const tileQuadBuf = gl.createBuffer()!
-    gl.bindBuffer(gl.ARRAY_BUFFER, tileQuadBuf)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]), gl.STATIC_DRAW)
-    this._tileQuadBuffer = tileQuadBuf
   }
 
   /**
-   * Write a unique stencil ID for the tile into the stencil buffer (MapLibre-style tile clipping).
-   * Draws the tile quad ([0,4096]²) with ALWAYS+REPLACE — subsequent layer draws use EQUAL.
-   * Call gl.stencilFunc(EQUAL, ref, 0xFF) + stencilMask(0x00) after this before drawing layers.
+   * Compile programs with a projection vertex shader prelude prepended.
+   * Returns a fresh ProgramCache — caller owns it (one per projection instance).
    */
-  writeTileStencil(matrix: Float32Array, ref: number): void {
-    const { gl } = this
-    if (!this._stencilProgram) {
-      this._stencilProgram = this._compile(
-        /* glsl */`attribute vec2 a_pos; uniform mat4 u_matrix;
-          void main() { gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }`,
-        /* glsl */`precision mediump float; void main() { gl_FragColor = vec4(0.0); }`,
-      )
+  compilePrograms(defs: ProgramDefinition[], vertexPrelude = ''): ProgramCache {
+    const map = new globalThis.Map<string, WebGLProgram>()
+    for (const def of defs) {
+      map.set(def.name, this._compile(vertexPrelude + '\n' + def.vertex, def.fragment))
     }
+    return { get: (name) => map.get(name) }
+  }
+
+  /**
+   * Compile the stencil mask shader with the given projection prelude.
+   * Stencil vertex shader calls projectTile(a_pos) — defined by the prelude.
+   */
+  compileStencilProgram(vertexPrelude: string): WebGLProgram {
+    const vert = vertexPrelude + '\n' +
+      'attribute vec2 a_pos;\nvoid main() { gl_Position = projectTile(a_pos); }'
+    const frag = 'precision mediump float; void main() { gl_FragColor = vec4(0.0); }'
+    return this._compile(vert, frag)
+  }
+
+  /**
+   * Write tile stencil mask using a projection-specific program and mesh.
+   * setTileUniforms must be called on the program before this.
+   */
+  writeTileStencil(
+    program: WebGLProgram,
+    vertBuf: WebGLBuffer,
+    idxBuf: WebGLBuffer,
+    indexCount: number,
+    ref: number,
+  ): void {
+    const { gl } = this
     gl.colorMask(false, false, false, false)
     gl.stencilFunc(gl.ALWAYS, ref, 0xFF)
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
     gl.stencilMask(0xFF)
-    gl.useProgram(this._stencilProgram)
-    gl.bindBuffer(gl.ARRAY_BUFFER, this._tileQuadBuffer)
-    const aPos = gl.getAttribLocation(this._stencilProgram, 'a_pos')
+    gl.useProgram(program)
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertBuf)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf)
+    const aPos = gl.getAttribLocation(program, 'a_pos')
     gl.enableVertexAttribArray(aPos)
     gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
-    gl.uniformMatrix4fv(gl.getUniformLocation(this._stencilProgram, 'u_matrix'), false, matrix)
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0)
     gl.colorMask(true, true, true, true)
     gl.stencilMask(0x00)
   }
 
-  compilePrograms(defs: ProgramDefinition[]): void {
-    for (const def of defs) {
-      if (this._programs.has(def.name)) continue
-      const program = this._compile(def.vertex, def.fragment)
-      this._programs.set(def.name, program)
-    }
+  getOrCreateMeshBuffers(
+    key: string,
+    mesh: TileMesh,
+  ): { vert: WebGLBuffer; idx: WebGLBuffer; indexCount: number } {
+    const cached = this._meshBuffers.get(key)
+    if (cached) return cached
+    const { gl } = this
+    const vert = gl.createBuffer()!
+    gl.bindBuffer(gl.ARRAY_BUFFER, vert)
+    gl.bufferData(gl.ARRAY_BUFFER, mesh.vertices, gl.STATIC_DRAW)
+    const idx = gl.createBuffer()!
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW)
+    const entry = { vert, idx, indexCount: mesh.indices.length }
+    this._meshBuffers.set(key, entry)
+    return entry
+  }
+
+  destroyMeshBuffers(key: string): void {
+    const entry = this._meshBuffers.get(key)
+    if (!entry) return
+    this.gl.deleteBuffer(entry.vert)
+    this.gl.deleteBuffer(entry.idx)
+    this._meshBuffers.delete(key)
   }
 
   getOrCreateTexture(key: string, bitmap: ImageBitmap): WebGLTexture {
     const cached = this._textures.get(key)
     if (cached) return cached
-
     const { gl } = this
     const tex = gl.createTexture()!
     gl.bindTexture(gl.TEXTURE_2D, tex)
