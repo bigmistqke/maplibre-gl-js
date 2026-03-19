@@ -56,20 +56,8 @@ export class TileManager {
     const visibleTiles = this._projection.getVisibleTiles(camera, viewport)
     const newVisibleSet = new globalThis.Set(visibleTiles.map(tileKey))
 
-    // Cancel in-flight requests for tiles no longer visible
-    for (const key of this._visibleSet) {
-      if (!newVisibleSet.has(key)) {
-        const entry = this._tiles.get(key)
-        if (entry && entry.status === 'loading') {
-          this._tileService.cancel(key)
-        }
-      }
-    }
-
-    this._visibleSet = newVisibleSet
-
-    // Build retain set: ancestor tiles of any still-loading visible tile.
-    // These won't be evicted so they can serve as fallbacks while children load.
+    // Build retain set FIRST — ancestor tiles of any not-yet-ready new visible tile.
+    // We need this before cancelling so we don't cancel tiles needed as fallbacks.
     const retainSet = new globalThis.Set<string>()
     for (const tileID of visibleTiles) {
       const entry = this._tiles.get(tileID.key)
@@ -82,6 +70,20 @@ export class TileManager {
       }
     }
     this._retainSet = retainSet
+
+    // Cancel in-flight requests for tiles no longer visible AND not needed as fallbacks.
+    // Tiles in retainSet may still be loading — keep them alive so they can resolve
+    // and serve as fallbacks while the new zoom-level tiles are loading.
+    for (const key of this._visibleSet) {
+      if (!newVisibleSet.has(key) && !retainSet.has(key)) {
+        const entry = this._tiles.get(key)
+        if (entry && entry.status === 'loading') {
+          this._tileService.cancel(key)
+        }
+      }
+    }
+
+    this._visibleSet = newVisibleSet
 
     // Fetch new visible tiles not already in cache
     for (const tileID of visibleTiles) {
