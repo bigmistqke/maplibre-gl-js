@@ -319,8 +319,7 @@ export class Renderer implements RendererAPI {
       stencilProgram: stencilProg,
       layers: this._layers,
       tileLayers: this._tileLayers,
-      // TODO Task 4: TileManager gains getRetainedKeys() — remove 'as any' then
-      tileManagers: this._tileManagers as any,
+      tileManagers: this._tileManagers,
       sourceTypes: this._sourceTypes,
       customLayers: this._customLayers,
       evaluate: (layer, zoom) => this._styleEvaluator.evaluate(layer, zoom),

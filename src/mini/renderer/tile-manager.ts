@@ -228,6 +228,10 @@ export class TileManager {
     return result
   }
 
+  getRetainedKeys(): Set<string> {
+    return this._retainSet
+  }
+
   destroy(): void {
     for (const entry of this._tiles.values()) {
       if (entry.data && typeof (entry.data as ImageBitmap).close === 'function') {
