@@ -109,6 +109,8 @@ export class TextLayer implements PlacementParticipant {
   private _labelPosCache = new globalThis.Map<string, { x: number; y: number }[]>()
   /** Renderer reference for accessing camera state */
   private _renderer: RendererAPI | null = null
+  /** Schedule a re-render — wired to FrameLoop.markDirty() in onAdd() */
+  private _markDirty: (() => void) | null = null
 
   /** Expose workerService so callers can pass it as a TileService-like object if needed. */
   readonly workerService: TextWorkerService
@@ -130,6 +132,7 @@ export class TextLayer implements PlacementParticipant {
     this._webgl = (renderer as any)._webgl
     this._gl = (renderer as any)._gl
     this._renderer = renderer
+    this._markDirty = () => (renderer as any)._frameLoop?.markDirty()
 
     // Wire glyph loading: GlyphManager already rebuilt atlas positions (CPU-side)
     // before firing this callback, so glyphPositions is up to date.
@@ -140,6 +143,8 @@ export class TextLayer implements PlacementParticipant {
       // Atlas layout changed: invalidate all GPU-uploaded buckets so they get
       // re-fetched from the worker with UV coordinates matching the new atlas.
       this._invalidateAllBuckets()
+      // Glyphs just arrived — trigger a re-render so text appears without user interaction.
+      this._markDirty?.()
     }
   }
 
@@ -291,6 +296,8 @@ export class TextLayer implements PlacementParticipant {
         this._labelPosCache.set(key, bucket.labelPositions)
       }
       this._pendingUploads.set(key, bucket)
+      // Bucket is ready — trigger a re-render so text appears without user interaction.
+      this._markDirty?.()
     }
 
     void poll()
