@@ -8,267 +8,260 @@
 
 ## Goal
 
-Add symbol layer support (text labels + icon sprites) to maplibre-modular. Copy as much code verbatim from MapLibre GL JS as possible. Zero symbol code in the core bundle when symbols are unused — tree-shaking applies at every level: main-thread plugin, extensions, and worker entry points.
+Add symbol rendering (text labels + icon sprites) to maplibre-modular. Copy as much code verbatim from MapLibre GL JS as possible. Zero symbol code in the core bundle when unused — tree-shaking applies at every level.
 
 ---
 
-## Architecture Overview
+## Design Principles
 
-Symbol rendering splits across two tiers with different tree-shaking strategies:
+Symbol is not one feature — it is several distinct, composable concerns:
 
-**Worker tier** — verbatim MapLibre code (where possible) in isolated worker entry points. Tree-shaken at the bundle boundary (a map that doesn't import a symbol worker service pays nothing). Two separate entry points allow further granularity within the worker bundle.
+| Concern | Kind | Why separate |
+|---|---|---|
+| Glyph loading | Resource provider | Useful beyond text labels; no map lifecycle needed |
+| Image/sprite loading | Resource provider | Useful beyond icons; no map lifecycle needed |
+| Text rendering | Layer | Own worker; own shader |
+| Icon rendering | Layer | Own worker (simpler); own shader |
+| Line text rendering | Layer | Larger worker (line machinery); same shader as text |
+| Collision / placement | Behavior | Cross-layer, per-frame; plugin only for render hook |
 
-**Main-thread tier** — a `SymbolPlugin` with a fluent `.extend()` accumulator. Each extension is a separate import. Only imported extensions enter the bundle.
+Each is a separate import. Only imported pieces enter the bundle.
 
 ---
 
 ## API
 
 ```ts
-import { symbolPlugin }       from './layers/symbol/symbol-plugin'
-import { GlyphExtension }     from './layers/symbol/glyph-extension'
-import { SpriteExtension }    from './layers/symbol/sprite-extension'
-import { CollisionExtension } from './layers/symbol/collision-extension'
-import { LineExtension }      from './layers/symbol/line-extension'
+import { GlyphManager }   from './layers/symbol/glyph-manager'
+import { ImageManager }   from './layers/symbol/image-manager'
+import { Placement }      from './layers/symbol/placement'
+import { TextLayer }      from './layers/symbol/text-layer'
+import { IconLayer }      from './layers/symbol/icon-layer'
+import { LineTextLayer }  from './layers/symbol/line-text-layer'
 
-// symbolPlugin() creates the worker service. The same instance is wired
-// into addSource so the plugin holds a reference to it.
-const symbols = symbolPlugin({ source: 'openmaptiles' })
-  .extend(new GlyphExtension({ url: 'https://.../fonts/{fontstack}/{range}.pbf' }))
-  .extend(new SpriteExtension({ url: 'https://.../sprite' }))
-  .extend(new CollisionExtension())
-  .extend(new LineExtension())  // upgrades workerService to SymbolLineWorkerService
+const glyphs = new GlyphManager({ url: 'https://.../fonts/{fontstack}/{range}.pbf' })
+const images = new ImageManager({ url: 'https://.../sprite' })
 
-map.addSource('openmaptiles', {
-  type: 'vector',
-  url: '...',
-  tileService: symbols.workerService,  // plugin owns the service reference
-})
-map.addPlugin(symbols)
+map.addPlugin(new Placement())   // hook only — discovers participating layers via map
+
+map.addLayer(new TextLayer({ source: 'openmaptiles', glyphs }))
+map.addLayer(new IconLayer({ source: 'openmaptiles', images }))
+map.addLayer(new LineTextLayer({ source: 'openmaptiles', glyphs }))
 ```
 
-All `.extend()` calls must happen before `map.addPlugin()` is called. Extensions cannot be added dynamically after `onAdd` fires.
-
-Without `LineExtension`, the `get_anchors` / `path_interpolator` / `clip_line` / `merge_lines` code never enters any bundle. Without `CollisionExtension`, the `CollisionIndex` and `Placement` classes are absent. Without symbols entirely, the worker entry points are never bundled.
+`Placement` is the only `addPlugin` call — purely to get the `beforeTiles` render hook. Everything else is direct construction and layer registration.
 
 ---
 
-## Shared Primitive: `StructArray`
+## Components
 
-A small (~60 line) runtime utility, new to maplibre-modular, that replaces MapLibre's code-generated `StructArray` machinery. It packs vertex data into a flat `ArrayBuffer` with a known stride — exactly what `gl.bufferData` needs — without any build-time codegen.
+### `GlyphManager`
 
-```ts
-// src/modular/core/struct-array.ts
+Resource provider. Owns glyph loading (PBF font ranges → SDF bitmaps), atlas packing, and the glyph atlas `WebGLTexture`. Near-verbatim port of MapLibre's `GlyphManager`. Initialized lazily on first `TextLayer.onAdd()` — no map lifecycle of its own.
 
-const SymbolLayout = defineStruct({
-  x:       'int16',
-  y:       'int16',
-  offsetX: 'int16',
-  offsetY: 'int16',
-  texX:    'uint16',
-  texY:    'uint16',
-})
-
-const arr = new StructArray(SymbolLayout)
-arr.emplaceBack(100, 200, 0, 0, 32, 64)
-
-gl.bufferData(gl.ARRAY_BUFFER, arr.arrayBuffer, gl.STATIC_DRAW)
-```
-
-`defineStruct` computes stride and per-field byte offsets from the type map at definition time. `StructArray` maintains a single `ArrayBuffer` with typed views (`Int16Array`, `Uint16Array`, `Float32Array`, etc.) and grows it geometrically on `emplaceBack`. Supported field types: `int8`, `uint8`, `int16`, `uint16`, `int32`, `uint32`, `float32`.
-
-**Scope:** `src/modular/core/struct-array.ts` — a general utility, not symbol-specific. Existing layers (`FillLayer`, `LineLayer`) can migrate to it over time. Symbol uses it for all vertex buffers in the worker and on the main thread, replacing both `WorkerSymbolBucket`'s plain typed arrays and the `StructArray` machinery from MapLibre's `array_types.g.ts`.
+Pushes decoded glyph ranges to the worker via `workerService.updateGlyphs()` whenever a new range loads, unblocking any queued tiles.
 
 ---
 
-## Worker Tier
+### `ImageManager`
 
-### Two worker entry points
+Resource provider. Fetches `sprite.json` + `sprite.png`, packs into an image atlas `WebGLTexture`. Near-verbatim port of MapLibre's `load_sprite` + `ImageManager`. Initialized lazily on first `IconLayer.onAdd()`.
 
-`performSymbolLayout` in MapLibre's `symbol_layout.ts` is a monolith. The line placement code (`getAnchors`, `getCenterAnchor`, `path_interpolator`, `check_max_angle`, `clip_line`, `merge_lines`) is called conditionally at runtime based on `symbol-placement`, but is statically imported — bundlers include all statically-imported modules regardless of runtime branches.
+Pushes image metadata to the worker via `workerService.updateImages()` on load.
 
-To achieve actual tree-shaking of line machinery, we do **not** copy `symbol_layout.ts` verbatim as a single file. Instead we write two thin entry functions and extract the shared helpers into `vendor/symbol_layout_helpers.ts`:
+---
 
-- `performSymbolLayoutPoint` — handles only `symbol-placement: 'point'` features. Does not import `path_interpolator`, `check_max_angle`, `clip_line`, `merge_lines`.
-- `performSymbolLayoutLine` — handles all placement types. Imports the full set.
+### `Placement`
 
-`vendor/symbol_layout_helpers.ts` contains the shared internals extracted from MapLibre's `symbol_layout.ts`: `getAnchorJustification`, `getIconQuads`, `getGlyphQuads`, `addFeature`, `addSymbol`, and related helpers. Both layout entry functions and the vendored `placement.ts` import from this file. This is the one structural departure from verbatim copy — the function is split, not modified.
+Behavioral coordinator. Added as a plugin solely for the `beforeTiles` render hook. On each frame it traverses `map.getLayers()`, duck-types for `PlacementParticipant`, and runs the `CollisionIndex` + placement algorithm over all participating layers. Owns the `CollisionIndex` (spatial grid) and the per-frame opacity state.
 
-### Worker-internal bucket representation
+Does not import `TextLayer`, `IconLayer`, or `LineTextLayer` — it only imports the `PlacementParticipant` interface (a compile-time-only type, zero runtime cost).
 
-During layout, the worker needs mutable vertex accumulators. These are `StructArray` instances (using our new `src/modular/core/struct-array.ts` utility) with layouts matching MapLibre's vertex formats:
+Without `Placement`, symbol layers render all symbols at full opacity unconditionally.
+
+---
+
+### `PlacementParticipant` (shared interface)
 
 ```ts
-const TextLayout = defineStruct({ x: 'int16', y: 'int16', offsetX: 'int16', offsetY: 'int16', texX: 'uint16', texY: 'uint16' })
-const IconLayout = defineStruct({ ... })
-
-type WorkerSymbolBucket = {
-  textVertices:    StructArray<typeof TextLayout>
-  textIndices:     Uint16Array
-  iconVertices:    StructArray<typeof IconLayout>
-  iconIndices:     Uint16Array
-  symbolInstances: StructArray<typeof SymbolInstanceLayout>
-  collisionBoxes:  StructArray<typeof CollisionBoxLayout>
+// src/modular/core/placement-participant.ts  (~5 lines, erased at compile time)
+export interface PlacementParticipant {
+  getSymbolBuckets(): SymbolBucketData[]
+  setOpacity(key: string, opacity: Float32Array): void
 }
 ```
 
-On completion, `arrayBuffer` from each `StructArray` is transferred zero-copy to the main thread as `SymbolTileData`. MapLibre's `array_types.g.ts` code-generation machinery is not used.
+`TextLayer`, `IconLayer`, and `LineTextLayer` implement this interface structurally. `Placement` imports only this file — no coupling to any layer implementation.
 
-### `symbol-worker-point.ts`
+---
 
-Imports: `performSymbolLayoutPoint`, `shaping`, `quads`, `symbol_layout_helpers`, `symbol_size`, `anchor`, `collision_feature`, `one_em`, `opacity_state`.
+### `TextLayer`
 
-Does **not** import: `path_interpolator`, `check_max_angle`, `clip_line`, `merge_lines`.
+Regular layer. Owns `TextWorkerService` (point text worker). On `onAdd`: initializes `GlyphManager`, registers `Placement` if present (via duck-type check on `map.getLayers()`). Implements `PlacementParticipant`.
 
-Used by: `SymbolPointWorkerService`.
+**Worker:** `symbol-worker-point.ts` — shaping + quad generation, no line machinery.
 
-### `symbol-worker-line.ts`
+---
 
-Imports everything in the point worker plus: `performSymbolLayoutLine`, `path_interpolator`, `check_max_angle`, `clip_line`, `merge_lines`.
+### `IconLayer`
 
-Used by: `SymbolLineWorkerService`.
+Regular layer. Owns `IconWorkerService`. On `onAdd`: initializes `ImageManager`. Implements `PlacementParticipant`.
+
+**Worker:** `symbol-worker-icon.ts` — sprite lookup + quad generation. Simpler than text (no shaping).
+
+---
+
+### `LineTextLayer`
+
+Regular layer. Owns `LineTextWorkerService` (larger worker bundle). On `onAdd`: initializes `GlyphManager`. Implements `PlacementParticipant`.
+
+**Worker:** `symbol-worker-line.ts` — full layout including `path_interpolator`, `get_anchors`, `check_max_angle`, `clip_line`, `merge_lines`.
+
+---
+
+## Worker Architecture
+
+Each layer type has its own worker entry point. Workers are separate bundles — unused workers are never fetched or parsed.
+
+```
+symbol-worker-point.ts   ← TextLayer worker
+  imports: shaping, quads, symbol_layout_helpers, symbol_size,
+           anchor, collision_feature, one_em, opacity_state
+  does NOT import: path_interpolator, check_max_angle, clip_line, merge_lines
+
+symbol-worker-icon.ts    ← IconLayer worker
+  imports: sprite lookup, quad generation (no shaping, no SDF)
+
+symbol-worker-line.ts    ← LineTextLayer worker
+  imports: everything in point worker +
+           path_interpolator, check_max_angle, clip_line, merge_lines
+```
+
+### Why split `symbol_layout.ts`
+
+MapLibre's `performSymbolLayout` statically imports line machinery — bundlers include all static imports regardless of runtime branches. To tree-shake line code out of the point worker, we write two thin entry functions sharing `vendor/symbol_layout_helpers.ts` (extracted shared internals). The line-specific imports only appear in `symbol-worker-line.ts`.
 
 ### Worker class interface (Comlink)
 
-Each worker exposes a class via `Comlink.expose`:
-
 ```ts
 class SymbolWorker {
-  // Called once at load and whenever new ranges arrive
   updateGlyphs(glyphMap: GlyphMap): void
   updateImages(imageMap: ImageMap): void
-
-  // Fetches tile, runs layout, serialises bucket
-  // Returns null on cancel or if the tile is queued pending glyph load
   request(key: string, url: string, layers: SymbolLayerSpec[]): Promise<SymbolTileData | null>
   cancel(key: string): void
 }
 ```
 
-`SymbolLayerSpec` is a plain-object summary of symbol layer paint/layout properties, constructed on the main thread and sent to the worker at request time (not at construction time, to allow the layer list to change).
+Tiles arriving before their glyph ranges are loaded are queued and retried when `updateGlyphs()` delivers the needed range.
 
-### Glyph and image availability
+### Side-channel for bucket data
 
-A tile arriving before its glyph ranges have loaded is placed in a **pending queue** on the worker. When `updateGlyphs()` delivers the needed range, the worker retries queued tiles. This mirrors MapLibre's `WorkerTile` pending mechanism. `updateImages()` follows the same pattern for sprite data.
+Workers cache `SymbolTileData` per tile key. `TextLayer`/`IconLayer`/`LineTextLayer` retrieve it via `workerService.getBucket(key)` — outside `TileManager`. Raw PBF bytes continue to flow through `TileManager` unchanged for fill/line layers on the same source. No changes to `TileManager` or the `TileService` interface.
 
-### Worker service as side-channel
+### `workerService` as source tile service
 
-`SymbolWorkerService` caches the latest `SymbolTileData` for each tile key in a `Map<string, SymbolTileData>`. `SymbolPlugin` accesses this via `workerService.getBucket(key)` — the data flows outside `TileManager`. `TileManager` continues returning raw PBF bytes as `transferables[0]` for fill/line layers. No changes to `TileManager` or the `TileService` interface.
-
-### Subdivision / globe dependency
-
-`symbol_layout.ts` in MapLibre imports `subdivideVertexLine` for globe rendering. The two layout entry functions we write omit this call. Out of scope for Phase 1.
-
-### RTL stubs
-
-Two live runtime imports in vendored files need no-op stubs for Phase 1:
-
-- `transform_text.ts` — vendored as a no-op (returns input string unchanged)
-- `vendor/rtl_text_plugin_worker_stub.ts` — a no-op stub satisfying the import in `shaping.ts` line 307 (`rtlWorkerPlugin`)
+```ts
+const textLayer = new TextLayer({ source: 'openmaptiles', glyphs })
+map.addSource('openmaptiles', {
+  type: 'vector',
+  url: '...',
+  tileService: textLayer.workerService,  // layer owns the service
+})
+```
 
 ---
 
-## Main-Thread Tier
+## `StructArray` — Shared Primitive
 
-### `SymbolPlugin<C extends Capabilities>`
-
-Created by `symbolPlugin(opts)`. Owns:
-
-- `workerService` — the `SymbolWorkerService` instance (default: `SymbolPointWorkerService`; upgraded to `SymbolLineWorkerService` when `LineExtension` is added). Exposed as a public property so the caller can pass it to `addSource`.
-- `_extensions: SymbolExtension[]` — populated by `.extend()` calls before `onAdd`
-- A `RenderExtension` registered on the renderer, using the existing `beforeTiles` hook for per-frame placement work
-
-No conditionals internally. The plugin calls each extension's hooks unconditionally in registration order.
+A small (~60 line) runtime utility replacing MapLibre's code-generated `StructArray` machinery:
 
 ```ts
-interface SymbolExtension {
-  onAdd?(plugin: SymbolPlugin<any>, renderer: RendererAPI): void
-  onTileLoad?(key: string, data: SymbolTileData): void
-  beforeTiles?(ctx: RenderContext): void
-  onDraw?(ctx: SymbolDrawContext): void
-  onDestroy?(): void
-}
+// src/modular/core/struct-array.ts
+const TextVertexLayout = defineStruct({
+  x: 'int16', y: 'int16', offsetX: 'int16', offsetY: 'int16',
+  texX: 'uint16', texY: 'uint16',
+})
+
+const arr = new StructArray(TextVertexLayout)
+arr.emplaceBack(100, 200, 0, 0, 32, 64)
+gl.bufferData(gl.ARRAY_BUFFER, arr.arrayBuffer, gl.STATIC_DRAW)
 ```
 
-### `.extend<E>(ext: E): SymbolPlugin<C & E['provides']>`
+`defineStruct` computes stride and byte offsets at definition time. `StructArray` grows a backing `ArrayBuffer` geometrically. Supported types: `int8`, `uint8`, `int16`, `uint16`, `int32`, `uint32`, `float32`.
 
-Returns `this` with an updated type. Registers the extension. If the extension declares `workerServiceClass`, upgrades `this.workerService`. Must be called before `map.addPlugin()`.
+Used by all three worker types for vertex accumulation. Not symbol-specific — `FillLayer` and `LineLayer` can migrate to it. MapLibre's `array_types.g.ts` code-generation is not used.
 
-### Extensions
+---
 
-#### `GlyphExtension`
-Owns glyph loading (PBF glyph ranges → SDF bitmaps), the glyph atlas texture, and atlas packing. Verbatim port of MapLibre's `GlyphManager`. On each new glyph range load, calls `workerService.updateGlyphs()` to unblock pending tiles.
+## Verbatim vs Adapted
 
-**Provides:** `GlyphCapability`
-
-#### `SpriteExtension`
-Fetches `sprite.json` + `sprite.png`, packs into an image atlas texture. Verbatim port of MapLibre's `load_sprite` + `ImageManager`. Calls `workerService.updateImages()` on load.
-
-**Provides:** `SpriteCapability`
-
-#### `CollisionExtension`
-Owns the `CollisionIndex` (spatial grid) and a purpose-built `SymbolPlacement` adapter class. `SymbolPlacement` is adapted (not verbatim) from MapLibre's `placement.ts` — the adaptation replaces `tile.getBucket(layer)` with `workerService.getBucket(key)`, accepting `SymbolTileData` instead of MapLibre's `Tile + SymbolBucket`.
-
-Per-frame via `beforeTiles`: runs placement for each loaded tile, produces per-symbol visibility, writes opacity to a CPU-side array. On draw, the opacity data is uploaded to the `opacityVertexBuffer`.
-
-`CollisionIndex` is adapted (not verbatim) to remove static imports of `clip_line` and `path_interpolator`. The line-label path interpolation in `CollisionIndex` is extracted into a separate `collision_index_line.ts` that is imported only from `symbol-worker-line.ts`. The base `CollisionIndex` handles point collision only.
-
-**Provides:** `CollisionCapability`
-
-Without this extension, all symbols render at full opacity unconditionally.
-
-#### `LineExtension`
-Before `onAdd`: sets `workerService = new SymbolLineWorkerService()`, upgrading the worker entry point. No main-thread runtime behaviour beyond the upgrade.
-
-**Provides:** `LineCapability`
+| File | Status | Notes |
+|---|---|---|
+| `shaping.ts` | Verbatim | — |
+| `quads.ts` | Verbatim | — |
+| `symbol_size.ts` | Verbatim | — |
+| `collision_feature.ts` | Verbatim | — |
+| `grid_index.ts` | Verbatim | — |
+| `anchor.ts` | Verbatim | — |
+| `get_anchors.ts` | Verbatim | — |
+| `one_em.ts` | Verbatim | — |
+| `opacity_state.ts` | Verbatim | — |
+| `path_interpolator.ts` | Verbatim | line worker only |
+| `check_max_angle.ts` | Verbatim | line worker only |
+| `clip_line.ts` | Verbatim | line worker only |
+| `merge_lines.ts` | Verbatim | line worker only |
+| `symbol_layout_helpers.ts` | Near-verbatim | Extracted from `symbol_layout.ts` |
+| `collision_index.ts` | Adapted | Remove static `clip_line`/`path_interpolator` imports |
+| `placement.ts` | Adapted | Replace `Tile.getBucket()` with `SymbolTileData` lookup |
+| `transform_text.ts` | Stub | RTL out of scope |
+| `rtl_text_plugin_worker_stub.ts` | Stub | Satisfies `shaping.ts` import |
 
 ---
 
 ## File Structure
 
 ```
+src/modular/core/
+  struct-array.ts                      ← shared primitive
+  placement-participant.ts             ← shared interface (compile-time only)
+
 src/modular/layers/symbol/
-  symbol-plugin.ts                     ← SymbolPlugin class + symbolPlugin() factory
-  symbol-extension.ts                  ← SymbolExtension interface + Capabilities types
-  symbol-draw.ts                       ← draw() — binds buffers, uniforms, gl.drawElements
-  glyph-extension.ts                   ← GlyphExtension
-  sprite-extension.ts                  ← SpriteExtension
-  collision-extension.ts               ← CollisionExtension + SymbolPlacement adapter
-  line-extension.ts                    ← LineExtension (worker upgrade only)
+  glyph-manager.ts                     ← GlyphManager (resource)
+  image-manager.ts                     ← ImageManager (resource)
+  placement.ts                         ← Placement (plugin, render hook only)
+  text-layer.ts                        ← TextLayer
+  icon-layer.ts                        ← IconLayer
+  line-text-layer.ts                   ← LineTextLayer
 
-  worker-point/
-    symbol-layout-point.ts             ← point-only layout (no line imports)
-    symbol-worker-point.ts             ← worker entry point
-    symbol-point-worker-service.ts     ← Comlink wrapper + getBucket() side-channel
+  workers/
+    symbol-worker-point.ts             ← TextLayer worker entry
+    symbol-worker-icon.ts              ← IconLayer worker entry
+    symbol-worker-line.ts              ← LineTextLayer worker entry
+    text-worker-service.ts
+    icon-worker-service.ts
+    line-text-worker-service.ts
 
-  worker-line/
-    symbol-layout-line.ts              ← full layout (includes line imports)
-    symbol-worker-line.ts              ← worker entry point
-    symbol-line-worker-service.ts      ← Comlink wrapper + getBucket() side-channel
-
-  vendor/                              ← verbatim or near-verbatim from MapLibre src/symbol/
-    symbol_layout_helpers.ts           ← extracted shared helpers (getAnchorJustification, etc.)
+  vendor/                              ← from MapLibre src/symbol/
+    symbol_layout_helpers.ts
     shaping.ts
     quads.ts
     symbol_size.ts
     collision_feature.ts
-    collision_index.ts                 ← adapted: static clip_line/path_interpolator imports removed
-    collision_index_line.ts            ← line-specific collision path (imported by worker-line only)
-    placement.ts                       ← adapted: Tile.getBucket() → SymbolTileData lookup
+    collision_index.ts                 ← adapted
     grid_index.ts
     anchor.ts
     get_anchors.ts
     one_em.ts
     opacity_state.ts
-    transform_text.ts                  ← no-op stub
-    rtl_text_plugin_worker_stub.ts     ← no-op stub (satisfies shaping.ts import)
-    path_interpolator.ts               ← line worker only
-    check_max_angle.ts                 ← line worker only
-    clip_line.ts                       ← line worker only
-    merge_lines.ts                     ← line worker only
+    transform_text.ts                  ← stub
+    rtl_text_plugin_worker_stub.ts     ← stub
+    path_interpolator.ts
+    check_max_angle.ts
+    clip_line.ts
+    merge_lines.ts
 
   shaders/
-    symbol_sdf.vertex.glsl             ← verbatim from MapLibre
+    symbol_sdf.vertex.glsl
     symbol_sdf.fragment.glsl
     symbol_icon.vertex.glsl
     symbol_icon.fragment.glsl
@@ -276,40 +269,16 @@ src/modular/layers/symbol/
 
 ---
 
-## What is verbatim vs adapted
-
-| File | Verbatim? | Reason for adaptation |
-|---|---|---|
-| `shaping.ts` | Yes | — |
-| `quads.ts` | Yes | — |
-| `symbol_size.ts` | Yes | — |
-| `collision_feature.ts` | Yes | — |
-| `grid_index.ts` | Yes | — |
-| `anchor.ts` | Yes | — |
-| `get_anchors.ts` | Yes | — |
-| `one_em.ts` | Yes | — |
-| `opacity_state.ts` | Yes | — |
-| `path_interpolator.ts` | Yes | — |
-| `check_max_angle.ts` | Yes | — |
-| `clip_line.ts` | Yes | — |
-| `merge_lines.ts` | Yes | — |
-| `symbol_layout_helpers.ts` | Near-verbatim | Extracted from `symbol_layout.ts`; not a new file in MapLibre |
-| `collision_index.ts` | Adapted | Remove static `clip_line`/`path_interpolator` imports |
-| `placement.ts` | Adapted | Replace `Tile.getBucket()` with `SymbolTileData` lookup |
-| `transform_text.ts` | Stub | RTL out of scope |
-| `rtl_text_plugin_worker_stub.ts` | Stub | RTL out of scope |
-
----
-
 ## Tree-shaking Summary
 
-| Configuration | Worker bundle | Main bundle extras |
-|---|---|---|
-| No symbols | — | — |
-| Point labels, no collision | `symbol-worker-point.ts` | `GlyphExtension` |
-| Point labels + collision | `symbol-worker-point.ts` | `GlyphExtension`, `CollisionExtension` |
-| Point + line, full | `symbol-worker-line.ts` | all four extensions |
-| Icons only | `symbol-worker-point.ts` | `SpriteExtension` |
+| Configuration | Bundles included |
+|---|---|
+| Nothing | — |
+| Text labels only | `GlyphManager`, `TextLayer`, `symbol-worker-point` |
+| Text + collision | + `Placement`, `collision_index`, `placement` |
+| Icons only | `ImageManager`, `IconLayer`, `symbol-worker-icon` |
+| Line text | `GlyphManager`, `LineTextLayer`, `symbol-worker-line` (larger) |
+| Everything | All of the above |
 
 ---
 
@@ -317,8 +286,8 @@ src/modular/layers/symbol/
 
 - Cross-tile symbol index
 - Variable anchors
-- RTL text plugin (transform_text and rtlWorkerPlugin stubbed as no-ops)
-- Vertical text (CJK)
+- RTL text (`transform_text` stubbed as no-op)
+- Vertical text / CJK
 - `text-writing-mode`
 - Collision debug visualisation
 - Globe subdivision for symbol geometry
