@@ -5,6 +5,20 @@ import { GLOBE_PRELUDE } from './globe-prelude.glsl.ts'
 import { SubdivisionGranularityExpression, SubdivisionGranularitySetting } from './subdivision_granularity_settings.ts'
 import { subdividePolygon } from './subdivision.ts'
 import { computeGlobeMatrix, computeGlobeClippingPlane, computeTileMercatorCoords } from './globe-transform.ts'
+import { MercatorProjection } from '../mercator.ts'
+
+// Globe ↔ mercator crossfade: transition = 1 (pure globe) below start, 0 (pure mercator) above end.
+// Mirrors MapLibre's _globeness behaviour — at high zoom curvature is imperceptible, mercator is used.
+const GLOBE_CROSSFADE_START = 5
+const GLOBE_CROSSFADE_END = 7
+
+function getGlobeTransition(zoom: number): number {
+  return Math.max(0, Math.min(1,
+    1 - (zoom - GLOBE_CROSSFADE_START) / (GLOBE_CROSSFADE_END - GLOBE_CROSSFADE_START),
+  ))
+}
+
+const _mercator = new MercatorProjection()
 // Copied from MapLibre's vertical_perspective_projection.ts (granularitySettingsGlobe)
 const GLOBE_GRANULARITY = new SubdivisionGranularitySetting({
   fill:    new SubdivisionGranularityExpression(128, 2),
@@ -70,11 +84,16 @@ export class GlobeProjection implements Projection {
     const clippingPlane = computeGlobeClippingPlane(camera, viewport)
     const mercatorCoords = computeTileMercatorCoords(tileID.z, tileID.x, tileID.y)
 
+    const transition = getGlobeTransition(camera.zoom)
+    const fallbackMatrix = transition < 1.0
+      ? _mercator._getTileMatrix(tileID, camera, viewport)
+      : IDENTITY_MATRIX
+
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projection_matrix'), false, matrix)
     gl.uniform4fv(gl.getUniformLocation(program, 'u_projection_clipping_plane'), clippingPlane)
     gl.uniform4fv(gl.getUniformLocation(program, 'u_projection_tile_mercator_coords'), mercatorCoords)
-    gl.uniform1f(gl.getUniformLocation(program, 'u_projection_transition'), 1.0)
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projection_fallback_matrix'), false, IDENTITY_MATRIX)
+    gl.uniform1f(gl.getUniformLocation(program, 'u_projection_transition'), transition)
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projection_fallback_matrix'), false, fallbackMatrix)
   }
 
   getMeshForTile(tileID: TileID): TileMesh {

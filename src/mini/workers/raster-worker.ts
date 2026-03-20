@@ -1,5 +1,8 @@
 // src/mini/workers/raster-worker.ts
 import * as Comlink from 'comlink'
+import { createDebug } from '../core/debug.ts'
+
+const debug = createDebug('RasterWorker', false)
 
 export class RasterWorker {
   private _pending = new globalThis.Map<string, AbortController>()
@@ -8,14 +11,14 @@ export class RasterWorker {
     const controller = new AbortController()
     this._pending.set(key, controller)
     try {
-      console.log('[RasterWorker] fetching', url)
+      debug('fetching', url)
       const res = await fetch(url, { signal: controller.signal })
-      console.log('[RasterWorker] response', res.status, res.ok, res.url)
+      debug('response', res.status, res.ok, res.url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const buf = await res.arrayBuffer()
-      console.log('[RasterWorker] arrayBuffer bytes', buf.byteLength)
+      debug('arrayBuffer bytes', buf.byteLength)
       const bitmap = await createImageBitmap(new Blob([buf], { type: 'image/png' }))
-      console.log('[RasterWorker] bitmap created', bitmap.width, bitmap.height)
+      debug('bitmap created', bitmap.width, bitmap.height)
       if (!this._pending.has(key)) {
         bitmap.close()
         return null

@@ -36,7 +36,7 @@ Tracking which MapLibre GL JS features are supported in maplibre-mini.
 ## Projections
 
 - [x] Mercator — standard web mercator (EPSG:3857)
-- [x] Globe — 3D sphere with mercator ↔ globe interpolation
+- [x] Globe — 3D sphere with zoom-based mercator ↔ globe crossfade (zoom 5→7)
 - [ ] Vertical perspective — tilted/angled orthographic globe
 
 ---
