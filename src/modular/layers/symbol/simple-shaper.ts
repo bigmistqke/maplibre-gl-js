@@ -46,8 +46,8 @@ export function shapeAndBuildQuads(options: ShaperOptions): ShaperResult | null 
     [0, 0],    // translate
     1,         // writingMode (horizontal)
     false,     // allowVerticalPlacement
-    fontSize,  // layoutTextSize
-    fontSize,  // layoutTextSizeThisZoom
+    24,        // layoutTextSize — pass ONE_EM so MapLibre's internal scale factor = 1
+    24,        // layoutTextSizeThisZoom — our scale = fontSize/ONE_EM is the sole scale
   )
 
   if (!shaping) return null

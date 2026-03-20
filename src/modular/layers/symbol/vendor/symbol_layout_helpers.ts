@@ -75,8 +75,8 @@ export function shapeTextForLayout(options: SimpleShapingOptions): Shaping | fal
     textOffset,
     writingMode,
     false,            // allowVerticalPlacement
-    fontSize,         // layoutTextSize
-    fontSize,         // layoutTextSizeThisZoom
+    ONE_EM,           // layoutTextSize — pass ONE_EM so MapLibre's scale factor = 1
+    ONE_EM,           // layoutTextSizeThisZoom — our scale = fontSize/ONE_EM is the sole scale
   )
 }
 
