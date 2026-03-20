@@ -11,10 +11,9 @@ interface PendingTile {
   reject: (err: Error) => void
   pbfBuffer: ArrayBuffer
   textField: string
+  sourceLayer: string
   fontstack: string
   fontSize: number
-  anchorX: number
-  anchorY: number
   neededRanges: { [stack: string]: Set<number> }
 }
 
@@ -61,14 +60,15 @@ export class SymbolWorkerPoint {
   }
 
   private async _runLayout(key: string, pending: PendingTile): Promise<SymbolTileData | null> {
-    const { pbfBuffer, textField, fontstack, fontSize } = pending
+    const { pbfBuffer, textField, sourceLayer, fontstack, fontSize } = pending
 
     const tile = new VectorTile(new Pbf(pbfBuffer))
-    // Collect all text from all layers for simplicity; in production you'd use sourceLayer
     const allLabels: { text: string; x: number; y: number }[] = []
 
-    for (const layerName in tile.layers) {
+    const layerNames = sourceLayer ? [sourceLayer] : Object.keys(tile.layers)
+    for (const layerName of layerNames) {
       const layer = tile.layers[layerName]
+      if (!layer) continue
       for (let i = 0; i < layer.length; i++) {
         const feat = layer.feature(i)
         const rawText = this._resolveTextField(textField, feat.properties)
@@ -80,8 +80,11 @@ export class SymbolWorkerPoint {
         allLabels.push({ text: rawText, x: geom[0][0].x, y: geom[0][0].y })
       }
     }
-
-    if (allLabels.length === 0) return null
+    if (allLabels.length === 0) {
+      const empty: SymbolTileData = { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, labelPositions: [] }
+      this._buckets.set(key, empty)
+      return empty
+    }
 
     const allVerts: number[] = []
     const allIdx: number[] = []
@@ -106,7 +109,11 @@ export class SymbolWorkerPoint {
       labelPositions.push({ x: label.x, y: label.y })
     }
 
-    if (allIdx.length === 0) return null
+    if (allIdx.length === 0) {
+      const empty: SymbolTileData = { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, labelPositions: [] }
+      this._buckets.set(key, empty)
+      return empty
+    }
 
     const data: SymbolTileData = {
       vertices: new Int16Array(allVerts).buffer,
@@ -123,10 +130,60 @@ export class SymbolWorkerPoint {
     return text.length > 0 ? text : null
   }
 
+  /** Called from main thread when the PBF is already available (via tileData from draw context). */
+  requestFromPbf(
+    key: string,
+    pbfBuffer: ArrayBuffer,
+    textField: string,
+    sourceLayer: string,
+    fontstack: string,
+    fontSize: number,
+  ): void {
+    if (this._buckets.has(key) || this._waiting.has(key)) {
+      return  // already processed
+    }
+
+    const tile = new VectorTile(new Pbf(pbfBuffer.slice(0)))
+    const neededRanges: { [stack: string]: Set<number> } = { [fontstack]: new Set() }
+
+    const layerNames = sourceLayer ? [sourceLayer] : Object.keys(tile.layers)
+    for (const layerName of layerNames) {
+      const layer = tile.layers[layerName]
+      if (!layer) continue
+      for (let i = 0; i < layer.length; i++) {
+        const feat = layer.feature(i)
+        const rawText = this._resolveTextField(textField, feat.properties)
+        if (!rawText) continue
+        const needed = getNeededGlyphs(rawText, fontstack)
+        for (const id of needed[fontstack] ?? []) {
+          neededRanges[fontstack].add(glyphRange(id))
+        }
+      }
+    }
+
+    const pending: PendingTile = {
+      resolve: () => {},
+      reject: () => {},
+      pbfBuffer,
+      textField,
+      sourceLayer,
+      fontstack,
+      fontSize,
+      neededRanges,
+    }
+
+    if (this._allRangesLoaded(neededRanges)) {
+      void this._runLayout(key, pending)
+    } else {
+      this._waiting.set(key, pending)
+    }
+  }
+
   async request(
     key: string,
     url: string,
     textField: string,
+    sourceLayer: string,
     fontstack: string,
     fontSize: number,
   ): Promise<SymbolTileData | null> {
@@ -144,8 +201,10 @@ export class SymbolWorkerPoint {
       const tile = new VectorTile(new Pbf(pbfBuffer.slice(0)))
       const neededRanges: { [stack: string]: Set<number> } = { [fontstack]: new Set() }
 
-      for (const layerName in tile.layers) {
+      const layerNames = sourceLayer ? [sourceLayer] : Object.keys(tile.layers)
+      for (const layerName of layerNames) {
         const layer = tile.layers[layerName]
+        if (!layer) continue
         for (let i = 0; i < layer.length; i++) {
           const feat = layer.feature(i)
           const rawText = this._resolveTextField(textField, feat.properties)
@@ -162,10 +221,9 @@ export class SymbolWorkerPoint {
         reject: () => {},
         pbfBuffer,
         textField,
+        sourceLayer,
         fontstack,
         fontSize,
-        anchorX: 0,
-        anchorY: 0,
         neededRanges,
       }
 

@@ -67,7 +67,14 @@ export class GlyphManager {
   }
 
   private async _loadRange(stack: string, range: number): Promise<void> {
-    const rangeGlyphs = await loadGlyphRange(stack, range, this._url)
+    let rangeGlyphs!: { [id: number]: StyleGlyph | null }
+    try {
+      rangeGlyphs = await loadGlyphRange(stack, range, this._url)
+    } catch (e) {
+      // Clear the failed entry so the range can be retried
+      delete this._loadedRanges[stack][range]
+      throw e
+    }
     Object.assign(this._glyphs[stack], rangeGlyphs)
     this._atlasDirty = true
 
@@ -105,6 +112,7 @@ export class GlyphManager {
     }
 
     gl.bindTexture(gl.TEXTURE_2D, this.glyphAtlasTexture)
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
     gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.ALPHA,
       this._atlas.image.width, this._atlas.image.height,

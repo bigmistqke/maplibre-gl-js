@@ -213,8 +213,14 @@ export class LineTextLayer implements PlacementParticipant {
     gl.enableVertexAttribArray(aTex)
     gl.vertexAttribPointer(aTex, 2, gl.UNSIGNED_SHORT, false, 12, 8)  // u, v at offset 8
 
+    // Enable alpha blending for SDF transparency
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx)
     gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_SHORT, 0)
+
+    gl.disable(gl.BLEND)
 
     // Cleanup
     gl.disableVertexAttribArray(aAnchor)

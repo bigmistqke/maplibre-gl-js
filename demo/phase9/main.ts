@@ -47,13 +47,13 @@ map.addLayer(new FillLayer({
 }))
 
 const glyphs = new GlyphManager({
-  url: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  url: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 
 const textLayer = new TextLayer({
   source: 'openmaptiles',
-  sourceLayer: 'place_labels',
-  textField: '{name}',
+  sourceLayer: 'centroids',
+  textField: '{NAME}',
   fontstack: 'Open Sans Regular',
   fontSize: 14,
   color: '#333333',

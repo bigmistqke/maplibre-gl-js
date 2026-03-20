@@ -15,17 +15,11 @@ function readFontstack(tag: number, glyphs: StyleGlyph[], pbf: any) {
     const raw: any = {}
     pbf.readMessage(readGlyph, raw)
     const { id, bitmap, width = 0, height = 0, left = 0, top = 0, advance = 0 } = raw
+    // The PBF bitmap already includes the 3px SDF border on each side,
+    // so its actual dimensions are (width + 2*BORDER) × (height + 2*BORDER).
     const w = width + 2 * BORDER
     const h = height + 2 * BORDER
-    const data = new Uint8Array(w * h)
-    if (bitmap && width > 0 && height > 0) {
-      // Copy bitmap bytes into bordered buffer (same as AlphaImage constructor)
-      for (let row = 0; row < height; row++) {
-        const srcOff = row * width
-        const dstOff = (row + BORDER) * w + BORDER
-        data.set(bitmap.subarray(srcOff, srcOff + width), dstOff)
-      }
-    }
+    const data = (bitmap && bitmap.length === w * h) ? bitmap : new Uint8Array(w * h)
     glyphs.push({ id, bitmap: { width: w, height: h, data }, metrics: { width, height, left, top, advance } })
   }
 }

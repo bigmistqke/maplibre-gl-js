@@ -1,4 +1,6 @@
 // src/modular/layers/symbol/text-layer.ts
+import { VectorTile } from '@mapbox/vector-tile'
+import Pbf from 'pbf'
 import type { ProgramDefinition, CameraState } from '../../core/types.ts'
 import type { DrawContext } from '../../core/render-extension.ts'
 import type { RendererAPI } from '../../core/renderer-api.ts'
@@ -20,7 +22,7 @@ varying vec2 v_uv;
 void main() {
   vec4 proj = projectTile(a_anchor);
   vec2 screen = proj.xy / proj.w;
-  screen += (a_offset / 32.0) * 2.0 / u_resolution;
+  screen += (a_offset / 32.0) * vec2(2.0, -2.0) / u_resolution;
   gl_Position = vec4(screen * proj.w, proj.z, proj.w);
   v_uv = a_tex / u_texsize;
 }
@@ -31,13 +33,15 @@ precision mediump float;
 uniform sampler2D u_texture;
 uniform vec4 u_color;
 uniform float u_opacity;
+uniform float u_font_scale;
 varying vec2 v_uv;
 void main() {
   float dist = texture2D(u_texture, v_uv).a;
-  float gamma = 0.105;
-  float edge = 0.75;
-  float alpha = smoothstep(edge - gamma, edge + gamma, dist);
-  gl_FragColor = u_color * alpha * u_opacity;
+  float EDGE_GAMMA = 0.105;
+  float inner_edge = (256.0 - 64.0) / 256.0;
+  float gamma = EDGE_GAMMA / u_font_scale;
+  float alpha = smoothstep(inner_edge - gamma, inner_edge + gamma, dist);
+  gl_FragColor = u_color * (alpha * u_opacity);
 }
 `
 
@@ -193,6 +197,33 @@ export class TextLayer implements PlacementParticipant {
   }
 
   /**
+   * Scan the PBF for text values and fire-and-forget load the needed glyph ranges.
+   * When ranges finish loading, GlyphManager calls _onGlyphsLoaded → updateGlyphs on worker.
+   */
+  private _ensureGlyphsForTile(pbfBuffer: ArrayBuffer): void {
+    try {
+      const tile = new VectorTile(new Pbf(pbfBuffer.slice(0)))
+      const layerNames = this.sourceLayer ? [this.sourceLayer] : Object.keys(tile.layers)
+      const codepoints = new Set<number>()
+      for (const layerName of layerNames) {
+        const layer = tile.layers[layerName]
+        if (!layer) continue
+        for (let i = 0; i < layer.length; i++) {
+          const raw = this._textField.replace(/\{([^}]+)\}/g, (_, k) => String(layer.feature(i).properties[k] ?? '')).trim()
+          if (!raw) continue
+          for (let j = 0; j < raw.length; j++) {
+            const cp = raw.codePointAt(j)
+            if (cp !== undefined) { codepoints.add(cp); if (cp > 0xffff) j++ }
+          }
+        }
+      }
+      if (codepoints.size > 0) {
+        void this._glyphs.getGlyphs({ [this._fontstack]: Array.from(codepoints) })
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  /**
    * draw() ONLY fetches pre-built data from the worker, uploads it to GPU, and renders.
    * All shaping and quad generation has already happened inside the worker's request().
    */
@@ -201,9 +232,21 @@ export class TextLayer implements PlacementParticipant {
     const key = tileID.key
 
     if (!this._tileBuckets.has(key)) {
+      // Kick off worker layout if we have the PBF (idempotent — worker ignores duplicate keys)
+      if (ctx.tileData instanceof ArrayBuffer) {
+        // Scan for needed codepoints on the main thread and trigger glyph loading.
+        // This calls _onGlyphsLoaded → updateGlyphs on the worker once glyphs arrive.
+        this._ensureGlyphsForTile(ctx.tileData)
+        this._workerService.requestFromPbf(key, ctx.tileData, this._textField, this.sourceLayer, this._fontstack, this._fontSize)
+      }
       // Ask the worker for the pre-built SymbolTileData (null = not ready yet or empty tile)
       const bucket = await this._workerService.getBucket(key)
       if (!bucket) {
+        // Worker hasn't processed this tile yet — retry next frame
+        return
+      }
+      if (bucket.count === 0) {
+        // Tile was processed but has no symbols — cache null to stop retrying
         this._tileBuckets.set(key, null)
         return
       }
@@ -256,6 +299,8 @@ export class TextLayer implements PlacementParticipant {
     const [r, g, b, a] = parseColor(this._color)
     gl.uniform4f(gl.getUniformLocation(program, 'u_color'), r, g, b, a)
     gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this._opacity)
+    // Font scale for gamma: matches MapLibre's fontScale = size / 24.0
+    gl.uniform1f(gl.getUniformLocation(program, 'u_font_scale'), this._fontSize / 24.0)
 
     // Bind buffers and set attributes
     // GlyphVertexLayout stride = 12 bytes: ax(2) ay(2) ox(2) oy(2) u(2) v(2)
@@ -273,8 +318,14 @@ export class TextLayer implements PlacementParticipant {
     gl.enableVertexAttribArray(aTex)
     gl.vertexAttribPointer(aTex, 2, gl.UNSIGNED_SHORT, false, 12, 8)  // u, v at offset 8
 
+    // Premultiplied alpha blend — matches MapLibre: fragColor = color * alpha, blend ONE, ONE_MINUS_SRC_ALPHA
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx)
     gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_SHORT, 0)
+
+    gl.disable(gl.BLEND)
 
     // Cleanup
     gl.disableVertexAttribArray(aAnchor)

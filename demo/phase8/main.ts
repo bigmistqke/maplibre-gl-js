@@ -48,14 +48,14 @@ map.addLayer(new FillLayer({
 
 // GlyphManager — fetches SDF glyph PBFs from MapLibre's public endpoint
 const glyphs = new GlyphManager({
-  url: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  url: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 
 // TextLayer — renders place names
 const textLayer = new TextLayer({
   source: 'openmaptiles',
-  sourceLayer: 'place',
-  textField: '{name}',
+  sourceLayer: 'centroids',
+  textField: '{NAME}',
   fontstack: 'Open Sans Regular',
   fontSize: 14,
   color: '#333333',

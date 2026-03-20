@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/glyph-atlas.ts
 import potpack from 'potpack'
-import type { GlyphMap, GlyphPositions, StyleGlyph } from './types.ts'
+import type { GlyphMap, GlyphPositions } from './types.ts'
 
 const PADDING = 1
 
@@ -21,13 +21,24 @@ export class GlyphAtlas {
         const id = +idStr
         const src = glyphs[id]
         if (!src || src.bitmap.width === 0 || src.bitmap.height === 0) continue
-        const bin = { x: 0, y: 0, w: src.bitmap.width + 2 * PADDING, h: src.bitmap.height + 2 * PADDING, stack, id }
-        bins.push(bin)
-        positions[stack][id] = { rect: bin, metrics: src.metrics }
+        bins.push({ x: 0, y: 0, w: src.bitmap.width + 2 * PADDING, h: src.bitmap.height + 2 * PADDING, stack, id })
       }
     }
 
     const { w, h } = potpack(bins)
+
+    // After potpack fills in x and y for each bin, create positions with explicit copies of
+    // all four rect fields. This ensures that when positions are serialized (e.g. via Comlink
+    // structured clone to a worker), w and h are present as own enumerable properties.
+    for (const bin of bins) {
+      const src = stacks[bin.stack][bin.id]!
+      if (!positions[bin.stack]) positions[bin.stack] = {}
+      positions[bin.stack][bin.id] = {
+        rect: { x: bin.x, y: bin.y, w: bin.w, h: bin.h },
+        metrics: src.metrics,
+      }
+    }
+
     const width = w || 1
     const height = h || 1
     const data = new Uint8Array(width * height)

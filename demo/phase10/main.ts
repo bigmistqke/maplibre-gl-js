@@ -55,7 +55,7 @@ map.addLayer(new FillLayer({
 
 // GlyphManager — fetches SDF glyph PBFs from demotiles endpoint
 const glyphs = new GlyphManager({
-  url: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  url: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 
 // LineTextLayer — renders road/river name labels along line geometry
@@ -64,7 +64,7 @@ const glyphs = new GlyphManager({
 // the tile manager drives tile requests with the correct URL template.
 const lineTextLayer = new LineTextLayer({
   source: 'line-text-source',
-  sourceLayer: 'transportation_name',
+  sourceLayer: 'geolines',
   textField: '{name}',
   fontstack: 'Open Sans Regular',
   fontSize: 12,
@@ -91,7 +91,7 @@ map.addSource('line-text-source', {
         tileID.key,
         url,
         '{name}',
-        'transportation_name',
+        'geolines',
         'Open Sans Regular',
         12,
       )

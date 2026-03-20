@@ -22,6 +22,21 @@ export class TextWorkerService {
   }
 
   /**
+   * Trigger layout for a tile in the worker using an already-fetched PBF buffer.
+   * Fire and forget — result is retrieved via getBucket().
+   */
+  requestFromPbf(
+    key: string,
+    pbfBuffer: ArrayBuffer,
+    textField: string,
+    sourceLayer: string,
+    fontstack: string,
+    fontSize: number,
+  ): void {
+    void this._proxy.requestFromPbf(key, pbfBuffer, textField, sourceLayer, fontstack, fontSize)
+  }
+
+  /**
    * Trigger layout for a tile in the worker.
    * The worker fetches the PBF, finds needed glyph ranges, and either
    * resolves immediately or queues until updateGlyphs() supplies them.
@@ -30,11 +45,12 @@ export class TextWorkerService {
     key: string,
     url: string,
     textField: string,
+    sourceLayer: string,
     fontstack: string,
     fontSize: number,
   ): Promise<void> {
     // Fire and forget — result is retrieved via getBucket()
-    void this._proxy.request(key, url, textField, fontstack, fontSize)
+    void this._proxy.request(key, url, textField, sourceLayer, fontstack, fontSize)
   }
 
   /**
