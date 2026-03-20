@@ -15,6 +15,8 @@ export type IconTileData = {
   vertices: ArrayBuffer  // packed per IconVertexLayout, 4 verts per icon quad
   indices: ArrayBuffer   // Uint16Array, 6 indices per icon quad (two triangles)
   count: number          // number of draw indices
+  /** Anchor positions in tile coords [0..8192] for collision detection */
+  anchorPositions: { x: number; y: number }[]
 }
 
 // Per-vertex layout: anchor (int16 x2) + offset (int16 x2) + tex UV (uint16 x2) = 12 bytes stride

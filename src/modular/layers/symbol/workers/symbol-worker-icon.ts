@@ -102,13 +102,14 @@ export class SymbolWorkerIcon {
       const tile = new VectorTile(new Pbf(buf))
       const layer = tile.layers[sourceLayer]
       if (!layer || layer.length === 0) {
-        const empty: IconTileData = { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0 }
+        const empty: IconTileData = { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, anchorPositions: [] }
         this._cache.set(key, empty)
         return empty
       }
 
       const verts = new StructArray(IconVertexLayout)
       const idxList: number[] = []
+      const anchorPositions: { x: number; y: number }[] = []
 
       for (let i = 0; i < layer.length; i++) {
         const feat = layer.feature(i)
@@ -122,6 +123,7 @@ export class SymbolWorkerIcon {
 
         const { x: ax, y: ay } = featureCentroid(feat.loadGeometry())
         writeQuad(verts, idxList, ax, ay, spriteEntry, atlasEntry.atlasX, atlasEntry.atlasY)
+        anchorPositions.push({ x: ax, y: ay })
       }
 
       const idxBuf = new Uint16Array(idxList).buffer
@@ -129,6 +131,7 @@ export class SymbolWorkerIcon {
         vertices: verts.arrayBuffer,
         indices: idxBuf,
         count: idxList.length,
+        anchorPositions,
       }
       this._cache.set(key, result)
       return result

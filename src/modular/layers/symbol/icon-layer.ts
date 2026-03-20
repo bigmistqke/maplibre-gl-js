@@ -1,10 +1,12 @@
 import type { DrawContext } from '../../core/render-extension'
 import type { RendererAPI } from '../../core/renderer-api'
-import type { ProgramDefinition } from '../../core/types'
+import type { ProgramDefinition, CameraState } from '../../core/types'
 import type { TileID } from '../../core/types'
+import type { PlacementParticipant, SymbolBucketData } from '../../core/placement-participant'
 import { ImageManager } from './image-manager'
 import { IconWorkerService } from './workers/icon-worker-service'
 import type { IconTileData } from './icon-types'
+import { lngToTileX, latToTileY } from '../../renderer/mercator'
 
 // --- Shaders ---
 
@@ -62,7 +64,7 @@ type TileBuffers = {
   texture: WebGLTexture
 }
 
-export class IconLayer {
+export class IconLayer implements PlacementParticipant {
   readonly type = 'icon' as const
 
   static programs: ProgramDefinition[] = [
@@ -88,6 +90,11 @@ export class IconLayer {
   private _atlasHeight = 1
   private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
   private _gl!: WebGLRenderingContext
+  private _tileOpacity = new globalThis.Map<string, Float32Array>()
+  /** Cached anchor positions (tile-local coords) for synchronous getSymbolBuckets() */
+  private _anchorCache = new globalThis.Map<string, { x: number; y: number }[]>()
+  /** Renderer reference for accessing camera state */
+  private _renderer: RendererAPI | null = null
 
   constructor(options: IconLayerOptions) {
     this.source = options.source
@@ -104,6 +111,7 @@ export class IconLayer {
   onAdd(renderer: RendererAPI): void {
     this._webgl = (renderer as any)._webgl
     this._gl = (renderer as any)._gl
+    this._renderer = renderer
 
     // Begin loading sprite; push metadata to worker once ready
     this._images.load((spriteData, atlas) => {
@@ -131,6 +139,66 @@ export class IconLayer {
 
   evictTile(key: string): void {
     this._tileBuffers.delete(key)
+    this._tileOpacity.delete(key)
+    this._anchorCache.delete(key)
+  }
+
+  // ---- PlacementParticipant ----
+
+  getSymbolBuckets(): SymbolBucketData[] {
+    if (!this._renderer) return []
+    const camera: CameraState = (this._renderer as any)._camera ?? null
+    if (!camera) return []
+    const gl: WebGLRenderingContext = this._gl
+    if (!gl) return []
+    const canvas = gl.canvas as HTMLCanvasElement
+    const { zoom } = camera
+    const TILE_SIZE = 256
+    // Icon tile extent is 8192 (not 4096 like text)
+    const ICON_EXTENT = 8192
+    const worldSize = TILE_SIZE * Math.pow(2, zoom)
+    const cx = lngToTileX(camera.center.lng, zoom) * TILE_SIZE
+    const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE
+    const w = canvas.width
+    const h = canvas.height
+    const halfSize = 16  // approximate icon half-size in screen pixels
+
+    const buckets: SymbolBucketData[] = []
+
+    for (const [key, positions] of this._anchorCache) {
+      if (positions.length === 0) continue
+      const parts = key.split('/')
+      const tz = parseInt(parts[0], 10)
+      const tx = parseInt(parts[1], 10)
+      const ty = parseInt(parts[2], 10)
+      if (isNaN(tz) || isNaN(tx) || isNaN(ty)) continue
+
+      const tileScale = worldSize / Math.pow(2, tz)
+      const tileOriginX = tx * tileScale
+      const tileOriginY = ty * tileScale
+
+      const anchors: Array<{ x: number; y: number }> = []
+      const boxes: Array<[number, number, number, number]> = []
+
+      for (const pos of positions) {
+        // pos.x, pos.y are in icon tile extent [0, 8192]
+        const worldX = tileOriginX + (pos.x / ICON_EXTENT) * tileScale
+        const worldY = tileOriginY + (pos.y / ICON_EXTENT) * tileScale
+        const sx = (worldX - cx) + w / 2
+        const sy = (worldY - cy) + h / 2
+
+        anchors.push({ x: sx, y: sy })
+        boxes.push([sx - halfSize, sy - halfSize, sx + halfSize, sy + halfSize])
+      }
+
+      buckets.push({ tileKey: key, anchors, boxes })
+    }
+
+    return buckets
+  }
+
+  setOpacity(tileKey: string, opacity: Float32Array): void {
+    this._tileOpacity.set(tileKey, opacity)
   }
 
   draw(ctx: DrawContext): void {
@@ -147,6 +215,10 @@ export class IconLayer {
       // we store the result once it arrives and skip rendering until then)
       void this._workerService.getBucket(key).then((bucket: IconTileData | null) => {
         if (!bucket || bucket.count === 0) return
+        // Cache anchor positions for collision detection (synchronous access)
+        if (bucket.anchorPositions) {
+          this._anchorCache.set(key, bucket.anchorPositions)
+        }
         const vertBuf = this._webgl.createGeometryBuffer(
           `tile:${key}:icon:verts`,
           new Int16Array(bucket.vertices),
@@ -169,6 +241,13 @@ export class IconLayer {
 
     const bufs = this._tileBuffers.get(key)!
     if (bufs.count === 0) return
+
+    // Placement: skip this tile if all icons are hidden
+    const placementOpacity = this._tileOpacity.get(key)
+    if (placementOpacity && placementOpacity.length > 0) {
+      const anyPlaced = placementOpacity.some(v => v > 0)
+      if (!anyPlaced) return
+    }
 
     gl.useProgram(program)
 
