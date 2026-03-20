@@ -30,22 +30,12 @@ export function shapeAndBuildQuads(options: ShaperOptions): ShaperResult | null 
   const { text, anchor, glyphMap, glyphPositions, fontstack, fontSize } = options
 
   // Build a Formatted object — one section with the entire text
-  const formatted = new Formatted([new FormattedSection(text, null, null, null, null)])
-
-  // Build per-stack glyph metrics maps required by shapeText
-  // shapeText expects: glyphs[stack][id] = {rect, metrics} | null
-  const glyphsForShaping: { [stack: string]: { [id: number]: { rect: any; metrics: any } | null } } = {}
-  const posForStack = glyphPositions[fontstack] ?? {}
-  glyphsForShaping[fontstack] = {}
-  for (const idStr in posForStack) {
-    const id = +idStr
-    glyphsForShaping[fontstack][id] = posForStack[id]
-  }
+  const formatted = new Formatted([new FormattedSection(text, null, null, null, null, null)])
 
   const shaping = shapeText(
     formatted,
-    glyphsForShaping,
-    glyphPositions,
+    glyphMap,      // StyleGlyph data (id, bitmap, metrics) per codepoint
+    glyphPositions, // atlas positions (rect + metrics) per codepoint
     {},        // imagePositions (none)
     fontstack,
     24,        // maxWidth in pixels
@@ -70,11 +60,13 @@ export function shapeAndBuildQuads(options: ShaperOptions): ShaperResult | null 
     [0, 0],    // textOffset
     {
       layout: {
-        get: (name: string) => {
-          if (name === 'text-rotate') return 0
-          if (name === 'text-keep-upright') return false
-          return null
-        }
+        get: (name: string) => ({
+          evaluate: () => {
+            if (name === 'text-rotate') return 0
+            if (name === 'text-keep-upright') return false
+            return null
+          }
+        })
       }
     } as any,
     false,     // alongLine
