@@ -93,10 +93,6 @@ export class LineTextLayer implements PlacementParticipant {
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
   /** Cached label positions (tile-local coords) for synchronous getSymbolBuckets() */
   private _labelPosCache = new globalThis.Map<string, { x: number; y: number }[]>()
-  /** Last known camera state from draw() calls */
-  private _lastCamera: CameraState | null = null
-  /** Last known canvas size from draw() calls */
-  private _lastCanvas: { width: number; height: number } | null = null
   /** Renderer reference for accessing camera state */
   private _renderer: RendererAPI | null = null
 
@@ -131,6 +127,8 @@ export class LineTextLayer implements PlacementParticipant {
 
   evictTile(key: string): void {
     this._tileBuckets.delete(key)
+    this._tileOpacity.delete(key)
+    this._labelPosCache.delete(key)
     this._workerService.cancel(key)
   }
 
@@ -240,7 +238,7 @@ export class LineTextLayer implements PlacementParticipant {
     const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE
     const w = canvas.width
     const h = canvas.height
-    const halfLabelH = this._fontSize / 2
+    const halfLabelH = this._fontSize * 0.6  // approximate half-height in screen pixels
 
     const buckets: SymbolBucketData[] = []
 
@@ -266,7 +264,7 @@ export class LineTextLayer implements PlacementParticipant {
         const sy = (worldY - cy) + h / 2
 
         anchors.push({ x: sx, y: sy })
-        const halfW = this._fontSize * 3
+        const halfW = this._fontSize * 0.5  // rough estimate
         boxes.push([sx - halfW, sy - halfLabelH, sx + halfW, sy + halfLabelH])
       }
 

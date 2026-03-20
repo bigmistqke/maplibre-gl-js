@@ -62,7 +62,8 @@ export function shapeTextForLayout(options: SimpleShapingOptions): Shaping | fal
 
   return shapeText(
     formatted,
-    glyphMap,         // StyleGlyph data (id, bitmap, metrics) per codepoint
+    glyphMap as any,  // our GlyphMap is structurally compatible at runtime
+
     glyphPositions,   // atlas positions (rect + metrics) per codepoint
     {},               // imagePositions (none)
     fontstack,
