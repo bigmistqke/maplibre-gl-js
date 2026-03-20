@@ -8,6 +8,7 @@ import * as Comlink from 'comlink'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
 import { clipLine } from '../vendor/clip_line.ts'
+import { mergeLines } from '../vendor/merge_lines.ts'
 import {
   shapeTextForLayout,
   buildGlyphQuads,
@@ -78,15 +79,25 @@ export class SymbolWorkerLine {
     const allIdx: number[] = []
     const labelPositions: { x: number; y: number }[] = []
 
+    // Collect all line features with resolved text for merging
+    const lineFeatures: Array<{ geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }> = []
     for (let i = 0; i < layer.length; i++) {
       const feat = layer.feature(i)
-      if (feat.type !== 2) continue  // only line features
-
+      if (feat.type !== 2) continue
       const rawText = this._resolveTextField(textField, feat.properties)
       if (!rawText) continue
-
       const geom = feat.loadGeometry()
       if (!geom || geom.length === 0) continue
+      lineFeatures.push({ geometry: geom, text: rawText })
+    }
+
+    // Merge features with matching text and shared endpoints
+    const mergedFeatures = mergeLines(lineFeatures as any) as unknown as Array<{ geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }>
+
+    for (const mergedFeat of mergedFeatures) {
+      const geom = mergedFeat.geometry
+      if (!geom || geom.length === 0) continue
+      const rawText = mergedFeat.text
 
       const shaping = shapeTextForLayout({
         text: rawText,
