@@ -2,6 +2,9 @@
 import { loadGlyphRange, glyphRange } from './glyph-loader.ts'
 import { GlyphAtlas } from './glyph-atlas.ts'
 import type { GlyphMap, GlyphPositions, StyleGlyph } from './types.ts'
+import { createDebug } from '../../debug.ts'
+
+const debug = createDebug?.('GlyphManager', false)
 
 export class GlyphManager {
   private _url: string
@@ -18,6 +21,8 @@ export class GlyphManager {
   glyphAtlasTexture: WebGLTexture | null = null
   /** Atlas positions for the current built atlas */
   glyphPositions: GlyphPositions = {}
+  /** Incremented each time the atlas is rebuilt — used by TextLayer to detect stale UV buffers */
+  _atlasVersion = 0
 
   /**
    * Optional callback invoked (on main thread) whenever new glyph ranges finish loading.
@@ -77,11 +82,14 @@ export class GlyphManager {
     }
     Object.assign(this._glyphs[stack], rangeGlyphs)
     this._atlasDirty = true
+    this._atlasVersion++
 
     // Rebuild atlas positions (CPU-only — no gl needed) so callback receives fresh positions.
     // Leave _atlasDirty = true so buildAtlas() knows the GPU texture needs re-uploading.
     this._atlas = new GlyphAtlas(this._glyphs as GlyphMap)
     this.glyphPositions = this._atlas.positions
+
+    debug?.('range loaded, atlas rebuilt', { stack, range, version: this._atlasVersion, glyphs: Object.keys(rangeGlyphs).length })
 
     // Notify listener (TextLayer → worker) with BOTH the partial glyph map and
     // the freshly computed atlas positions so the worker can set UV attributes.
@@ -99,6 +107,7 @@ export class GlyphManager {
   buildAtlas(gl: WebGLRenderingContext): void {
     if (!this._atlasDirty && this._atlas !== null) return
     this._atlasDirty = false
+    debug?.('buildAtlas: uploading to GPU', { version: this._atlasVersion })
 
     // If _atlas is already current (rebuilt CPU-side in _loadRange), reuse it.
     // Otherwise rebuild from scratch (e.g. first call with no ranges loaded yet).

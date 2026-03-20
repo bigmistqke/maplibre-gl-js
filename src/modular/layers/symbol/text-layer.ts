@@ -8,6 +8,10 @@ import type { PlacementParticipant, SymbolBucketData } from '../../core/placemen
 import { GlyphManager } from './glyph-manager.ts'
 import { TextWorkerService } from './workers/text-worker-service.ts'
 import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
+import { createDebug } from '../../debug.ts'
+import type { SymbolTileData } from './types.ts'
+
+const debug = createDebug?.('TextLayer', false)
 
 // ---- SDF Shaders ----
 
@@ -90,7 +94,14 @@ export class TextLayer implements PlacementParticipant {
   private _opacity: number
   private _glyphs: GlyphManager
   private _workerService: TextWorkerService
+  /** GPU-uploaded tile buckets (null = empty tile, missing = not yet ready) */
   private _tileBuckets = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number } | null>()
+  /** Fetched-but-not-yet-GPU-uploaded buckets, queued for upload on next draw() */
+  private _pendingUploads = new globalThis.Map<string, SymbolTileData>()
+  /** Keys currently being fetched from the worker (to avoid duplicate requests) */
+  private _fetchingKeys = new globalThis.Set<string>()
+  /** Atlas version at the time each tile bucket was uploaded — used to detect stale UVs */
+  private _bucketAtlasVersion = new globalThis.Map<string, number>()
   private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
   private _gl!: WebGLRenderingContext
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
@@ -124,12 +135,20 @@ export class TextLayer implements PlacementParticipant {
     // before firing this callback, so glyphPositions is up to date.
     // Push both the partial glyph map AND the fresh atlas positions to the worker.
     this._glyphs._onGlyphsLoaded = (partialMap, positions) => {
+      debug?.('glyphs loaded → pushing to worker, invalidating stale buckets')
       this._workerService.updateGlyphs(partialMap, positions)
+      // Atlas layout changed: invalidate all GPU-uploaded buckets so they get
+      // re-fetched from the worker with UV coordinates matching the new atlas.
+      this._invalidateAllBuckets()
     }
   }
 
   evictTile(key: string): void {
+    debug?.('evictTile', key)
     this._tileBuckets.delete(key)
+    this._pendingUploads.delete(key)
+    this._fetchingKeys.delete(key)
+    this._bucketAtlasVersion.delete(key)
     this._tileOpacity.delete(key)
     this._labelPosCache.delete(key)
     this._workerService.cancel(key)
@@ -157,7 +176,6 @@ export class TextLayer implements PlacementParticipant {
 
     for (const [key, positions] of this._labelPosCache) {
       if (positions.length === 0) continue
-      // Parse z/x/y from key `z/x/y`
       const parts = key.split('/')
       const tz = parseInt(parts[0], 10)
       const tx = parseInt(parts[1], 10)
@@ -172,16 +190,12 @@ export class TextLayer implements PlacementParticipant {
       const boxes: Array<[number, number, number, number]> = []
 
       for (const pos of positions) {
-        // pos.x, pos.y are in tile extent coords [0, 4096]
-        // Convert to world pixels
         const worldX = tileOriginX + (pos.x / 4096) * tileScale
         const worldY = tileOriginY + (pos.y / 4096) * tileScale
-        // Convert to screen pixels (centered)
         const sx = (worldX - cx) + w / 2
         const sy = (worldY - cy) + h / 2
 
         anchors.push({ x: sx, y: sy })
-        // Approximate bounding box based on font size in pixels
         const halfW = (this._fontSize * 0.5)  // rough estimate
         boxes.push([sx - halfW, sy - halfLabelH, sx + halfW, sy + halfLabelH])
       }
@@ -197,8 +211,22 @@ export class TextLayer implements PlacementParticipant {
   }
 
   /**
+   * Invalidate all GPU-uploaded buckets when the atlas layout changes.
+   * The next draw() call per tile will re-fetch from the worker (which has
+   * already been updated with new atlas positions via updateGlyphs).
+   */
+  private _invalidateAllBuckets(): void {
+    const count = this._tileBuckets.size
+    debug?.('invalidating all GPU buckets due to atlas rebuild', { count })
+    this._tileBuckets.clear()
+    this._pendingUploads.clear()
+    this._fetchingKeys.clear()
+    this._bucketAtlasVersion.clear()
+    // NOTE: do NOT clear _labelPosCache — placement data is still valid
+  }
+
+  /**
    * Scan the PBF for text values and fire-and-forget load the needed glyph ranges.
-   * When ranges finish loading, GlyphManager calls _onGlyphsLoaded → updateGlyphs on worker.
    */
   private _ensureGlyphsForTile(pbfBuffer: ArrayBuffer): void {
     try {
@@ -218,57 +246,107 @@ export class TextLayer implements PlacementParticipant {
         }
       }
       if (codepoints.size > 0) {
+        debug?.('ensureGlyphs: requesting ranges for codepoints', { count: codepoints.size })
         void this._glyphs.getGlyphs({ [this._fontstack]: Array.from(codepoints) })
       }
     } catch { /* ignore parse errors */ }
   }
 
   /**
-   * draw() ONLY fetches pre-built data from the worker, uploads it to GPU, and renders.
-   * All shaping and quad generation has already happened inside the worker's request().
+   * Background async fetch: polls the worker for the bucket and stores it in
+   * _pendingUploads when ready. GL upload happens synchronously in draw() on
+   * the next frame, avoiding any async/GL interleaving.
    */
-  async draw(ctx: DrawContext): Promise<void> {
-    const { gl, programs, tileID } = ctx
-    const key = tileID.key
+  private _startFetch(key: string, ctx: DrawContext): void {
+    this._fetchingKeys.add(key)
+    debug?.('startFetch', key)
 
-    if (!this._tileBuckets.has(key)) {
-      // Kick off worker layout if we have the PBF (idempotent — worker ignores duplicate keys)
-      if (ctx.tileData instanceof ArrayBuffer) {
-        // Scan for needed codepoints on the main thread and trigger glyph loading.
-        // This calls _onGlyphsLoaded → updateGlyphs on the worker once glyphs arrive.
-        this._ensureGlyphsForTile(ctx.tileData)
-        this._workerService.requestFromPbf(key, ctx.tileData, this._textField, this.sourceLayer, this._fontstack, this._fontSize)
-      }
-      // Ask the worker for the pre-built SymbolTileData (null = not ready yet or empty tile)
+    if (ctx.tileData instanceof ArrayBuffer) {
+      this._ensureGlyphsForTile(ctx.tileData)
+      this._workerService.requestFromPbf(key, ctx.tileData, this._textField, this.sourceLayer, this._fontstack, this._fontSize)
+    }
+
+    const poll = async () => {
       const bucket = await this._workerService.getBucket(key)
+      if (!this._fetchingKeys.has(key)) {
+        debug?.('fetch cancelled (tile evicted)', key)
+        return  // tile was evicted while we were waiting
+      }
+      this._fetchingKeys.delete(key)
+
       if (!bucket) {
-        // Worker hasn't processed this tile yet — retry next frame
+        // Worker hasn't processed this tile yet (waiting for glyphs) — will retry next draw()
+        debug?.('getBucket: not ready yet', key)
         return
       }
+
+      debug?.('getBucket: ready', { key, count: bucket.count })
+
       if (bucket.count === 0) {
-        // Tile was processed but has no symbols — cache null to stop retrying
-        this._tileBuckets.set(key, null)
+        this._tileBuckets.set(key, null)  // empty tile — stop retrying
         return
       }
-      // Cache label positions for collision detection (synchronous access)
+
       if (bucket.labelPositions) {
         this._labelPosCache.set(key, bucket.labelPositions)
       }
-      // Upload vertex and index data to GPU
-      this._glyphs.buildAtlas(gl)
-      const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
-      const idx = this._webgl.createGeometryBuffer(`tile:${key}:sym:i`, new Uint16Array(bucket.indices), gl.ELEMENT_ARRAY_BUFFER)
-      this._tileBuckets.set(key, { verts, idx, count: bucket.count })
+      this._pendingUploads.set(key, bucket)
+    }
+
+    void poll()
+  }
+
+  /**
+   * Synchronously upload a fetched bucket to the GPU.
+   * Must be called from within a draw() call (synchronous GL context).
+   */
+  private _uploadBucket(key: string, bucket: SymbolTileData, gl: WebGLRenderingContext): void {
+    this._glyphs.buildAtlas(gl)
+    const atlasVersion = (this._glyphs as any)._atlasVersion as number
+    debug?.('uploadBucket', { key, atlasVersion, indices: bucket.count })
+    const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
+    const idx = this._webgl.createGeometryBuffer(`tile:${key}:sym:i`, new Uint16Array(bucket.indices), gl.ELEMENT_ARRAY_BUFFER)
+    this._tileBuckets.set(key, { verts, idx, count: bucket.count })
+    this._bucketAtlasVersion.set(key, atlasVersion)
+  }
+
+  /**
+   * draw() is now effectively synchronous for GL calls.
+   * Async bucket fetching happens in the background (_startFetch), and results
+   * are applied synchronously at the top of the next draw() call.
+   */
+  draw(ctx: DrawContext): void {
+    const { gl, programs, tileID } = ctx
+    const key = tileID.key
+
+    // Apply any pending GPU uploads from background fetches (synchronous GL)
+    const pending = this._pendingUploads.get(key)
+    if (pending) {
+      this._pendingUploads.delete(key)
+      this._uploadBucket(key, pending, gl)
+    }
+
+    if (!this._tileBuckets.has(key)) {
+      // Start background fetch if not already in progress
+      if (!this._fetchingKeys.has(key)) {
+        this._startFetch(key, ctx)
+      } else {
+        debug?.('draw: waiting for fetch', key)
+      }
+      return
     }
 
     const bufs = this._tileBuckets.get(key)
-    if (!bufs) return
+    if (!bufs) return  // empty tile
 
     // Placement: skip this tile if all labels are hidden
     const placementOpacity = this._tileOpacity.get(key)
     if (placementOpacity && placementOpacity.length > 0) {
       const anyPlaced = placementOpacity.some(v => v > 0)
-      if (!anyPlaced) return
+      if (!anyPlaced) {
+        debug?.('draw: all labels hidden by placement', key)
+        return
+      }
     }
 
     const program = programs.get('symbol_sdf')
@@ -276,7 +354,12 @@ export class TextLayer implements PlacementParticipant {
 
     // Ensure atlas texture is up to date on GPU
     this._glyphs.buildAtlas(gl)
-    if (!this._glyphs.glyphAtlasTexture) return
+    if (!this._glyphs.glyphAtlasTexture) {
+      debug?.('draw: no atlas texture yet', key)
+      return
+    }
+
+    debug?.('draw: rendering', { key, count: bufs.count })
 
     gl.useProgram(program)
 
@@ -327,7 +410,7 @@ export class TextLayer implements PlacementParticipant {
 
     gl.disable(gl.BLEND)
 
-    // Cleanup
+    // Cleanup attributes
     gl.disableVertexAttribArray(aAnchor)
     gl.disableVertexAttribArray(aOffset)
     gl.disableVertexAttribArray(aTex)

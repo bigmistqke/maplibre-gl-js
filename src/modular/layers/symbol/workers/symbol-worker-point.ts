@@ -5,6 +5,9 @@ import Pbf from 'pbf'
 import { shapeAndBuildQuads, getNeededGlyphs } from '../simple-shaper.ts'
 import { glyphRange } from '../glyph-loader.ts'
 import type { GlyphMap, SymbolTileData, GlyphPositions } from '../types.ts'
+import { createDebug } from '../../../debug.ts'
+
+const debug = createDebug?.('SymbolWorker', false)
 
 interface PendingTile {
   resolve: (data: SymbolTileData | null) => void
@@ -29,6 +32,8 @@ export class SymbolWorkerPoint {
    * whose missing ranges are now satisfied.
    */
   updateGlyphs(partialMap: GlyphMap, positions: GlyphPositions): void {
+    const stackCounts = Object.fromEntries(Object.entries(positions).map(([k, v]) => [k, Object.keys(v).length]))
+    debug?.('updateGlyphs received', stackCounts)
     for (const stack in partialMap) {
       if (!this._glyphMap[stack]) this._glyphMap[stack] = {}
       Object.assign(this._glyphMap[stack], partialMap[stack])
@@ -61,6 +66,7 @@ export class SymbolWorkerPoint {
 
   private async _runLayout(key: string, pending: PendingTile): Promise<SymbolTileData | null> {
     const { pbfBuffer, textField, sourceLayer, fontstack, fontSize } = pending
+    debug?.('_runLayout start', { key, fontstack })
 
     const tile = new VectorTile(new Pbf(pbfBuffer))
     const allLabels: { text: string; x: number; y: number }[] = []
@@ -80,7 +86,10 @@ export class SymbolWorkerPoint {
         allLabels.push({ text: rawText, x: geom[0][0].x, y: geom[0][0].y })
       }
     }
+    debug?.('_runLayout: labels found', { key, count: allLabels.length })
+
     if (allLabels.length === 0) {
+      debug?.('_runLayout: no labels, empty tile', key)
       const empty: SymbolTileData = { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, labelPositions: [] }
       this._buckets.set(key, empty)
       return empty
@@ -110,11 +119,13 @@ export class SymbolWorkerPoint {
     }
 
     if (allIdx.length === 0) {
+      debug?.('_runLayout: shaped 0 quads (missing glyphs?)', key)
       const empty: SymbolTileData = { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, labelPositions: [] }
       this._buckets.set(key, empty)
       return empty
     }
 
+    debug?.('_runLayout: done', { key, indices: allIdx.length, labels: labelPositions.length })
     const data: SymbolTileData = {
       vertices: new Int16Array(allVerts).buffer,
       indices: new Uint16Array(allIdx).buffer,
@@ -173,8 +184,10 @@ export class SymbolWorkerPoint {
     }
 
     if (this._allRangesLoaded(neededRanges)) {
+      debug?.('requestFromPbf: glyphs already loaded, running layout immediately', key)
       void this._runLayout(key, pending)
     } else {
+      debug?.('requestFromPbf: waiting for glyphs', { key, neededRanges: Object.fromEntries(Object.entries(neededRanges).map(([k, v]) => [k, [...v]])) })
       this._waiting.set(key, pending)
     }
   }
