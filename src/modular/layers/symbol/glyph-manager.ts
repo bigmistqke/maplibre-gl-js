@@ -1,0 +1,128 @@
+// src/modular/layers/symbol/glyph-manager.ts
+import { loadGlyphRange, glyphRange } from './glyph-loader.ts'
+import { GlyphAtlas } from './glyph-atlas.ts'
+import type { GlyphMap, GlyphPositions, StyleGlyph } from './types.ts'
+
+export class GlyphManager {
+  private _url: string
+  /** Loaded glyphs per fontstack, keyed by codepoint */
+  private _glyphs: { [stack: string]: { [id: number]: StyleGlyph | null } } = {}
+  /** Ranges already loaded (or in-flight) per fontstack, keyed by range start */
+  private _loadedRanges: { [stack: string]: { [range: number]: boolean | Promise<void> } } = {}
+
+  /** Atlas is rebuilt whenever new ranges arrive */
+  private _atlas: GlyphAtlas | null = null
+  /** Dirty flag: set when new glyphs loaded, cleared after buildAtlas() */
+  private _atlasDirty = false
+  /** WebGL texture holding the current atlas */
+  glyphAtlasTexture: WebGLTexture | null = null
+  /** Atlas positions for the current built atlas */
+  glyphPositions: GlyphPositions = {}
+
+  /**
+   * Optional callback invoked (on main thread) whenever new glyph ranges finish loading.
+   * TextLayer sets this to push glyphs to the worker.
+   */
+  _onGlyphsLoaded: ((map: GlyphMap, positions: GlyphPositions) => void) | null = null
+
+  constructor(options: { url: string }) {
+    this._url = options.url
+  }
+
+  /**
+   * Ensure all listed codepoints are loaded for each fontstack.
+   * Returns the full GlyphMap (including already-cached glyphs).
+   * Resolves once all needed ranges have been fetched.
+   */
+  async getGlyphs(neededGlyphs: { [stack: string]: number[] }): Promise<GlyphMap> {
+    const promises: Promise<void>[] = []
+
+    for (const stack in neededGlyphs) {
+      if (!this._glyphs[stack]) this._glyphs[stack] = {}
+      if (!this._loadedRanges[stack]) this._loadedRanges[stack] = {}
+
+      const ids = neededGlyphs[stack]
+      const neededRanges = new Set(ids.map(glyphRange))
+
+      for (const range of neededRanges) {
+        if (this._loadedRanges[stack][range]) continue  // already loaded or in-flight
+
+        const p = this._loadRange(stack, range)
+        this._loadedRanges[stack][range] = p
+        promises.push(p)
+      }
+    }
+
+    await Promise.all(promises)
+
+    // Build result map from cache
+    const result: GlyphMap = {}
+    for (const stack in neededGlyphs) {
+      result[stack] = {}
+      for (const id of neededGlyphs[stack]) {
+        result[stack][id] = this._glyphs[stack][id] ?? null
+      }
+    }
+    return result
+  }
+
+  private async _loadRange(stack: string, range: number): Promise<void> {
+    const rangeGlyphs = await loadGlyphRange(stack, range, this._url)
+    Object.assign(this._glyphs[stack], rangeGlyphs)
+    this._atlasDirty = true
+
+    // Rebuild atlas positions (CPU-only — no gl needed) so callback receives fresh positions.
+    // Leave _atlasDirty = true so buildAtlas() knows the GPU texture needs re-uploading.
+    this._atlas = new GlyphAtlas(this._glyphs as GlyphMap)
+    this.glyphPositions = this._atlas.positions
+
+    // Notify listener (TextLayer → worker) with BOTH the partial glyph map and
+    // the freshly computed atlas positions so the worker can set UV attributes.
+    if (this._onGlyphsLoaded) {
+      const partial: GlyphMap = { [stack]: rangeGlyphs }
+      this._onGlyphsLoaded(partial, this.glyphPositions)
+    }
+  }
+
+  /**
+   * (Re)build the glyph atlas from all loaded glyphs and upload to GPU.
+   * Call this once per frame from TextLayer.draw() before binding the texture.
+   * No-op if nothing changed since last call.
+   */
+  buildAtlas(gl: WebGLRenderingContext): void {
+    if (!this._atlasDirty && this._atlas !== null) return
+    this._atlasDirty = false
+
+    // If _atlas is already current (rebuilt CPU-side in _loadRange), reuse it.
+    // Otherwise rebuild from scratch (e.g. first call with no ranges loaded yet).
+    if (!this._atlas) {
+      this._atlas = new GlyphAtlas(this._glyphs as GlyphMap)
+      this.glyphPositions = this._atlas.positions
+    }
+
+    if (!this.glyphAtlasTexture) {
+      this.glyphAtlasTexture = gl.createTexture()
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, this.glyphAtlasTexture)
+    gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.ALPHA,
+      this._atlas.image.width, this._atlas.image.height,
+      0, gl.ALPHA, gl.UNSIGNED_BYTE,
+      this._atlas.image.data,
+    )
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  }
+
+  destroy(): void {
+    this._glyphs = {}
+    this._loadedRanges = {}
+    this._atlas = null
+    this._atlasDirty = false
+    // Caller responsible for deleting glyphAtlasTexture from WebGL context
+    this.glyphAtlasTexture = null
+  }
+}
