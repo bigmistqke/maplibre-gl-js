@@ -53,6 +53,34 @@ Without `LineExtension`, the `get_anchors` / `path_interpolator` / `clip_line` /
 
 ---
 
+## Shared Primitive: `StructArray`
+
+A small (~60 line) runtime utility, new to maplibre-modular, that replaces MapLibre's code-generated `StructArray` machinery. It packs vertex data into a flat `ArrayBuffer` with a known stride — exactly what `gl.bufferData` needs — without any build-time codegen.
+
+```ts
+// src/modular/core/struct-array.ts
+
+const SymbolLayout = defineStruct({
+  x:       'int16',
+  y:       'int16',
+  offsetX: 'int16',
+  offsetY: 'int16',
+  texX:    'uint16',
+  texY:    'uint16',
+})
+
+const arr = new StructArray(SymbolLayout)
+arr.emplaceBack(100, 200, 0, 0, 32, 64)
+
+gl.bufferData(gl.ARRAY_BUFFER, arr.arrayBuffer, gl.STATIC_DRAW)
+```
+
+`defineStruct` computes stride and per-field byte offsets from the type map at definition time. `StructArray` maintains a single `ArrayBuffer` with typed views (`Int16Array`, `Uint16Array`, `Float32Array`, etc.) and grows it geometrically on `emplaceBack`. Supported field types: `int8`, `uint8`, `int16`, `uint16`, `int32`, `uint32`, `float32`.
+
+**Scope:** `src/modular/core/struct-array.ts` — a general utility, not symbol-specific. Existing layers (`FillLayer`, `LineLayer`) can migrate to it over time. Symbol uses it for all vertex buffers in the worker and on the main thread, replacing both `WorkerSymbolBucket`'s plain typed arrays and the `StructArray` machinery from MapLibre's `array_types.g.ts`.
+
+---
+
 ## Worker Tier
 
 ### Two worker entry points
@@ -68,20 +96,23 @@ To achieve actual tree-shaking of line machinery, we do **not** copy `symbol_lay
 
 ### Worker-internal bucket representation
 
-During layout, the worker needs a mutable accumulator for vertex data. We define a plain `WorkerSymbolBucket` type (not derived from MapLibre's `StructArray` / `array_types.g`) using typed arrays directly:
+During layout, the worker needs mutable vertex accumulators. These are `StructArray` instances (using our new `src/modular/core/struct-array.ts` utility) with layouts matching MapLibre's vertex formats:
 
 ```ts
+const TextLayout = defineStruct({ x: 'int16', y: 'int16', offsetX: 'int16', offsetY: 'int16', texX: 'uint16', texY: 'uint16' })
+const IconLayout = defineStruct({ ... })
+
 type WorkerSymbolBucket = {
-  textVertices: Float32Array  // layoutVertexArray
-  textIndices:  Uint16Array
-  iconVertices: Float32Array
-  iconIndices:  Uint16Array
-  symbolInstances: SymbolInstanceData[]
-  collisionBoxes:  CollisionBoxData[]
+  textVertices:    StructArray<typeof TextLayout>
+  textIndices:     Uint16Array
+  iconVertices:    StructArray<typeof IconLayout>
+  iconIndices:     Uint16Array
+  symbolInstances: StructArray<typeof SymbolInstanceLayout>
+  collisionBoxes:  StructArray<typeof CollisionBoxLayout>
 }
 ```
 
-`performSymbolLayoutPoint` and `performSymbolLayoutLine` populate a `WorkerSymbolBucket`. On completion, the bucket is serialised into `SymbolTileData` (a flat `ArrayBuffer`) and transferred zero-copy to the main thread. The `StructArray` machinery from MapLibre is not used.
+On completion, `arrayBuffer` from each `StructArray` is transferred zero-copy to the main thread as `SymbolTileData`. MapLibre's `array_types.g.ts` code-generation machinery is not used.
 
 ### `symbol-worker-point.ts`
 
