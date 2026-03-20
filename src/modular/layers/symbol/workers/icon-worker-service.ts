@@ -38,6 +38,15 @@ export class IconWorkerService {
     return this._proxy.request(key, url, sourceLayer, iconField)
   }
 
+  requestFromPbf(
+    key: string,
+    pbfBuffer: ArrayBuffer,
+    sourceLayer: string,
+    iconField: string,
+  ): void {
+    void this._proxy.requestFromPbf(key, pbfBuffer, sourceLayer, iconField)
+  }
+
   cancel(key: string): void {
     void this._proxy.cancel(key)
   }

@@ -49,32 +49,14 @@ map.addLayer(new FillLayer({
 // ImageManager — fetches sprite from local demo assets
 const images = new ImageManager({ url: './sprite' })
 
-// IconLayer — renders icons from centroid (country/place point) features
+// IconLayer — one dot per country centroid (NAME field won't match sprite entries,
+// worker falls back to 'default' icon for all features)
 const iconLayer = new IconLayer({
-  source: 'icon-source',
+  source: 'openmaptiles',
   sourceLayer: 'centroids',
-  iconField: 'ABBREV',
+  iconField: 'NAME',
   images,
   opacity: 1,
-})
-
-// Adapter: wrap iconLayer.workerService to match the TileService interface
-const tileUrl = 'https://demotiles.maplibre.org/tiles/{z}/{x}/{y}.pbf'
-const { workerService } = iconLayer
-
-map.addSource('icon-source', {
-  type: 'vector',
-  url: tileUrl,
-  minZoom: 0,
-  maxZoom: 6,
-  tileService: {
-    request(tileID: { key: string }, url: string) {
-      void workerService.request(tileID.key, url, 'centroids', 'ABBREV')
-      return Promise.resolve([] as Transferable[])
-    },
-    cancel(key: string) { workerService.cancel(key) },
-    destroy() {},
-  },
 })
 
 map.addLayer(iconLayer)

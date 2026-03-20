@@ -5,6 +5,9 @@ import Pbf from 'pbf'
 import { StructArray } from '../../../core/struct-array'
 import { IconVertexLayout } from '../icon-types'
 import type { SpriteData, SpriteEntry, IconTileData } from '../icon-types'
+import { createDebug } from '../../../debug'
+
+const debug = createDebug('IconWorker', false)
 
 // Tile extent used by the MVT spec
 const TILE_EXTENT = 8192
@@ -76,6 +79,7 @@ export class SymbolWorkerIcon {
   ): void {
     this._spriteData = spriteData
     this._atlasEntries = atlasEntries
+    debug('updateImages', { spriteNames: Object.keys(spriteData), atlasNames: Object.keys(atlasEntries) })
   }
 
   /**
@@ -116,9 +120,12 @@ export class SymbolWorkerIcon {
         // Only process point features (type 1)
         if (feat.type !== 1) continue
 
-        const spriteName = String(feat.properties[iconField] ?? '')
-        const spriteEntry = this._spriteData[spriteName]
-        const atlasEntry = this._atlasEntries[spriteName]
+        const fieldValue = String(feat.properties[iconField] ?? '')
+        const name = (this._spriteData[fieldValue] && this._atlasEntries[fieldValue])
+          ? fieldValue
+          : 'default'
+        const spriteEntry = this._spriteData[name]
+        const atlasEntry = this._atlasEntries[name]
         if (!spriteEntry || !atlasEntry) continue
 
         const { x: ax, y: ay } = featureCentroid(feat.loadGeometry())
@@ -139,6 +146,65 @@ export class SymbolWorkerIcon {
       this._pending.delete(key)
       return null
     }
+  }
+
+  /**
+   * Called from main thread when the PBF is already available (via tileData from draw context).
+   * Fire and forget — result available via getBucket().
+   */
+  requestFromPbf(
+    key: string,
+    pbfBuffer: ArrayBuffer,
+    sourceLayer: string,
+    iconField: string,
+  ): void {
+    if (this._cache.has(key)) {
+      debug('requestFromPbf: already cached', key)
+      return
+    }
+
+    debug('requestFromPbf: parsing', { key, byteLength: pbfBuffer.byteLength, sourceLayer, iconField })
+    const tile = new VectorTile(new Pbf(pbfBuffer.slice(0)))
+    const availableLayers = Object.keys(tile.layers)
+    debug('requestFromPbf: tile layers', { key, availableLayers })
+
+    const layer = tile.layers[sourceLayer]
+    if (!layer || layer.length === 0) {
+      debug('requestFromPbf: no layer or empty', { key, sourceLayer, available: availableLayers })
+      this._cache.set(key, { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, anchorPositions: [] })
+      return
+    }
+
+    debug('requestFromPbf: layer found', { key, featureCount: layer.length })
+    const verts = new StructArray(IconVertexLayout)
+    const idxList: number[] = []
+    const anchorPositions: { x: number; y: number }[] = []
+
+    for (let i = 0; i < layer.length; i++) {
+      const feat = layer.feature(i)
+      if (feat.type !== 1) continue
+
+      const fieldValue = String(feat.properties[iconField] ?? '')
+      const name = (this._spriteData[fieldValue] && this._atlasEntries[fieldValue])
+        ? fieldValue
+        : 'default'
+      const spriteEntry = this._spriteData[name]
+      const atlasEntry = this._atlasEntries[name]
+      if (!spriteEntry || !atlasEntry) continue
+
+      const { x: ax, y: ay } = featureCentroid(feat.loadGeometry())
+      writeQuad(verts, idxList, ax, ay, spriteEntry, atlasEntry.atlasX, atlasEntry.atlasY)
+      anchorPositions.push({ x: ax, y: ay })
+    }
+
+    debug('requestFromPbf: done', { key, quads: anchorPositions.length, indices: idxList.length })
+    const result: IconTileData = {
+      vertices: verts.arrayBuffer,
+      indices: new Uint16Array(idxList).buffer,
+      count: idxList.length,
+      anchorPositions,
+    }
+    this._cache.set(key, result)
   }
 
   /** Return a cached bucket without re-fetching. Used by main thread side-channel. */

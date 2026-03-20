@@ -1,0 +1,30 @@
+{
+  "dot": {
+    "x": 0,
+    "y": 0,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 1
+  },
+  "circle": {
+    "x": 16,
+    "y": 0,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 1
+  },
+  "star": {
+    "x": 32,
+    "y": 0,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 1
+  },
+  "default": {
+    "x": 0,
+    "y": 0,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 1
+  }
+}
