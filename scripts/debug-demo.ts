@@ -1,35 +1,27 @@
 #!/usr/bin/env node
 /**
- * Debug a demo page using Playwright — streams console logs live.
+ * Debug client — talks to debug-browser.ts over HTTP.
+ * Run debug-browser.ts first in your terminal, then Claude uses this.
  *
  * Usage:
  *   node scripts/debug-demo.ts [demo]        e.g. phase8-icons
- *   node scripts/debug-demo.ts phase8 --headed --snapshot
+ *   node scripts/debug-demo.ts phase8-icons --timeout=5000 --snapshot
  *
  * Flags:
- *   --headed       Show browser window
  *   --port=N       Vite port (default 5174)
+ *   --server=N     Browser server port (default 7357)
  *   --timeout=N    Exit after N ms (default: run until Ctrl+C)
  *   --snapshot     Save screenshot on exit
  */
 
-import { chromium } from 'playwright'
-import { spawn, type ChildProcess } from 'child_process'
-import { createServer } from 'net'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const ROOT = resolve(__dirname, '..')
-
-// --- Args ---
 const args = process.argv.slice(2)
-const demo    = args.find(a => !a.startsWith('--')) ?? 'phase8-icons'
-const headed  = args.includes('--headed')
-const snapshot = args.includes('--snapshot')
-const PORT    = parseInt(args.find(a => a.startsWith('--port='))?.split('=')[1] ?? '5174')
-const TIMEOUT = args.find(a => a.startsWith('--timeout='))?.split('=')[1]
-const url     = `http://localhost:${PORT}/${demo}/`
+const demo        = args.find(a => !a.startsWith('--')) ?? 'phase8-icons'
+const PORT        = parseInt(args.find(a => a.startsWith('--port='))?.split('=')[1] ?? '5174')
+const SERVER_PORT = parseInt(args.find(a => a.startsWith('--server='))?.split('=')[1] ?? '7357')
+const TIMEOUT     = args.find(a => a.startsWith('--timeout='))?.split('=')[1]
+const snapshot    = args.includes('--snapshot')
+const url         = `http://localhost:${PORT}/${demo}/`
+const base        = `http://127.0.0.1:${SERVER_PORT}`
 
 // --- Colours ---
 const C = {
@@ -39,85 +31,70 @@ const C = {
 }
 
 function fmt(type: string, text: string): string {
-  const col: Record<string, string> = { log: C.reset, warn: C.yellow, error: C.red, info: C.cyan, debug: C.grey }
-  const icon: Record<string, string> = { log: '·', warn: '⚠', error: '✖', info: 'ℹ', debug: '·' }
+  const col: Record<string, string> = { log: C.reset, warn: C.yellow, error: C.red, pageerror: C.red, info: C.cyan, debug: C.grey, requestfailed: C.yellow }
+  const icon: Record<string, string> = { log: '·', warn: '⚠', error: '✖', pageerror: '✖', info: 'ℹ', debug: '·', requestfailed: '⚠' }
   const ts = new Date().toISOString().slice(11, 23)
   return `${C.dim}${ts}${C.reset} ${col[type] ?? C.reset}${icon[type] ?? '·'} ${text}${C.reset}`
 }
 
-// --- Port check ---
-function isPortOpen(port: number): Promise<boolean> {
-  return new Promise(resolve => {
-    const s = createServer()
-    s.once('error', () => resolve(true))
-    s.once('listening', () => { s.close(); resolve(false) })
-    s.listen(port, '127.0.0.1')
-  })
+// --- Check server ---
+try {
+  const statusRes = await fetch(`${base}/status`)
+  const { vitePort } = await statusRes.json() as { ok: boolean; vitePort: number }
+  console.log(`[debug-demo] Browser server ready (Vite on :${vitePort})`)
+} catch {
+  console.error(`[debug-demo] Browser server not running on :${SERVER_PORT}`)
+  console.error(`[debug-demo] Start it first: node scripts/debug-browser.ts`)
+  process.exit(1)
 }
 
-// --- Start Vite ---
-function startVite(): Promise<ChildProcess> {
-  console.log(`[debug-demo] Starting Vite on :${PORT}...`)
-  const proc = spawn(
-    'node_modules/.bin/vite',
-    ['--config', 'vite.config.demo.ts', '--port', String(PORT)],
-    { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] }
-  )
-  return new Promise((res, rej) => {
-    const t = setTimeout(() => rej(new Error('Vite start timeout')), 15_000)
-    proc.stdout!.on('data', (chunk: Buffer) => {
-      const line = chunk.toString()
-      if (line.includes('Local:') || line.includes('ready in')) { clearTimeout(t); res(proc) }
-    })
-    proc.stderr!.on('data', (c: Buffer) => process.stderr.write(c))
-    proc.on('exit', code => { clearTimeout(t); rej(new Error(`Vite exited ${code}`)) })
-  })
-}
-
-// --- Main ---
-let viteProc: ChildProcess | null = null
-
-const running = await isPortOpen(PORT)
-if (!running) {
-  viteProc = await startVite()
-  console.log(`[debug-demo] Vite ready`)
-} else {
-  console.log(`[debug-demo] Using existing server on :${PORT}`)
-}
-
+// --- Connect SSE first, then navigate ---
 console.log(`[debug-demo] Opening ${C.bold}${C.blue}${url}${C.reset}`)
 
-const browser = await chromium.launch({
-  headless: !headed,
-  args: [
-    '--use-gl=angle',
-    '--use-angle=swiftshader',
-    '--enable-unsafe-webgpu',
-    '--ignore-gpu-blocklist',
-  ],
+const abort = new AbortController()
+const logsRes = await fetch(`${base}/logs`, { signal: abort.signal })
+const reader = logsRes.body!.getReader()
+const decoder = new TextDecoder()
+let sseBuffer = ''
+
+// Navigate after SSE is connected
+await fetch(`${base}/navigate`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ url }),
 })
-const ctx     = await browser.newContext()
-const page    = await ctx.newPage()
 
-page.on('console',      msg => console.log(fmt(msg.type(), msg.text())))
-page.on('pageerror',    err => console.error(fmt('error', `[PAGE ERROR] ${err.message}`)))
-page.on('requestfailed', req => console.log(fmt('warn', `[NET FAIL] ${req.url()} — ${req.failure()?.errorText ?? '?'}`)))
+console.log(`[debug-demo] Streaming logs (Ctrl+C to stop)\n`)
 
-await page.goto(url, { waitUntil: 'domcontentloaded' })
-console.log(`[debug-demo] Page loaded — streaming logs (Ctrl+C to stop)\n`)
+if (TIMEOUT) setTimeout(() => abort.abort(), parseInt(TIMEOUT))
+process.on('SIGINT', () => abort.abort())
 
-if (TIMEOUT) {
-  await page.waitForTimeout(parseInt(TIMEOUT))
-} else {
-  await new Promise<void>(res => process.once('SIGINT', () => res()))
+try {
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    sseBuffer += decoder.decode(value, { stream: true })
+    const lines = sseBuffer.split('\n')
+    sseBuffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      try {
+        const ev = JSON.parse(line.slice(6))
+        if (ev.type === 'connected' || ev.type === 'navigate') continue
+        console.log(fmt(ev.type, ev.text))
+      } catch {}
+    }
+  }
+} catch (e: any) {
+  if (e?.name !== 'AbortError') throw e
 }
 
 if (snapshot) {
-  const file = resolve(ROOT, `debug-snapshot-${demo}-${Date.now()}.png`)
-  await page.screenshot({ path: file })
+  const snapRes = await fetch(`${base}/snapshot`)
+  const buf = Buffer.from(await snapRes.arrayBuffer())
+  const file = `debug-snapshot-${demo}-${Date.now()}.png`
+  await import('fs').then(fs => fs.writeFileSync(file, buf))
   console.log(`\n[debug-demo] Screenshot → ${file}`)
 }
 
-await browser.close()
-viteProc?.kill()
 process.exit(0)
