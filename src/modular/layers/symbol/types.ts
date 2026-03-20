@@ -1,4 +1,4 @@
-import { defineStruct, type StructArray } from '../../../modular/core/struct-array.ts'
+import { defineStruct, type StructArray } from '../../core/struct-array.ts'
 
 // ---- Glyph types ----
 
