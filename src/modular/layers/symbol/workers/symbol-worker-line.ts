@@ -260,6 +260,57 @@ export class SymbolWorkerLine {
     }
   }
 
+  /** Called from main thread when the PBF is already available (via tileData from draw context). */
+  requestFromPbf(
+    key: string,
+    pbfBuffer: ArrayBuffer,
+    textField: string,
+    sourceLayer: string,
+    fontstack: string,
+    fontSize: number,
+  ): void {
+    if (this._buckets.has(key) || this._waiting.has(key)) {
+      return  // already processed
+    }
+
+    const tile = new VectorTile(new Pbf(pbfBuffer.slice(0)))
+    const neededRanges: { [stack: string]: Set<number> } = { [fontstack]: new Set() }
+
+    const vLayer = tile.layers[sourceLayer]
+    if (vLayer) {
+      for (let i = 0; i < vLayer.length; i++) {
+        const feat = vLayer.feature(i)
+        if (feat.type !== 2) continue
+        const rawText = this._resolveTextField(textField, feat.properties)
+        if (!rawText) continue
+        for (let ci = 0; ci < rawText.length; ci++) {
+          const cp = rawText.codePointAt(ci)
+          if (cp !== undefined) {
+            neededRanges[fontstack].add(glyphRange(cp))
+            if (cp > 0xffff) ci++
+          }
+        }
+      }
+    }
+
+    const pending: PendingTile = {
+      resolve: () => {},
+      reject: () => {},
+      pbfBuffer,
+      textField,
+      sourceLayer,
+      fontstack,
+      fontSize,
+      neededRanges,
+    }
+
+    if (this._allRangesLoaded(neededRanges)) {
+      void this._runLayout(key, pending)
+    } else {
+      this._waiting.set(key, pending)
+    }
+  }
+
   getBucket(key: string): SymbolTileData | null {
     return this._buckets.get(key) ?? null
   }

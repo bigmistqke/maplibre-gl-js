@@ -39,6 +39,21 @@ export class LineTextWorkerService {
   }
 
   /**
+   * Trigger layout for a tile in the worker using an already-fetched PBF buffer.
+   * Fire and forget — result is retrieved via getBucket().
+   */
+  requestFromPbf(
+    key: string,
+    pbfBuffer: ArrayBuffer,
+    textField: string,
+    sourceLayer: string,
+    fontstack: string,
+    fontSize: number,
+  ): void {
+    void this._proxy.requestFromPbf(key, pbfBuffer, textField, sourceLayer, fontstack, fontSize)
+  }
+
+  /**
    * Retrieve the pre-built SymbolTileData for a tile (if layout has completed).
    * Returns null if the tile is still waiting for glyphs or hasn't been requested.
    */
