@@ -102,6 +102,8 @@ export class TextLayer implements PlacementParticipant {
   private _fetchingKeys = new globalThis.Set<string>()
   /** Atlas version at the time each tile bucket was uploaded — used to detect stale UVs */
   private _bucketAtlasVersion = new globalThis.Map<string, number>()
+  /** Tiles whose GPU bucket needs replacing (fontSize changed) but old data is still shown */
+  private _staleBuckets = new globalThis.Set<string>()
   private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
   private _gl!: WebGLRenderingContext
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
@@ -154,6 +156,7 @@ export class TextLayer implements PlacementParticipant {
     this._pendingUploads.delete(key)
     this._fetchingKeys.delete(key)
     this._bucketAtlasVersion.delete(key)
+    this._staleBuckets.delete(key)
     this._tileOpacity.delete(key)
     this._labelPosCache.delete(key)
     this._workerService.cancel(key)
@@ -214,7 +217,14 @@ export class TextLayer implements PlacementParticipant {
   setFontSize(size: number): void {
     this._fontSize = size
     this._workerService.clearAllBuckets()
-    this._invalidateAllBuckets()
+    // Mark existing tiles as stale so new buckets are fetched, but keep old
+    // GPU data visible until the replacement is ready (no flicker).
+    for (const key of this._tileBuckets.keys()) {
+      this._staleBuckets.add(key)
+    }
+    this._pendingUploads.clear()
+    this._fetchingKeys.clear()
+    this._bucketAtlasVersion.clear()
     this._markDirty?.()
   }
 
@@ -234,6 +244,7 @@ export class TextLayer implements PlacementParticipant {
     this._pendingUploads.clear()
     this._fetchingKeys.clear()
     this._bucketAtlasVersion.clear()
+    this._staleBuckets.clear()
     // NOTE: do NOT clear _labelPosCache — placement data is still valid
   }
 
@@ -339,6 +350,7 @@ export class TextLayer implements PlacementParticipant {
     const pending = this._pendingUploads.get(key)
     if (pending) {
       this._pendingUploads.delete(key)
+      this._staleBuckets.delete(key)
       this._uploadBucket(key, pending, gl)
     }
 
@@ -350,6 +362,11 @@ export class TextLayer implements PlacementParticipant {
         debug('draw: waiting for fetch', key)
       }
       return
+    }
+
+    // Stale: has old GPU data but needs a new fetch — start one, then fall through to render old data
+    if (this._staleBuckets.has(key) && !this._fetchingKeys.has(key)) {
+      this._startFetch(key, ctx)
     }
 
     const bufs = this._tileBuckets.get(key)
@@ -417,6 +434,9 @@ export class TextLayer implements PlacementParticipant {
     gl.enableVertexAttribArray(aTex)
     gl.vertexAttribPointer(aTex, 2, gl.UNSIGNED_SHORT, false, 12, 8)  // u, v at offset 8
 
+    // Disable stencil: glyphs can extend across tile boundaries
+    gl.disable(gl.STENCIL_TEST)
+
     // Premultiplied alpha blend — matches MapLibre: fragColor = color * alpha, blend ONE, ONE_MINUS_SRC_ALPHA
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -425,6 +445,7 @@ export class TextLayer implements PlacementParticipant {
     gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_SHORT, 0)
 
     gl.disable(gl.BLEND)
+    gl.enable(gl.STENCIL_TEST)
 
     // Cleanup attributes
     gl.disableVertexAttribArray(aAnchor)
