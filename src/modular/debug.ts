@@ -2,31 +2,31 @@
 /**
  * Creates a scoped debug logging function.
  *
- * Returns `undefined` in production builds, allowing the bundler to tree-shake
- * all debug call sites via optional chaining.
+ * The returned function is a no-op in production builds, allowing the bundler
+ * to tree-shake the body of all debug call sites.
  *
  * Usage:
- *   const debug = createDebug?.('TextLayer', false)
- *   debug?.('draw called', { key })
+ *   const debug = createDebug('TextLayer', false)
+ *   debug('draw called', { key })
  */
-export const createDebug = !import.meta.env.PROD
-  ? (subject: string, enabled: boolean) => {
-      return function debug(message: string, extra?: unknown) {
-        if (!enabled) return
-        if (extra !== undefined) {
-          console.log(
-            `%c[${subject}]%c ${message}`,
-            'color: #6af; font-weight: bold',
-            'color: inherit',
-            extra,
-          )
-        } else {
-          console.log(
-            `%c[${subject}]%c ${message}`,
-            'color: #6af; font-weight: bold',
-            'color: inherit',
-          )
-        }
-      }
+export function createDebug(subject: string, enabled: boolean) {
+  if (import.meta.env.PROD || !enabled) return _noop
+  return function debug(message: string, extra?: unknown) {
+    if (extra !== undefined) {
+      console.log(
+        `%c[${subject}]%c ${message}`,
+        'color: #6af; font-weight: bold',
+        'color: inherit',
+        extra,
+      )
+    } else {
+      console.log(
+        `%c[${subject}]%c ${message}`,
+        'color: #6af; font-weight: bold',
+        'color: inherit',
+      )
     }
-  : undefined
+  }
+}
+
+function _noop(_message: string, _extra?: unknown) {}

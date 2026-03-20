@@ -11,7 +11,7 @@ import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 import { createDebug } from '../../debug.ts'
 import type { SymbolTileData } from './types.ts'
 
-const debug = createDebug?.('TextLayer', false)
+const debug = createDebug('TextLayer', false)
 
 // ---- SDF Shaders ----
 
@@ -135,7 +135,7 @@ export class TextLayer implements PlacementParticipant {
     // before firing this callback, so glyphPositions is up to date.
     // Push both the partial glyph map AND the fresh atlas positions to the worker.
     this._glyphs._onGlyphsLoaded = (partialMap, positions) => {
-      debug?.('glyphs loaded → pushing to worker, invalidating stale buckets')
+      debug('glyphs loaded → pushing to worker, invalidating stale buckets')
       this._workerService.updateGlyphs(partialMap, positions)
       // Atlas layout changed: invalidate all GPU-uploaded buckets so they get
       // re-fetched from the worker with UV coordinates matching the new atlas.
@@ -144,7 +144,7 @@ export class TextLayer implements PlacementParticipant {
   }
 
   evictTile(key: string): void {
-    debug?.('evictTile', key)
+    debug('evictTile', key)
     this._tileBuckets.delete(key)
     this._pendingUploads.delete(key)
     this._fetchingKeys.delete(key)
@@ -217,7 +217,7 @@ export class TextLayer implements PlacementParticipant {
    */
   private _invalidateAllBuckets(): void {
     const count = this._tileBuckets.size
-    debug?.('invalidating all GPU buckets due to atlas rebuild', { count })
+    debug('invalidating all GPU buckets due to atlas rebuild', { count })
     this._tileBuckets.clear()
     this._pendingUploads.clear()
     this._fetchingKeys.clear()
@@ -246,7 +246,7 @@ export class TextLayer implements PlacementParticipant {
         }
       }
       if (codepoints.size > 0) {
-        debug?.('ensureGlyphs: requesting ranges for codepoints', { count: codepoints.size })
+        debug('ensureGlyphs: requesting ranges for codepoints', { count: codepoints.size })
         void this._glyphs.getGlyphs({ [this._fontstack]: Array.from(codepoints) })
       }
     } catch { /* ignore parse errors */ }
@@ -259,7 +259,7 @@ export class TextLayer implements PlacementParticipant {
    */
   private _startFetch(key: string, ctx: DrawContext): void {
     this._fetchingKeys.add(key)
-    debug?.('startFetch', key)
+    debug('startFetch', key)
 
     if (ctx.tileData instanceof ArrayBuffer) {
       this._ensureGlyphsForTile(ctx.tileData)
@@ -269,18 +269,18 @@ export class TextLayer implements PlacementParticipant {
     const poll = async () => {
       const bucket = await this._workerService.getBucket(key)
       if (!this._fetchingKeys.has(key)) {
-        debug?.('fetch cancelled (tile evicted)', key)
+        debug('fetch cancelled (tile evicted)', key)
         return  // tile was evicted while we were waiting
       }
       this._fetchingKeys.delete(key)
 
       if (!bucket) {
         // Worker hasn't processed this tile yet (waiting for glyphs) — will retry next draw()
-        debug?.('getBucket: not ready yet', key)
+        debug('getBucket: not ready yet', key)
         return
       }
 
-      debug?.('getBucket: ready', { key, count: bucket.count })
+      debug('getBucket: ready', { key, count: bucket.count })
 
       if (bucket.count === 0) {
         this._tileBuckets.set(key, null)  // empty tile — stop retrying
@@ -303,7 +303,7 @@ export class TextLayer implements PlacementParticipant {
   private _uploadBucket(key: string, bucket: SymbolTileData, gl: WebGLRenderingContext): void {
     this._glyphs.buildAtlas(gl)
     const atlasVersion = (this._glyphs as any)._atlasVersion as number
-    debug?.('uploadBucket', { key, atlasVersion, indices: bucket.count })
+    debug('uploadBucket', { key, atlasVersion, indices: bucket.count })
     const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
     const idx = this._webgl.createGeometryBuffer(`tile:${key}:sym:i`, new Uint16Array(bucket.indices), gl.ELEMENT_ARRAY_BUFFER)
     this._tileBuckets.set(key, { verts, idx, count: bucket.count })
@@ -331,7 +331,7 @@ export class TextLayer implements PlacementParticipant {
       if (!this._fetchingKeys.has(key)) {
         this._startFetch(key, ctx)
       } else {
-        debug?.('draw: waiting for fetch', key)
+        debug('draw: waiting for fetch', key)
       }
       return
     }
@@ -344,7 +344,7 @@ export class TextLayer implements PlacementParticipant {
     if (placementOpacity && placementOpacity.length > 0) {
       const anyPlaced = placementOpacity.some(v => v > 0)
       if (!anyPlaced) {
-        debug?.('draw: all labels hidden by placement', key)
+        debug('draw: all labels hidden by placement', key)
         return
       }
     }
@@ -355,11 +355,11 @@ export class TextLayer implements PlacementParticipant {
     // Ensure atlas texture is up to date on GPU
     this._glyphs.buildAtlas(gl)
     if (!this._glyphs.glyphAtlasTexture) {
-      debug?.('draw: no atlas texture yet', key)
+      debug('draw: no atlas texture yet', key)
       return
     }
 
-    debug?.('draw: rendering', { key, count: bufs.count })
+    debug('draw: rendering', { key, count: bufs.count })
 
     gl.useProgram(program)
 
