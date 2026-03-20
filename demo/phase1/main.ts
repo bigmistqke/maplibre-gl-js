@@ -1,6 +1,6 @@
-import { createRenderer } from '../../src/mini/renderer/index.ts'
-import { MapGL } from '../../src/mini/core/map.ts'
-import { BackgroundLayer } from '../../src/mini/layers/background.ts'
+import { createRenderer } from '../../src/modular/renderer/index.ts'
+import { MapGL } from '../../src/modular/core/map.ts'
+import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
 const status = document.getElementById('status')!

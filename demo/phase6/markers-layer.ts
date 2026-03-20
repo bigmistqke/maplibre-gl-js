@@ -1,4 +1,4 @@
-import type { CustomLayer, CustomLayerRenderArgs } from '../../src/mini/renderer/index.ts'
+import type { CustomLayer, CustomLayerRenderArgs } from '../../src/modular/renderer/index.ts'
 
 // ── GLSL ─────────────────────────────────────────────────────────────────────
 

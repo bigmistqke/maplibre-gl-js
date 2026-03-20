@@ -1,6 +1,6 @@
-# MapLibre Mini — Feature Coverage
+# MapLibre Modular — Feature Coverage
 
-Tracking which MapLibre GL JS features are supported in maplibre-mini.
+Tracking which MapLibre GL JS features are supported in maplibre-modular.
 `[x]` = supported · `[ ]` = not yet implemented
 
 ---

@@ -1,8 +1,8 @@
 // demo/phase-2-raster.ts
-import { createRenderer } from '../src/mini/renderer/index.ts'
-import { MapGL } from '../src/mini/core/map.ts'
-import { RasterLayer } from '../src/mini/layers/raster.ts'
-import type { SourceDefinition } from '../src/mini/core/renderer-api.ts'
+import { createRenderer } from '../src/modular/renderer/index.ts'
+import { MapGL } from '../src/modular/core/map.ts'
+import { RasterLayer } from '../src/modular/layers/raster.ts'
+import type { SourceDefinition } from '../src/modular/core/renderer-api.ts'
 
 interface RasterSourceDefinition extends SourceDefinition {
   type: 'raster'

@@ -1,4 +1,4 @@
-# MapLibre Mini — Development Guidelines
+# MapLibre Modular — Development Guidelines
 
 ## Copy MapLibre, don't reinvent
 

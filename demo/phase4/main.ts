@@ -1,10 +1,10 @@
-import { createRenderer } from '../../src/mini/renderer/index.ts'
-import { MapGL } from '../../src/mini/core/map.ts'
-import { BackgroundLayer } from '../../src/mini/layers/background.ts'
-import { RasterLayer } from '../../src/mini/layers/raster.ts'
-import { WorkerRasterTileService } from '../../src/mini/layers/raster-worker-service.ts'
-import type { TileID } from '../../src/mini/core/types.ts'
-import type { TileService } from '../../src/mini/core/tile-service.ts'
+import { createRenderer } from '../../src/modular/renderer/index.ts'
+import { MapGL } from '../../src/modular/core/map.ts'
+import { BackgroundLayer } from '../../src/modular/layers/background.ts'
+import { RasterLayer } from '../../src/modular/layers/raster.ts'
+import { WorkerRasterTileService } from '../../src/modular/layers/raster-worker-service.ts'
+import type { TileID } from '../../src/modular/core/types.ts'
+import type { TileService } from '../../src/modular/core/tile-service.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
 const status = document.getElementById('status')!

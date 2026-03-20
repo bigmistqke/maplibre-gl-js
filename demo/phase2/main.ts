@@ -1,8 +1,8 @@
-import { createRenderer } from '../../src/mini/renderer/index.ts'
-import { MapGL } from '../../src/mini/core/map.ts'
-import { BackgroundLayer } from '../../src/mini/layers/background.ts'
-import { RasterLayer } from '../../src/mini/layers/raster.ts'
-import { RasterTileService } from '../../src/mini/layers/raster.ts'
+import { createRenderer } from '../../src/modular/renderer/index.ts'
+import { MapGL } from '../../src/modular/core/map.ts'
+import { BackgroundLayer } from '../../src/modular/layers/background.ts'
+import { RasterLayer } from '../../src/modular/layers/raster.ts'
+import { RasterTileService } from '../../src/modular/layers/raster.ts'
 
 const SOURCES: Record<string, string> = {
   osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
