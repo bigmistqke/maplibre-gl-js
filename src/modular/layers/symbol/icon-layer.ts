@@ -213,6 +213,7 @@ export class IconLayer implements PlacementParticipant {
     if (!this._tileBuffers.has(key)) {
       // Try to fetch from worker cache synchronously (getBucket is a Comlink promise —
       // we store the result once it arrives and skip rendering until then)
+      this._tileBuffers.set(key, null as any)  // sentinel: prevents duplicate concurrent calls
       void this._workerService.getBucket(key).then((bucket: IconTileData | null) => {
         if (!bucket || bucket.count === 0) return
         // Cache anchor positions for collision detection (synchronous access)

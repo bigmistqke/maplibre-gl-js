@@ -54,7 +54,7 @@ export class Placement {
         for (let i = 0; i < n; i++) {
           const [x1, y1, x2, y2] = bucket.boxes[i]
           const box = { x1, y1, x2, y2, padding: 2 }
-          const result = ci.placeCollisionBox(box, 'never', 0, 0, 0, false, false, [0, 0])
+          const result = ci.placeCollisionBox(box, 'never', 1, 0, 0, false, false, [0, 0])
           if (result.placeable) {
             ci.insertCollisionBox(
               [x1, y1, x2, y2],

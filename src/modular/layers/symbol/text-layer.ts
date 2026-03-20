@@ -147,7 +147,7 @@ export class TextLayer implements PlacementParticipant {
     const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE
     const w = canvas.width
     const h = canvas.height
-    const halfLabelH = this._fontSize / 2  // approximate half-height in screen pixels
+    const halfLabelH = this._fontSize * 0.6  // approximate half-height in screen pixels
 
     const buckets: SymbolBucketData[] = []
 
@@ -178,7 +178,7 @@ export class TextLayer implements PlacementParticipant {
 
         anchors.push({ x: sx, y: sy })
         // Approximate bounding box based on font size in pixels
-        const halfW = this._fontSize * 3  // rough estimate: 3px per pt for typical label
+        const halfW = (this._fontSize * 0.5)  // rough estimate
         boxes.push([sx - halfW, sy - halfLabelH, sx + halfW, sy + halfLabelH])
       }
 
