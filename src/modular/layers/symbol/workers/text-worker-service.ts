@@ -69,6 +69,10 @@ export class TextWorkerService {
     void this._proxy.updateGlyphs(glyphMap, positions)
   }
 
+  clearAllBuckets(): void {
+    void this._proxy.clearAllBuckets()
+  }
+
   cancel(key: string): void {
     void this._proxy.cancel(key)
   }

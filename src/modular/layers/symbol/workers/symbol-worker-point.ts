@@ -260,6 +260,11 @@ export class SymbolWorkerPoint {
     return this._buckets.get(key) ?? null
   }
 
+  clearAllBuckets(): void {
+    this._waiting.clear()
+    this._buckets.clear()
+  }
+
   cancel(key: string): void {
     this._pending.get(key)?.abort()
     this._pending.delete(key)

@@ -83,7 +83,7 @@ map.on('move', (state: { zoom: number }) => {
 })
 
 fontSizeInput.addEventListener('input', () => {
-  // TextLayer doesn't support live fontSize update — show value only
-  // In a real app, you'd recreate the layer or add a setFontSize() method
-  fontSizeVal.textContent = fontSizeInput.value + 'px'
+  const size = parseFloat(fontSizeInput.value)
+  textLayer.setFontSize(size)
+  fontSizeVal.textContent = size + 'px'
 })

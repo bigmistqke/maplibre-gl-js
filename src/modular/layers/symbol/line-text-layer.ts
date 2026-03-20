@@ -206,6 +206,13 @@ export class LineTextLayer implements PlacementParticipant {
     return buckets
   }
 
+  setFontSize(size: number): void {
+    this._fontSize = size
+    this._workerService.clearAllBuckets()
+    this._invalidateAllBuckets()
+    this._markDirty?.()
+  }
+
   setOpacity(tileKey: string, opacity: Float32Array): void {
     this._tileOpacity.set(tileKey, opacity)
   }
