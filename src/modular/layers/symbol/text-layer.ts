@@ -1,9 +1,11 @@
 // src/modular/layers/symbol/text-layer.ts
-import type { ProgramDefinition } from '../../core/types.ts'
+import type { ProgramDefinition, CameraState } from '../../core/types.ts'
 import type { DrawContext } from '../../core/render-extension.ts'
 import type { RendererAPI } from '../../core/renderer-api.ts'
+import type { PlacementParticipant, SymbolBucketData } from '../../core/placement-participant.ts'
 import { GlyphManager } from './glyph-manager.ts'
 import { TextWorkerService } from './workers/text-worker-service.ts'
+import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 
 // ---- SDF Shaders ----
 
@@ -67,7 +69,7 @@ function parseColor(c: string): [number, number, number, number] {
 
 // ---- Layer ----
 
-export class TextLayer {
+export class TextLayer implements PlacementParticipant {
   readonly type = 'text' as const
 
   static programs: ProgramDefinition[] = [
@@ -87,6 +89,11 @@ export class TextLayer {
   private _tileBuckets = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number } | null>()
   private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
   private _gl!: WebGLRenderingContext
+  private _tileOpacity = new globalThis.Map<string, Float32Array>()
+  /** Cached label positions (tile-local coords) for synchronous getSymbolBuckets() */
+  private _labelPosCache = new globalThis.Map<string, { x: number; y: number }[]>()
+  /** Renderer reference for accessing camera state */
+  private _renderer: RendererAPI | null = null
 
   /** Expose workerService so callers can pass it as a TileService-like object if needed. */
   readonly workerService: TextWorkerService
@@ -107,6 +114,7 @@ export class TextLayer {
   onAdd(renderer: RendererAPI): void {
     this._webgl = (renderer as any)._webgl
     this._gl = (renderer as any)._gl
+    this._renderer = renderer
 
     // Wire glyph loading: GlyphManager already rebuilt atlas positions (CPU-side)
     // before firing this callback, so glyphPositions is up to date.
@@ -118,7 +126,70 @@ export class TextLayer {
 
   evictTile(key: string): void {
     this._tileBuckets.delete(key)
+    this._tileOpacity.delete(key)
+    this._labelPosCache.delete(key)
     this._workerService.cancel(key)
+  }
+
+  // ---- PlacementParticipant ----
+
+  getSymbolBuckets(): SymbolBucketData[] {
+    if (!this._renderer) return []
+    const camera: CameraState = (this._renderer as any)._camera ?? null
+    if (!camera) return []
+    const gl: WebGLRenderingContext = this._gl
+    if (!gl) return []
+    const canvas = gl.canvas as HTMLCanvasElement
+    const { zoom } = camera
+    const TILE_SIZE = 256
+    const worldSize = TILE_SIZE * Math.pow(2, zoom)
+    const cx = lngToTileX(camera.center.lng, zoom) * TILE_SIZE
+    const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE
+    const w = canvas.width
+    const h = canvas.height
+    const halfLabelH = this._fontSize / 2  // approximate half-height in screen pixels
+
+    const buckets: SymbolBucketData[] = []
+
+    for (const [key, positions] of this._labelPosCache) {
+      if (positions.length === 0) continue
+      // Parse z/x/y from key `z/x/y`
+      const parts = key.split('/')
+      const tz = parseInt(parts[0], 10)
+      const tx = parseInt(parts[1], 10)
+      const ty = parseInt(parts[2], 10)
+      if (isNaN(tz) || isNaN(tx) || isNaN(ty)) continue
+
+      const tileScale = worldSize / Math.pow(2, tz)
+      const tileOriginX = tx * tileScale
+      const tileOriginY = ty * tileScale
+
+      const anchors: Array<{ x: number; y: number }> = []
+      const boxes: Array<[number, number, number, number]> = []
+
+      for (const pos of positions) {
+        // pos.x, pos.y are in tile extent coords [0, 4096]
+        // Convert to world pixels
+        const worldX = tileOriginX + (pos.x / 4096) * tileScale
+        const worldY = tileOriginY + (pos.y / 4096) * tileScale
+        // Convert to screen pixels (centered)
+        const sx = (worldX - cx) + w / 2
+        const sy = (worldY - cy) + h / 2
+
+        anchors.push({ x: sx, y: sy })
+        // Approximate bounding box based on font size in pixels
+        const halfW = this._fontSize * 3  // rough estimate: 3px per pt for typical label
+        boxes.push([sx - halfW, sy - halfLabelH, sx + halfW, sy + halfLabelH])
+      }
+
+      buckets.push({ tileKey: key, anchors, boxes })
+    }
+
+    return buckets
+  }
+
+  setOpacity(tileKey: string, opacity: Float32Array): void {
+    this._tileOpacity.set(tileKey, opacity)
   }
 
   /**
@@ -136,6 +207,10 @@ export class TextLayer {
         this._tileBuckets.set(key, null)
         return
       }
+      // Cache label positions for collision detection (synchronous access)
+      if (bucket.labelPositions) {
+        this._labelPosCache.set(key, bucket.labelPositions)
+      }
       // Upload vertex and index data to GPU
       this._glyphs.buildAtlas(gl)
       const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
@@ -145,6 +220,13 @@ export class TextLayer {
 
     const bufs = this._tileBuckets.get(key)
     if (!bufs) return
+
+    // Placement: skip this tile if all labels are hidden
+    const placementOpacity = this._tileOpacity.get(key)
+    if (placementOpacity && placementOpacity.length > 0) {
+      const anyPlaced = placementOpacity.some(v => v > 0)
+      if (!anyPlaced) return
+    }
 
     const program = programs.get('symbol_sdf')
     if (!program) return
