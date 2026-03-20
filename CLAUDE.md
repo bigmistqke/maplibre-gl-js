@@ -2,21 +2,15 @@
 
 ## Debug logging
 
-Use `createDebug` from `src/modular/debug.ts` for all debug logging. It tree-shakes away in production and can be enabled per-subject at runtime.
+Use `createDebug` from `src/modular/debug.ts` for all debug logging. It tree-shakes away in production.
 
 ```ts
 import { createDebug } from '../../debug.ts'
-const debug = createDebug?.('MyLayer', false)  // false = off by default
+const debug = createDebug?.('MyLayer', false)  // true/false to enable/disable
 
 // At call sites — always use optional chaining so prod builds eliminate the call:
 debug?.('draw called', { key, count })
 debug?.('something happened')
-```
-
-Enable subjects at runtime in the browser console:
-```js
-globalThis.__DEBUG__ = '*'              // enable all
-globalThis.__DEBUG__ = 'TextLayer,GlyphManager'  // enable specific subjects
 ```
 
 **Rule:** Add `debug?.()` calls at every significant state transition so the rendering pipeline can be traced without re-deploying. Do not remove debug calls — they are the observability layer.
