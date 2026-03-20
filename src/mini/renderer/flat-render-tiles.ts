@@ -24,8 +24,9 @@ export function flatRenderTiles(internals: RendererInternals): void {
   let nextStencilRef = 1
 
   for (const [sourceId, tileManager] of tileManagers) {
-    const readyTiles = tileManager.getReadyTiles()
     const sourceLayers = tileLayers.get(sourceId) ?? []
+    if (sourceLayers.length === 0) continue  // no visual layers (e.g. DEM-only source)
+    const readyTiles = tileManager.getReadyTiles()
     const sourceType = sourceTypes.get(sourceId) ?? 'raster'
 
     for (const { tileID, data } of readyTiles) {
