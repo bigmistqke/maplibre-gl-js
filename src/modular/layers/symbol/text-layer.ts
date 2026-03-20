@@ -318,6 +318,8 @@ export class TextLayer implements PlacementParticipant {
     this._glyphs.buildAtlas(gl)
     const atlasVersion = (this._glyphs as any)._atlasVersion as number
     debug('uploadBucket', { key, atlasVersion, indices: bucket.count })
+    // Destroy any cached geometry buffers for this tile so re-upload is fresh
+    this._webgl.destroyGeometryBuffers(`tile:${key}:sym:`)
     const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
     const idx = this._webgl.createGeometryBuffer(`tile:${key}:sym:i`, new Uint16Array(bucket.indices), gl.ELEMENT_ARRAY_BUFFER)
     this._tileBuckets.set(key, { verts, idx, count: bucket.count })
