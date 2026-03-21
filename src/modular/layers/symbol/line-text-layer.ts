@@ -13,7 +13,6 @@ import type { CollisionData, GPUBucket } from './base/types.ts'
 import type { LabelData } from './engine/cross-tile-index.ts'
 import murmur3 from 'murmurhash-js'
 import { updateLineLabels } from './line-projection.ts'
-import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 
 const debug = createDebug?.('LineTextLayer', false)
 
@@ -99,36 +98,33 @@ function parseColor(c: string): [number, number, number, number] {
 
 // ---- Tile projection helpers ----
 
+/**
+ * Build projection functions using the SAME tile matrix the shader uses.
+ * This ensures CPU-projected glyph positions match the GPU-rendered road positions.
+ *
+ * Previous approach used simple 2D Mercator math which disagreed with the
+ * shader's perspective projection, causing labels to appear offset from roads.
+ */
 function makeTileProjection(
-  tileKey: string,
-  camera: { center: { lng: number; lat: number }; zoom: number },
+  tileMatrix: Float32Array,
   canvasWidth: number,
   canvasHeight: number,
 ) {
-  const { zoom } = camera
-  const TILE_SIZE = 256
-  const worldSize = TILE_SIZE * Math.pow(2, zoom)
-  const cx = lngToTileX(camera.center.lng, zoom) * TILE_SIZE
-  const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE
-
-  const parts = tileKey.split('/')
-  const tz = parseInt(parts[0], 10)
-  const tx = parseInt(parts[1], 10)
-  const ty = parseInt(parts[2], 10)
-  const tileScale = worldSize / Math.pow(2, tz)
-  const tileOriginX = tx * tileScale
-  const tileOriginY = ty * tileScale
-  const extent = 4096
-
-  // Pixels per tile unit — used to convert glyph offsets from tile units to pixel distances
-  const tileToPixelScale = tileScale / extent
-
+  // Project tile coords through the tile matrix (same as shader's projectTile)
+  // then perspective divide to get NDC, then convert to pixel space.
   const tileToPixel = (tileX: number, tileY: number) => {
-    const worldX = tileOriginX + (tileX / extent) * tileScale
-    const worldY = tileOriginY + (tileY / extent) * tileScale
+    // mat4 * vec4(tileX, tileY, 0, 1)
+    const m = tileMatrix
+    const clipX = m[0] * tileX + m[4] * tileY + m[12]
+    const clipY = m[1] * tileX + m[5] * tileY + m[13]
+    const clipW = m[3] * tileX + m[7] * tileY + m[15]
+    // Perspective divide → NDC
+    const ndcX = clipX / clipW
+    const ndcY = clipY / clipW
+    // NDC → pixel
     return {
-      x: (worldX - cx) + canvasWidth / 2,
-      y: (worldY - cy) + canvasHeight / 2,
+      x: (ndcX + 1) / 2 * canvasWidth,
+      y: (1 - ndcY) / 2 * canvasHeight,
     }
   }
 
@@ -137,7 +133,7 @@ function makeTileProjection(
     y: -((py / canvasHeight) * 2 - 1),
   })
 
-  return { tileToPixel, pixelToNDC, tileToPixelScale }
+  return { tileToPixel, pixelToNDC }
 }
 
 // ---- Layer ----
@@ -407,9 +403,8 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     const dynamicGLBuffer = this._dynamicGLBuffers.get(key)
     const hasLineLabels = lineLabels && dynamicBuffer && dynamicGLBuffer
 
-    if (hasLineLabels) {
-      const camera = this._renderer!.camera
-      const { tileToPixel, pixelToNDC } = makeTileProjection(key, camera, canvasWidth, canvasHeight)
+    if (hasLineLabels && ctx.tileMatrix) {
+      const { tileToPixel, pixelToNDC } = makeTileProjection(ctx.tileMatrix, canvasWidth, canvasHeight)
       // fontScale = fontSize / 24 — scales glyph offsets (ONE_EM units) to pixel distances.
       // MapLibre applies this at placement time (projection.ts:439), not at layout time.
       const fontScale = this._fontSize / 24

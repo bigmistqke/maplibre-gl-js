@@ -31,6 +31,14 @@ export interface Projection {
   ): void
 
   /**
+   * Returns the 4×4 matrix that transforms tile coordinates [0, EXTENT]
+   * to clip space. Same matrix the shader uses via projectTile().
+   * Used for CPU-side projection that must match the GPU output exactly
+   * (e.g., line label glyph placement).
+   */
+  getTileMatrix(tileID: TileID, camera: CameraState, viewport: Viewport): Float32Array
+
+  /**
    * Returns the tile mesh for this tile.
    * Mercator: static flat quad [0,4096]² (no allocation per call).
    * Globe: subdivided curved mesh, cached by tileID.key.

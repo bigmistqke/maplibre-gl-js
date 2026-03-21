@@ -64,7 +64,7 @@ describe('MercatorProjection', () => {
 
   it('getTileMatrix returns Float32Array of length 16', () => {
     const tiles = proj.getVisibleTiles(camera, viewport)
-    const matrix = proj._getTileMatrix(tiles[0], camera, viewport)
+    const matrix = proj.getTileMatrix(tiles[0], camera, viewport)
     expect(matrix).toBeInstanceOf(Float32Array)
     expect(matrix.length).toBe(16)
   })
@@ -74,7 +74,7 @@ describe('MercatorProjection', () => {
     const cx = Math.floor(lngToTileX(camera.center.lng, z))
     const cy = Math.floor(latToTileY(camera.center.lat, z))
     const tileID = { z, x: cx, y: cy, key: `${z}/${cx}/${cy}` }
-    const matrix = proj._getTileMatrix(tileID, camera, viewport)
+    const matrix = proj.getTileMatrix(tileID, camera, viewport)
     expect(matrix).toBeInstanceOf(Float32Array)
     expect(matrix.length).toBe(16)
     expect(matrix[0]).not.toBe(0)  // x scale non-zero
@@ -86,7 +86,7 @@ describe('MercatorProjection', () => {
     const cx = Math.floor(lngToTileX(camera.center.lng, z))
     const cy = Math.floor(latToTileY(camera.center.lat, z))
     const tileID = { z, x: cx, y: cy, key: `${z}/${cx}/${cy}` }
-    const m = proj._getTileMatrix(tileID, camera, viewport)
+    const m = proj.getTileMatrix(tileID, camera, viewport)
     // Apply matrix to world-space tile origin (0,0) — NDC x should be ≤ 0 (tile starts left of centre)
     // w = m[3]*0 + m[7]*0 + m[11]*0 + m[15]
     const w = m[15]

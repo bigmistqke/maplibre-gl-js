@@ -86,7 +86,7 @@ export class GlobeProjection implements Projection {
 
     const transition = getGlobeTransition(camera.zoom)
     const fallbackMatrix = transition < 1.0
-      ? _mercator._getTileMatrix(tileID, camera, viewport)
+      ? _mercator.getTileMatrix(tileID, camera, viewport)
       : IDENTITY_MATRIX
 
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projection_matrix'), false, matrix)
@@ -94,6 +94,13 @@ export class GlobeProjection implements Projection {
     gl.uniform4fv(gl.getUniformLocation(program, 'u_projection_tile_mercator_coords'), mercatorCoords)
     gl.uniform1f(gl.getUniformLocation(program, 'u_projection_transition'), transition)
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projection_fallback_matrix'), false, fallbackMatrix)
+  }
+
+  getTileMatrix(tileID: TileID, camera: CameraState, viewport: Viewport): Float32Array {
+    // STUB: Globe projection uses a different matrix pipeline (sphere projection).
+    // For now, fall back to mercator matrix — line labels on globe will be approximate.
+    // Proper globe line labels would need the globe projection matrix.
+    return _mercator.getTileMatrix(tileID, camera, viewport)
   }
 
   getMeshForTile(tileID: TileID): TileMesh {

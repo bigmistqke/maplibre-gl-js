@@ -70,7 +70,7 @@ export class MercatorProjection implements Projection {
     gl.uniformMatrix4fv(
       gl.getUniformLocation(program, 'u_matrix'),
       false,
-      this._getTileMatrix(tileID, camera, viewport),
+      this.getTileMatrix(tileID, camera, viewport),
     )
   }
 
@@ -78,8 +78,7 @@ export class MercatorProjection implements Projection {
     return FLAT_QUAD_MESH
   }
 
-  /** @internal Used by setTileUniforms */
-  _getTileMatrix(tileID: TileID, camera: CameraState, viewport: Viewport): Float32Array {
+  getTileMatrix(tileID: TileID, camera: CameraState, viewport: Viewport): Float32Array {
     const { center, zoom } = camera
     const pitch   = camera.pitch   ?? 0
     const bearing = camera.bearing ?? 0
