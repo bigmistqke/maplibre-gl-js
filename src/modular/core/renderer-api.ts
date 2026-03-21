@@ -29,6 +29,7 @@ export interface LayerInstance {
   /** WebGL programs this layer needs compiled. Set from the static `programs` property. */
   readonly programs?: ProgramDefinition[]
   onAdd?(renderer: RendererAPI): void
+  onRemove?(): void
   draw?(ctx: DrawContext): void
   evictTile?(key: string): void
   drawBackground?(ctx: { gl: WebGLRenderingContext; paint: ResolvedPaintProperties }): void
@@ -63,6 +64,7 @@ export interface RendererAPI {
   setLayerLayout(id: string, props: Record<string, unknown>): void
   setLayerVisibility(id: string, visible: boolean): void
   setCamera(state: CameraState): void
+  getLayerOrder?(): string[]
   addRenderExtension(extension: RenderExtension): void
   removeRenderExtension(id: string): void
   queryRenderedFeatures(point: ScreenPoint): Feature[]

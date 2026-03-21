@@ -213,6 +213,7 @@ export class Renderer implements RendererAPI {
 
     const entry = this._layers.find(e => e.id === id)
     if (entry) {
+      entry.layer.onRemove?.()
       const sourceId = entry.layer.source
       if (sourceId) {
         const layers = this._tileLayers.get(sourceId)
@@ -348,6 +349,10 @@ export class Renderer implements RendererAPI {
 
     this._renderExtensions.runAfterTiles(renderCtx)
     this._frameIndex++
+  }
+
+  getLayerOrder(): string[] {
+    return this._layers.map(e => e.id)
   }
 
   /** Test helper — not part of RendererAPI */

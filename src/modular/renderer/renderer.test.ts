@@ -3,6 +3,7 @@ import { Renderer } from './renderer.ts'
 import { BackgroundLayer } from '../layers/background.ts'
 import { RasterLayer } from '../layers/raster.ts'
 import type { TileService } from '../core/tile-service.ts'
+import type { LayerInstance } from '../core/renderer-api.ts'
 
 function makeFakeTileService(): TileService {
   return {
@@ -135,6 +136,22 @@ describe('Renderer', () => {
 
   it('queryRenderedFeatures returns empty array (phase 1 stub)', () => {
     expect(renderer.queryRenderedFeatures({ x: 100, y: 100 })).toEqual([])
+  })
+
+  it('removeLayer calls onRemove on the layer', () => {
+    const onRemove = vi.fn()
+    const layer = { id: 'test', type: 'background', onRemove } as unknown as LayerInstance
+    renderer.addLayer(layer)
+    renderer.removeLayer('test')
+    expect(onRemove).toHaveBeenCalledOnce()
+  })
+
+  it('getLayerOrder returns layer IDs in render order', () => {
+    const a = { id: 'a', type: 'fill' } as unknown as LayerInstance
+    const b = { id: 'b', type: 'line' } as unknown as LayerInstance
+    renderer.addLayer(a)
+    renderer.addLayer(b)
+    expect(renderer.getLayerOrder()).toEqual(['a', 'b'])
   })
 
   it('calls destroyTexture when TileManager evicts a tile', () => {
