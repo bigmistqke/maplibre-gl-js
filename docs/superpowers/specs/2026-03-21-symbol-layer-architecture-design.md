@@ -13,7 +13,6 @@ Redesign the modular symbol rendering system from three independent layers with 
 **Non-goals:**
 - Full MapLibre feature parity (variable anchors, fade animations, line projection) — the architecture should support these later but this spec covers the structural refactor only
 - Changes to the worker-side layout pipeline — workers remain unchanged
-- Changes to the renderer or `RendererAPI` interface
 
 ---
 
@@ -57,7 +56,9 @@ class SymbolEngine {
 **Lifecycle:**
 - On first `register()`: creates a `RenderExtension` with a `beforeTiles` hook and adds it to the renderer via `addRenderExtension()`.
 - On last `unregister()`: removes the extension via `removeRenderExtension()`, calls `resources.destroy()`.
-- The engine holds a reference to the renderer (received from the first `register()` call) for querying layer order and registering/removing the extension.
+- The engine holds a reference to the renderer (received from the first `register()` call) for registering/removing the extension.
+
+**Layer ordering:** The engine needs renderer layer order for collision priority. `RendererAPI` does not currently expose `getLayers()`. The engine will add a `getSymbolLayers(): SymbolLayerBase[]` method that returns registered layers sorted by renderer order. To support this, `RendererAPI` needs a `getLayerOrder(): string[]` method (returns layer IDs in render order). This is a minimal, read-only addition to the interface.
 
 ### 2. LayoutEngine
 
@@ -86,6 +87,8 @@ type CollisionData = {
 }
 ```
 
+**Invariant:** The i-th element of the opacity `Float32Array` corresponds to the i-th anchor in the `CollisionData` for that `tileKey`. Subclasses must ensure their vertex data's per-label segments (`indicesPerLabel`) are in the same order as the anchors array.
+
 **Future additions** (not in v1, but the shape supports them):
 - `CrossTileSymbolIndex` — runs before collision testing, assigns persistent IDs across zoom levels for deduplication.
 - `OpacityState` — replaces binary 0/1 opacity with smooth 300ms fade transitions.
@@ -108,6 +111,8 @@ class ResourceManager {
 - Image managers keyed by sprite URL.
 
 **Ownership:** The `ResourceManager` creates managers on first request and caches them. `destroy()` cleans up all cached managers and their GPU resources.
+
+**Shared GlyphManager listener fan-out:** The current `GlyphManager` uses a single `_onGlyphsLoaded` callback, which breaks when shared across multiple layers. The `ResourceManager` wraps each `GlyphManager` with a subscriber list: layers call `resources.onGlyphsLoaded(glyphManager, callback)` to register, and the ResourceManager fans out glyph load notifications to all subscribers for that manager.
 
 ### 4. TileFetcher\<T\>
 
@@ -132,8 +137,9 @@ class TileFetcher<T> {
 - `request()`: If key is idle, calls the `fetch` function. If already fetching or ready, no-op.
 - When `fetch` resolves: stores result as pending, calls `onReady`.
 - `get()`: Returns the result if ready, null otherwise.
-- `evict()`: Cancels in-flight requests (if possible), removes cached results.
-- `hasPending()`: True if a fetch is in flight for this key.
+- `invalidate(key)`: Transitions `ready → idle`, allowing the next `request()` to re-fetch. The old result remains available via `get()` until the new fetch completes (stale-while-revalidate). Used when atlas positions change or fontSize is updated.
+- `evict(key)`: Cancels in-flight requests (if possible), removes cached results entirely.
+- `hasPending(key)`: True if a fetch is in flight for this key.
 
 Each subclass provides its own `fetch` function that calls its specific worker service. The `onReady` callback is used by the base class to queue GPU uploads.
 
@@ -142,7 +148,7 @@ Each subclass provides its own `fetch` function that calls its specific worker s
 Abstract base class. Implements `LayerInstance`. Contains all shared symbol layer behavior.
 
 **What it owns:**
-- `TileFetcher<T>` instance (created in constructor with subclass-provided fetch function)
+- `TileFetcher<T>` instance (passed by subclass via `super()` to avoid virtual-dispatch-in-constructor)
 - Reference to `SymbolEngine` (obtained in `onAdd()` via static WeakMap)
 - `_tileOpacity: Map<string, Float32Array>` — written by LayoutEngine, read during draw
 - `_tileBuckets: Map<string, GPUBucket | null>` — GPU-uploaded vertex/index buffers
@@ -150,15 +156,15 @@ Abstract base class. Implements `LayerInstance`. Contains all shared symbol laye
 
 **Lifecycle methods:**
 - `onAdd(renderer)`: Get-or-create `SymbolEngine` from WeakMap, register self with engine, store GL context.
-- `destroy()`: Unregister from engine, destroy GPU buffers, destroy tile fetcher.
+- `onRemove()`: Unregister from engine, destroy GPU buffers, destroy tile fetcher. Called by the renderer when `removeLayer()` is called. (Note: the renderer's `removeLayer` currently does not call a cleanup method on layers — this needs to be added to `RendererAPI` as `onRemove?()` on `LayerInstance`, and the renderer must call it.)
 - `evictTile(key)`: Evict from fetcher, delete GPU buffers, clear opacity cache.
 
 **draw() scaffolding:**
 
 ```
 draw(ctx: DrawContext):
-  1. Poll TileFetcher for ready results → move to _pendingUploads
-  2. Upload pending buffers to GPU (_uploadBucket)
+  1. Check _pendingUploads for results queued by TileFetcher callbacks
+  2. Upload pending buffers to GPU (subclass.uploadBucket)
   3. Skip if no bucket for this tile
   4. gl.disable(STENCIL_TEST)
   5. gl.enable(BLEND)
@@ -173,11 +179,11 @@ draw(ctx: DrawContext):
 
 ```ts
 abstract class SymbolLayerBase {
-  // WebGL programs this layer needs
-  abstract readonly programs: ProgramDefinition[]
+  // WebGL programs this layer needs (static on each subclass, read at registration)
+  static programs: ProgramDefinition[]
 
-  // Create the worker fetch function for TileFetcher
-  abstract createTileFetcher(): TileFetcher<T>
+  // Tile coordinate extent (4096 for text, 8192 for icons)
+  abstract readonly extent: number
 
   // Upload a worker result to GPU buffers
   abstract uploadBucket(gl: WebGLRenderingContext, key: string, data: T): GPUBucket
@@ -188,6 +194,20 @@ abstract class SymbolLayerBase {
 
   // Collision data for visible tiles (project tile coords → screen space)
   abstract getCollisionData(ctx: RenderContext): CollisionData[]
+}
+```
+
+The `TileFetcher<T>` is created by each subclass and passed to `super()`:
+
+```ts
+class TextLayer extends SymbolLayerBase {
+  constructor(options: TextLayerOptions) {
+    super(new TileFetcher<SymbolTileData>({
+      fetch: (key, data) => this._workerService.request(key, data),
+      onReady: (key, result) => this._pendingUploads.set(key, result),
+    }))
+    // ...
+  }
 }
 ```
 
@@ -207,16 +227,18 @@ Each subclass is focused: it provides worker integration, atlas binding, and sha
 **TextLayer extends SymbolLayerBase:**
 - Worker: `TextWorkerService` (point text shaping via `SymbolWorkerPoint`)
 - Atlas: `GlyphManager` from `engine.resources.getGlyphManager(url, fontstack)`
-- Shader: `symbol_sdf` program
+- Shader: `symbol_sdf` program (shared definition with LineTextLayer)
 - Uniforms: `u_texture`, `u_texsize`, `u_resolution`, `u_color`, `u_opacity`, `u_font_scale`
-- Collision: projects label anchors from tile coords to screen coords, builds AABBs from label sizes
+- Collision: projects label anchors to screen space using base class `projectToScreen(tileCoords, extent, ctx)` helper, builds AABBs from label sizes
+- Glyph pre-scanning: before fetching a tile, scans PBF for codepoints and triggers glyph range loading. This logic is shared with LineTextLayer via a `ensureGlyphsForTile(pbf, fontstack, glyphManager)` utility function (not in the base class — it's text-specific, not icon-relevant).
 
 **LineTextLayer extends SymbolLayerBase:**
 - Worker: `LineTextWorkerService` (line text shaping via `SymbolWorkerLine`)
 - Atlas: `GlyphManager` from `engine.resources` (shared with TextLayer if same fontstack + URL)
-- Shader: same `symbol_sdf` program as TextLayer
+- Shader: same `symbol_sdf` program definition as TextLayer
 - Uniforms: same as TextLayer
 - Collision: same projection approach, anchors come from line geometry
+- Glyph pre-scanning: same shared `ensureGlyphsForTile()` utility
 
 **IconLayer extends SymbolLayerBase:**
 - Worker: `IconWorkerService` (icon quad generation via `SymbolWorkerIcon`)
@@ -243,7 +265,7 @@ beforeTiles:
 
 per-tile draw (called by renderer for each visible tile):
   SymbolLayerBase.draw(ctx):
-    1. Poll TileFetcher → queue pending uploads
+    1. Check _pendingUploads (populated by TileFetcher callbacks)
     2. Upload pending buffers to GPU
     3. Skip if no bucket
     4. Disable stencil, enable blend
