@@ -10,6 +10,8 @@ import { createDebug } from '../../debug.ts'
 import { SymbolLayerBase } from './base/symbol-layer-base.ts'
 import { TileFetcher } from './base/tile-fetcher.ts'
 import type { CollisionData, GPUBucket } from './base/types.ts'
+import type { LabelData } from './engine/cross-tile-index.ts'
+import murmur3 from 'murmurhash-js'
 
 const debug = createDebug?.('TextLayer', false)
 
@@ -96,6 +98,8 @@ export class TextLayer extends SymbolLayerBase<SymbolTileData> {
   private _glyphManager: GlyphManager | null = null
   private _glyphListener: ((map: GlyphMap, positions: GlyphPositions) => void) | null = null
 
+  /** Per-tile LabelData for cross-tile dedup */
+  private _labelData = new Map<string, LabelData[]>()
   /** Cached label positions (tile-local coords) for collision data */
   private _labelPosCache = new Map<string, { x: number; y: number }[]>()
   /** Cached label sizes (screen px at layout fontSize) for collision boxes */
@@ -144,6 +148,20 @@ export class TextLayer extends SymbolLayerBase<SymbolTileData> {
         }
         if (bucket.labelSizes) {
           this._labelSizeCache.set(key, bucket.labelSizes)
+        }
+
+        // Build LabelData for cross-tile dedup
+        if (bucket.labelPositions && bucket.labelTexts) {
+          const labelData: LabelData[] = []
+          for (let i = 0; i < bucket.labelPositions.length; i++) {
+            labelData.push({
+              key: murmur3(bucket.labelTexts[i] ?? ''),
+              anchorX: bucket.labelPositions[i].x,
+              anchorY: bucket.labelPositions[i].y,
+              crossTileID: 0,
+            })
+          }
+          this._labelData.set(key, labelData)
         }
 
         return bucket
@@ -216,6 +234,12 @@ export class TextLayer extends SymbolLayerBase<SymbolTileData> {
     this._workerService.destroy()
 
     super.onRemove()
+  }
+
+  // ---- PlaceableLayer override ----
+
+  getLabelData(): Map<string, LabelData[]> {
+    return this._labelData
   }
 
   // ---- Abstract implementations ----
@@ -350,7 +374,13 @@ export class TextLayer extends SymbolLayerBase<SymbolTileData> {
         boxes.push([sp.x - halfW, sp.y - halfH, sp.x + halfW, sp.y + halfH])
       }
 
-      buckets.push({ tileKey: key, anchors, boxes, crossTileIDs: [] }) // STUB: populated by CrossTileIndex
+      const labelData = this._labelData.get(key)
+      buckets.push({
+        tileKey: key,
+        anchors,
+        boxes,
+        crossTileIDs: labelData ? labelData.map(l => l.crossTileID) : [],
+      })
     }
 
     return buckets
@@ -391,6 +421,7 @@ export class TextLayer extends SymbolLayerBase<SymbolTileData> {
 
   evictTile(key: string): void {
     debug?.('evictTile', key)
+    this._labelData.delete(key)
     this._labelPosCache.delete(key)
     this._labelSizeCache.delete(key)
     this._indicesPerLabel.delete(key)
