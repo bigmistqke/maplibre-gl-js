@@ -5,12 +5,12 @@ export interface ProgramCache {
   get(name: string): WebGLProgram | undefined
 }
 
+/** STUB: empty until sprite/pattern atlas is wired. Passed as {} to draw(). */
 export interface ImageAtlas {
-  // sprite images, icon textures, fill patterns — implemented in Phase 2
 }
 
+/** STUB: empty until dash pattern atlas is wired. Passed as {} to draw(). */
 export interface LineDashAtlas {
-  // dash pattern textures for line layers — implemented in Phase 2
 }
 
 /** Passed to layer.draw() for each visible tile. Implemented by per-tile layers in Phase 2. */

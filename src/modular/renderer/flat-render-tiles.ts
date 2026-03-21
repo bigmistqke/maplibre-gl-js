@@ -78,8 +78,8 @@ export function flatRenderTiles(internals: RendererInternals): void {
           frameIndex,
           tileTexture,
           tileData: sourceType === 'vector' ? data : undefined,
-          imageAtlas: {},
-          lineDashAtlas: {},
+          imageAtlas: {}, // STUB: not wired yet
+          lineDashAtlas: {}, // STUB: not wired yet
         })
       }
 
