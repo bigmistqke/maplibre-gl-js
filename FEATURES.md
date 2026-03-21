@@ -12,7 +12,10 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [x] `fill` — polygon fill (earcut tessellation)
 - [x] `line` — polyline rendering (`gl.LINES`)
 - [ ] `circle` — point circles
-- [ ] `symbol` — text labels and icon sprites
+- [x] `symbol` (point text) — SDF text labels at point positions
+- [x] `symbol` (point icons) — sprite-atlas icon rendering at point positions
+- [x] `symbol` (line text) — SDF text labels placed along line geometry
+- [ ] `symbol` (line icons) — icons along lines
 - [ ] `fill-extrusion` — 3D extruded polygons
 - [ ] `heatmap` — density heatmap
 - [ ] `hillshade` — DEM-based hillshading
@@ -106,8 +109,8 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 ## Style
 
 - [ ] Style JSON loading (MapLibre style spec)
-- [ ] Sprite / image atlas loading
-- [ ] Glyph / font loading
+- [x] Sprite / image atlas loading (`ImageManager` — fetches sprite sheet + JSON)
+- [x] Glyph / font loading (`GlyphManager` — fetches SDF glyph PBFs, builds atlas)
 - [ ] Expression evaluation (zoom, feature, interpolate, match, …)
 - [ ] Data-driven paint properties
 - [ ] Layer ordering from style
@@ -164,6 +167,44 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [x] `Surface` — replaceable render loop (flat → terrain)
 - [x] `TileService` — injectable tile fetching (for testing / custom sources)
 - [x] `ElevationProvider` — duck-typed elevation query interface
+
+---
+
+## Symbol Rendering
+
+- [x] SDF glyph atlas — `GlyphAtlas` with potpack bin-packing, RGBA GPU texture
+- [x] Text shaping — `shapeText` (port of MapLibre's shaping pipeline)
+- [x] Glyph quads — `buildGlyphQuads` for per-character quad geometry
+- [x] Point text placement — anchored at feature centroids
+- [x] Line text placement — `getLineAnchors` + `clipLine` + `mergeLines` along polylines
+- [x] Icon rendering — sprite atlas with `ImageManager`, per-feature icon quads
+- [x] Collision detection — `Placement` plugin with grid-based `CollisionIndex`
+- [x] Per-label opacity — fade-in/out via placement participant interface
+- [x] Worker-based layout — `SymbolWorkerLine` (Comlink) for line text, `SymbolWorkerPoint` for point text
+- [x] Live font size updates — `setFontSize()` triggers worker re-layout
+- [ ] Text halo rendering
+- [ ] Text rotation / keep-upright along lines
+- [ ] Variable anchor placement (auto best-fit)
+- [ ] Icon-text combined symbols
+- [ ] Formatted text (multi-font, multi-color)
+- [ ] Collision across tiles (cross-tile symbol index)
+
+---
+
+## Demos & Testing
+
+- [x] Phase 1: Background layer
+- [x] Phase 2: Raster tiles (main-thread fetch)
+- [x] Phase 3: Tile eviction stats
+- [x] Phase 4: Worker raster tiles (Comlink)
+- [x] Phase 5: Vector fill + line layers
+- [x] Phase 6: Globe projection with markers
+- [x] Phase 7: 3D terrain with exaggeration
+- [x] Phase 8: SDF text labels
+- [x] Phase 8-icons: Icon layer
+- [x] Phase 9: Placement / collision avoidance
+- [x] Phase 10: Line text labels
+- [x] A/B comparison demos (phases 2, 5, 8, 10) — MapLibre-original vs modular
 
 ---
 
