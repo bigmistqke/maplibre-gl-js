@@ -3,7 +3,6 @@ import { createRenderer } from '../../src/modular/renderer/index.ts'
 import { MapGL } from '../../src/modular/core/map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { FillLayer } from '../../src/modular/layers/fill.ts'
-import { GlyphManager } from '../../src/modular/layers/symbol/glyph-manager.ts'
 import { LineTextLayer } from '../../src/modular/layers/symbol/line-text-layer.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
@@ -53,11 +52,6 @@ map.addLayer(new FillLayer({
   opacity: 1,
 }))
 
-// GlyphManager — fetches SDF glyph PBFs from demotiles endpoint
-const glyphs = new GlyphManager({
-  url: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-})
-
 // LineTextLayer — renders road/river name labels along line geometry
 // The worker service fetches tile PBFs independently and runs line label placement.
 // Register the layer's workerService as the tileService for a dedicated source so
@@ -70,7 +64,7 @@ const lineTextLayer = new LineTextLayer({
   fontSize: 12,
   color: '#444444',
   opacity: 1,
-  glyphs,
+  glyphUrl: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 
 // Register a dedicated vector source backed by the line text worker.
