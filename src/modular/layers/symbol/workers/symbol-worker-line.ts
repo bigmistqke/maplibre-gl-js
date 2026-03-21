@@ -159,14 +159,14 @@ export class SymbolWorkerLine {
 
             const scale = fontSize / ONE_EM
 
-            // Extract per-glyph center offsets along the line (in tile units)
+            // Extract per-glyph center offsets along the line in ONE_EM units (raw).
+            // MapLibre stores these unscaled in glyphOffsetArray and applies
+            // fontScale (= fontSize / 24) at placement time in projection.ts:439.
             const glyphOffsets: number[] = []
             for (const posLine of shaping.positionedLines) {
               for (const pg of posLine.positionedGlyphs) {
                 const halfAdvance = pg.metrics.advance * pg.scale / 2
-                // pg.x + halfAdvance = glyph center in em units
-                // convert to tile units: multiply by scale * textPixelRatio
-                glyphOffsets.push((pg.x + halfAdvance) * scale * textPixelRatio)
+                glyphOffsets.push(pg.x + halfAdvance)
               }
             }
             const verts = new StructArray(GlyphVertexLayout)

@@ -404,8 +404,11 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
     if (hasLineLabels) {
       const camera = this._renderer!.camera
-      const { tileToPixel, pixelToNDC, tileToPixelScale } = makeTileProjection(key, camera, canvasWidth, canvasHeight)
-      updateLineLabels(lineLabels, tileToPixel, pixelToNDC, tileToPixelScale, dynamicBuffer)
+      const { tileToPixel, pixelToNDC } = makeTileProjection(key, camera, canvasWidth, canvasHeight)
+      // fontScale = fontSize / 24 — scales glyph offsets (ONE_EM units) to pixel distances.
+      // MapLibre applies this at placement time (projection.ts:439), not at layout time.
+      const fontScale = this._fontSize / 24
+      updateLineLabels(lineLabels, tileToPixel, pixelToNDC, fontScale, dynamicBuffer)
 
       // Upload dynamic buffer to GPU
       gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)

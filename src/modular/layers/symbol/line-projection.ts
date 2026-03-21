@@ -127,13 +127,14 @@ export function placeGlyphsAlongLine(
 /**
  * @param tileToPixel Projects tile coords → pixel coords (distances are in pixels)
  * @param pixelToNDC Converts pixel position → NDC for the shader
- * @param tileToPixelScale Pixels per tile unit — used to scale glyph offsets (tile units) to pixel distances
+ * @param fontScale fontSize / 24 — scales glyph offsets (ONE_EM units) to pixel distances.
+ *        MapLibre applies this at placement time (projection.ts:439), not at layout time.
  */
 export function updateLineLabels(
   lineLabels: LineLabelInfo[],
   tileToPixel: (x: number, y: number) => { x: number; y: number },
   pixelToNDC: (x: number, y: number) => { x: number; y: number },
-  tileToPixelScale: number,
+  fontScale: number,
   dynamicBuffer: Float32Array,
 ): void {
   let bufferOffset = 0
@@ -159,8 +160,9 @@ export function updateLineLabels(
     ]
     const anchorVertexIndex = label.segment + 1
 
-    // Scale glyph offsets from tile units to pixel units
-    const pixelOffsets = label.glyphOffsets.map(o => o * tileToPixelScale)
+    // Scale glyph offsets from ONE_EM units to pixel units.
+    // MapLibre: fontScale = fontSize / 24, applied at placement time (projection.ts:439)
+    const pixelOffsets = label.glyphOffsets.map(o => o * fontScale)
 
     const placements = placeGlyphsAlongLine(lineWithAnchor, anchorVertexIndex, pixelOffsets)
 
