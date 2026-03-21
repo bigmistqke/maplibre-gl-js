@@ -49,6 +49,23 @@ export const GlyphVertexLayout = defineStruct({
 
 // ---- Tile data produced by worker ----
 
+/** Metadata for a single line label, used for per-frame projection on the main thread. */
+export type LineLabelInfo = {
+  /** Anchor position X in tile coords */
+  anchorX: number
+  /** Anchor position Y in tile coords */
+  anchorY: number
+  /** Index of the line segment the anchor sits on */
+  segment: number
+  /**
+   * Distance along the line for each glyph center (in tile units, relative to anchor).
+   * Negative = before anchor, positive = after anchor. One entry per glyph.
+   */
+  glyphOffsets: number[]
+  /** Flat array of line vertices [x0, y0, x1, y1, ...] in tile coords */
+  lineVertices: number[]
+}
+
 export type SymbolTileData = {
   /** Interleaved vertex data matching GlyphVertexLayout */
   vertices: ArrayBuffer
@@ -62,4 +79,6 @@ export type SymbolTileData = {
   labelSizes?: { w: number; h: number }[]
   /** Number of index-buffer indices per label (for per-label draw calls) */
   indicesPerLabel?: number[]
+  /** Line label metadata for per-frame projection. Only present for line text. */
+  lineLabels?: LineLabelInfo[]
 }
