@@ -23,11 +23,21 @@ export function flatRenderTiles(internals: RendererInternals): void {
   gl.clear(gl.STENCIL_BUFFER_BIT)
   let nextStencilRef = 1
 
+  // Symbol layers (text, icons) disable stencil and can extend across tile boundaries.
+  // They must be drawn AFTER all opaque layers for ALL tiles to avoid being overdrawn.
+  type DeferredDraw = { layer: LayerInstance; tileID: TileID; meshBuffers: MeshBuffers; data: unknown; sourceType: string }
+  const deferredSymbols: DeferredDraw[] = []
+
   for (const [sourceId, tileManager] of tileManagers) {
     const sourceLayers = tileLayers.get(sourceId) ?? []
     if (sourceLayers.length === 0) continue  // no visual layers (e.g. DEM-only source)
     const readyTiles = tileManager.getReadyTiles()
     const sourceType = sourceTypes.get(sourceId) ?? 'raster'
+
+    // Split layers: opaque (fill, line, raster) vs symbol (text, icons)
+    const isSymbolLayer = (l: LayerInstance) => 'getSymbolBuckets' in l
+    const opaqueLayers = sourceLayers.filter(l => !isSymbolLayer(l))
+    const symbolLayers = sourceLayers.filter(l => isSymbolLayer(l))
 
     for (const { tileID, data = undefined } of readyTiles) {
       const mesh = projection.getMeshForTile(tileID)
@@ -41,7 +51,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
       projection.setTileUniforms(gl, stencilProgram, tileID, camera, viewport)
       internals.writeTileStencil(stencilProgram, meshBuffers.vert, meshBuffers.idx, meshBuffers.indexCount, ref)
 
-      // Phase 2: draw layers — only fragments where stencil === ref pass
+      // Phase 2: draw opaque layers — only fragments where stencil === ref pass
       gl.stencilFunc(gl.EQUAL, ref, 0xFF)
       gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
       gl.stencilMask(0x00)
@@ -51,7 +61,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
         tileTexture = internals.getOrCreateTexture(tileID.key, data as ImageBitmap)
       }
 
-      for (const layer of sourceLayers) {
+      for (const layer of opaqueLayers) {
         const paint = evaluate(layer, camera.zoom)
         const program = programs.get((layer.constructor as { programs?: { name: string }[] }).programs?.[0]?.name)
         if (program) {
@@ -72,7 +82,34 @@ export function flatRenderTiles(internals: RendererInternals): void {
           lineDashAtlas: {},
         })
       }
+
+      // Defer symbol layers for second pass
+      for (const layer of symbolLayers) {
+        deferredSymbols.push({ layer, tileID, meshBuffers, data, sourceType })
+      }
     }
+  }
+
+  // Phase 3: draw symbol layers AFTER all opaque layers (no stencil clipping)
+  for (const { layer, tileID, meshBuffers, data, sourceType } of deferredSymbols) {
+    const paint = evaluate(layer, camera.zoom)
+    const program = programs.get((layer.constructor as { programs?: { name: string }[] }).programs?.[0]?.name)
+    if (program) {
+      gl.useProgram(program)
+      projection.setTileUniforms(gl, program, tileID, camera, viewport)
+    }
+    layer.draw?.({
+      gl,
+      programs,
+      tileID,
+      meshBuffers,
+      zoom: camera.zoom,
+      paint,
+      frameIndex,
+      tileData: sourceType === 'vector' ? data : undefined,
+      imageAtlas: {},
+      lineDashAtlas: {},
+    })
   }
 
   gl.disable(gl.STENCIL_TEST)
