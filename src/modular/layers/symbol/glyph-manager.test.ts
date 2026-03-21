@@ -43,10 +43,10 @@ describe('GlyphManager', () => {
     expect(vi.mocked(loadGlyphRange)).toHaveBeenCalledTimes(2)
   })
 
-  it('invokes _onGlyphsLoaded callback after each range loads with both GlyphMap and GlyphPositions', async () => {
+  it('invokes addGlyphsLoadedListener callback after each range loads with both GlyphMap and GlyphPositions', async () => {
     const mgr = new GlyphManager({ url: 'https://example.com/{fontstack}/{range}.pbf' })
     const cb = vi.fn()
-    mgr._onGlyphsLoaded = cb
+    mgr.addGlyphsLoadedListener(cb)
     await mgr.getGlyphs({ 'Open Sans Regular': [65] })
     expect(cb).toHaveBeenCalledTimes(1)
     // First arg: partial GlyphMap
@@ -55,6 +55,42 @@ describe('GlyphManager', () => {
       // Second arg: GlyphPositions (may be empty if no non-zero bitmaps, but must be an object)
       expect.any(Object),
     )
+  })
+
+  it('notifies multiple listeners when glyphs load', async () => {
+    const mgr = new GlyphManager({ url: 'https://example.com/{fontstack}/{range}.pbf' })
+    const cb1 = vi.fn()
+    const cb2 = vi.fn()
+    mgr.addGlyphsLoadedListener(cb1)
+    mgr.addGlyphsLoadedListener(cb2)
+    await mgr.getGlyphs({ 'Open Sans Regular': [65] })
+    expect(cb1).toHaveBeenCalledTimes(1)
+    expect(cb2).toHaveBeenCalledTimes(1)
+  })
+
+  it('removeGlyphsLoadedListener stops the callback from being called', async () => {
+    const mgr = new GlyphManager({ url: 'https://example.com/{fontstack}/{range}.pbf' })
+    const cb = vi.fn()
+    mgr.addGlyphsLoadedListener(cb)
+    mgr.removeGlyphsLoadedListener(cb)
+    await mgr.getGlyphs({ 'Open Sans Regular': [65] })
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('destroy() clears all listeners', async () => {
+    const mgr = new GlyphManager({ url: 'https://example.com/{fontstack}/{range}.pbf' })
+    const cb = vi.fn()
+    mgr.addGlyphsLoadedListener(cb)
+    mgr.destroy()
+    // After destroy, manually trigger another load — listeners should not fire.
+    // Re-create state so getGlyphs can run without throwing.
+    vi.mocked(loadGlyphRange).mockResolvedValueOnce({})
+    const mgr2 = new GlyphManager({ url: 'https://example.com/{fontstack}/{range}.pbf' })
+    mgr2.addGlyphsLoadedListener(cb)
+    mgr2.destroy()
+    // cb was added to mgr2 but destroy() cleared it, so a subsequent getGlyphs on mgr2 won't fire
+    await mgr2.getGlyphs({ 'Open Sans Regular': [65] })
+    expect(cb).not.toHaveBeenCalled()
   })
 
   it('returns null for glyphs not in loaded data', async () => {

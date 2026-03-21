@@ -24,11 +24,16 @@ export class GlyphManager {
   /** Incremented each time the atlas is rebuilt — used by TextLayer to detect stale UV buffers */
   _atlasVersion = 0
 
-  /**
-   * Optional callback invoked (on main thread) whenever new glyph ranges finish loading.
-   * TextLayer sets this to push glyphs to the worker.
-   */
-  _onGlyphsLoaded: ((map: GlyphMap, positions: GlyphPositions) => void) | null = null
+  private _glyphsLoadedListeners: Array<(map: GlyphMap, positions: GlyphPositions) => void> = []
+
+  addGlyphsLoadedListener(cb: (map: GlyphMap, positions: GlyphPositions) => void): void {
+    this._glyphsLoadedListeners.push(cb)
+  }
+
+  removeGlyphsLoadedListener(cb: (map: GlyphMap, positions: GlyphPositions) => void): void {
+    const idx = this._glyphsLoadedListeners.indexOf(cb)
+    if (idx !== -1) this._glyphsLoadedListeners.splice(idx, 1)
+  }
 
   get atlas(): GlyphAtlas | null { return this._atlas }
 
@@ -93,12 +98,10 @@ export class GlyphManager {
 
     debug('range loaded, atlas rebuilt', { stack, range, version: this._atlasVersion, glyphs: Object.keys(rangeGlyphs).length })
 
-    // Notify listener (TextLayer → worker) with BOTH the partial glyph map and
+    // Notify listeners (TextLayer → worker) with BOTH the partial glyph map and
     // the freshly computed atlas positions so the worker can set UV attributes.
-    if (this._onGlyphsLoaded) {
-      const partial: GlyphMap = { [stack]: rangeGlyphs }
-      this._onGlyphsLoaded(partial, this.glyphPositions)
-    }
+    const partial: GlyphMap = { [stack]: rangeGlyphs }
+    for (const cb of this._glyphsLoadedListeners) cb(partial, this.glyphPositions)
   }
 
   /**
@@ -152,5 +155,6 @@ export class GlyphManager {
     this._atlasDirty = false
     // Caller responsible for deleting glyphAtlasTexture from WebGL context
     this.glyphAtlasTexture = null
+    this._glyphsLoadedListeners.length = 0
   }
 }

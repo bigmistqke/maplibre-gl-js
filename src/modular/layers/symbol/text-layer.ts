@@ -141,7 +141,7 @@ export class TextLayer implements PlacementParticipant {
     // Wire glyph loading: GlyphManager already rebuilt atlas positions (CPU-side)
     // before firing this callback, so glyphPositions is up to date.
     // Push both the partial glyph map AND the fresh atlas positions to the worker.
-    this._glyphs._onGlyphsLoaded = (partialMap, positions) => {
+    this._glyphs.addGlyphsLoadedListener((partialMap, positions) => {
       debug('glyphs loaded → pushing to worker, invalidating stale buckets')
       this._workerService.updateGlyphs(partialMap, positions)
       // Atlas layout changed: invalidate all GPU-uploaded buckets so they get
@@ -149,7 +149,7 @@ export class TextLayer implements PlacementParticipant {
       this._invalidateAllBuckets()
       // Glyphs just arrived — trigger a re-render so text appears without user interaction.
       this._markDirty?.()
-    }
+    })
   }
 
   evictTile(key: string): void {

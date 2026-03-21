@@ -137,12 +137,12 @@ export class LineTextLayer implements PlacementParticipant {
     this._gl = renderer.gl!
     this._markDirty = () => renderer.markDirty?.()
 
-    this._glyphs._onGlyphsLoaded = (partialMap, positions) => {
+    this._glyphs.addGlyphsLoadedListener((partialMap, positions) => {
       debug('glyphs loaded → pushing to worker, invalidating stale buckets')
       this._workerService.updateGlyphs(partialMap, positions)
       this._invalidateAllBuckets()
       this._markDirty?.()
-    }
+    })
   }
 
   evictTile(key: string): void {
