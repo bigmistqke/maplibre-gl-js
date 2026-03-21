@@ -59,8 +59,8 @@ const map = new Map({
       },
     ],
   },
-  center: [4.9, 52.37],
-  zoom: 14,
+  center: [4.89, 52.37],
+  zoom: 15,
 })
 
 map.on('load', () => {

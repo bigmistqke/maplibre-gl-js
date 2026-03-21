@@ -23,8 +23,8 @@ const map = new MapGL({
   renderer,
   initialCamera: {
     // Amsterdam — lots of curved roads and canals
-    center: { lng: 4.9, lat: 52.37 },
-    zoom: 13,
+    center: { lng: 4.89, lat: 52.37 },
+    zoom: 15,
     bearing: 0,
     pitch: 0,
     groundElevation: 0,
