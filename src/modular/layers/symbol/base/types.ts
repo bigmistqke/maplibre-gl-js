@@ -12,6 +12,8 @@ export type CollisionData = {
    * LayoutEngine corresponds to the i-th anchor/box in this array.
    */
   boxes: Array<[number, number, number, number]>
+  /** Persistent IDs for cross-tile dedup. Parallel with anchors. */
+  crossTileIDs: number[]
 }
 
 /** GPU-uploaded vertex/index buffers for one tile */

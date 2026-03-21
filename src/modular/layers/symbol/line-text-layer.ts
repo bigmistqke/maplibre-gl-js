@@ -465,7 +465,7 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
         boxes.push([sp.x - halfW, sp.y - halfH, sp.x + halfW, sp.y + halfH])
       }
 
-      buckets.push({ tileKey: key, anchors, boxes })
+      buckets.push({ tileKey: key, anchors, boxes, crossTileIDs: [] }) // STUB: populated by CrossTileIndex
     }
 
     return buckets

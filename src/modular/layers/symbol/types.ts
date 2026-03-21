@@ -81,4 +81,6 @@ export type SymbolTileData = {
   indicesPerLabel?: number[]
   /** Line label metadata for per-frame projection. Only present for line text. */
   lineLabels?: LineLabelInfo[]
+  /** Raw text strings per label, parallel with labelPositions. For cross-tile dedup keying. */
+  labelTexts?: string[]
 }

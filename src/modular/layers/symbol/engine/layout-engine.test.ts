@@ -30,6 +30,7 @@ describe('LayoutEngine', () => {
       tileKey: '2/1/1',
       anchors: [{ x: 100, y: 100 }, { x: 500, y: 500 }],
       boxes: [[80, 90, 120, 110], [480, 490, 520, 510]],
+      crossTileIDs: [0, 0],
     }])
 
     engine.runPlacement(mockRenderContext() as any, [layer])
@@ -46,6 +47,7 @@ describe('LayoutEngine', () => {
       tileKey: '2/1/1',
       anchors: [{ x: 100, y: 100 }, { x: 105, y: 100 }],
       boxes: [[50, 80, 150, 120], [55, 80, 155, 120]],
+      crossTileIDs: [0, 0],
     }])
 
     engine.runPlacement(mockRenderContext() as any, [layer])
@@ -61,11 +63,13 @@ describe('LayoutEngine', () => {
       tileKey: '2/1/1',
       anchors: [{ x: 100, y: 100 }],
       boxes: [[50, 80, 150, 120]],
+      crossTileIDs: [0],
     }])
     const lowPriority = mockLayer([{
       tileKey: '2/1/1',
       anchors: [{ x: 100, y: 100 }],
       boxes: [[50, 80, 150, 120]],
+      crossTileIDs: [0],
     }])
 
     // highPriority first = gets placed first = wins collision

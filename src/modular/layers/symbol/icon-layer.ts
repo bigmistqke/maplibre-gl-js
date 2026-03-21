@@ -302,7 +302,7 @@ export class IconLayer extends SymbolLayerBase<IconTileData> {
         boxes.push([sp.x - halfSize, sp.y - halfSize, sp.x + halfSize, sp.y + halfSize])
       }
 
-      buckets.push({ tileKey: key, anchors, boxes })
+      buckets.push({ tileKey: key, anchors, boxes, crossTileIDs: [] }) // STUB: populated by CrossTileIndex
     }
 
     return buckets
