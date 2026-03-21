@@ -12,6 +12,9 @@
  */
 
 import type { LineLabelInfo } from './types.ts'
+import { createDebug } from '../../debug.ts'
+
+const debug = createDebug?.('LineProjection', false)
 
 export type ProjectedGlyph = { x: number; y: number; angle: number }
 
@@ -163,6 +166,31 @@ export function updateLineLabels(
     const placements = placeGlyphsAlongLine(projectedLine, anchorVertexIndex, pixelOffsets)
 
     if (placements.length === 0) {
+      // Compute why it failed — distance available forward/backward from anchor
+      let distForward = 0, distBackward = 0
+      for (let i = anchorVertexIndex + 1; i < projectedLine.length; i++) {
+        const dx = projectedLine[i].x - projectedLine[i - 1].x
+        const dy = projectedLine[i].y - projectedLine[i - 1].y
+        distForward += Math.sqrt(dx * dx + dy * dy)
+      }
+      for (let i = anchorVertexIndex - 1; i >= 0; i--) {
+        const dx = projectedLine[i + 1].x - projectedLine[i].x
+        const dy = projectedLine[i + 1].y - projectedLine[i].y
+        distBackward += Math.sqrt(dx * dx + dy * dy)
+      }
+      const minOff = Math.min(...pixelOffsets)
+      const maxOff = Math.max(...pixelOffsets)
+      debug?.('HIDDEN', {
+        anchor: anchorVertexIndex,
+        verts: projectedLine.length,
+        fwd: Math.round(distForward),
+        bwd: Math.round(distBackward),
+        needFwd: Math.round(maxOff),
+        needBwd: Math.round(Math.abs(minOff)),
+        reason: Math.abs(minOff) > distBackward ? 'not enough backward' :
+                maxOff > distForward ? 'not enough forward' : 'unknown',
+      })
+
       for (let i = 0; i < numFloats; i++) {
         dynamicBuffer[bufferOffset + i] = 0
       }

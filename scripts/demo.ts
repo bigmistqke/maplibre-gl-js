@@ -215,4 +215,52 @@ program
     console.log(`Center set to ${lng}, ${lat}`)
   })
 
+program
+  .command('logs')
+  .description('Stream browser console logs (includes worker logs)')
+  .option('-d, --duration <ms>', 'Stop after N ms', '5000')
+  .option('-f, --filter <text>', 'Only show logs containing this text')
+  .option('--json', 'Output raw JSON per line (for piping)')
+  .action(async (opts: { duration: string; filter?: string; json?: boolean }) => {
+    await checkServer()
+    const duration = parseInt(opts.duration)
+    const filter = opts.filter
+    const abort = new AbortController()
+
+    const res = await fetch(`${base}/logs`, { signal: abort.signal })
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+
+    setTimeout(() => abort.abort(), duration)
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const ev = JSON.parse(line.slice(6))
+            if (ev.type === 'connected' || ev.type === 'navigate') continue
+            // Extract clean text (strip console formatting directives)
+            let text: string = ev.text ?? ''
+            text = text.replace(/%c/g, '').replace(/color:[^;]*;?/g, '').replace(/font-weight:[^;]*;?/g, '').trim()
+            if (filter && !text.includes(filter)) continue
+            if (opts.json) {
+              console.log(JSON.stringify({ type: ev.type, text }))
+            } else {
+              console.log(text)
+            }
+          } catch {}
+        }
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') throw e
+    }
+  })
+
 program.parse()

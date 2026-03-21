@@ -79,6 +79,16 @@ page.on('console', msg => {
   process.stdout.write(`  [${ev.type}] ${ev.text}\n`)
   broadcast(ev)
 })
+
+// Capture Web Worker console logs (Comlink workers, etc.)
+page.on('worker', worker => {
+  console.log(`[browser] Worker attached: ${worker.url().split('/').pop()}`)
+  worker.on('console', msg => {
+    const ev = { type: msg.type(), text: `[worker] ${msg.text()}`, time: new Date().toISOString() }
+    process.stdout.write(`  [${ev.type}] ${ev.text}\n`)
+    broadcast(ev)
+  })
+})
 page.on('pageerror', err => {
   const ev = { type: 'pageerror', text: err.message, time: new Date().toISOString() }
   process.stdout.write(`  [pageerror] ${ev.text}\n`)
