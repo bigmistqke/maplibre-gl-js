@@ -41,3 +41,7 @@ imageAtlas: {}, // STUB: not wired yet
 **Why:** `visibleTiles: []` looked like valid code but silently broke collision placement — labels disappeared on zoom changes. The empty array was a placeholder that was never wired up, and it took significant debugging to trace back to it.
 
 **Code review rule:** Any `[]`, `{}`, or `null` passed where a consumer reads and acts on the value must either be the correct value or have a STUB comment.
+
+## Keep STATUS.md up to date
+
+After implementing or fixing a feature, update `STATUS.md` to reflect the change: check off completed items, add new known issues, or move items between sections. This is the single source of truth for what works, what's broken, and what's not yet built.
