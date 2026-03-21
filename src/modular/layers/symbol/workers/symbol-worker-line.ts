@@ -88,6 +88,7 @@ export class SymbolWorkerLine {
     const allVerts: number[] = []
     const allIdx: number[] = []
     const labelPositions: { x: number; y: number }[] = []
+    const labelTexts: string[] = []
     const lineLabels: LineLabelInfo[] = []
 
     // Collect all line features with resolved text for merging
@@ -204,6 +205,7 @@ export class SymbolWorkerLine {
             }
 
             labelPositions.push({ x: anchor.x, y: anchor.y })
+            labelTexts.push(rawText)
 
             lineLabels.push({
               anchorX: anchor.x,
@@ -224,6 +226,7 @@ export class SymbolWorkerLine {
       indices: new Uint16Array(allIdx).buffer,
       count: allIdx.length,
       labelPositions,
+      labelTexts,
       lineLabels,
     }
     this._buckets.set(key, data)

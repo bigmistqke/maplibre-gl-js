@@ -98,6 +98,7 @@ export class SymbolWorkerPoint {
     const allVerts: number[] = []
     const allIdx: number[] = []
     const labelPositions: { x: number; y: number }[] = []
+    const labelTexts: string[] = []
     const labelSizes: { w: number; h: number }[] = []
     const indicesPerLabel: number[] = []
 
@@ -118,6 +119,7 @@ export class SymbolWorkerPoint {
       for (let i = 0; i < view.length; i++) allVerts.push(view[i])
       for (const idx of result.indices) allIdx.push(idx + idxOffset)
       labelPositions.push({ x: label.x, y: label.y })
+      labelTexts.push(label.text)
       labelSizes.push(result.labelSize)
       indicesPerLabel.push(result.indices.length)
     }
@@ -135,6 +137,7 @@ export class SymbolWorkerPoint {
       indices: new Uint16Array(allIdx).buffer,
       count: allIdx.length,
       labelPositions,
+      labelTexts,
       labelSizes,
       indicesPerLabel,
     }
