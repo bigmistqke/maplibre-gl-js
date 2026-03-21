@@ -3,13 +3,15 @@ import type { ProgramDefinition } from '../../core/types.ts'
 import type { DrawContext, RenderContext } from '../../core/render-extension.ts'
 import type { RendererAPI } from '../../core/renderer-api.ts'
 import type { GlyphManager } from './glyph-manager.ts'
-import type { GlyphMap, GlyphPositions, SymbolTileData } from './types.ts'
+import type { GlyphMap, GlyphPositions, SymbolTileData, LineLabelInfo } from './types.ts'
 import { LineTextWorkerService } from './workers/line-text-worker-service.ts'
 import { ensureGlyphsForTile } from './ensure-glyphs.ts'
 import { createDebug } from '../../debug.ts'
 import { SymbolLayerBase } from './base/symbol-layer-base.ts'
 import { TileFetcher } from './base/tile-fetcher.ts'
 import type { CollisionData, GPUBucket } from './base/types.ts'
+import { updateLineLabels } from './line-projection.ts'
+import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 
 const debug = createDebug?.('LineTextLayer', false)
 
@@ -20,14 +22,29 @@ precision mediump float;
 attribute vec2 a_anchor;
 attribute vec2 a_offset;
 attribute vec2 a_tex;
+attribute vec3 a_projected_pos;
 uniform vec2 u_texsize;
 uniform vec2 u_resolution;
+uniform float u_is_along_line;
 varying vec2 v_uv;
 void main() {
-  vec4 proj = projectTile(a_anchor);
-  vec2 screen = proj.xy / proj.w;
-  screen += (a_offset / 32.0) * vec2(2.0, -2.0) / u_resolution;
-  gl_Position = vec4(screen * proj.w, proj.z, proj.w);
+  if (u_is_along_line > 0.5) {
+    // Line label: use pre-computed screen position + rotation
+    float angle = -a_projected_pos.z;
+    float cos_a = cos(angle);
+    float sin_a = sin(angle);
+    mat2 rot = mat2(cos_a, -sin_a, sin_a, cos_a);
+    vec2 rotated_offset = rot * (a_offset / 32.0);
+    vec2 pixel_offset = rotated_offset * vec2(2.0, -2.0) / u_resolution;
+    // STUB: pitch correction — MapLibre adjusts z/w for depth based on camera distance
+    gl_Position = vec4(a_projected_pos.xy + pixel_offset, 0.0, 1.0);
+  } else {
+    // Point label: existing tile projection (fallback, not normally used for line text)
+    vec4 proj = projectTile(a_anchor);
+    vec2 screen = proj.xy / proj.w;
+    screen += (a_offset / 32.0) * vec2(2.0, -2.0) / u_resolution;
+    gl_Position = vec4(screen * proj.w, proj.z, proj.w);
+  }
   v_uv = a_tex / u_texsize;
 }
 `
@@ -78,6 +95,41 @@ function parseColor(c: string): [number, number, number, number] {
   return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1]
 }
 
+// ---- Tile-to-NDC projection ----
+
+function makeTileToNDC(
+  tileKey: string,
+  camera: { center: { lng: number; lat: number }; zoom: number },
+  canvasWidth: number,
+  canvasHeight: number,
+): (tileX: number, tileY: number) => { x: number; y: number } {
+  const { zoom } = camera
+  const TILE_SIZE = 256
+  const worldSize = TILE_SIZE * Math.pow(2, zoom)
+  const cx = lngToTileX(camera.center.lng, zoom) * TILE_SIZE
+  const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE
+
+  const parts = tileKey.split('/')
+  const tz = parseInt(parts[0], 10)
+  const tx = parseInt(parts[1], 10)
+  const ty = parseInt(parts[2], 10)
+  const tileScale = worldSize / Math.pow(2, tz)
+  const tileOriginX = tx * tileScale
+  const tileOriginY = ty * tileScale
+  const extent = 4096
+
+  return (tileX: number, tileY: number) => {
+    const worldX = tileOriginX + (tileX / extent) * tileScale
+    const worldY = tileOriginY + (tileY / extent) * tileScale
+    const px = (worldX - cx) + canvasWidth / 2
+    const py = (worldY - cy) + canvasHeight / 2
+    return {
+      x: (px / canvasWidth) * 2 - 1,
+      y: -((py / canvasHeight) * 2 - 1),
+    }
+  }
+}
+
 // ---- Layer ----
 
 export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
@@ -103,6 +155,13 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
   private _bucketAtlasVersion = new Map<string, number>()
   /** Tiles whose GPU bucket needs replacing but old data is still shown */
   private _staleBuckets = new Set<string>()
+
+  /** Per-tile line label metadata from worker */
+  private _lineLabels = new Map<string, LineLabelInfo[]>()
+  /** Per-tile CPU-side dynamic buffer for projected glyph positions */
+  private _dynamicBuffers = new Map<string, Float32Array>()
+  /** Per-tile GPU-side dynamic buffer (DYNAMIC_DRAW) */
+  private _dynamicGLBuffers = new Map<string, WebGLBuffer>()
 
   /** Expose workerService so callers can pass it as a TileService-like object if needed. */
   readonly workerService: LineTextWorkerService
@@ -233,6 +292,29 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
     this._bucketAtlasVersion.set(key, atlasVersion)
 
+    // Store line label metadata and allocate dynamic buffer for per-frame projection
+    if (data.lineLabels && data.lineLabels.length > 0) {
+      this._lineLabels.set(key, data.lineLabels)
+
+      let totalGlyphs = 0
+      for (const label of data.lineLabels) {
+        totalGlyphs += label.glyphOffsets.length
+      }
+
+      // 4 vertices per glyph, 3 floats per vertex (x, y, angle)
+      const dynamicBuffer = new Float32Array(totalGlyphs * 4 * 3)
+      this._dynamicBuffers.set(key, dynamicBuffer)
+
+      const dynamicGLBuffer = gl.createBuffer()
+      if (dynamicGLBuffer) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
+        gl.bufferData(gl.ARRAY_BUFFER, dynamicBuffer.byteLength, gl.DYNAMIC_DRAW)
+        this._dynamicGLBuffers.set(key, dynamicGLBuffer)
+      }
+
+      debug?.('uploadBucket: line labels', { key, labels: data.lineLabels.length, totalGlyphs })
+    }
+
     return { verts, idx, count: data.count }
   }
 
@@ -271,7 +353,9 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
     // Resolution for pixel-space offsets
     const canvas = gl.canvas as HTMLCanvasElement
-    gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), canvas.width, canvas.height)
+    const canvasWidth = canvas.width
+    const canvasHeight = canvas.height
+    gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), canvasWidth, canvasHeight)
 
     // Color + opacity
     const [r, g, b, a] = parseColor(this._color)
@@ -280,7 +364,37 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     // Font scale for gamma: matches MapLibre's fontScale = size / 24.0
     gl.uniform1f(gl.getUniformLocation(program, 'u_font_scale'), this._fontSize / 24.0)
 
-    // Bind buffers and set attributes
+    // Per-frame line label projection
+    const lineLabels = this._lineLabels.get(key)
+    const dynamicBuffer = this._dynamicBuffers.get(key)
+    const dynamicGLBuffer = this._dynamicGLBuffers.get(key)
+    const hasLineLabels = lineLabels && dynamicBuffer && dynamicGLBuffer
+
+    if (hasLineLabels) {
+      const camera = this._renderer!.camera
+      const tileToNDC = makeTileToNDC(key, camera, canvasWidth, canvasHeight)
+      updateLineLabels(lineLabels, tileToNDC, dynamicBuffer)
+
+      // Upload dynamic buffer to GPU
+      gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, dynamicBuffer, gl.DYNAMIC_DRAW)
+
+      // Bind a_projected_pos from dynamic buffer
+      const aProjPos = gl.getAttribLocation(program, 'a_projected_pos')
+      if (aProjPos >= 0) {
+        gl.enableVertexAttribArray(aProjPos)
+        gl.vertexAttribPointer(aProjPos, 3, gl.FLOAT, false, 12, 0)
+      }
+
+      // Set along-line mode
+      gl.uniform1f(gl.getUniformLocation(program, 'u_is_along_line'), 1.0)
+
+      debug?.('drawTile: line projection updated', { key, labels: lineLabels.length })
+    } else {
+      gl.uniform1f(gl.getUniformLocation(program, 'u_is_along_line'), 0.0)
+    }
+
+    // Bind static buffers and set attributes
     // GlyphVertexLayout stride = 12 bytes: ax(2) ay(2) ox(2) oy(2) u(2) v(2)
     gl.bindBuffer(gl.ARRAY_BUFFER, bucket.verts)
 
@@ -305,6 +419,12 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     gl.disableVertexAttribArray(aAnchor)
     gl.disableVertexAttribArray(aOffset)
     gl.disableVertexAttribArray(aTex)
+    if (hasLineLabels) {
+      const aProjPos = gl.getAttribLocation(program, 'a_projected_pos')
+      if (aProjPos >= 0) {
+        gl.disableVertexAttribArray(aProjPos)
+      }
+    }
   }
 
   getCollisionData(ctx: RenderContext, visibleKeys: ReadonlySet<string>): CollisionData[] {
@@ -381,6 +501,13 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     this._labelPosCache.delete(key)
     this._bucketAtlasVersion.delete(key)
     this._staleBuckets.delete(key)
+    this._lineLabels.delete(key)
+    this._dynamicBuffers.delete(key)
+    const dynBuf = this._dynamicGLBuffers.get(key)
+    if (dynBuf && this._gl) {
+      this._gl.deleteBuffer(dynBuf)
+    }
+    this._dynamicGLBuffers.delete(key)
     this._workerService.cancel(key)
     super.evictTile(key)
   }
