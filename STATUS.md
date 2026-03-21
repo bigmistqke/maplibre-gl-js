@@ -199,7 +199,7 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [x] Cross-tile symbol dedup — `CrossTileIndex` with position tolerance + zoom-level matching, persistent crossTileIDs
 
 ### Known Issues
-- [ ] Line label placement uses `segment: 0` for all anchors — verify `getLineAnchors` returns correct segment index
+- [ ] Line label density ~3% vs MapLibre's dense labels — at z14, projected segment distances are tiny (0.0625 px/tile-unit), so many labels need more backward space than available from the clip boundary to the anchor. Needs investigation: MapLibre may use `getCenterAnchor` for short lines, or different anchor offset strategy
 
 ### Not Yet Implemented
 - [ ] Text halo rendering — MapLibre two-pass: halo then fill (same geometry, different SDF threshold)
