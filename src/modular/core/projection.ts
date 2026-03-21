@@ -23,7 +23,7 @@ export interface Projection {
    *        u_projection_clipping_plane, u_projection_transition.
    */
   setTileUniforms(
-    gl: WebGLRenderingContext,
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
     program: WebGLProgram,
     tileID: TileID,
     camera: CameraState,

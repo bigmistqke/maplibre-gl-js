@@ -124,7 +124,7 @@ export class FillLayer {
   readonly opacity: number
 
   private _tileBuffers = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number }>()
-  private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
+  private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer'>>
 
   constructor(options: FillLayerOptions) {
     this.source = options.source
@@ -134,7 +134,7 @@ export class FillLayer {
   }
 
   onAdd(renderer: RendererAPI): void {
-    this._webgl = (renderer as any)._webgl
+    this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer'>>
   }
 
   evictTile(key: string): void {

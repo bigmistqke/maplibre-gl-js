@@ -11,7 +11,7 @@ import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
 import { createDebug } from '../../debug.ts'
 import type { SymbolTileData } from './types.ts'
 
-const debug = createDebug('LineTextLayer', false)
+const debug = createDebug('LineTextLayer', true)
 
 // ---- SDF Shaders ----
 
@@ -40,7 +40,7 @@ uniform float u_opacity;
 uniform float u_font_scale;
 varying vec2 v_uv;
 void main() {
-  float dist = texture2D(u_texture, v_uv).a;
+  float dist = texture2D(u_texture, v_uv).r;
   float EDGE_GAMMA = 0.105;
   float inner_edge = (256.0 - 64.0) / 256.0;
   float gamma = EDGE_GAMMA / u_font_scale;
@@ -105,7 +105,7 @@ export class LineTextLayer implements PlacementParticipant {
   private _bucketAtlasVersion = new globalThis.Map<string, number>()
   /** Tiles whose GPU bucket needs replacing (fontSize changed) but old data is still shown */
   private _staleBuckets = new globalThis.Set<string>()
-  private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
+  private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer' | 'destroyGeometryBuffers'>>
   private _gl!: WebGLRenderingContext
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
   /** Cached label positions (tile-local coords) for synchronous getSymbolBuckets() */
@@ -133,9 +133,9 @@ export class LineTextLayer implements PlacementParticipant {
 
   onAdd(renderer: RendererAPI): void {
     this._renderer = renderer
-    this._webgl = (renderer as any)._webgl
-    this._gl = (renderer as any)._gl
-    this._markDirty = () => (renderer as any)._frameLoop?.markDirty()
+    this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer' | 'destroyGeometryBuffers'>>
+    this._gl = renderer.gl!
+    this._markDirty = () => renderer.markDirty?.()
 
     this._glyphs._onGlyphsLoaded = (partialMap, positions) => {
       debug('glyphs loaded → pushing to worker, invalidating stale buckets')
@@ -161,7 +161,7 @@ export class LineTextLayer implements PlacementParticipant {
 
   getSymbolBuckets(): SymbolBucketData[] {
     if (!this._renderer) return []
-    const camera: CameraState = (this._renderer as any)._camera ?? null
+    const camera: CameraState | null = this._renderer.camera ?? null
     if (!camera) return []
     const gl: WebGLRenderingContext = this._gl
     if (!gl) return []
@@ -230,7 +230,8 @@ export class LineTextLayer implements PlacementParticipant {
     debug('invalidating all GPU buckets due to atlas rebuild', { count })
     this._tileBuckets.clear()
     this._pendingUploads.clear()
-    this._fetchingKeys.clear()
+    // Do NOT clear _fetchingKeys — in-flight polls must complete so they can
+    // re-upload with the new atlas. Clearing them races against updateGlyphs.
     this._bucketAtlasVersion.clear()
     this._staleBuckets.clear()
   }
@@ -299,7 +300,7 @@ export class LineTextLayer implements PlacementParticipant {
 
   private _uploadBucket(key: string, bucket: SymbolTileData, gl: WebGLRenderingContext): void {
     this._glyphs.buildAtlas(gl)
-    const atlasVersion = (this._glyphs as any)._atlasVersion as number
+    const atlasVersion = this._glyphs._atlasVersion
     debug('uploadBucket', { key, atlasVersion, indices: bucket.count })
     // Destroy any cached geometry buffers for this tile so re-upload is fresh
     this._webgl.destroyGeometryBuffers(`tile:${key}:lsym:`)
@@ -365,7 +366,7 @@ export class LineTextLayer implements PlacementParticipant {
     gl.bindTexture(gl.TEXTURE_2D, this._glyphs.glyphAtlasTexture)
     gl.uniform1i(gl.getUniformLocation(program, 'u_texture'), 0)
 
-    const atlas = (this._glyphs as any)._atlas
+    const atlas = this._glyphs.atlas
     const atlasW = atlas?.image.width ?? 1
     const atlasH = atlas?.image.height ?? 1
     gl.uniform2f(gl.getUniformLocation(program, 'u_texsize'), atlasW, atlasH)

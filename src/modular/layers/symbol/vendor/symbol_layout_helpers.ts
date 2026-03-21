@@ -11,8 +11,10 @@ import { Anchor } from '../../../../symbol/anchor.ts'
 import ONE_EM from '../../../../symbol/one_em.ts'
 import { Formatted, FormattedSection } from '@maplibre/maplibre-gl-style-spec'
 import Point from '@mapbox/point-geometry'
-import type { Shaping, TextJustify } from '../../../../symbol/shaping.ts'
+import type { Shaping, TextJustify, SymbolAnchor, PositionedIcon } from '../../../../symbol/shaping.ts'
 import type { GlyphPositions, GlyphMap } from '../types.ts'
+import type { SymbolStyleLayer } from '../../../../style/style_layer/symbol_style_layer.ts'
+import type { Feature } from '@maplibre/maplibre-gl-style-spec'
 
 export type { Shaping }
 
@@ -62,14 +64,13 @@ export function shapeTextForLayout(options: SimpleShapingOptions): Shaping | fal
 
   return shapeText(
     formatted,
-    glyphMap as any,  // our GlyphMap is structurally compatible at runtime
-
+    glyphMap as unknown as Parameters<typeof shapeText>[1],
     glyphPositions,   // atlas positions (rect + metrics) per codepoint
     {},               // imagePositions (none)
     fontstack,
     maxWidth,
     lineHeight,
-    textAnchor as any,
+    textAnchor as SymbolAnchor,
     textJustify,
     spacing,
     textOffset,
@@ -110,9 +111,9 @@ export function buildGlyphQuads(options: GlyphQuadOptions) {
     maplibreAnchor,
     shaping,
     textOffset,
-    layer as any,
+    layer as unknown as SymbolStyleLayer,
     alongLine,
-    {} as any,       // feature
+    {} as unknown as Feature,
     {},              // imageMap
     false,           // allowVerticalPlacement
   )
@@ -150,7 +151,7 @@ export function getLineAnchors(options: LineAnchorOptions): Anchor[] {
     symbolMinDistance,
     textMaxAngle,
     shaping,
-    undefined as any,
+    undefined as unknown as PositionedIcon,
     glyphSize,
     textMaxBoxScale,
     overscaling,
@@ -171,7 +172,7 @@ export function getCenterLineAnchor(options: Omit<LineAnchorOptions, 'symbolMinD
     line,
     textMaxAngle,
     shaping,
-    undefined as any,
+    undefined as unknown as PositionedIcon,
     glyphSize,
     textMaxBoxScale,
   ) ?? null

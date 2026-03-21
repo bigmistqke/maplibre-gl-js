@@ -244,7 +244,7 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
 
           for (const layer of sourceLayers) {
             const paint = internals.evaluate(layer, internals.camera.zoom)
-            const program = internals.programs.get((layer.constructor as any).programs?.[0]?.name)
+            const program = internals.programs.get((layer.constructor as { programs?: { name: string }[] }).programs?.[0]?.name)
             if (program) {
               gl.useProgram(program)
               // Tile-local ortho: maps the srcTile's sub-area that covers demTile → NDC [-1,1].
@@ -253,7 +253,7 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
               }
               gl.uniformMatrix4fv(this._uMatrixCache.get(program)!, false, ortho)
             }
-            ;(layer as any).draw({
+            layer.draw?.({
               gl,
               programs: internals.programs,
               tileID: srcTileID,
@@ -337,7 +337,7 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
       const fbo = this._rttPool.getOrCreate(tileID.key, internals)
       const demTex = this._getOrCreateDEMTexture(gl, tileID, demData as ArrayBuffer)
 
-      internals.projection.setTileUniforms(gl as any, prog, tileID, internals.camera, internals.viewport)
+      internals.projection.setTileUniforms(gl, prog, tileID, internals.camera, internals.viewport)
 
       // u_terrain_dim: unpadded tile dimension (e.g. 256.0)
       const dem = this._demData.get(tileID.key)
@@ -367,13 +367,13 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
     if (internals.customLayers.length > 0) {
       for (const layer of internals.customLayers) {
         layer.render({
-          gl: gl as any,
+          gl: gl as WebGLRenderingContext,
           camera: internals.camera,
           viewport: internals.viewport,
           vertexShaderPrelude: internals.projection.vertexShaderPrelude,
           setProjectionUniforms: (program: WebGLProgram) => {
             gl.useProgram(program)
-            internals.projection.setTileUniforms(gl as any, program, WORLD_TILE, internals.camera, internals.viewport)
+            internals.projection.setTileUniforms(gl, program, WORLD_TILE, internals.camera, internals.viewport)
           },
         })
       }

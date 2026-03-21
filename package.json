@@ -97,6 +97,7 @@
     "is-builtin-module": "^5.0.0",
     "jsdom": "^28.1.0",
     "junit-report-builder": "^5.1.1",
+    "maplibre-gl-reference": "npm:maplibre-gl@^5.21.0",
     "minimist": "^1.2.8",
     "mock-geolocation": "^1.0.11",
     "monocart-coverage-reports": "^2.12.9",

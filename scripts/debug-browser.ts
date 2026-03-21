@@ -63,7 +63,13 @@ async function startVite(): Promise<ChildProcess> {
 // --- Start browser ---
 const browser = await chromium.launch({
   headless: !headed,
-  args: ['--ignore-gpu-blocklist', '--enable-webgl', '--enable-unsafe-webgpu'],
+  args: [
+    '--ignore-gpu-blocklist',
+    '--enable-webgl',
+    '--enable-unsafe-webgpu',
+    '--use-gl=angle',
+    '--use-angle=swiftshader',
+  ],
 })
 const ctx = await browser.newContext()
 let page = await ctx.newPage()
@@ -114,13 +120,20 @@ const http = createHttpServer(async (req, res) => {
   }
 
   if (url === '/navigate' && req.method === 'POST') {
-    const body = JSON.parse(await readBody(req))
-    const target: string = body.url
-    console.log(`[browser] Navigating to ${target}`)
-    broadcast({ type: 'navigate', text: target, time: new Date().toISOString() })
-    await page.goto(target, { waitUntil: 'domcontentloaded' })
-    res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ ok: true }))
+    try {
+      const body = JSON.parse(await readBody(req))
+      const target: string = body.url
+      console.log(`[browser] Navigating to ${target}`)
+      broadcast({ type: 'navigate', text: target, time: new Date().toISOString() })
+      await page.goto(target, { waitUntil: 'domcontentloaded' })
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true }))
+    } catch (e: any) {
+      console.error(`[browser] Navigate error: ${e.message}`)
+      broadcast({ type: 'error', text: `[navigate] ${e.message}`, time: new Date().toISOString() })
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: e.message }))
+    }
     return
   }
 

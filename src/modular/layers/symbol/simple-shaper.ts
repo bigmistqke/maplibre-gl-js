@@ -7,6 +7,8 @@ import { Anchor } from '../../../symbol/anchor.ts'
 import { StructArray } from '../../core/struct-array.ts'
 import { GlyphVertexLayout } from './types.ts'
 import type { GlyphMap, GlyphPositions } from './types.ts'
+import type { SymbolStyleLayer } from '../../../style/style_layer/symbol_style_layer.ts'
+import type { Feature } from '@maplibre/maplibre-gl-style-spec'
 
 export interface ShaperOptions {
   text: string
@@ -34,7 +36,7 @@ export function shapeAndBuildQuads(options: ShaperOptions): ShaperResult | null 
 
   const shaping = shapeText(
     formatted,
-    glyphMap,      // StyleGlyph data (id, bitmap, metrics) per codepoint
+    glyphMap as unknown as Parameters<typeof shapeText>[1],
     glyphPositions, // atlas positions (rect + metrics) per codepoint
     {},        // imagePositions (none)
     fontstack,
@@ -68,9 +70,9 @@ export function shapeAndBuildQuads(options: ShaperOptions): ShaperResult | null 
           }
         })
       }
-    } as any,
+    } as unknown as SymbolStyleLayer,
     false,     // alongLine
-    {} as any, // feature
+    {} as unknown as Feature, // feature stub — only type needed, not evaluated
     {},        // imageMap
     false,     // allowVerticalPlacement
   )

@@ -24,7 +24,7 @@
       grid-template-columns: repeat(2, 280px);
       gap: 16px;
     }
-    a.card {
+    a.card, div.card {
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -36,10 +36,13 @@
       color: inherit;
       transition: border-color 0.15s, background 0.15s;
     }
-    a.card:hover { border-color: #555; background: #222; }
+    a.card:hover, div.card:hover { border-color: #555; background: #222; }
     .card-phase { font-size: 11px; opacity: 0.35; text-transform: uppercase; letter-spacing: 0.1em; }
     .card-title { font-size: 15px; font-weight: 600; }
     .card-desc { font-size: 12px; opacity: 0.5; line-height: 1.5; }
+    .card-links { display: flex; gap: 8px; margin-top: 4px; }
+    .card-links a { font-size: 11px; color: #4af; text-decoration: none; opacity: 0.7; }
+    .card-links a:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -50,11 +53,15 @@
       <span class="card-title">Background Layer</span>
       <span class="card-desc">Solid color fill, camera controls, the render loop.</span>
     </a>
-    <a class="card" href="./phase2/">
+    <div class="card">
       <span class="card-phase">Phase 2</span>
       <span class="card-title">Raster Tiles</span>
       <span class="card-desc">WebGL tile rendering with MercatorProjection. Tiles fetched on the main thread.</span>
-    </a>
+      <div class="card-links">
+        <a href="./phase2/">Mini</a>
+        <a href="./phase2/original.html">Original</a>
+      </div>
+    </div>
     <a class="card" href="./phase3/">
       <span class="card-phase">Phase 3</span>
       <span class="card-title">Tile Eviction</span>
@@ -65,11 +72,15 @@
       <span class="card-title">Worker Tile Service</span>
       <span class="card-desc">Tile fetching and ImageBitmap decoding offloaded to a Comlink Web Worker.</span>
     </a>
-    <a class="card" href="./phase5/">
+    <div class="card">
       <span class="card-phase">Phase 5</span>
       <span class="card-title">Vector Tiles</span>
       <span class="card-desc">MVT polygon fill and line rendering with earcut tessellation. Tile decode in a Comlink worker.</span>
-    </a>
+      <div class="card-links">
+        <a href="./phase5/">Mini</a>
+        <a href="./phase5/original.html">Original</a>
+      </div>
+    </div>
     <a class="card" href="./phase6/">
       <span class="card-phase">Phase 6</span>
       <span class="card-title">Globe Projection</span>
@@ -80,11 +91,15 @@
       <span class="card-title">3D Terrain</span>
       <span class="card-desc">RTT pipeline drapes raster tiles over a DEM mesh. Tree-shakeable TerrainPlugin with WebGL2.</span>
     </a>
-    <a class="card" href="./phase8/">
+    <div class="card">
       <span class="card-phase">Phase 8</span>
       <span class="card-title">Text Labels</span>
       <span class="card-desc">SDF text rendering with GlyphManager + TextLayer. Labels from vector tiles with worker layout engine.</span>
-    </a>
+      <div class="card-links">
+        <a href="./phase8/">Mini</a>
+        <a href="./phase8/original.html">Original</a>
+      </div>
+    </div>
     <a class="card" href="./phase8-icons/">
       <span class="card-phase">Phase 8b</span>
       <span class="card-title">Icon Sprites</span>
@@ -95,11 +110,15 @@
       <span class="card-title">Label Placement</span>
       <span class="card-desc">Collision detection with Placement plugin. Labels fade in/out based on overlap.</span>
     </a>
-    <a class="card" href="./phase10/">
+    <div class="card">
       <span class="card-phase">Phase 10</span>
       <span class="card-title">Line Text Labels</span>
       <span class="card-desc">Road and river name labels following line geometry. SDF text placed along polylines with LineTextLayer.</span>
-    </a>
+      <div class="card-links">
+        <a href="./phase10/">Mini</a>
+        <a href="./phase10/original.html">Original</a>
+      </div>
+    </div>
   </div>
 </body>
 </html>

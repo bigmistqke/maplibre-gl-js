@@ -1,5 +1,5 @@
 // src/modular/renderer/mercator.ts
-import { mat4 } from 'gl-matrix'
+import { mat4, type mat4 as Mat4Type } from 'gl-matrix'
 import type { CameraState, TileID, TileMesh } from '../core/types.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
 
@@ -61,7 +61,7 @@ export class MercatorProjection implements Projection {
   }
 
   setTileUniforms(
-    gl: WebGLRenderingContext,
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
     program: WebGLProgram,
     tileID: TileID,
     camera: CameraState,
@@ -111,22 +111,22 @@ export class MercatorProjection implements Projection {
     // 5. Bearing — rotate around Z for compass heading
     // 6. Translate so the map centre lands at the world origin
     // 7. Scale Z so elevation in metres maps to world-pixel units
-    const m = mat4.create()
-    mat4.perspective(m as any, FOV, width / height, nearZ, farZ)
-    mat4.scale    (m as any, m as any, [1, -1, 1])
-    mat4.translate(m as any, m as any, [0, 0, -cameraToCenterDistance])
-    mat4.rotateX  (m as any, m as any,  pitch   * DEG)
-    mat4.rotateZ  (m as any, m as any, -bearing * DEG)
-    mat4.translate(m as any, m as any, [-cx, -cy, 0])
-    mat4.scale    (m as any, m as any, [1, 1, pixelsPerMeter])
+    const m = mat4.create() as unknown as Mat4Type
+    mat4.perspective(m, FOV, width / height, nearZ, farZ)
+    mat4.scale    (m, m, [1, -1, 1])
+    mat4.translate(m, m, [0, 0, -cameraToCenterDistance])
+    mat4.rotateX  (m, m,  pitch   * DEG)
+    mat4.rotateZ  (m, m, -bearing * DEG)
+    mat4.translate(m, m, [-cx, -cy, 0])
+    mat4.scale    (m, m, [1, 1, pixelsPerMeter])
 
     // ── Tile matrix: place tile [0,EXTENT]² in world space ───────────────────
     const tileScale = worldSize / Math.pow(2, tileID.z)
-    const t = mat4.create()
-    mat4.translate(t as any, t as any, [tileID.x * tileScale, tileID.y * tileScale, 0])
-    mat4.scale    (t as any, t as any, [tileScale / EXTENT, tileScale / EXTENT, 1])
+    const t = mat4.create() as unknown as Mat4Type
+    mat4.translate(t, t, [tileID.x * tileScale, tileID.y * tileScale, 0])
+    mat4.scale    (t, t, [tileScale / EXTENT, tileScale / EXTENT, 1])
 
-    mat4.multiply(m as any, m as any, t as any)
-    return m as Float32Array
+    mat4.multiply(m, m, t)
+    return m as unknown as Float32Array
   }
 }

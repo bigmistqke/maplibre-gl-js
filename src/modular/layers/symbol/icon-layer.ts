@@ -94,7 +94,7 @@ export class IconLayer implements PlacementParticipant {
   private _atlasWidth = 1
   private _atlasHeight = 1
   private _imagesReady = false
-  private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer; destroyGeometryBuffers(prefix: string): void }
+  private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer' | 'destroyGeometryBuffers'>>
   private _gl!: WebGLRenderingContext
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
   /** Cached anchor positions (tile-local coords) for synchronous getSymbolBuckets() */
@@ -115,10 +115,10 @@ export class IconLayer implements PlacementParticipant {
   }
 
   onAdd(renderer: RendererAPI): void {
-    this._webgl = (renderer as any)._webgl
-    this._gl = (renderer as any)._webgl.gl
+    this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer' | 'destroyGeometryBuffers'>>
+    this._gl = renderer.gl!
     this._renderer = renderer
-    this._markDirty = () => (renderer as any)._frameLoop?.markDirty()
+    this._markDirty = () => renderer.markDirty?.()
     debug('onAdd: starting sprite load', { instanceId: this._instanceId })
 
     // Begin loading sprite; push metadata to worker once ready
@@ -161,7 +161,7 @@ export class IconLayer implements PlacementParticipant {
 
   getSymbolBuckets(): SymbolBucketData[] {
     if (!this._renderer) return []
-    const camera: CameraState = (this._renderer as any)._camera ?? null
+    const camera: CameraState | null = this._renderer.camera ?? null
     if (!camera) return []
     const gl: WebGLRenderingContext = this._gl
     if (!gl) return []

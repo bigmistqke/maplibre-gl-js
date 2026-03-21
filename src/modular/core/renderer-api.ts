@@ -1,5 +1,6 @@
-import type { CameraState, ScreenPoint, Feature } from './types.ts'
+import type { CameraState, ScreenPoint, Feature, ResolvedPaintProperties, ProgramDefinition } from './types.ts'
 import type { RenderExtension } from './render-extension.ts'
+import type { DrawContext } from './render-extension.ts'
 import type { Viewport } from './projection.ts'
 import type { Surface } from './surface.ts'
 
@@ -24,7 +25,13 @@ export interface SourceDefinition {
 export interface LayerInstance {
   readonly id?: string
   readonly type: string
+  readonly source?: string
+  /** WebGL programs this layer needs compiled. Set from the static `programs` property. */
+  readonly programs?: ProgramDefinition[]
   onAdd?(renderer: RendererAPI): void
+  draw?(ctx: DrawContext): void
+  evictTile?(key: string): void
+  drawBackground?(ctx: { gl: WebGLRenderingContext; paint: ResolvedPaintProperties }): void
 }
 
 export interface CustomLayer {
@@ -36,6 +43,16 @@ export interface CustomLayer {
 }
 
 export interface RendererAPI {
+  /** WebGL context. Present on the concrete Renderer implementation. */
+  readonly gl?: WebGLRenderingContext
+  /** Current camera state. Present on the concrete Renderer implementation. */
+  readonly camera?: CameraState | null
+  /** Request a re-render on the next frame. Present on the concrete Renderer. */
+  markDirty?(): void
+  /** Create or retrieve a named geometry buffer. Present on the concrete Renderer. */
+  createGeometryBuffer?(key: string, data: ArrayBufferView, target: number): WebGLBuffer
+  /** Destroy all geometry buffers whose key starts with the given prefix. Present on the concrete Renderer. */
+  destroyGeometryBuffers?(keyPrefix: string): void
   resize(width: number, height: number): void
   destroy(): void
   addSource(id: string, source: SourceDefinition): void

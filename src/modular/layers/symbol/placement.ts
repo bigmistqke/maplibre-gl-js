@@ -7,8 +7,8 @@ import type { PlacementParticipant } from '../../core/placement-participant.ts'
 import { CollisionIndex } from './vendor/collision_index.ts'
 
 function isParticipant(layer: LayerInstance): layer is LayerInstance & PlacementParticipant {
-  return typeof (layer as any).getSymbolBuckets === 'function' &&
-         typeof (layer as any).setOpacity === 'function'
+  return typeof (layer as Partial<PlacementParticipant>).getSymbolBuckets === 'function' &&
+         typeof (layer as Partial<PlacementParticipant>).setOpacity === 'function'
 }
 
 export class Placement {

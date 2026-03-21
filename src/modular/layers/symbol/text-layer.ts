@@ -104,7 +104,7 @@ export class TextLayer implements PlacementParticipant {
   private _bucketAtlasVersion = new globalThis.Map<string, number>()
   /** Tiles whose GPU bucket needs replacing (fontSize changed) but old data is still shown */
   private _staleBuckets = new globalThis.Set<string>()
-  private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
+  private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer' | 'destroyGeometryBuffers'>>
   private _gl!: WebGLRenderingContext
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
   /** Cached label positions (tile-local coords) for synchronous getSymbolBuckets() */
@@ -131,10 +131,10 @@ export class TextLayer implements PlacementParticipant {
   }
 
   onAdd(renderer: RendererAPI): void {
-    this._webgl = (renderer as any)._webgl
-    this._gl = (renderer as any)._gl
+    this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer' | 'destroyGeometryBuffers'>>
+    this._gl = renderer.gl!
     this._renderer = renderer
-    this._markDirty = () => (renderer as any)._frameLoop?.markDirty()
+    this._markDirty = () => renderer.markDirty?.()
 
     // Wire glyph loading: GlyphManager already rebuilt atlas positions (CPU-side)
     // before firing this callback, so glyphPositions is up to date.
@@ -166,7 +166,7 @@ export class TextLayer implements PlacementParticipant {
 
   getSymbolBuckets(): SymbolBucketData[] {
     if (!this._renderer) return []
-    const camera: CameraState = (this._renderer as any)._camera ?? null
+    const camera: CameraState | null = this._renderer.camera ?? null
     if (!camera) return []
     const gl: WebGLRenderingContext = this._gl
     if (!gl) return []
@@ -327,7 +327,7 @@ export class TextLayer implements PlacementParticipant {
    */
   private _uploadBucket(key: string, bucket: SymbolTileData, gl: WebGLRenderingContext): void {
     this._glyphs.buildAtlas(gl)
-    const atlasVersion = (this._glyphs as any)._atlasVersion as number
+    const atlasVersion = this._glyphs._atlasVersion
     debug('uploadBucket', { key, atlasVersion, indices: bucket.count })
     // Destroy any cached geometry buffers for this tile so re-upload is fresh
     this._webgl.destroyGeometryBuffers(`tile:${key}:sym:`)
@@ -402,7 +402,7 @@ export class TextLayer implements PlacementParticipant {
     gl.uniform1i(gl.getUniformLocation(program, 'u_texture'), 0)
 
     // Atlas size for UV normalization in shader (a_tex / u_texsize = [0,1])
-    const atlas = (this._glyphs as any)._atlas
+    const atlas = this._glyphs.atlas
     const atlasW = atlas?.image.width ?? 1
     const atlasH = atlas?.image.height ?? 1
     gl.uniform2f(gl.getUniformLocation(program, 'u_texsize'), atlasW, atlasH)

@@ -34,7 +34,7 @@ export class LineLayer {
   readonly opacity: number
 
   private _tileBuffers = new globalThis.Map<string, { verts: WebGLBuffer; count: number }>()
-  private _webgl!: { createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer }
+  private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer'>>
 
   constructor(options: LineLayerOptions) {
     this.source = options.source
@@ -43,7 +43,7 @@ export class LineLayer {
     this.opacity = options.opacity ?? 1
   }
 
-  onAdd(renderer: RendererAPI): void { this._webgl = (renderer as any)._webgl }
+  onAdd(renderer: RendererAPI): void { this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer'>> }
 
   evictTile(key: string): void {
     this._tileBuffers.delete(key)

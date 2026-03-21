@@ -30,6 +30,8 @@ export class GlyphManager {
    */
   _onGlyphsLoaded: ((map: GlyphMap, positions: GlyphPositions) => void) | null = null
 
+  get atlas(): GlyphAtlas | null { return this._atlas }
+
   constructor(options: { url: string }) {
     this._url = options.url
   }
@@ -122,11 +124,20 @@ export class GlyphManager {
 
     gl.bindTexture(gl.TEXTURE_2D, this.glyphAtlasTexture)
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+    // Expand single-channel SDF data to RGBA (4 bytes per pixel, value in all channels)
+    const src = this._atlas.image.data
+    const rgba = new Uint8Array(src.length * 4)
+    for (let i = 0; i < src.length; i++) {
+      rgba[i * 4 + 0] = src[i]
+      rgba[i * 4 + 1] = src[i]
+      rgba[i * 4 + 2] = src[i]
+      rgba[i * 4 + 3] = 255
+    }
     gl.texImage2D(
-      gl.TEXTURE_2D, 0, gl.ALPHA,
+      gl.TEXTURE_2D, 0, gl.RGBA,
       this._atlas.image.width, this._atlas.image.height,
-      0, gl.ALPHA, gl.UNSIGNED_BYTE,
-      this._atlas.image.data,
+      0, gl.RGBA, gl.UNSIGNED_BYTE,
+      rgba,
     )
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)

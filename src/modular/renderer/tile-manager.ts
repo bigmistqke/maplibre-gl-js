@@ -96,12 +96,8 @@ export class TileManager {
       this._tileService.request(tileID, buildURL(this._urlTemplate, tileID))
         .then(transferables => {
           if (!this._tiles.has(key)) return          // evicted while loading
-          if (transferables.length === 0) {
-            entry.status = 'error'
-            return
-          }
           entry.status = 'ready'
-          entry.data = transferables[0]
+          entry.data = transferables.length > 0 ? transferables[0] : undefined
           this._onTileReady()
         })
         .catch(() => {
@@ -222,14 +218,16 @@ export class TileManager {
     }
   }
 
-  getReadyTiles(): Array<{ tileID: TileID; data: Transferable }> {
-    // Return all retained tiles that have data, sorted by z ascending.
+  getReadyTiles(): Array<{ tileID: TileID; data: Transferable | undefined }> {
+    // Return all retained tiles that are ready, sorted by z ascending.
+    // Tiles with no transferable data (data === undefined) are included — layers that manage
+    // their own data (e.g. LineTextLayer) still need draw() called so they can poll results.
     // Coarser (lower-z) tiles render first; finer tiles overwrite via stencil ALWAYS+REPLACE.
     // This mirrors MapLibre's draw order (compareTileId sorts by overscaledZ ascending).
-    const result: Array<{ tileID: TileID; data: Transferable }> = []
+    const result: Array<{ tileID: TileID; data: Transferable | undefined }> = []
     for (const key of this._retainSet) {
       const entry = this._tiles.get(key)
-      if (entry?.status === 'ready' && entry.data !== undefined) {
+      if (entry?.status === 'ready') {
         const [z, x, y] = key.split('/').map(Number)
         result.push({ tileID: { z, x, y, key }, data: entry.data })
       }

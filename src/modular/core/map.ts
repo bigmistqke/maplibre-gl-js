@@ -1,5 +1,5 @@
 import type { CameraState, AnimationOptions } from './types.ts'
-import type { RendererAPI, LayerInstance, CustomLayer } from './renderer-api.ts'
+import type { RendererAPI, LayerInstance, CustomLayer, SourceDefinition } from './renderer-api.ts'
 import { CameraController } from './camera.ts'
 
 /** Structural type — a plugin is compatible if its onAdd accepts R. */
@@ -41,8 +41,8 @@ export class MapGL<R extends RendererAPI = RendererAPI> {
     this.renderer.removeLayer(id)
   }
 
-  addSource(id: string, source: Record<string, unknown>): void {
-    this.renderer.addSource(id, source as any)
+  addSource(id: string, source: SourceDefinition): void {
+    this.renderer.addSource(id, source)
   }
 
   removeSource(id: string): void {

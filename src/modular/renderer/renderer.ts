@@ -25,12 +25,8 @@ interface LayerEntry {
   layer: LayerInstance
 }
 
-interface FullFrameLayer {
-  drawBackground(ctx: { gl: WebGLRenderingContext; paint: ResolvedPaintProperties }): void
-}
-
-function isFullFrameLayer(layer: LayerInstance): layer is LayerInstance & FullFrameLayer {
-  return typeof (layer as any).drawBackground === 'function'
+function isFullFrameLayer(layer: LayerInstance): layer is LayerInstance & Required<Pick<LayerInstance, 'drawBackground'>> {
+  return typeof layer.drawBackground === 'function'
 }
 
 interface RasterSourceDefinition extends SourceDefinition {
@@ -84,6 +80,16 @@ export class Renderer implements RendererAPI {
     this._frameLoop.start()
   }
 
+  get gl(): WebGLRenderingContext { return this._webgl.gl }
+  get camera(): CameraState | null { return this._camera }
+  markDirty(): void { this._frameLoop.markDirty() }
+  createGeometryBuffer(key: string, data: ArrayBufferView, target: number): WebGLBuffer {
+    return this._webgl.createGeometryBuffer(key, data, target)
+  }
+  destroyGeometryBuffers(keyPrefix: string): void {
+    this._webgl.destroyGeometryBuffers(keyPrefix)
+  }
+
   resize(width: number, height: number): void {
     this._width = width
     this._height = height
@@ -135,7 +141,7 @@ export class Renderer implements RendererAPI {
         (key) => {
           this._webgl.destroyGeometryBuffers(`tile:${key}`)
           for (const layer of this._tileLayers.get(id) ?? []) {
-            (layer as any).evictTile?.(key)
+            layer.evictTile?.(key)
           }
         },
         vectorSource.minZoom,
@@ -174,7 +180,7 @@ export class Renderer implements RendererAPI {
       return
     }
 
-    const id = (layer as any).id ?? `__layer_${this._layers.length}`
+    const id = layer.id ?? `__layer_${this._layers.length}`
     if (beforeId) {
       const idx = this._layers.findIndex(e => e.id === beforeId)
       this._layers.splice(idx !== -1 ? idx : this._layers.length, 0, { id, layer })
@@ -183,7 +189,7 @@ export class Renderer implements RendererAPI {
     }
 
     // Wire tile-based layers to their source's TileManager
-    const sourceId = (layer as any).source
+    const sourceId = layer.source
     if (sourceId) {
       if (!this._tileLayers.has(sourceId)) {
         this._tileLayers.set(sourceId, [])
@@ -191,9 +197,7 @@ export class Renderer implements RendererAPI {
       this._tileLayers.get(sourceId)!.push(layer)
     }
 
-    if (typeof (layer as any).onAdd === 'function') {
-      ;(layer as any).onAdd(this)
-    }
+    layer.onAdd?.(this)
     this._frameLoop.markDirty()
   }
 
@@ -209,7 +213,7 @@ export class Renderer implements RendererAPI {
 
     const entry = this._layers.find(e => e.id === id)
     if (entry) {
-      const sourceId = (entry.layer as any).source
+      const sourceId = entry.layer.source
       if (sourceId) {
         const layers = this._tileLayers.get(sourceId)
         if (layers) {
@@ -269,7 +273,9 @@ export class Renderer implements RendererAPI {
       const prelude = this._surface.shaderDefines.join('\n') + '\n' +
                       this._projection.vertexShaderPrelude + '\n' +
                       ELEVATION_PRELUDE
-      const defs = this._layers.flatMap(e => (e.layer.constructor as any).programs ?? [])
+      const defs = this._layers.flatMap(e =>
+        (e.layer.constructor as { programs?: import('../core/types.ts').ProgramDefinition[] }).programs ?? []
+      )
       const layers = this._webgl.compilePrograms(defs, prelude)
       const stencil = this._webgl.compileStencilProgram(prelude)
       for (const def of defs) {

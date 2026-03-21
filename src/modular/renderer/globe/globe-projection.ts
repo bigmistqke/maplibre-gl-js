@@ -74,7 +74,7 @@ export class GlobeProjection implements Projection {
   }
 
   setTileUniforms(
-    gl: WebGLRenderingContext,
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
     program: WebGLProgram,
     tileID: TileID,
     camera: CameraState,

@@ -28,7 +28,7 @@ export interface RendererInternals {
   layers: Array<{ id: string; layer: LayerInstance }>
   tileLayers: Map<string, LayerInstance[]>
   tileManagers: Map<string, {
-    getReadyTiles(): Array<{ tileID: TileID; data: Transferable }>
+    getReadyTiles(): Array<{ tileID: TileID; data: Transferable | undefined }>
     getRetainedKeys(): Set<string>
   }>
   sourceTypes: Map<string, 'raster' | 'vector'>

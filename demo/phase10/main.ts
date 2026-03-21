@@ -21,8 +21,8 @@ const renderer = await createRenderer(canvas)
 const map = new MapGL({
   renderer,
   initialCamera: {
-    center: { lng: 10, lat: 51 },
-    zoom: 6,
+    center: { lng: 0, lat: 20 },
+    zoom: 3,
     bearing: 0,
     pitch: 0,
     groundElevation: 0,
@@ -84,18 +84,17 @@ map.addSource('line-text-source', {
   type: 'vector',
   url: tileUrl,
   minZoom: 0,
-  maxZoom: 6,
+  maxZoom: 4,
   tileService: {
-    request(tileID: { key: string }, url: string) {
-      void workerService.request(
-        tileID.key,
-        url,
-        '{name}',
-        'geolines',
-        'Open Sans Regular',
-        12,
-      )
-      return Promise.resolve([] as Transferable[])
+    async request(_tileID: { key: string }, url: string) {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return []
+        const buf = await res.arrayBuffer()
+        return [buf] as Transferable[]
+      } catch {
+        return []
+      }
     },
     cancel(key: string) {
       workerService.cancel(key)

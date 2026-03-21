@@ -7,6 +7,7 @@
 import * as Comlink from 'comlink'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
+import { createDebug } from '../../../debug.ts'
 import { clipLine } from '../vendor/clip_line.ts'
 import { mergeLines } from '../vendor/merge_lines.ts'
 import {
@@ -19,6 +20,8 @@ import { StructArray } from '../../../core/struct-array.ts'
 import { GlyphVertexLayout } from '../types.ts'
 import ONE_EM from '../../../../symbol/one_em.ts'
 import type { GlyphMap, GlyphPositions, SymbolTileData } from '../types.ts'
+
+const debug = createDebug('LineWorker', true)
 
 const TILE_EXTENT = 4096
 
@@ -41,6 +44,7 @@ export class SymbolWorkerLine {
   private _buckets = new globalThis.Map<string, SymbolTileData>()
 
   updateGlyphs(partialMap: GlyphMap, positions: GlyphPositions): void {
+    debug('updateGlyphs', { waiting: this._waiting.size })
     for (const stack in partialMap) {
       if (!this._glyphMap[stack]) this._glyphMap[stack] = {}
       Object.assign(this._glyphMap[stack], partialMap[stack])
@@ -51,6 +55,7 @@ export class SymbolWorkerLine {
     }
     for (const [key, pending] of this._waiting) {
       if (this._allRangesLoaded(pending.neededRanges)) {
+        debug('updateGlyphs: unblocking waiting tile', { key })
         this._waiting.delete(key)
         this._runLayout(key, pending).then(pending.resolve, pending.reject)
       }
@@ -59,6 +64,7 @@ export class SymbolWorkerLine {
 
   private _allRangesLoaded(neededRanges: { [stack: string]: Set<number> }): boolean {
     for (const stack in neededRanges) {
+      if (neededRanges[stack].size === 0) continue  // no glyphs needed for this stack
       const stackGlyphs = this._glyphMap[stack]
       if (!stackGlyphs) return false
       for (const range of neededRanges[stack]) {
@@ -73,7 +79,11 @@ export class SymbolWorkerLine {
 
     const tile = new VectorTile(new Pbf(pbfBuffer))
     const layer = tile.layers[sourceLayer]
-    if (!layer || layer.length === 0) return null
+    debug('_runLayout', { key, sourceLayer, hasLayer: !!layer, featureCount: layer?.length ?? 0 })
+    if (!layer || layer.length === 0) {
+      this._buckets.set(key, { vertices: new ArrayBuffer(0), indices: new ArrayBuffer(0), count: 0, labelPositions: [] })
+      return null
+    }
 
     const allVerts: number[] = []
     const allIdx: number[] = []
@@ -92,7 +102,8 @@ export class SymbolWorkerLine {
     }
 
     // Merge features with matching text and shared endpoints
-    const mergedFeatures = mergeLines(lineFeatures as any) as unknown as Array<{ geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }>
+    type LocalLineFeature = { geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }
+    const mergedFeatures = mergeLines(lineFeatures as unknown as Parameters<typeof mergeLines>[0]) as unknown as Array<LocalLineFeature>
 
     for (const mergedFeat of mergedFeatures) {
       const geom = mergedFeat.geometry
@@ -117,9 +128,15 @@ export class SymbolWorkerLine {
         for (const line of clipped) {
           if (line.length < 2) continue
 
+          // Compute label width in tile units so labels don't overlap.
+          // textPixelRatio converts CSS px → tile units at this zoom.
+          const textPixelRatio = TILE_EXTENT / 512
+          const labelWidth = (shaping.right - shaping.left) * (fontSize / ONE_EM) * textPixelRatio
+          const symbolSpacing = Math.max(labelWidth * 2, 250 * textPixelRatio)
+
           const anchors = getLineAnchors({
             line,
-            symbolMinDistance: fontSize * 8,
+            symbolMinDistance: symbolSpacing,
             textMaxAngle: Math.PI / 4,
             shaping,
             fontSize,
@@ -141,7 +158,8 @@ export class SymbolWorkerLine {
             const scale = fontSize / ONE_EM
             const verts = new StructArray(GlyphVertexLayout)
 
-            for (const quad of quads) {
+            for (let qi = 0; qi < quads.length; qi++) {
+              const quad = quads[qi]
               const corners = [quad.tl, quad.tr, quad.bl, quad.br]
               const uvCorners = [
                 { u: quad.tex.x,              v: quad.tex.y },
@@ -179,7 +197,7 @@ export class SymbolWorkerLine {
       }
     }
 
-    if (allIdx.length === 0) return null
+    debug('_runLayout done', { key, quads: allIdx.length / 6, labels: labelPositions.length })
 
     const data: SymbolTileData = {
       vertices: new Int16Array(allVerts).buffer,
@@ -188,7 +206,7 @@ export class SymbolWorkerLine {
       labelPositions,
     }
     this._buckets.set(key, data)
-    return data
+    return allIdx.length === 0 ? null : data
   }
 
   private _resolveTextField(template: string, props: Record<string, any>): string | null {
@@ -270,8 +288,10 @@ export class SymbolWorkerLine {
     fontSize: number,
   ): void {
     if (this._buckets.has(key) || this._waiting.has(key)) {
+      debug('requestFromPbf: already processed', { key })
       return  // already processed
     }
+    debug('requestFromPbf', { key, sourceLayer })
 
     const tile = new VectorTile(new Pbf(pbfBuffer.slice(0)))
     const neededRanges: { [stack: string]: Set<number> } = { [fontstack]: new Set() }
@@ -305,8 +325,10 @@ export class SymbolWorkerLine {
     }
 
     if (this._allRangesLoaded(neededRanges)) {
+      debug('requestFromPbf: glyphs ready, running layout', { key })
       void this._runLayout(key, pending)
     } else {
+      debug('requestFromPbf: waiting for glyphs', { key, ranges: [...neededRanges[fontstack]] })
       this._waiting.set(key, pending)
     }
   }

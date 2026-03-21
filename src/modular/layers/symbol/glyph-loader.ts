@@ -35,7 +35,7 @@ function readGlyph(tag: number, glyph: any, pbf: any) {
 }
 
 function parseGlyphPbfLocal(data: ArrayBuffer | Uint8Array): StyleGlyph[] {
-  return new (Pbf as any)(data).readFields(readFontstacks, [])
+  return new Pbf(data).readFields(readFontstacks, [])
 }
 
 // ---- Public API ----

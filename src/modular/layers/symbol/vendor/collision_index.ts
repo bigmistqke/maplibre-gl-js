@@ -1,6 +1,6 @@
 import Point from '@mapbox/point-geometry';
 import { GridIndex, type OverlapMode } from './grid_index';
-import { mat4, vec4 } from 'gl-matrix';
+import { mat4, vec4, type mat4 as Mat4Type } from 'gl-matrix';
 
 // Minimal stand-in for IReadonlyTransform — only the fields CollisionIndex uses
 type SimpleTransform = {
@@ -195,7 +195,7 @@ export class CollisionIndex {
   *   example transformation: clipPos = glCoordMatrix * viewportMatrix * circle_pos
   */
   getViewportMatrix() {
-    const m = mat4.identity([] as any);
+    const m = mat4.identity([] as unknown as Mat4Type);
     mat4.translate(m, m, [-viewportPadding, -viewportPadding, 0.0]);
     return m;
   }
