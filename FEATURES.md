@@ -172,22 +172,50 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 
 ## Symbol Rendering
 
+### Architecture
+- [x] `SymbolLayerBase` — abstract base class for all symbol layers
+- [x] `SymbolEngine` — shared per-renderer (via WeakMap), composes LayoutEngine + ResourceManager
+- [x] `LayoutEngine` — collision detection with shared `CollisionIndex`, visible-tile filtering
+- [x] `ResourceManager` — deduplicates `GlyphManager` and `ImageManager` across layers
+- [x] `TileFetcher<T>` — generic async tile lifecycle (fetch/pending/ready/invalidate/evict)
+
+### Text
 - [x] SDF glyph atlas — `GlyphAtlas` with potpack bin-packing, RGBA GPU texture
 - [x] Text shaping — `shapeText` (port of MapLibre's shaping pipeline)
 - [x] Glyph quads — `buildGlyphQuads` for per-character quad geometry
 - [x] Point text placement — anchored at feature centroids
 - [x] Line text placement — `getLineAnchors` + `clipLine` + `mergeLines` along polylines
-- [x] Icon rendering — sprite atlas with `ImageManager`, per-feature icon quads
-- [x] Collision detection — `Placement` plugin with grid-based `CollisionIndex`
-- [x] Per-label opacity — fade-in/out via placement participant interface
+- [x] Line label projection — per-frame glyph placement along projected line geometry (dynamic vertex buffer)
 - [x] Worker-based layout — `SymbolWorkerLine` (Comlink) for line text, `SymbolWorkerPoint` for point text
 - [x] Live font size updates — `setFontSize()` triggers worker re-layout
-- [ ] Text halo rendering
-- [ ] Text rotation / keep-upright along lines
-- [ ] Variable anchor placement (auto best-fit)
+
+### Icons
+- [x] Icon rendering — sprite atlas with `ImageManager`, per-feature icon quads
+
+### Collision & Placement
+- [x] Collision detection — `LayoutEngine` with grid-based `CollisionIndex`
+- [x] Per-label opacity — binary 0/1 via `setLabelOpacity()`
+- [x] Visible-tile filtering — collision data scoped to currently rendered tiles
+
+### Known Issues
+- [ ] Line text character spacing collapsed ("TropicofCancer" vs "Tropic of Cancer") — glyph offset computation needs tuning
+- [ ] Line label placement uses `segment: 0` for all anchors — verify `getLineAnchors` returns correct segment index
+
+### Not Yet Implemented
+- [ ] Text halo rendering — MapLibre two-pass: halo then fill (same geometry, different SDF threshold)
+- [ ] Cross-tile symbol dedup — `CrossTileSymbolIndex` with KDBush spatial matching to prevent duplicate labels across tiles
+- [ ] Opacity fade transitions — smooth 300ms fade in/out (currently binary 0/1)
+- [ ] Zoom-dependent text size — pack min/max sizes in vertex, interpolate in shader
+- [ ] Label flipping / keep-upright — reverse glyph order when line reads R→L on screen
+- [ ] First/last glyph check — early-exit if label doesn't fit on screen
+- [ ] Projection cache — cache projected line vertices per bucket (performance)
+- [ ] Pitch correction — adjust font scale based on camera distance
+- [ ] Perpendicular line offset — `text-offset` for labels parallel-but-offset from line
+- [ ] Variable anchor placement — test up to 9 positions per label
 - [ ] Icon-text combined symbols
 - [ ] Formatted text (multi-font, multi-color)
-- [ ] Collision across tiles (cross-tile symbol index)
+- [ ] ALPHA atlas format — 1 byte/pixel instead of RGBA 4 bytes/pixel (saves GPU memory)
+- [ ] Expression evaluation for symbol properties
 
 ---
 
