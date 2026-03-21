@@ -18,12 +18,16 @@ function resize() {
 resize()
 window.addEventListener('resize', resize)
 
+// Read zoom from query string: ?zoom=5
+const params = new URLSearchParams(window.location.search)
+const initialZoom = parseFloat(params.get('zoom') ?? '5')
+
 const renderer = await createRenderer(canvas)
 const map = new MapGL({
   renderer,
   initialCamera: {
     center: { lng: 10, lat: 51 },
-    zoom: 5,
+    zoom: initialZoom,
     bearing: 0,
     pitch: 0,
     groundElevation: 0,
@@ -65,6 +69,8 @@ map.addLayer(textLayer)
 
 const zoomSlider = document.getElementById('zoom') as HTMLInputElement
 const zoomVal = document.getElementById('zoom-val')!
+zoomSlider.value = String(initialZoom)
+zoomVal.textContent = initialZoom.toFixed(1)
 zoomSlider.addEventListener('input', () => {
   const z = parseFloat(zoomSlider.value)
   zoomVal.textContent = z.toFixed(1)

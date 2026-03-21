@@ -58,4 +58,6 @@ export type SymbolTileData = {
   count: number
   /** Label anchor positions in tile coords (for debugging / collision) */
   labelPositions: { x: number; y: number }[]
+  /** Number of index-buffer indices per label (for per-label draw calls) */
+  indicesPerLabel?: number[]
 }

@@ -98,6 +98,7 @@ export class SymbolWorkerPoint {
     const allVerts: number[] = []
     const allIdx: number[] = []
     const labelPositions: { x: number; y: number }[] = []
+    const indicesPerLabel: number[] = []
 
     for (const label of allLabels) {
       const result = shapeAndBuildQuads({
@@ -116,6 +117,7 @@ export class SymbolWorkerPoint {
       for (let i = 0; i < view.length; i++) allVerts.push(view[i])
       for (const idx of result.indices) allIdx.push(idx + idxOffset)
       labelPositions.push({ x: label.x, y: label.y })
+      indicesPerLabel.push(result.indices.length)
     }
 
     if (allIdx.length === 0) {
@@ -131,6 +133,7 @@ export class SymbolWorkerPoint {
       indices: new Uint16Array(allIdx).buffer,
       count: allIdx.length,
       labelPositions,
+      indicesPerLabel,
     }
     this._buckets.set(key, data)
     return data

@@ -40,7 +40,7 @@ uniform float u_opacity;
 uniform float u_font_scale;
 varying vec2 v_uv;
 void main() {
-  float dist = texture2D(u_texture, v_uv).a;
+  float dist = texture2D(u_texture, v_uv).r;
   float EDGE_GAMMA = 0.105;
   float inner_edge = (256.0 - 64.0) / 256.0;
   float gamma = EDGE_GAMMA / u_font_scale;
@@ -95,7 +95,7 @@ export class TextLayer implements PlacementParticipant {
   private _glyphs: GlyphManager
   private _workerService: TextWorkerService
   /** GPU-uploaded tile buckets (null = empty tile, missing = not yet ready) */
-  private _tileBuckets = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number } | null>()
+  private _tileBuckets = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number; indicesPerLabel?: number[] } | null>()
   /** Fetched-but-not-yet-GPU-uploaded buckets, queued for upload on next draw() */
   private _pendingUploads = new globalThis.Map<string, SymbolTileData>()
   /** Keys currently being fetched from the worker (to avoid duplicate requests) */
@@ -333,7 +333,7 @@ export class TextLayer implements PlacementParticipant {
     this._webgl.destroyGeometryBuffers(`tile:${key}:sym:`)
     const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
     const idx = this._webgl.createGeometryBuffer(`tile:${key}:sym:i`, new Uint16Array(bucket.indices), gl.ELEMENT_ARRAY_BUFFER)
-    this._tileBuckets.set(key, { verts, idx, count: bucket.count })
+    this._tileBuckets.set(key, { verts, idx, count: bucket.count, indicesPerLabel: bucket.indicesPerLabel })
     this._bucketAtlasVersion.set(key, atlasVersion)
   }
 
@@ -371,16 +371,6 @@ export class TextLayer implements PlacementParticipant {
 
     const bufs = this._tileBuckets.get(key)
     if (!bufs) return  // empty tile
-
-    // Placement: skip this tile if all labels are hidden
-    const placementOpacity = this._tileOpacity.get(key)
-    if (placementOpacity && placementOpacity.length > 0) {
-      const anyPlaced = placementOpacity.some(v => v > 0)
-      if (!anyPlaced) {
-        debug('draw: all labels hidden by placement', key)
-        return
-      }
-    }
 
     const program = programs.get('symbol_sdf')
     if (!program) return
@@ -442,7 +432,23 @@ export class TextLayer implements PlacementParticipant {
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx)
-    gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_SHORT, 0)
+
+    // Per-label draw: if placement set per-label opacity, draw each label separately
+    const placementOp = this._tileOpacity.get(key)
+    if (placementOp && bufs.indicesPerLabel && placementOp.length === bufs.indicesPerLabel.length) {
+      const opacityLoc = gl.getUniformLocation(program, 'u_opacity')
+      let offset = 0
+      for (let i = 0; i < bufs.indicesPerLabel.length; i++) {
+        const labelCount = bufs.indicesPerLabel[i]
+        if (placementOp[i] > 0) {
+          gl.uniform1f(opacityLoc, placementOp[i] * this._opacity)
+          gl.drawElements(gl.TRIANGLES, labelCount, gl.UNSIGNED_SHORT, offset * 2)
+        }
+        offset += labelCount
+      }
+    } else {
+      gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_SHORT, 0)
+    }
 
     gl.disable(gl.BLEND)
     gl.enable(gl.STENCIL_TEST)
