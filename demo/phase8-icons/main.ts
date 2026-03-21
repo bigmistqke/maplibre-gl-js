@@ -3,7 +3,6 @@ import { createRenderer } from '../../src/modular/renderer/index.ts'
 import { MapGL } from '../../src/modular/core/map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { FillLayer } from '../../src/modular/layers/fill.ts'
-import { ImageManager } from '../../src/modular/layers/symbol/image-manager.ts'
 import { IconLayer } from '../../src/modular/layers/symbol/icon-layer.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
@@ -46,16 +45,13 @@ map.addLayer(new FillLayer({
   opacity: 1,
 }))
 
-// ImageManager — fetches sprite from local demo assets
-const images = new ImageManager({ url: './sprite' })
-
 // IconLayer — one dot per country centroid (NAME field won't match sprite entries,
 // worker falls back to 'default' icon for all features)
 const iconLayer = new IconLayer({
   source: 'openmaptiles',
   sourceLayer: 'centroids',
   iconField: 'NAME',
-  images,
+  spriteUrl: './sprite',
   opacity: 1,
 })
 
