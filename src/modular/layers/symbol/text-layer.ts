@@ -95,7 +95,7 @@ export class TextLayer implements PlacementParticipant {
   private _glyphs: GlyphManager
   private _workerService: TextWorkerService
   /** GPU-uploaded tile buckets (null = empty tile, missing = not yet ready) */
-  private _tileBuckets = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number; indicesPerLabel?: number[] } | null>()
+  private _tileBuckets = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number; indicesPerLabel?: number[]; labelSizes?: { w: number; h: number }[] } | null>()
   /** Fetched-but-not-yet-GPU-uploaded buckets, queued for upload on next draw() */
   private _pendingUploads = new globalThis.Map<string, SymbolTileData>()
   /** Keys currently being fetched from the worker (to avoid duplicate requests) */
@@ -109,6 +109,8 @@ export class TextLayer implements PlacementParticipant {
   private _tileOpacity = new globalThis.Map<string, Float32Array>()
   /** Cached label positions (tile-local coords) for synchronous getSymbolBuckets() */
   private _labelPosCache = new globalThis.Map<string, { x: number; y: number }[]>()
+  /** Cached label sizes (screen px at layout fontSize) for collision boxes */
+  private _labelSizeCache = new globalThis.Map<string, { w: number; h: number }[]>()
   /** Renderer reference for accessing camera state */
   private _renderer: RendererAPI | null = null
   /** Schedule a re-render — wired to FrameLoop.markDirty() in onAdd() */
@@ -159,6 +161,7 @@ export class TextLayer implements PlacementParticipant {
     this._staleBuckets.delete(key)
     this._tileOpacity.delete(key)
     this._labelPosCache.delete(key)
+    this._labelSizeCache.delete(key)
     this._workerService.cancel(key)
   }
 
@@ -193,19 +196,25 @@ export class TextLayer implements PlacementParticipant {
       const tileScale = worldSize / Math.pow(2, tz)
       const tileOriginX = tx * tileScale
       const tileOriginY = ty * tileScale
+      const sizes = this._labelSizeCache.get(key)
 
       const anchors: Array<{ x: number; y: number }> = []
       const boxes: Array<[number, number, number, number]> = []
 
-      for (const pos of positions) {
+      for (let i = 0; i < positions.length; i++) {
+        const pos = positions[i]
         const worldX = tileOriginX + (pos.x / 4096) * tileScale
         const worldY = tileOriginY + (pos.y / 4096) * tileScale
         const sx = (worldX - cx) + w / 2
         const sy = (worldY - cy) + h / 2
 
         anchors.push({ x: sx, y: sy })
-        const halfW = (this._fontSize * 0.5)  // rough estimate
-        boxes.push([sx - halfW, sy - halfLabelH, sx + halfW, sy + halfLabelH])
+        // Use actual label size from worker if available, else estimate
+        const labelW = sizes?.[i]?.w ?? this._fontSize * 3
+        const labelH = sizes?.[i]?.h ?? this._fontSize * 1.2
+        const halfW = labelW / 2 + 2  // +2px padding
+        const halfH = labelH / 2 + 2
+        boxes.push([sx - halfW, sy - halfH, sx + halfW, sy + halfH])
       }
 
       buckets.push({ tileKey: key, anchors, boxes })
@@ -313,6 +322,9 @@ export class TextLayer implements PlacementParticipant {
       if (bucket.labelPositions) {
         this._labelPosCache.set(key, bucket.labelPositions)
       }
+      if (bucket.labelSizes) {
+        this._labelSizeCache.set(key, bucket.labelSizes)
+      }
       this._pendingUploads.set(key, bucket)
       // Bucket is ready — trigger a re-render so text appears without user interaction.
       this._markDirty?.()
@@ -333,7 +345,7 @@ export class TextLayer implements PlacementParticipant {
     this._webgl.destroyGeometryBuffers(`tile:${key}:sym:`)
     const verts = this._webgl.createGeometryBuffer(`tile:${key}:sym:v`, new Int16Array(bucket.vertices), gl.ARRAY_BUFFER)
     const idx = this._webgl.createGeometryBuffer(`tile:${key}:sym:i`, new Uint16Array(bucket.indices), gl.ELEMENT_ARRAY_BUFFER)
-    this._tileBuckets.set(key, { verts, idx, count: bucket.count, indicesPerLabel: bucket.indicesPerLabel })
+    this._tileBuckets.set(key, { verts, idx, count: bucket.count, indicesPerLabel: bucket.indicesPerLabel, labelSizes: bucket.labelSizes })
     this._bucketAtlasVersion.set(key, atlasVersion)
   }
 

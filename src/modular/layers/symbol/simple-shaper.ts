@@ -22,6 +22,8 @@ export interface ShaperOptions {
 export interface ShaperResult {
   vertices: StructArray<'ax' | 'ay' | 'ox' | 'oy' | 'u' | 'v'>
   indices: number[]
+  /** Label size in screen pixels at the layout fontSize */
+  labelSize: { w: number; h: number }
 }
 
 /**
@@ -114,7 +116,11 @@ export function shapeAndBuildQuads(options: ShaperOptions): ShaperResult | null 
     indices.push(base + 0, base + 1, base + 2, base + 1, base + 3, base + 2)
   }
 
-  return { vertices: verts, indices }
+  const labelSize = {
+    w: (shaping.right - shaping.left) * scale,
+    h: (shaping.bottom - shaping.top) * scale,
+  }
+  return { vertices: verts, indices, labelSize }
 }
 
 /** Extract codepoints needed for a text string from a fontstack's glyph map. */
