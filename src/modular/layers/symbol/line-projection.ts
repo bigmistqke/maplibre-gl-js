@@ -124,9 +124,16 @@ export function placeGlyphsAlongLine(
  * STUB: globe occlusion — MapLibre checks if projected points are behind the
  *       globe and hides them.
  */
+/**
+ * @param tileToPixel Projects tile coords → pixel coords (distances are in pixels)
+ * @param pixelToNDC Converts pixel position → NDC for the shader
+ * @param tileToPixelScale Pixels per tile unit — used to scale glyph offsets (tile units) to pixel distances
+ */
 export function updateLineLabels(
   lineLabels: LineLabelInfo[],
-  tileToScreen: (x: number, y: number) => { x: number; y: number },
+  tileToPixel: (x: number, y: number) => { x: number; y: number },
+  pixelToNDC: (x: number, y: number) => { x: number; y: number },
+  tileToPixelScale: number,
   dynamicBuffer: Float32Array,
 ): void {
   let bufferOffset = 0
@@ -135,25 +142,27 @@ export function updateLineLabels(
     const numGlyphs = label.glyphOffsets.length
     const numFloats = numGlyphs * 4 * 3
 
+    // Project line vertices to pixel space (where distances are meaningful)
     const numVertices = label.lineVertices.length / 2
     const projectedLine: Array<{ x: number; y: number }> = []
     for (let i = 0; i < numVertices; i++) {
-      projectedLine.push(tileToScreen(label.lineVertices[i * 2], label.lineVertices[i * 2 + 1]))
+      projectedLine.push(tileToPixel(label.lineVertices[i * 2], label.lineVertices[i * 2 + 1]))
     }
 
     // Inject the projected anchor into the line array at position label.segment+1.
-    // This way we can call placeGlyphAlongLine with anchorVertex = label.segment+1
-    // and the anchor coordinates are honoured exactly (MapLibre uses the actual
-    // projected anchor as the walk start point, not the nearest line vertex).
-    const anchorScreenPoint = tileToScreen(label.anchorX, label.anchorY)
+    // MapLibre uses the actual projected anchor as the walk start point.
+    const anchorPixel = tileToPixel(label.anchorX, label.anchorY)
     const lineWithAnchor = [
       ...projectedLine.slice(0, label.segment + 1),
-      anchorScreenPoint,
+      anchorPixel,
       ...projectedLine.slice(label.segment + 1),
     ]
     const anchorVertexIndex = label.segment + 1
 
-    const placements = placeGlyphsAlongLine(lineWithAnchor, anchorVertexIndex, label.glyphOffsets)
+    // Scale glyph offsets from tile units to pixel units
+    const pixelOffsets = label.glyphOffsets.map(o => o * tileToPixelScale)
+
+    const placements = placeGlyphsAlongLine(lineWithAnchor, anchorVertexIndex, pixelOffsets)
 
     if (placements.length === 0) {
       for (let i = 0; i < numFloats; i++) {
@@ -162,9 +171,11 @@ export function updateLineLabels(
     } else {
       let writeIdx = 0
       for (const glyph of placements) {
+        // Convert pixel position to NDC for the shader
+        const ndc = pixelToNDC(glyph.x, glyph.y)
         for (let v = 0; v < 4; v++) {
-          dynamicBuffer[bufferOffset + writeIdx++] = glyph.x
-          dynamicBuffer[bufferOffset + writeIdx++] = glyph.y
+          dynamicBuffer[bufferOffset + writeIdx++] = ndc.x
+          dynamicBuffer[bufferOffset + writeIdx++] = ndc.y
           dynamicBuffer[bufferOffset + writeIdx++] = glyph.angle
         }
       }

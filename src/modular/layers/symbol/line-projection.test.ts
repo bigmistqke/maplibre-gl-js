@@ -72,6 +72,9 @@ describe('placeGlyphsAlongLine', () => {
 })
 
 describe('updateLineLabels', () => {
+  // Identity projections: tile = pixel = NDC (scale 1:1)
+  const identity = (x: number, y: number) => ({ x, y })
+
   it('fills dynamic buffer with projected positions and angles', () => {
     const labels: LineLabelInfo[] = [{
       anchorX: 100, anchorY: 0,
@@ -79,9 +82,8 @@ describe('updateLineLabels', () => {
       glyphOffsets: [0],
       lineVertices: [0, 0, 100, 0, 200, 0],
     }]
-    const tileToScreen = (x: number, y: number) => ({ x, y })
     const buf = new Float32Array(12)
-    updateLineLabels(labels, tileToScreen, buf)
+    updateLineLabels(labels, identity, identity, 1, buf)
     for (let v = 0; v < 4; v++) {
       expect(buf[v * 3 + 0]).toBeCloseTo(100)
       expect(buf[v * 3 + 1]).toBeCloseTo(0)
@@ -96,10 +98,9 @@ describe('updateLineLabels', () => {
       glyphOffsets: [-100, 0, 100],
       lineVertices: [0, 0, 10, 0],
     }]
-    const tileToScreen = (x: number, y: number) => ({ x, y })
     const buf = new Float32Array(36)
     buf.fill(999)
-    updateLineLabels(labels, tileToScreen, buf)
+    updateLineLabels(labels, identity, identity, 1, buf)
     for (let i = 0; i < 36; i++) {
       expect(buf[i]).toBe(0)
     }

@@ -95,14 +95,14 @@ function parseColor(c: string): [number, number, number, number] {
   return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1]
 }
 
-// ---- Tile-to-NDC projection ----
+// ---- Tile projection helpers ----
 
-function makeTileToNDC(
+function makeTileProjection(
   tileKey: string,
   camera: { center: { lng: number; lat: number }; zoom: number },
   canvasWidth: number,
   canvasHeight: number,
-): (tileX: number, tileY: number) => { x: number; y: number } {
+) {
   const { zoom } = camera
   const TILE_SIZE = 256
   const worldSize = TILE_SIZE * Math.pow(2, zoom)
@@ -118,16 +118,24 @@ function makeTileToNDC(
   const tileOriginY = ty * tileScale
   const extent = 4096
 
-  return (tileX: number, tileY: number) => {
+  // Pixels per tile unit — used to convert glyph offsets from tile units to pixel distances
+  const tileToPixelScale = tileScale / extent
+
+  const tileToPixel = (tileX: number, tileY: number) => {
     const worldX = tileOriginX + (tileX / extent) * tileScale
     const worldY = tileOriginY + (tileY / extent) * tileScale
-    const px = (worldX - cx) + canvasWidth / 2
-    const py = (worldY - cy) + canvasHeight / 2
     return {
-      x: (px / canvasWidth) * 2 - 1,
-      y: -((py / canvasHeight) * 2 - 1),
+      x: (worldX - cx) + canvasWidth / 2,
+      y: (worldY - cy) + canvasHeight / 2,
     }
   }
+
+  const pixelToNDC = (px: number, py: number) => ({
+    x: (px / canvasWidth) * 2 - 1,
+    y: -((py / canvasHeight) * 2 - 1),
+  })
+
+  return { tileToPixel, pixelToNDC, tileToPixelScale }
 }
 
 // ---- Layer ----
@@ -372,8 +380,8 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
     if (hasLineLabels) {
       const camera = this._renderer!.camera
-      const tileToNDC = makeTileToNDC(key, camera, canvasWidth, canvasHeight)
-      updateLineLabels(lineLabels, tileToNDC, dynamicBuffer)
+      const { tileToPixel, pixelToNDC, tileToPixelScale } = makeTileProjection(key, camera, canvasWidth, canvasHeight)
+      updateLineLabels(lineLabels, tileToPixel, pixelToNDC, tileToPixelScale, dynamicBuffer)
 
       // Upload dynamic buffer to GPU
       gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
