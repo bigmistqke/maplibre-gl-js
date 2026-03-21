@@ -88,6 +88,7 @@ export class SymbolWorkerLine {
     const allVerts: number[] = []
     const allIdx: number[] = []
     const labelPositions: { x: number; y: number }[] = []
+    const indicesPerLabel: number[] = []
     const labelTexts: string[] = []
     const lineLabels: LineLabelInfo[] = []
 
@@ -206,6 +207,7 @@ export class SymbolWorkerLine {
 
             labelPositions.push({ x: anchor.x, y: anchor.y })
             labelTexts.push(rawText)
+            indicesPerLabel.push(quadCount * 6)
 
             lineLabels.push({
               anchorX: anchor.x,
@@ -227,6 +229,7 @@ export class SymbolWorkerLine {
       count: allIdx.length,
       labelPositions,
       labelTexts,
+      indicesPerLabel,
       lineLabels,
     }
     this._buckets.set(key, data)

@@ -163,6 +163,8 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
   private _labelData = new Map<string, LabelData[]>()
   /** Cached label positions (tile-local coords) for collision data */
   private _labelPosCache = new Map<string, { x: number; y: number }[]>()
+  /** Number of index-buffer indices per label (for per-label draw calls) */
+  private _indicesPerLabel = new Map<string, number[]>()
   /** Atlas version at the time each tile bucket was uploaded — used to detect stale UVs */
   private _bucketAtlasVersion = new Map<string, number>()
   /** Tiles whose GPU bucket needs replacing but old data is still shown */
@@ -206,9 +208,12 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
           return null
         }
 
-        // Cache label positions for collision data
+        // Cache label positions and per-label index counts for collision data + per-label draw
         if (bucket.labelPositions) {
           this._labelPosCache.set(key, bucket.labelPositions)
+        }
+        if (bucket.indicesPerLabel) {
+          this._indicesPerLabel.set(key, bucket.indicesPerLabel)
         }
 
         // Build LabelData for cross-tile dedup
@@ -347,7 +352,7 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
       debug?.('uploadBucket: line labels', { key, labels: data.lineLabels.length, totalGlyphs })
     }
 
-    return { verts, idx, count: data.count }
+    return { verts, idx, count: data.count, indicesPerLabel: data.indicesPerLabel }
   }
 
   drawTile(gl: WebGLRenderingContext, program: WebGLProgram, bucket: GPUBucket, ctx: DrawContext): void {
@@ -447,8 +452,22 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bucket.idx)
 
-    // Line text does single draw per tile (no per-label opacity)
-    gl.drawElements(gl.TRIANGLES, bucket.count, gl.UNSIGNED_SHORT, 0)
+    // Per-label draw: skip labels hidden by collision/dedup
+    const placementOp = this._labelOpacity.get(key)
+    if (placementOp && bucket.indicesPerLabel && placementOp.length === bucket.indicesPerLabel.length) {
+      const opacityLoc = gl.getUniformLocation(program, 'u_opacity')
+      let offset = 0
+      for (let i = 0; i < bucket.indicesPerLabel.length; i++) {
+        const labelCount = bucket.indicesPerLabel[i]
+        if (placementOp[i] > 0) {
+          gl.uniform1f(opacityLoc, placementOp[i] * this._opacity)
+          gl.drawElements(gl.TRIANGLES, labelCount, gl.UNSIGNED_SHORT, offset * 2)
+        }
+        offset += labelCount
+      }
+    } else {
+      gl.drawElements(gl.TRIANGLES, bucket.count, gl.UNSIGNED_SHORT, 0)
+    }
 
     // Cleanup attributes
     gl.disableVertexAttribArray(aAnchor)
@@ -552,6 +571,7 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     debug?.('evictTile', key)
     this._labelData.delete(key)
     this._labelPosCache.delete(key)
+    this._indicesPerLabel.delete(key)
     this._bucketAtlasVersion.delete(key)
     this._staleBuckets.delete(key)
     this._lineLabels.delete(key)
