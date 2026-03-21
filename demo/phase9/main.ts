@@ -4,7 +4,6 @@ import { MapGL } from '../../src/modular/core/map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { FillLayer } from '../../src/modular/layers/fill.ts'
 import { TextLayer } from '../../src/modular/layers/symbol/text-layer.ts'
-import { Placement } from '../../src/modular/layers/symbol/placement.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
 const status = document.getElementById('status')!
@@ -59,7 +58,6 @@ const textLayer = new TextLayer({
   glyphUrl: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 
-map.addPlugin(new Placement())
 map.addLayer(textLayer)
 
 const zoomSlider = document.getElementById('zoom') as HTMLInputElement
