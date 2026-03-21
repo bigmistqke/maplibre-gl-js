@@ -3,7 +3,6 @@ import { createRenderer } from '../../src/modular/renderer/index.ts'
 import { MapGL } from '../../src/modular/core/map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { FillLayer } from '../../src/modular/layers/fill.ts'
-import { GlyphManager } from '../../src/modular/layers/symbol/glyph-manager.ts'
 import { TextLayer } from '../../src/modular/layers/symbol/text-layer.ts'
 import { Placement } from '../../src/modular/layers/symbol/placement.ts'
 
@@ -50,10 +49,6 @@ map.addLayer(new FillLayer({
   opacity: 0.8,
 }))
 
-const glyphs = new GlyphManager({
-  url: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-})
-
 const textLayer = new TextLayer({
   source: 'openmaptiles',
   sourceLayer: 'centroids',
@@ -61,7 +56,7 @@ const textLayer = new TextLayer({
   fontstack: 'Open Sans Regular',
   fontSize: 14,
   color: '#333333',
-  glyphs,
+  glyphUrl: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 
 map.addPlugin(new Placement())

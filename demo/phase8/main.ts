@@ -3,7 +3,6 @@ import { createRenderer } from '../../src/modular/renderer/index.ts'
 import { MapGL } from '../../src/modular/core/map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { FillLayer } from '../../src/modular/layers/fill.ts'
-import { GlyphManager } from '../../src/modular/layers/symbol/glyph-manager.ts'
 import { TextLayer } from '../../src/modular/layers/symbol/text-layer.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement
@@ -46,11 +45,6 @@ map.addLayer(new FillLayer({
   opacity: 1,
 }))
 
-// GlyphManager — fetches SDF glyph PBFs from MapLibre's public endpoint
-const glyphs = new GlyphManager({
-  url: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-})
-
 // TextLayer — renders place names
 const textLayer = new TextLayer({
   source: 'openmaptiles',
@@ -60,7 +54,7 @@ const textLayer = new TextLayer({
   fontSize: 14,
   color: '#333333',
   opacity: 1,
-  glyphs,
+  glyphUrl: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 })
 map.addLayer(textLayer)
 

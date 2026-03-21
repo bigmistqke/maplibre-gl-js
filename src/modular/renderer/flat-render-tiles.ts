@@ -35,7 +35,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
     const sourceType = sourceTypes.get(sourceId) ?? 'raster'
 
     // Split layers: opaque (fill, line, raster) vs symbol (text, icons)
-    const isSymbolLayer = (l: LayerInstance) => 'getSymbolBuckets' in l
+    const isSymbolLayer = (l: LayerInstance) => l.type === 'symbol' || l.type === 'text' || 'getSymbolBuckets' in l
     const opaqueLayers = sourceLayers.filter(l => !isSymbolLayer(l))
     const symbolLayers = sourceLayers.filter(l => isSymbolLayer(l))
 
