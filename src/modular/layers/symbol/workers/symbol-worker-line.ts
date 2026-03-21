@@ -209,32 +209,17 @@ export class SymbolWorkerLine {
             labelTexts.push(rawText)
             indicesPerLabel.push(quadCount * 6)
 
-            // Store the CLIPPED line (the one getLineAnchors placed this anchor on).
-            // anchor.segment is correct for this line — no remapping needed.
-            // This matches MapLibre's approach: symbol_bucket.ts:600 stores the
-            // clipped line with addToLineVertexArray.
-            //
-            // Inject the anchor into the line at segment+1 so the main thread
-            // can start walking from the anchor position directly.
-            // MapLibre does this implicitly via the cached anchorPoint in
-            // projection.ts:817-821.
-            const lineWithAnchor: number[] = []
-            for (let li = 0; li <= anchor.segment; li++) {
-              lineWithAnchor.push(line[li].x, line[li].y)
-            }
-            // Inject anchor point
-            lineWithAnchor.push(anchor.x, anchor.y)
-            for (let li = anchor.segment + 1; li < line.length; li++) {
-              lineWithAnchor.push(line[li].x, line[li].y)
-            }
-
+            // Store the CLIPPED line as-is (no anchor injection).
+            // anchor.segment indexes into this line directly.
+            // MapLibre uses the same approach: placeGlyphAlongLine starts
+            // at the projected anchor point (not a vertex) and walks the
+            // line array from anchorSegment.
             lineLabels.push({
               anchorX: anchor.x,
               anchorY: anchor.y,
-              // After injection, anchor is at index (anchor.segment + 1)
-              segment: anchor.segment + 1,
+              segment: anchor.segment,
               glyphOffsets,
-              lineVertices: lineWithAnchor,
+              lineVertices: line.flatMap(p => [p.x, p.y]),
             })
           }
         }

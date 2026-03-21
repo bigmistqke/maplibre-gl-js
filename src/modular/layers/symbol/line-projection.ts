@@ -153,43 +153,61 @@ export function updateLineLabels(
       projectedLine.push(tileToPixel(label.lineVertices[i * 2], label.lineVertices[i * 2 + 1]))
     }
 
-    // The anchor was already injected into lineVertices at layout time
-    // (at index label.segment). No searching or injection needed at runtime.
-    // This matches MapLibre's approach where the anchor position is known
-    // from the stored tileAnchorPoint and segment index.
-    const anchorVertexIndex = label.segment
+    // Project the anchor point separately — it sits between vertices
+    // label.segment and label.segment+1 on the clipped line.
+    // MapLibre starts the walk at the projected anchor (not at a vertex),
+    // using anchorSegment to index into the line array (projection.ts:810-824).
+    const anchorPixel = tileToPixel(label.anchorX, label.anchorY)
+
+    // Insert anchor into projected line between segment and segment+1.
+    // This gives the walk the correct start position with full line on both sides.
+    const lineWithAnchor = [
+      ...projectedLine.slice(0, label.segment + 1),
+      anchorPixel,
+      ...projectedLine.slice(label.segment + 1),
+    ]
+    const anchorVertexIndex = label.segment + 1
+
+    // Log anchor position in both tile and pixel space
+    if (debug) {
+      const anchorPxPos = lineWithAnchor[anchorVertexIndex]
+      const firstPx = lineWithAnchor[0]
+      if (anchorPxPos && firstPx) {
+        // Compute along-line backward distance (not straight-line)
+        let bwdDist = 0
+        for (let i = anchorVertexIndex; i > 0; i--) {
+          const dx = lineWithAnchor[i].x - lineWithAnchor[i - 1].x
+          const dy = lineWithAnchor[i].y - lineWithAnchor[i - 1].y
+          bwdDist += Math.sqrt(dx * dx + dy * dy)
+        }
+        debug?.(`anchor seg=${label.segment} injAt=${anchorVertexIndex}/${lineWithAnchor.length}v bwdPx=${Math.round(bwdDist)}`)
+      }
+    }
 
     // Scale glyph offsets from ONE_EM units to pixel units.
     // MapLibre: fontScale = fontSize / 24, applied at placement time (projection.ts:439)
     const pixelOffsets = label.glyphOffsets.map(o => o * fontScale)
 
-    const placements = placeGlyphsAlongLine(projectedLine, anchorVertexIndex, pixelOffsets)
+    const placements = placeGlyphsAlongLine(lineWithAnchor, anchorVertexIndex, pixelOffsets)
 
     if (placements.length === 0) {
       // Compute why it failed — distance available forward/backward from anchor
       let distForward = 0, distBackward = 0
-      for (let i = anchorVertexIndex + 1; i < projectedLine.length; i++) {
-        const dx = projectedLine[i].x - projectedLine[i - 1].x
-        const dy = projectedLine[i].y - projectedLine[i - 1].y
+      for (let i = anchorVertexIndex + 1; i < lineWithAnchor.length; i++) {
+        const dx = lineWithAnchor[i].x - lineWithAnchor[i - 1].x
+        const dy = lineWithAnchor[i].y - lineWithAnchor[i - 1].y
         distForward += Math.sqrt(dx * dx + dy * dy)
       }
       for (let i = anchorVertexIndex - 1; i >= 0; i--) {
-        const dx = projectedLine[i + 1].x - projectedLine[i].x
-        const dy = projectedLine[i + 1].y - projectedLine[i].y
+        const dx = lineWithAnchor[i + 1].x - lineWithAnchor[i].x
+        const dy = lineWithAnchor[i + 1].y - lineWithAnchor[i].y
         distBackward += Math.sqrt(dx * dx + dy * dy)
       }
       const minOff = Math.min(...pixelOffsets)
       const maxOff = Math.max(...pixelOffsets)
-      debug?.('HIDDEN', {
-        anchor: anchorVertexIndex,
-        verts: projectedLine.length,
-        fwd: Math.round(distForward),
-        bwd: Math.round(distBackward),
-        needFwd: Math.round(maxOff),
-        needBwd: Math.round(Math.abs(minOff)),
-        reason: Math.abs(minOff) > distBackward ? 'not enough backward' :
-                maxOff > distForward ? 'not enough forward' : 'unknown',
-      })
+      const reason = Math.abs(minOff) > distBackward ? 'bwd' :
+                     maxOff > distForward ? 'fwd' : '?'
+      debug?.(`HIDDEN ${reason} anchor=${anchorVertexIndex}/${projectedLine.length}v fwd=${Math.round(distForward)}px(need ${Math.round(maxOff)}) bwd=${Math.round(distBackward)}px(need ${Math.round(Math.abs(minOff))})`)
 
       for (let i = 0; i < numFloats; i++) {
         dynamicBuffer[bufferOffset + i] = 0
