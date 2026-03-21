@@ -76,9 +76,10 @@ describe('updateLineLabels', () => {
   const identity = (x: number, y: number) => ({ x, y })
 
   it('fills dynamic buffer with projected positions and angles', () => {
+    // Anchor at (100,0) is pre-injected into lineVertices at index 1 (segment=1)
     const labels: LineLabelInfo[] = [{
       anchorX: 100, anchorY: 0,
-      segment: 0,
+      segment: 1,
       glyphOffsets: [0],
       lineVertices: [0, 0, 100, 0, 200, 0],
     }]
@@ -92,11 +93,12 @@ describe('updateLineLabels', () => {
   })
 
   it('hides label (zeros) when glyph falls off line', () => {
+    // Anchor at (5,0) pre-injected at index 1, line only 10px total
     const labels: LineLabelInfo[] = [{
       anchorX: 5, anchorY: 0,
-      segment: 0,
+      segment: 1,
       glyphOffsets: [-100, 0, 100],
-      lineVertices: [0, 0, 10, 0],
+      lineVertices: [0, 0, 5, 0, 10, 0],
     }]
     const buf = new Float32Array(36)
     buf.fill(999)

@@ -150,21 +150,17 @@ export function updateLineLabels(
       projectedLine.push(tileToPixel(label.lineVertices[i * 2], label.lineVertices[i * 2 + 1]))
     }
 
-    // Inject the projected anchor into the line array at position label.segment+1.
-    // MapLibre uses the actual projected anchor as the walk start point.
-    const anchorPixel = tileToPixel(label.anchorX, label.anchorY)
-    const lineWithAnchor = [
-      ...projectedLine.slice(0, label.segment + 1),
-      anchorPixel,
-      ...projectedLine.slice(label.segment + 1),
-    ]
-    const anchorVertexIndex = label.segment + 1
+    // The anchor was already injected into lineVertices at layout time
+    // (at index label.segment). No searching or injection needed at runtime.
+    // This matches MapLibre's approach where the anchor position is known
+    // from the stored tileAnchorPoint and segment index.
+    const anchorVertexIndex = label.segment
 
     // Scale glyph offsets from ONE_EM units to pixel units.
     // MapLibre: fontScale = fontSize / 24, applied at placement time (projection.ts:439)
     const pixelOffsets = label.glyphOffsets.map(o => o * fontScale)
 
-    const placements = placeGlyphsAlongLine(lineWithAnchor, anchorVertexIndex, pixelOffsets)
+    const placements = placeGlyphsAlongLine(projectedLine, anchorVertexIndex, pixelOffsets)
 
     if (placements.length === 0) {
       for (let i = 0; i < numFloats; i++) {
