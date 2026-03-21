@@ -199,7 +199,6 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [x] Cross-tile symbol dedup — `CrossTileIndex` with position tolerance + zoom-level matching, persistent crossTileIDs
 
 ### Known Issues
-- [ ] Line text character spacing collapsed ("TropicofCancer" vs "Tropic of Cancer") — glyph offset computation needs tuning
 - [ ] Line label placement uses `segment: 0` for all anchors — verify `getLineAnchors` returns correct segment index
 
 ### Not Yet Implemented
