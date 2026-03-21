@@ -8,6 +8,7 @@ import type { PlaceableLayer } from '../engine/layout-engine.ts'
 import { SymbolEngine } from '../engine/symbol-engine.ts'
 import type { TileFetcher } from './tile-fetcher.ts'
 import type { CollisionData, GPUBucket } from './types.ts'
+import type { LabelData } from '../engine/cross-tile-index.ts'
 import { lngToTileX, latToTileY } from '../../../renderer/mercator.ts'
 
 const debug = createDebug?.('SymbolLayerBase', false)
@@ -132,6 +133,10 @@ export abstract class SymbolLayerBase<T> implements LayerInstance, PlaceableLaye
   }
 
   // ── PlaceableLayer interface ───────────────────────────────────────
+
+  getLabelData(): Map<string, LabelData[]> {
+    return new Map()
+  }
 
   setLabelOpacity(tileKey: string, opacity: Float32Array): void {
     this._labelOpacity.set(tileKey, opacity)

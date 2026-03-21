@@ -87,4 +87,32 @@ describe('LayoutEngine', () => {
     engine.runPlacement(mockRenderContext() as any, [layer])
     expect(layer.setLabelOpacity).not.toHaveBeenCalled()
   })
+
+  it('skips labels with already-seen crossTileIDs', () => {
+    const engine = new LayoutEngine()
+    const layer = mockLayer([
+      {
+        tileKey: '5/10/10',
+        anchors: [{ x: 100, y: 100 }],
+        boxes: [[80, 80, 120, 120]],
+        crossTileIDs: [42],
+      },
+      {
+        tileKey: '5/11/10',
+        anchors: [{ x: 100, y: 100 }],
+        boxes: [[80, 80, 120, 120]],
+        crossTileIDs: [42],  // same crossTileID as first tile
+      },
+    ])
+
+    engine.runPlacement(mockRenderContext() as any, [layer])
+
+    // First tile's label placed
+    const op1 = layer.setLabelOpacity.mock.calls[0][1] as Float32Array
+    expect(op1[0]).toBe(1)
+
+    // Second tile's label skipped (duplicate crossTileID)
+    const op2 = layer.setLabelOpacity.mock.calls[1][1] as Float32Array
+    expect(op2[0]).toBe(0)
+  })
 })

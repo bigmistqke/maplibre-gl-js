@@ -1,10 +1,12 @@
 import type { RendererAPI } from '../../../core/renderer-api.ts'
 import type { RenderExtension, RenderContext } from '../../../core/render-extension.ts'
 import { LayoutEngine, type PlaceableLayer } from './layout-engine.ts'
+import { CrossTileIndex } from './cross-tile-index.ts'
 import { ResourceManager } from './resource-manager.ts'
 
 export class SymbolEngine {
   readonly layout: LayoutEngine
+  readonly crossTile: CrossTileIndex
   readonly resources: ResourceManager
 
   private _renderer: RendererAPI
@@ -14,6 +16,7 @@ export class SymbolEngine {
   constructor(renderer: RendererAPI) {
     this._renderer = renderer
     this.layout = new LayoutEngine()
+    this.crossTile = new CrossTileIndex()
     this.resources = new ResourceManager()
   }
 
@@ -41,6 +44,27 @@ export class SymbolEngine {
     if (this._layers.size === 0) return
     const order = this._renderer.getLayerOrder?.() ?? []
     const ordered = this._getLayersInPriorityOrder(order)
+
+    // Feed cross-tile index with label data from each layer
+    const visibleKeys = new Set(ctx.visibleTiles.map(t => t.key))
+    for (const layer of ordered) {
+      const layerID = (layer as any).id ?? ''
+      const labelData = layer.getLabelData?.()
+      if (labelData) {
+        for (const [tileKey, labels] of labelData) {
+          // Parse tileKey "z/x/y" into a TileID
+          const parts = tileKey.split('/')
+          const z = parseInt(parts[0], 10)
+          const x = parseInt(parts[1], 10)
+          const y = parseInt(parts[2], 10)
+          if (!isNaN(z) && !isNaN(x) && !isNaN(y)) {
+            this.crossTile.addTile(layerID, { z, x, y, key: tileKey }, labels)
+          }
+        }
+      }
+      this.crossTile.removeStaleTiles(layerID, visibleKeys)
+    }
+
     this.layout.runPlacement(ctx, ordered)
   }
 

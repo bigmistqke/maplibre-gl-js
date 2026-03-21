@@ -14,6 +14,7 @@ function mockLayer(id: string) {
     id,
     getCollisionData: vi.fn(() => []),
     setLabelOpacity: vi.fn(),
+    getLabelData: vi.fn(() => new Map()),
   }
 }
 
