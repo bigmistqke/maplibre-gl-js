@@ -196,6 +196,7 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [x] Collision detection — `LayoutEngine` with grid-based `CollisionIndex`
 - [x] Per-label opacity — binary 0/1 via `setLabelOpacity()`
 - [x] Visible-tile filtering — collision data scoped to currently rendered tiles
+- [x] Cross-tile symbol dedup — `CrossTileIndex` with position tolerance + zoom-level matching, persistent crossTileIDs
 
 ### Known Issues
 - [ ] Line text character spacing collapsed ("TropicofCancer" vs "Tropic of Cancer") — glyph offset computation needs tuning
@@ -203,7 +204,7 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 
 ### Not Yet Implemented
 - [ ] Text halo rendering — MapLibre two-pass: halo then fill (same geometry, different SDF threshold)
-- [ ] Cross-tile symbol dedup — `CrossTileSymbolIndex` with KDBush spatial matching to prevent duplicate labels across tiles
+- [ ] KDBush spatial index for cross-tile dedup — currently linear search, add when >128 symbols per key
 - [ ] Opacity fade transitions — smooth 300ms fade in/out (currently binary 0/1)
 - [ ] Zoom-dependent text size — pack min/max sizes in vertex, interpolate in shader
 - [ ] Label flipping / keep-upright — reverse glyph order when line reads R→L on screen
