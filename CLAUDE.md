@@ -23,3 +23,21 @@ When implementing rendering features, always look at how MapLibre GL JS handles 
 
 Examples where this paid off:
 - **Tile clipping**: copied MapLibre's stencil mask approach (ALWAYS+REPLACE per tile, EQUAL for layer draws) instead of coordinate-based filtering — fixed tile seam glitches and preserved borders at tile boundaries.
+
+## Mark stubs and placeholder values
+
+When writing temporary/incomplete code — empty arrays, empty objects, null defaults, empty interfaces — mark them with `// STUB: <what's missing>` at the assignment site.
+
+```ts
+// BAD: silently breaks downstream consumers
+visibleTiles: [],
+imageAtlas: {},
+
+// GOOD: discoverable without debugging
+visibleTiles: [], // STUB: not wired yet, populate from TileManager.getReadyTiles()
+imageAtlas: {}, // STUB: not wired yet
+```
+
+**Why:** `visibleTiles: []` looked like valid code but silently broke collision placement — labels disappeared on zoom changes. The empty array was a placeholder that was never wired up, and it took significant debugging to trace back to it.
+
+**Code review rule:** Any `[]`, `{}`, or `null` passed where a consumer reads and acts on the value must either be the correct value or have a STUB comment.
