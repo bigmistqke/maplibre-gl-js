@@ -4,7 +4,7 @@ import type { RenderContext } from '../../../core/render-extension.ts'
 
 /** Minimal interface for what LayoutEngine needs from a layer */
 export interface PlaceableLayer {
-  getCollisionData(ctx: RenderContext): CollisionData[]
+  getCollisionData(ctx: RenderContext, visibleKeys: ReadonlySet<string>): CollisionData[]
   setLabelOpacity(tileKey: string, opacity: Float32Array): void
 }
 
@@ -31,9 +31,10 @@ export class LayoutEngine {
     }
 
     const ci = new CollisionIndex(transform)
+    const visibleKeys = new Set(ctx.visibleTiles.map(t => t.key))
 
     for (const layer of layers) {
-      const buckets = layer.getCollisionData(ctx)
+      const buckets = layer.getCollisionData(ctx, visibleKeys)
       for (const bucket of buckets) {
         const n = bucket.anchors.length
         const opacity = new Float32Array(n)

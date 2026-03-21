@@ -49,7 +49,7 @@ export abstract class SymbolLayerBase<T> implements LayerInstance, PlaceableLaye
 
   abstract uploadBucket(gl: WebGLRenderingContext, key: string, data: T): GPUBucket
   abstract drawTile(gl: WebGLRenderingContext, program: WebGLProgram, bucket: GPUBucket, ctx: DrawContext): void
-  abstract getCollisionData(ctx: RenderContext): CollisionData[]
+  abstract getCollisionData(ctx: RenderContext, visibleKeys: ReadonlySet<string>): CollisionData[]
 
   // ── Lifecycle ───────────────────────────────────────────────────────
 

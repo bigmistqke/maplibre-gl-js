@@ -274,7 +274,7 @@ export class IconLayer extends SymbolLayerBase<IconTileData> {
     gl.disableVertexAttribArray(aTex)
   }
 
-  getCollisionData(ctx: RenderContext): CollisionData[] {
+  getCollisionData(ctx: RenderContext, visibleKeys: ReadonlySet<string>): CollisionData[] {
     if (!this._renderer) return []
     const camera = ctx.camera
     if (!camera) return []
@@ -288,6 +288,7 @@ export class IconLayer extends SymbolLayerBase<IconTileData> {
 
     for (const [key, positions] of this._anchorCache) {
       if (positions.length === 0) continue
+      if (!visibleKeys.has(key)) continue
 
       const screenPositions = this._projectToScreen(positions, key, camera, w, h)
       if (screenPositions.length === 0) continue

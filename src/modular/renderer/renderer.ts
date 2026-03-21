@@ -304,11 +304,19 @@ export class Renderer implements RendererAPI {
     const viewport: Viewport = { width: this._width, height: this._height }
     const { layers: programs, stencil: stencilProg } = this._getOrCompilePrograms()
 
+    // Collect visible tile IDs from all sources for the render context
+    const visibleTiles: import('../core/types.ts').TileID[] = []
+    for (const tm of this._tileManagers.values()) {
+      for (const { tileID } of tm.getReadyTiles()) {
+        visibleTiles.push(tileID)
+      }
+    }
+
     const renderCtx: RenderContext = {
       gl,
       programs,
       camera,
-      visibleTiles: [],
+      visibleTiles,
       frameIndex: this._frameIndex,
     }
 

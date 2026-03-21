@@ -20,7 +20,7 @@ class TestSymbolLayer extends SymbolLayerBase<TestData> {
     // stub
   }
 
-  getCollisionData(_ctx: RenderContext): CollisionData[] {
+  getCollisionData(_ctx: RenderContext, _visibleKeys: ReadonlySet<string>): CollisionData[] {
     return []
   }
 }

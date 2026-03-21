@@ -307,7 +307,7 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     gl.disableVertexAttribArray(aTex)
   }
 
-  getCollisionData(ctx: RenderContext): CollisionData[] {
+  getCollisionData(ctx: RenderContext, visibleKeys: ReadonlySet<string>): CollisionData[] {
     if (!this._renderer) return []
     const camera = ctx.camera
     if (!camera) return []
@@ -320,6 +320,7 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
     for (const [key, positions] of this._labelPosCache) {
       if (positions.length === 0) continue
+      if (!visibleKeys.has(key)) continue
 
       const screenPositions = this._projectToScreen(positions, key, camera, w, h)
       if (screenPositions.length === 0) continue
