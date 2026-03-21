@@ -19,7 +19,7 @@ import { glyphRange } from '../glyph-loader.ts'
 import { StructArray } from '../../../core/struct-array.ts'
 import { GlyphVertexLayout } from '../types.ts'
 import ONE_EM from '../../../../symbol/one_em.ts'
-import type { GlyphMap, GlyphPositions, SymbolTileData } from '../types.ts'
+import type { GlyphMap, GlyphPositions, SymbolTileData, LineLabelInfo } from '../types.ts'
 
 const debug = createDebug('LineWorker', true)
 
@@ -88,6 +88,7 @@ export class SymbolWorkerLine {
     const allVerts: number[] = []
     const allIdx: number[] = []
     const labelPositions: { x: number; y: number }[] = []
+    const lineLabels: LineLabelInfo[] = []
 
     // Collect all line features with resolved text for merging
     const lineFeatures: Array<{ geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }> = []
@@ -150,12 +151,23 @@ export class SymbolWorkerLine {
               glyphPositions: this._glyphPositions,
               fontstack,
               textOffset: [0, 0],
-              alongLine: false,
+              alongLine: true,
             })
 
             if (!quads || quads.length === 0) continue
 
             const scale = fontSize / ONE_EM
+
+            // Extract per-glyph center offsets along the line (in tile units)
+            const glyphOffsets: number[] = []
+            for (const posLine of shaping.positionedLines) {
+              for (const pg of posLine.positionedGlyphs) {
+                const halfAdvance = pg.metrics.advance * pg.scale / 2
+                // pg.x + halfAdvance = glyph center in em units
+                // convert to tile units: multiply by scale * textPixelRatio
+                glyphOffsets.push((pg.x + halfAdvance) * scale * textPixelRatio)
+              }
+            }
             const verts = new StructArray(GlyphVertexLayout)
 
             for (let qi = 0; qi < quads.length; qi++) {
@@ -192,6 +204,14 @@ export class SymbolWorkerLine {
             }
 
             labelPositions.push({ x: anchor.x, y: anchor.y })
+
+            lineLabels.push({
+              anchorX: anchor.x,
+              anchorY: anchor.y,
+              segment: anchor.segment ?? 0,
+              glyphOffsets,
+              lineVertices: line.flatMap(p => [p.x, p.y]),
+            })
           }
         }
       }
@@ -204,6 +224,7 @@ export class SymbolWorkerLine {
       indices: new Uint16Array(allIdx).buffer,
       count: allIdx.length,
       labelPositions,
+      lineLabels,
     }
     this._buckets.set(key, data)
     return allIdx.length === 0 ? null : data
