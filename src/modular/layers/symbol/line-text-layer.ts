@@ -482,12 +482,23 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
 
       const anchors: Array<{ x: number; y: number }> = []
       const boxes: Array<[number, number, number, number]> = []
+      const lineLabels = this._lineLabels.get(key)
+      const fontScale = this._fontSize / 24
 
       for (let i = 0; i < screenPositions.length; i++) {
         const sp = screenPositions[i]
         anchors.push({ x: sp.x, y: sp.y })
-        // Estimate collision box from fontSize (no label sizes from worker)
-        const halfW = this._fontSize * 0.5
+
+        // Compute collision box from actual glyph offset span
+        const label = lineLabels?.[i]
+        let halfW: number
+        if (label && label.glyphOffsets.length > 0) {
+          const offsets = label.glyphOffsets
+          const span = (offsets[offsets.length - 1] - offsets[0]) * fontScale
+          halfW = span / 2 + this._fontSize  // add one character width padding
+        } else {
+          halfW = this._fontSize * 3  // fallback
+        }
         const halfH = this._fontSize * 0.6
         boxes.push([sp.x - halfW, sp.y - halfH, sp.x + halfW, sp.y + halfH])
       }
