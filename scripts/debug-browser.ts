@@ -149,6 +149,28 @@ const http = createHttpServer(async (req, res) => {
     return
   }
 
+  if (url === '/eval' && req.method === 'POST') {
+    try {
+      const body = JSON.parse(await readBody(req))
+      const expr: string = body.expr
+      console.log(`[browser] eval: ${expr}`)
+      const result = await page.evaluate((e: string) => {
+        try {
+          const r = (0, eval)(e)
+          return { ok: true, value: r === undefined ? 'undefined' : JSON.parse(JSON.stringify(r)) }
+        } catch (err: any) {
+          return { ok: false, error: err.message }
+        }
+      }, expr)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(result))
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: e.message }))
+    }
+    return
+  }
+
   if (url === '/snapshot' && req.method === 'GET') {
     const buf = await page.screenshot()
     res.writeHead(200, { 'Content-Type': 'image/png' })
