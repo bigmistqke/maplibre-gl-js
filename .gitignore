@@ -42,3 +42,6 @@ npm-debug.log
 .*.swp
 junit.xml
 .worktrees
+demo/dist
+.superpowers
+docs/superpowers
