@@ -8,16 +8,21 @@ describe('defineStruct', () => {
     expect(s.stride).toBe(4) // 2 + 2
   })
 
-  it('computes byte offset of each field in order', () => {
+  it('computes byte offset of each field with alignment', () => {
     const s = defineStruct({ x: 'int16', y: 'float32', z: 'uint8' })
     expect(s.fields.x.offset).toBe(0)
-    expect(s.fields.y.offset).toBe(2)
-    expect(s.fields.z.offset).toBe(6)
+    expect(s.fields.y.offset).toBe(4) // aligned to 4-byte boundary
+    expect(s.fields.z.offset).toBe(8)
   })
 
-  it('computes correct stride for mixed types', () => {
+  it('pads stride to align to largest member type', () => {
     const s = defineStruct({ x: 'int16', y: 'float32', z: 'uint8' })
-    expect(s.stride).toBe(7) // 2 + 4 + 1
+    expect(s.stride).toBe(12) // 2 + 2pad + 4 + 1 + 3pad = 12 (multiple of 4)
+  })
+
+  it('pads stride to align to largest member type (int16+float32)', () => {
+    const layout = defineStruct({ x: 'int16', y: 'int16', dist: 'float32' })
+    expect(layout.stride).toBe(8)
   })
 })
 
@@ -55,22 +60,18 @@ describe('StructArray', () => {
     expect(view[1]).toBeCloseTo(0.75)
   })
 
-  it('handles mixed field types', () => {
+  it('handles mixed field types with alignment', () => {
     const s = defineStruct({ x: 'int16', scale: 'float32' })
+    // stride = 8 bytes: 2 (int16) + 2 (padding) + 4 (float32)
     const arr = new StructArray(s)
     arr.emplaceBack(42, 1.5)
     arr.emplaceBack(-7, 0.25)
     const buf = arr.arrayBuffer
-    const i16 = new Int16Array(buf)
-    const f32 = new Float32Array(buf)
-    // stride = 6 bytes: 2 (int16) + 4 (float32)
-    // element 0: bytes 0-5 → i16[0]=42, f32 at byte 2 → f32[0] (only if aligned)
-    // Use DataView for unaligned reads
     const dv = new DataView(buf)
     expect(dv.getInt16(0, true)).toBe(42)
-    expect(dv.getFloat32(2, true)).toBeCloseTo(1.5)
-    expect(dv.getInt16(6, true)).toBe(-7)
-    expect(dv.getFloat32(8, true)).toBeCloseTo(0.25)
+    expect(dv.getFloat32(4, true)).toBeCloseTo(1.5) // aligned to offset 4
+    expect(dv.getInt16(8, true)).toBe(-7)
+    expect(dv.getFloat32(12, true)).toBeCloseTo(0.25)
   })
 
   it('stores multiple elements contiguously', () => {
@@ -119,5 +120,36 @@ describe('StructArray', () => {
     arr.emplaceBack(-100000)
     const view = new Int32Array(arr.arrayBuffer)
     expect(view[0]).toBe(-100000)
+  })
+
+  it('exposes int16/uint16/uint32/float32 typed array views', () => {
+    const layout = defineStruct({ x: 'int16', y: 'int16', dist: 'float32' })
+    const arr = new StructArray(layout)
+    arr.emplaceBack(100, 200, 42.5)
+    expect(arr.int16).toBeInstanceOf(Int16Array)
+    expect(arr.float32).toBeInstanceOf(Float32Array)
+  })
+
+  it('typed array views index correctly with alignment', () => {
+    const layout = defineStruct({ x: 'int16', y: 'int16', dist: 'float32' })
+    const arr = new StructArray(layout)
+    arr.emplaceBack(100, 200, 42.5)
+    arr.emplaceBack(300, 400, 99.0)
+    // stride = 8 bytes = 4 int16s = 2 float32s per element
+    expect(arr.int16[0]).toBe(100)
+    expect(arr.int16[1]).toBe(200)
+    expect(arr.int16[4]).toBe(300)
+    expect(arr.float32[1]).toBeCloseTo(42.5)
+    expect(arr.float32[3]).toBeCloseTo(99.0)
+  })
+
+  it('typed array views refresh after grow', () => {
+    const layout = defineStruct({ x: 'int16', y: 'int16', dist: 'float32' })
+    const arr = new StructArray(layout, 2) // small capacity to trigger grow
+    arr.emplaceBack(100, 200, 42.5)
+    arr.emplaceBack(300, 400, 99.0)
+    arr.emplaceBack(500, 600, 77.0) // triggers grow
+    expect(arr.int16[8]).toBe(500)
+    expect(arr.float32[5]).toBeCloseTo(77.0)
   })
 })
