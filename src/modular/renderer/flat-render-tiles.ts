@@ -106,6 +106,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
       zoom: camera.zoom,
       paint,
       frameIndex,
+      camera,
       tileMatrix: projection.getTileMatrix(tileID, camera, viewport),
       tileData: sourceType === 'vector' ? data : undefined,
       imageAtlas: {}, // STUB: not wired yet

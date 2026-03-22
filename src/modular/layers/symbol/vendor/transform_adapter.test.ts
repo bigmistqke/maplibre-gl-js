@@ -34,9 +34,26 @@ describe('TransformAdapter', () => {
         expect(adapter.angle).toBeCloseTo(-90 * Math.PI / 180)
     })
 
-    it('throws on calculatePosMatrix (not yet implemented)', () => {
+    it('calculatePosMatrix returns a mat4 (Float32Array of length 16)', () => {
         const adapter = new TransformAdapter(camera, viewport)
-        expect(() => adapter.calculatePosMatrix({ canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 })).toThrow('Not implemented yet')
+        const unwrapped = { canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 }
+        const posMatrix = adapter.calculatePosMatrix(unwrapped)
+        const arr = posMatrix as unknown as Float32Array
+        expect(arr).toHaveLength(16)
+    })
+
+    it('calculatePosMatrix: projecting tile center (2048,2048) gives clip-space near (0,0)', () => {
+        const adapter = new TransformAdapter(camera, viewport)
+        const unwrapped = { canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 }
+        const m = adapter.calculatePosMatrix(unwrapped) as unknown as Float32Array
+        const x = 2048, y = 2048
+        const px = m[0] * x + m[4] * y + m[12]
+        const py = m[1] * x + m[5] * y + m[13]
+        const pw = m[3] * x + m[7] * y + m[15]
+        const clipX = px / pw
+        const clipY = py / pw
+        expect(clipX).toBeCloseTo(0, 0)
+        expect(clipY).toBeCloseTo(0, 0)
     })
 
     it('projectTileCoordinates returns clip-space coords for tile center', () => {

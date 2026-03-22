@@ -25,6 +25,8 @@ export interface DrawContext {
   frameIndex: number
   imageAtlas: ImageAtlas
   lineDashAtlas: LineDashAtlas
+  /** Camera state for the current frame — needed by symbol layers for projection. */
+  camera?: CameraState
   /** Tile projection matrix — same as shader's u_matrix. For CPU-side projection matching the GPU. */
   tileMatrix?: Float32Array
   /** Texture for raster layers. Optional — vector layers will not have this. */

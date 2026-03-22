@@ -12,7 +12,11 @@ import { TileFetcher } from './base/tile-fetcher.ts'
 import type { CollisionData, GPUBucket } from './base/types.ts'
 import type { LabelData } from './engine/cross-tile-index.ts'
 import murmur3 from 'murmurhash-js'
-import { updateLineLabels } from './line-projection.ts'
+import { updateLineLabels, getPitchedLabelPlaneMatrix } from './vendor/projection.ts'
+import { TransformAdapter } from './vendor/transform_adapter.ts'
+import { buildBucketShim, extractDynamicBuffer } from './vendor/bucket_shim.ts'
+import { TILE_EXTENT, TILE_SIZE } from '../../core/constants.ts'
+import { mat4 } from 'gl-matrix'
 
 const debug = createDebug?.('LineTextLayer', false)
 
@@ -94,46 +98,6 @@ function parseColor(c: string): [number, number, number, number] {
   if (h.length === 3)
     return [parseInt(h[0]+h[0],16)/255, parseInt(h[1]+h[1],16)/255, parseInt(h[2]+h[2],16)/255, 1]
   return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1]
-}
-
-// ---- Tile projection helpers ----
-
-/**
- * Build projection functions using the SAME tile matrix the shader uses.
- * This ensures CPU-projected glyph positions match the GPU-rendered road positions.
- *
- * Previous approach used simple 2D Mercator math which disagreed with the
- * shader's perspective projection, causing labels to appear offset from roads.
- */
-function makeTileProjection(
-  tileMatrix: Float32Array,
-  canvasWidth: number,
-  canvasHeight: number,
-) {
-  // Project tile coords through the tile matrix (same as shader's projectTile)
-  // then perspective divide to get NDC, then convert to pixel space.
-  const tileToPixel = (tileX: number, tileY: number) => {
-    // mat4 * vec4(tileX, tileY, 0, 1)
-    const m = tileMatrix
-    const clipX = m[0] * tileX + m[4] * tileY + m[12]
-    const clipY = m[1] * tileX + m[5] * tileY + m[13]
-    const clipW = m[3] * tileX + m[7] * tileY + m[15]
-    // Perspective divide → NDC
-    const ndcX = clipX / clipW
-    const ndcY = clipY / clipW
-    // NDC → pixel
-    return {
-      x: (ndcX + 1) / 2 * canvasWidth,
-      y: (1 - ndcY) / 2 * canvasHeight,
-    }
-  }
-
-  const pixelToNDC = (px: number, py: number) => ({
-    x: (px / canvasWidth) * 2 - 1,
-    y: -((py / canvasHeight) * 2 - 1),
-  })
-
-  return { tileToPixel, pixelToNDC }
 }
 
 // ---- Layer ----
@@ -403,12 +367,49 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     const dynamicGLBuffer = this._dynamicGLBuffers.get(key)
     const hasLineLabels = lineLabels && dynamicBuffer && dynamicGLBuffer
 
-    if (hasLineLabels && ctx.tileMatrix) {
-      const { tileToPixel, pixelToNDC } = makeTileProjection(ctx.tileMatrix, canvasWidth, canvasHeight)
-      // fontScale = fontSize / 24 — scales glyph offsets (ONE_EM units) to pixel distances.
-      // MapLibre applies this at placement time (projection.ts:439), not at layout time.
-      const fontScale = this._fontSize / 24
-      updateLineLabels(lineLabels, tileToPixel, pixelToNDC, fontScale, dynamicBuffer)
+    if (hasLineLabels && ctx.camera) {
+      // Build TransformAdapter + PainterLike from camera state
+      const viewport = { width: canvasWidth, height: canvasHeight }
+      const transform = new TransformAdapter(ctx.camera, viewport)
+      const painter = { transform, width: canvasWidth, height: canvasHeight }
+
+      // Build UnwrappedTileID from our TileID
+      const tileID = ctx.tileID
+      const unwrappedTileID = {
+        canonical: { z: tileID.z, x: tileID.x, y: tileID.y },
+        wrap: 0,
+      }
+
+      // Build bucket shim from our LineLabelInfo[]
+      const bucketShim = buildBucketShim(lineLabels, this._fontSize)
+
+      // Compute label plane matrices
+      // For pitchWithMap=false, rotateWithMap=false:
+      //   pixelsToTileUnits converts from screen pixels to tile coordinate units
+      const pixelsToTileUnits = TILE_EXTENT / (TILE_SIZE * Math.pow(2, ctx.zoom - tileID.z))
+      const pitchedLabelPlaneMatrix = getPitchedLabelPlaneMatrix(false, transform, pixelsToTileUnits)
+      const pitchedLabelPlaneMatrixInverse = mat4.create()
+      mat4.invert(pitchedLabelPlaneMatrixInverse, pitchedLabelPlaneMatrix)
+
+      // Run vendored updateLineLabels
+      updateLineLabels(
+        bucketShim,      // bucket
+        painter,         // painter
+        true,            // isText
+        pitchedLabelPlaneMatrix,
+        pitchedLabelPlaneMatrixInverse,
+        false,           // pitchWithMap — labels face camera
+        true,            // keepUpright — labels should be readable
+        true,            // rotateToLine — text follows line direction
+        unwrappedTileID,
+        canvasWidth,     // viewportWidth
+        canvasHeight,    // viewportHeight
+        [0, 0],          // translation
+        () => 0,         // getElevation — flat map
+      )
+
+      // Extract results from bucket shim into our dynamic buffer (viewport pixels → NDC)
+      extractDynamicBuffer(bucketShim, dynamicBuffer, canvasWidth, canvasHeight)
 
       // Upload dynamic buffer to GPU
       gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
@@ -424,7 +425,7 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
       // Set along-line mode
       gl.uniform1f(gl.getUniformLocation(program, 'u_is_along_line'), 1.0)
 
-      debug?.('drawTile: line projection updated', { key, labels: lineLabels.length })
+      debug?.('drawTile: vendored line projection updated', { key, labels: lineLabels.length })
     } else {
       gl.uniform1f(gl.getUniformLocation(program, 'u_is_along_line'), 0.0)
     }

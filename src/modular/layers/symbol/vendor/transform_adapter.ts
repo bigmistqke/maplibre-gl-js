@@ -17,6 +17,10 @@ export class TransformAdapter implements ISymbolTransform {
     readonly pitch: number
     readonly angle: number
     readonly zoom: number
+    readonly rollInRadians: number
+    readonly pitchInRadians: number
+    readonly bearingInRadians: number
+    readonly pixelsToClipSpaceMatrix: Mat4Type
 
     // Cached view-projection matrix (same for all tiles with the same camera)
     private readonly _viewProj: Mat4Type
@@ -27,7 +31,17 @@ export class TransformAdapter implements ISymbolTransform {
         this.zoom = camera.zoom
         this.pitch = (camera.pitch ?? 0) * Math.PI / 180
         this.angle = -(camera.bearing ?? 0) * Math.PI / 180
+        this.rollInRadians = 0 // STUB: roll not supported yet
+        this.pitchInRadians = this.pitch
+        this.bearingInRadians = -this.angle // bearing in radians (positive clockwise)
         this.cameraToCenterDistance = (viewport.height / 2) / Math.tan(FOV / 2)
+
+        // pixelsToClipSpaceMatrix: converts from screen pixels to GL clip space
+        const pxToClip = mat4.create() as unknown as Mat4Type
+        mat4.identity(pxToClip)
+        mat4.scale(pxToClip, pxToClip, [2 / viewport.width, -2 / viewport.height, 1])
+        mat4.translate(pxToClip, pxToClip, [-viewport.width / 2, -viewport.height / 2, 0])
+        this.pixelsToClipSpaceMatrix = pxToClip
 
         // Build and cache the view-projection matrix
         const { center, zoom } = camera
@@ -57,24 +71,32 @@ export class TransformAdapter implements ISymbolTransform {
         this._viewProj = m
     }
 
-    calculatePosMatrix(_unwrappedTileID: UnwrappedTileIDLike): mat4 {
-        throw new Error('Not implemented yet — Task 1.4')
-    }
-
-    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileIDLike, _getElevation: (x: number, y: number) => number): PointProjection {
+    private _buildTileMatrix(unwrappedTileID: UnwrappedTileIDLike): Mat4Type {
         const { canonical, wrap } = unwrappedTileID
         const worldSize = TILE_SIZE * Math.pow(2, this.zoom)
         const tileScale = worldSize / Math.pow(2, canonical.z)
 
-        // Build tile matrix
         const t = mat4.create() as unknown as Mat4Type
         const tileX = canonical.x + wrap * Math.pow(2, canonical.z)
         mat4.translate(t, t, [tileX * tileScale, canonical.y * tileScale, 0])
         mat4.scale(t, t, [tileScale / TILE_EXTENT, tileScale / TILE_EXTENT, 1])
+        return t
+    }
 
-        // posMatrix = viewProj × tileMatrix
+    calculatePosMatrix(unwrappedTileID: UnwrappedTileIDLike): mat4 {
+        const t = this._buildTileMatrix(unwrappedTileID)
         const posMatrix = mat4.create() as unknown as Mat4Type
         mat4.multiply(posMatrix, this._viewProj as unknown as mat4, t as unknown as mat4)
+        return posMatrix as unknown as mat4
+    }
+
+    getPitchedTextCorrection(_textAnchorX: number, _textAnchorY: number, _unwrappedTileID: UnwrappedTileIDLike): number {
+        // For mercator projection, this always returns 1.0
+        return 1.0
+    }
+
+    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileIDLike, _getElevation: (x: number, y: number) => number): PointProjection {
+        const posMatrix = this.calculatePosMatrix(unwrappedTileID)
 
         // Project point (x, y, 0, 1) through posMatrix
         const m = posMatrix as unknown as Float32Array

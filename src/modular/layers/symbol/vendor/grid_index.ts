@@ -1,5 +1,8 @@
-// Inlined from MapLibre — avoids dependency on style_layer package
-export type OverlapMode = 'never' | 'always' | 'cooperative'
+// Vendored from maplibre-gl-js
+// Source: src/symbol/grid_index.ts
+// Modifications: import paths, type narrowing, STUB comments
+
+import type {OverlapMode} from './overlap_mode';
 
 type QueryArgs = {
     hitTest: boolean;
