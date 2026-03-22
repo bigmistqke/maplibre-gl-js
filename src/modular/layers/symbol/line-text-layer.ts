@@ -429,6 +429,16 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
       debug?.('drawTile: vendored line projection updated', { key, labels: lineLabels.length })
     } else {
       gl.uniform1f(gl.getUniformLocation(program, 'u_is_along_line'), 0.0)
+      // Still bind the dynamic buffer so a_projected_pos reads from the correct-sized
+      // buffer for this tile, not a stale buffer from a previous tile's draw call.
+      if (dynamicGLBuffer) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
+        const aProjPos = gl.getAttribLocation(program, 'a_projected_pos')
+        if (aProjPos >= 0) {
+          gl.enableVertexAttribArray(aProjPos)
+          gl.vertexAttribPointer(aProjPos, 3, gl.FLOAT, false, 12, 0)
+        }
+      }
     }
 
     // Bind static buffers and set attributes
