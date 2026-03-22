@@ -42,6 +42,14 @@ imageAtlas: {}, // STUB: not wired yet
 
 **Code review rule:** Any `[]`, `{}`, or `null` passed where a consumer reads and acts on the value must either be the correct value or have a STUB comment.
 
+## Before committing
+
+Run `npx eslint src/modular --fix` before every commit to ensure consistent formatting.
+
+## Imports
+
+Use `@modular/*` path alias for all imports within `src/modular/` instead of relative paths. Example: `import { foo } from '@modular/core/types.ts'` instead of `import { foo } from '../../core/types.ts'`.
+
 ## Keep STATUS.md up to date
 
 After implementing or fixing a feature, update `STATUS.md` to reflect the change: check off completed items, add new known issues, or move items between sections. This is the single source of truth for what works, what's broken, and what's not yet built.
