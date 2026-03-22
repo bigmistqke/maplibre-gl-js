@@ -125,6 +125,13 @@ export class SymbolWorkerLine {
     type LocalLineFeature = { geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }
     const mergedFeatures = mergeLines(lineFeatures as unknown as Parameters<typeof mergeLines>[0]) as unknown as Array<LocalLineFeature>
 
+    // Track anchor positions per text to prevent same-text labels too close together.
+    // Vendored from MapLibre's anchorIsTooClose (symbol_layout.ts:733-749).
+    const compareText: Record<string, Array<{ x: number; y: number }>> = {}
+    const textPixelRatio = TILE_EXTENT / TILE_SIZE
+    const symbolMinDistance = textPixelRatio * 250 // default symbol-spacing
+    const textRepeatDistance = symbolMinDistance / 2
+
     for (const mergedFeat of mergedFeatures) {
       const geom = mergedFeat.geometry
       if (!geom || geom.length === 0) continue
@@ -148,11 +155,8 @@ export class SymbolWorkerLine {
         for (const line of clipped) {
           if (line.length < 2) continue
 
-          // Compute label width in tile units so labels don't overlap.
-          // textPixelRatio converts CSS px → tile units at this zoom.
-          const textPixelRatio = TILE_EXTENT / TILE_SIZE
           const labelWidth = (shaping.right - shaping.left) * (fontSize / ONE_EM) * textPixelRatio
-          const symbolSpacing = Math.max(labelWidth * 2, 250 * textPixelRatio)
+          const symbolSpacing = Math.max(labelWidth * 2, symbolMinDistance)
 
           const anchors = getLineAnchors({
             line,
@@ -164,6 +168,8 @@ export class SymbolWorkerLine {
           })
 
           for (const anchor of anchors) {
+            // Skip if same text was placed too close (MapLibre's anchorIsTooClose)
+            if (anchorIsTooClose(compareText, rawText, textRepeatDistance, anchor)) continue
             const quads = buildGlyphQuads({
               anchor: { x: anchor.x, y: anchor.y },
               shaping,
@@ -520,6 +526,32 @@ export class SymbolWorkerLine {
     this._waiting.clear()
     this._buckets.clear()
   }
+}
+
+/**
+ * Vendored from MapLibre's symbol_layout.ts:733-749.
+ * Prevents same-text labels from being placed too close together.
+ */
+function anchorIsTooClose(
+  compareText: Record<string, Array<{ x: number; y: number }>>,
+  text: string,
+  repeatDistance: number,
+  anchor: { x: number; y: number },
+): boolean {
+  if (!(text in compareText)) {
+    compareText[text] = []
+  } else {
+    const otherAnchors = compareText[text]
+    for (let k = otherAnchors.length - 1; k >= 0; k--) {
+      const dx = anchor.x - otherAnchors[k].x
+      const dy = anchor.y - otherAnchors[k].y
+      if (Math.sqrt(dx * dx + dy * dy) < repeatDistance) {
+        return true
+      }
+    }
+  }
+  compareText[text].push(anchor)
+  return false
 }
 
 Comlink.expose(new SymbolWorkerLine())
