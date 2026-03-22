@@ -1,7 +1,7 @@
 # MapLibre Modular — Feature Coverage
 
 Tracking which MapLibre GL JS features are supported in maplibre-modular.
-`[x]` = supported · `[ ]` = not yet implemented
+`[x]` = supported · `[~]` = partial / in progress · `[ ]` = not yet implemented
 
 ---
 
@@ -14,7 +14,7 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [ ] `circle` — point circles
 - [x] `symbol` (point text) — SDF text labels at point positions
 - [x] `symbol` (point icons) — sprite-atlas icon rendering at point positions
-- [x] `symbol` (line text) — SDF text labels placed along line geometry
+- [~] `symbol` (line text) — SDF text labels placed along line geometry (see Symbol section)
 - [ ] `symbol` (line icons) — icons along lines
 - [ ] `fill-extrusion` — 3D extruded polygons
 - [ ] `heatmap` — density heatmap
@@ -172,50 +172,62 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 
 ## Symbol Rendering
 
+Symbols are a project-within-a-project. The current state: algorithms are vendored from MapLibre and verified correct per-tile, but the integration layer (how our renderer calls the vendored code) has remaining issues.
+
 ### Architecture
 - [x] `SymbolLayerBase` — abstract base class for all symbol layers
-- [x] `SymbolEngine` — shared per-renderer (via WeakMap), composes LayoutEngine + ResourceManager
-- [x] `LayoutEngine` — collision detection with shared `CollisionIndex`, visible-tile filtering
+- [x] `SymbolEngine` — shared per-renderer, composes LayoutEngine + ResourceManager
+- [x] `LayoutEngine` — collision detection with vendored `CollisionIndex`
 - [x] `ResourceManager` — deduplicates `GlyphManager` and `ImageManager` across layers
-- [x] `TileFetcher<T>` — generic async tile lifecycle (fetch/pending/ready/invalidate/evict)
+- [x] `TileFetcher<T>` — generic async tile lifecycle
+- [x] `StructArray` — MapLibre-compatible typed arrays with alignment, accessors, get(i) proxy
+- [x] `SymbolBucketAdapter` — wraps StructArrays into shape vendored code expects
+
+### Vendored from MapLibre (verbatim algorithms)
+- [x] `projection.ts` — placeGlyphAlongLine, updateLineLabels, label flipping, vertical text detection
+- [x] `collision_index.ts` — full CollisionIndex with grid spatial queries
+- [x] `grid_index.ts` — spatial grid for collision detection
+- [x] `cross_tile_symbol_index.ts` — persistent crossTileIDs across zoom levels
+- [x] `placement.ts` — Placement class (vendored but not yet wired into SymbolEngine)
+- [x] `symbol_size.ts` — font size evaluation
+- [x] `clip_line.ts`, `merge_lines.ts`, `check_max_angle.ts` — line processing
+- [x] `symbol_layout_helpers.ts` — wraps shapeText, getAnchors, getGlyphQuads
 
 ### Text
-- [x] SDF glyph atlas — `GlyphAtlas` with potpack bin-packing, RGBA GPU texture
-- [x] Text shaping — `shapeText` (port of MapLibre's shaping pipeline)
-- [x] Glyph quads — `buildGlyphQuads` for per-character quad geometry
-- [x] Point text placement — anchored at feature centroids
-- [x] Line text placement — `getLineAnchors` + `clipLine` + `mergeLines` along polylines
-- [x] Line label projection — per-frame glyph placement along projected line geometry (dynamic vertex buffer)
-- [x] Worker-based layout — `SymbolWorkerLine` (Comlink) for line text, `SymbolWorkerPoint` for point text
-- [x] Live font size updates — `setFontSize()` triggers worker re-layout
+- [x] SDF glyph atlas with potpack bin-packing
+- [x] Text shaping via MapLibre's shapeText
+- [x] Glyph quads via MapLibre's getGlyphQuads
+- [x] Point text placement at feature centroids
+- [x] Line text anchors via MapLibre's getAnchors (per-tile parity verified: 53=53)
+- [x] Line label projection via vendored updateLineLabels
+- [x] Label flipping / keepUpright (vendored — handles all edge cases)
+- [x] Worker-based layout with StructArray output
+- [x] anchorIsTooClose dedup (vendored from MapLibre)
 
 ### Icons
-- [x] Icon rendering — sprite atlas with `ImageManager`, per-feature icon quads
+- [x] Icon rendering — sprite atlas with `ImageManager`
 
 ### Collision & Placement
-- [x] Collision detection — `LayoutEngine` with grid-based `CollisionIndex`
-- [x] Per-label opacity — binary 0/1 via `setLabelOpacity()`
-- [x] Visible-tile filtering — collision data scoped to currently rendered tiles
-- [x] Cross-tile symbol dedup — `CrossTileIndex` with position tolerance + zoom-level matching, persistent crossTileIDs
+- [x] Grid-based collision detection (vendored CollisionIndex)
+- [x] Per-label opacity
+- [x] Cross-tile symbol dedup (vendored CrossTileSymbolIndex)
 
-### Known Issues
-- [ ] Line label density ~3% vs MapLibre's dense labels — at z14, projected segment distances are tiny (0.0625 px/tile-unit), so many labels need more backward space than available from the clip boundary to the anchor. Needs investigation: MapLibre may use `getCenterAnchor` for short lines, or different anchor offset strategy
+### Known Issues (integration bugs, not algorithm bugs)
+- [ ] GL_INVALID_OPERATION on tile load — dynamic buffer timing mismatch when new tiles arrive mid-frame
+- [ ] Labels disappear at zoom 13 — vendored projection may not handle zoom transitions correctly
+- [ ] Density gap vs MapLibre original — 296 vs 295 symbol instances (nearly identical), but collision/rendering produces visually fewer labels. Likely in how dynamic buffers are bound or how the shader reads them
+- [ ] Vendored Placement class not yet wired into SymbolEngine — still using simplified LayoutEngine
 
 ### Not Yet Implemented
-- [ ] Text halo rendering — MapLibre two-pass: halo then fill (same geometry, different SDF threshold)
-- [ ] KDBush spatial index for cross-tile dedup — currently linear search, add when >128 symbols per key
-- [ ] Opacity fade transitions — smooth 300ms fade in/out (currently binary 0/1)
-- [ ] Zoom-dependent text size — pack min/max sizes in vertex, interpolate in shader
-- [ ] Label flipping / keep-upright — reverse glyph order when line reads R→L on screen
-- [ ] First/last glyph check — early-exit if label doesn't fit on screen
-- [ ] Projection cache — cache projected line vertices per bucket (performance)
-- [ ] Pitch correction — adjust font scale based on camera distance
-- [ ] Perpendicular line offset — `text-offset` for labels parallel-but-offset from line
-- [ ] Variable anchor placement — test up to 9 positions per label
+- [ ] Text halo rendering
+- [ ] Opacity fade transitions (currently binary 0/1)
+- [ ] Zoom-dependent text size
+- [ ] Roll support in TransformAdapter (7 projection tests skipped)
+- [ ] Pitch correction for font scaling
+- [ ] Variable anchor placement
 - [ ] Icon-text combined symbols
 - [ ] Formatted text (multi-font, multi-color)
-- [ ] ALPHA atlas format — 1 byte/pixel instead of RGBA 4 bytes/pixel (saves GPU memory)
-- [ ] Expression evaluation for symbol properties
+- [ ] RTL text support
 
 ---
 
@@ -232,16 +244,24 @@ Tracking which MapLibre GL JS features are supported in maplibre-modular.
 - [x] Phase 8-icons: Icon layer
 - [x] Phase 9: Placement / collision avoidance
 - [x] Phase 10: Line text labels
-- [x] A/B comparison demos (phases 2, 5, 8, 10) — MapLibre-original vs modular
+- [x] Phase 10-roads: Road name labels (A/B comparison with MapLibre original)
+- [x] canvas.html variant for clean screenshots (no GUI)
+- [x] Demo CLI with `list`, `open`, `zoom`, `screenshot`, `eval` commands
+- [x] A/B comparison demos (phases 2, 5, 8, 10)
 
 ---
 
 ## Architecture / Non-Functional
 
-- [x] Tree-shakeable — terrain adds 0 kB to core bundle when unused
+- [x] Tree-shakeable — terrain/symbols add 0 kB to core bundle when unused
 - [x] No runtime dependencies (Comlink only in workers)
-- [x] TypeScript strict
-- [x] Vitest unit test suite (139 tests)
+- [~] TypeScript strict (`tsconfig.modular.json` with `strict: true` — 2041 errors to fix)
+- [x] TypeScript with `@modular/*` path alias
+- [x] `allowImportingTsExtensions` enabled
+- [x] ESLint autofix before commits
+- [x] Vitest unit test suite (352 tests across 45 files)
+- [x] MapLibre projection tests ported (8 pass, 7 skipped for roll)
+- [x] Worker parity test (per-tile anchor count matches MapLibre exactly)
 - [ ] Browser integration tests
 - [ ] Benchmark suite
 - [ ] Style-spec conformance tests
