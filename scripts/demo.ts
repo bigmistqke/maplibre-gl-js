@@ -95,17 +95,24 @@ const program = new Command()
 program.name('demo').description('Control demos via the debug-browser Playwright bridge')
 
 program
-  .command('open <name>')
-  .description('Navigate to a demo (e.g. phase9, phase8-icons)')
+  .command('open <path>')
+  .description('Navigate to a demo (e.g. phase10-roads/modular/canvas.html)')
   .option('--wait <ms>', 'Wait after navigation before returning', '3000')
-  .action(async (name: string, opts: { wait: string }) => {
+  .option('--screenshot <name>', 'Take screenshot after page loads')
+  .action(async (path: string, opts: { wait: string; screenshot?: string }) => {
     const { vitePort } = await checkServer()
-    const url = `http://localhost:${vitePort}/${name}/`
-    currentDemo = name
+    const urlPath = path.endsWith('.html') ? path : `${path}/`
+    const url = `http://localhost:${vitePort}/${urlPath}`
+    currentDemo = path.replace(/\/?(index|original|modular|canvas)?\.html$/, '').replace(/\//g, '-') || 'demo'
     console.log(`Opening ${url}`)
     await navigate(url)
     await new Promise(r => setTimeout(r, parseInt(opts.wait)))
     console.log('Ready')
+    if (opts.screenshot) {
+      await new Promise(r => setTimeout(r, 500))
+      const abs = await takeScreenshot(opts.screenshot)
+      console.log(abs)
+    }
   })
 
 program
