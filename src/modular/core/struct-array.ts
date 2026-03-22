@@ -132,6 +132,50 @@ export class StructArray<K extends string> {
     return this._float32
   }
 
+  clear(): void {
+    this.length = 0
+  }
+
+  resize(n: number): void {
+    if (n > this._capacity) {
+      // Grow capacity to at least n, using doubling strategy
+      let cap = this._capacity
+      while (cap < n) cap = Math.max(cap * 2, 1)
+      this._capacity = cap
+      const next = new ArrayBuffer(this._schema.stride * this._capacity)
+      new Uint8Array(next).set(new Uint8Array(this._buf))
+      this._buf = next
+      this._view = new DataView(this._buf)
+      this._int16 = null
+      this._uint16 = null
+      this._uint32 = null
+      this._float32 = null
+    }
+    this.length = n
+  }
+
+  emplace(index: number, ...values: number[]): void {
+    const base = index * this._schema.stride
+    const fieldEntries = Object.values(this._schema.fields) as { offset: number; type: FieldType }[]
+    for (let i = 0; i < fieldEntries.length; i++) {
+      const { offset, type } = fieldEntries[i]
+      const val = values[i] ?? 0
+      this._write(base + offset, type, val)
+    }
+  }
+
+  _trim(): void {
+    const exact = new ArrayBuffer(this.length * this._schema.stride)
+    new Uint8Array(exact).set(new Uint8Array(this._buf, 0, exact.byteLength))
+    this._buf = exact
+    this._capacity = this.length
+    this._view = new DataView(this._buf)
+    this._int16 = null
+    this._uint16 = null
+    this._uint32 = null
+    this._float32 = null
+  }
+
   emplaceBack(...values: number[]): void {
     if (this.length >= this._capacity) this._grow()
     const base = this.length * this._schema.stride

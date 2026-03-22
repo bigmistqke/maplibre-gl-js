@@ -183,4 +183,38 @@ describe('StructArray', () => {
     s.hidden = 1
     expect(arr.get(0).hidden).toBe(1)
   })
+
+  it('clear() resets length to 0', () => {
+    const layout = defineStruct({ offsetX: 'float32' })
+    const arr = new StructArray(layout)
+    arr.emplaceBack(1); arr.emplaceBack(2)
+    expect(arr.length).toBe(2)
+    arr.clear()
+    expect(arr.length).toBe(0)
+  })
+
+  it('resize(n) sets length and allocates capacity', () => {
+    const layout = defineStruct({ offsetX: 'float32' })
+    const arr = new StructArray(layout)
+    arr.resize(100)
+    expect(arr.length).toBe(100)
+  })
+
+  it('emplace(i, ...values) writes at arbitrary index', () => {
+    const layout = defineStruct({ x: 'int16', y: 'int16' })
+    const arr = new StructArray(layout)
+    arr.resize(3)
+    arr.emplace(1, 42, 99)
+    expect(arr.getx(1)).toBe(42)
+    expect(arr.gety(1)).toBe(99)
+  })
+
+  it('_trim() shrinks buffer to fit length', () => {
+    const layout = defineStruct({ x: 'float32' })
+    const arr = new StructArray(layout)
+    arr.resize(1000)
+    arr.length = 5
+    arr._trim()
+    expect(arr.arrayBuffer.byteLength).toBe(5 * layout.stride)
+  })
 })
