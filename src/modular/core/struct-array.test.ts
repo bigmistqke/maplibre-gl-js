@@ -1,6 +1,6 @@
 // src/modular/core/struct-array.test.ts
 import { describe, it, expect } from 'vitest'
-import { defineStruct, StructArray } from './struct-array.ts'
+import { defineStruct, StructArray, createStructArray } from './struct-array.ts'
 
 describe('defineStruct', () => {
   it('computes stride as sum of field byte sizes', () => {
@@ -155,7 +155,7 @@ describe('StructArray', () => {
 
   it('generates get<field>(index) accessors', () => {
     const layout = defineStruct({ offsetX: 'float32' })
-    const arr = new StructArray(layout)
+    const arr = createStructArray(layout)
     arr.emplaceBack(42.5)
     arr.emplaceBack(99.0)
     expect(arr.getoffsetX(0)).toBeCloseTo(42.5)
@@ -164,7 +164,7 @@ describe('StructArray', () => {
 
   it('generates set<field>(index, value) mutators', () => {
     const layout = defineStruct({ offsetX: 'float32' })
-    const arr = new StructArray(layout)
+    const arr = createStructArray(layout)
     arr.emplaceBack(0)
     arr.setoffsetX(0, 42.5)
     expect(arr.getoffsetX(0)).toBeCloseTo(42.5)
@@ -202,7 +202,7 @@ describe('StructArray', () => {
 
   it('emplace(i, ...values) writes at arbitrary index', () => {
     const layout = defineStruct({ x: 'int16', y: 'int16' })
-    const arr = new StructArray(layout)
+    const arr = createStructArray(layout)
     arr.resize(3)
     arr.emplace(1, 42, 99)
     expect(arr.getx(1)).toBe(42)

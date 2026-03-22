@@ -1,4 +1,4 @@
-import { StructArray } from '../../../core/struct-array.ts'
+import { createStructArray } from '../../../core/struct-array.ts'
 import { TILE_EXTENT, TILE_SIZE } from '../../../core/constants.ts'
 import {
   SymbolLineVertexLayout,
@@ -12,24 +12,24 @@ import {
 } from './symbol_structs.ts'
 
 class SymbolBuffers {
-  placedSymbolArray = new StructArray(PlacedSymbolLayout)
-  dynamicLayoutVertexArray = new StructArray(DynamicLayoutLayout)
-  opacityVertexArray = new StructArray(OpacityLayout)
+  placedSymbolArray = createStructArray(PlacedSymbolLayout)
+  dynamicLayoutVertexArray = createStructArray(DynamicLayoutLayout)
+  opacityVertexArray = createStructArray(OpacityLayout)
 }
 
 export class SymbolBucketAdapter {
-  symbolInstances = new StructArray(SymbolInstanceLayout)
+  symbolInstances = createStructArray(SymbolInstanceLayout)
   text = new SymbolBuffers()
   icon = new SymbolBuffers()
-  glyphOffsetArray = new StructArray(GlyphOffsetLayout)
-  lineVertexArray = new StructArray(SymbolLineVertexLayout)
-  collisionBoxArray = new StructArray(CollisionBoxLayout)
+  glyphOffsetArray = createStructArray(GlyphOffsetLayout)
+  lineVertexArray = createStructArray(SymbolLineVertexLayout)
+  collisionBoxArray = createStructArray(CollisionBoxLayout)
 
   textCollisionBox = {
-    collisionVertexArray: new StructArray(CollisionVertexLayout),
+    collisionVertexArray: createStructArray(CollisionVertexLayout),
   }
   iconCollisionBox = {
-    collisionVertexArray: new StructArray(CollisionVertexLayout),
+    collisionVertexArray: createStructArray(CollisionVertexLayout),
   }
 
   overscaling: number

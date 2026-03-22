@@ -33,6 +33,21 @@ export function defineStruct<K extends string>(
   return { stride, fields }
 }
 
+/** Mapped type: for each field K, generates get<K>(i) and set<K>(i, v) */
+export type FieldAccessors<K extends string> = {
+  [F in K as `get${F}`]: (index: number) => number
+} & {
+  [F in K as `set${F}`]: (index: number, value: number) => void
+}
+
+/** A StructArray with typed field accessors */
+export type TypedStructArray<K extends string> = StructArray<K> & FieldAccessors<K>
+
+/** Create a typed StructArray with get/set accessors for each field */
+export function createStructArray<K extends string>(schema: StructSchema<K>, initialCapacity?: number): TypedStructArray<K> {
+  return new StructArray(schema, initialCapacity) as TypedStructArray<K>
+}
+
 export class StructArray<K extends string> {
   private _schema: StructSchema<K>
   private _capacity: number

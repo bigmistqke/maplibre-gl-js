@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { StructArray } from '../../../core/struct-array.ts'
+import { createStructArray } from '../../../core/struct-array.ts'
 import {
   SymbolLineVertexLayout, GlyphOffsetLayout, DynamicLayoutLayout,
   CollisionBoxLayout, SymbolInstanceLayout, PlacedSymbolLayout,
@@ -9,7 +9,7 @@ import {
 describe('SymbolLineVertexLayout', () => {
   it('has stride 6 and correct fields', () => {
     expect(SymbolLineVertexLayout.stride).toBe(6)
-    const arr = new StructArray(SymbolLineVertexLayout)
+    const arr = createStructArray(SymbolLineVertexLayout)
     arr.emplaceBack(100, 200, 500)
     expect(arr.getx(0)).toBe(100)
     expect(arr.gety(0)).toBe(200)
@@ -20,7 +20,7 @@ describe('SymbolLineVertexLayout', () => {
 describe('GlyphOffsetLayout', () => {
   it('has stride 4 and correct fields', () => {
     expect(GlyphOffsetLayout.stride).toBe(4)
-    const arr = new StructArray(GlyphOffsetLayout)
+    const arr = createStructArray(GlyphOffsetLayout)
     arr.emplaceBack(42.5)
     expect(arr.getoffsetX(0)).toBeCloseTo(42.5)
   })
@@ -29,7 +29,7 @@ describe('GlyphOffsetLayout', () => {
 describe('DynamicLayoutLayout', () => {
   it('has stride 12 and correct fields', () => {
     expect(DynamicLayoutLayout.stride).toBe(12)
-    const arr = new StructArray(DynamicLayoutLayout)
+    const arr = createStructArray(DynamicLayoutLayout)
     arr.emplaceBack(1.0, 2.0, 0.5)
     expect(arr.float32[0]).toBeCloseTo(1.0)
     expect(arr.float32[1]).toBeCloseTo(2.0)
@@ -40,7 +40,7 @@ describe('DynamicLayoutLayout', () => {
 describe('CollisionBoxLayout', () => {
   it('has stride 20 and round-trips correctly', () => {
     expect(CollisionBoxLayout.stride).toBe(20)
-    const arr = new StructArray(CollisionBoxLayout)
+    const arr = createStructArray(CollisionBoxLayout)
     arr.emplaceBack(10, 20, -5, -10, 5, 10, 42, 3, 7)
     const row = arr.get(0)
     expect(row.anchorPointX).toBe(10)
@@ -58,7 +58,7 @@ describe('CollisionBoxLayout', () => {
 describe('SymbolInstanceLayout', () => {
   it('has stride 64 and round-trips representative fields', () => {
     expect(SymbolInstanceLayout.stride).toBe(64)
-    const arr = new StructArray(SymbolInstanceLayout)
+    const arr = createStructArray(SymbolInstanceLayout)
     // 28 fields — fill with identifiable values
     arr.emplaceBack(
       100, 200,       // anchorX, anchorY
@@ -94,7 +94,7 @@ describe('SymbolInstanceLayout', () => {
 describe('PlacedSymbolLayout', () => {
   it('has stride 48 and round-trips correctly', () => {
     expect(PlacedSymbolLayout.stride).toBe(48)
-    const arr = new StructArray(PlacedSymbolLayout)
+    const arr = createStructArray(PlacedSymbolLayout)
     arr.emplaceBack(
       50, 60,          // anchorX, anchorY
       10, 5,           // glyphStartIndex, numGlyphs
@@ -127,7 +127,7 @@ describe('PlacedSymbolLayout', () => {
 describe('TextAnchorOffsetLayout', () => {
   it('has stride 12 and round-trips correctly', () => {
     expect(TextAnchorOffsetLayout.stride).toBe(12)
-    const arr = new StructArray(TextAnchorOffsetLayout)
+    const arr = createStructArray(TextAnchorOffsetLayout)
     arr.emplaceBack(5, 1.25, -3.75)
     const row = arr.get(0)
     expect(row.textAnchor).toBe(5)
@@ -139,7 +139,7 @@ describe('TextAnchorOffsetLayout', () => {
 describe('CollisionVertexLayout', () => {
   it('has stride 12 and round-trips correctly', () => {
     expect(CollisionVertexLayout.stride).toBe(12)
-    const arr = new StructArray(CollisionVertexLayout)
+    const arr = createStructArray(CollisionVertexLayout)
     arr.emplaceBack(1, 0, 3.5, -4.5)
     const row = arr.get(0)
     expect(row.placed).toBe(1)
@@ -152,7 +152,7 @@ describe('CollisionVertexLayout', () => {
 describe('OpacityLayout', () => {
   it('has stride 4 and round-trips correctly', () => {
     expect(OpacityLayout.stride).toBe(4)
-    const arr = new StructArray(OpacityLayout)
+    const arr = createStructArray(OpacityLayout)
     arr.emplaceBack(0xFFFFFFFF)
     expect(arr.get(0).targetOpacity).toBe(0xFFFFFFFF)
   })
