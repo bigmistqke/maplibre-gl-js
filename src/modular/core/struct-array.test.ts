@@ -152,4 +152,21 @@ describe('StructArray', () => {
     expect(arr.int16[8]).toBe(500)
     expect(arr.float32[5]).toBeCloseTo(77.0)
   })
+
+  it('generates get<field>(index) accessors', () => {
+    const layout = defineStruct({ offsetX: 'float32' })
+    const arr = new StructArray(layout)
+    arr.emplaceBack(42.5)
+    arr.emplaceBack(99.0)
+    expect(arr.getoffsetX(0)).toBeCloseTo(42.5)
+    expect(arr.getoffsetX(1)).toBeCloseTo(99.0)
+  })
+
+  it('generates set<field>(index, value) mutators', () => {
+    const layout = defineStruct({ offsetX: 'float32' })
+    const arr = new StructArray(layout)
+    arr.emplaceBack(0)
+    arr.setoffsetX(0, 42.5)
+    expect(arr.getoffsetX(0)).toBeCloseTo(42.5)
+  })
 })

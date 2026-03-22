@@ -49,6 +49,67 @@ export class StructArray<K extends string> {
     this._capacity = initialCapacity
     this._buf = new ArrayBuffer(schema.stride * initialCapacity)
     this._view = new DataView(this._buf)
+    this._defineAccessors()
+  }
+
+  private _defineAccessors(): void {
+    const { stride, fields } = this._schema
+    for (const [key, { offset, type }] of Object.entries(fields) as [K, { offset: number; type: FieldType }][]) {
+      switch (type) {
+        case 'int8':
+        case 'uint8': {
+          // 1-byte types — use DataView directly; stride in bytes
+          const byteOffset = offset
+          ;(this as any)[`get${key}`] = (index: number) => {
+            const bytePos = index * stride + byteOffset
+            return type === 'int8' ? this._view.getInt8(bytePos) : this._view.getUint8(bytePos)
+          }
+          ;(this as any)[`set${key}`] = (index: number, value: number) => {
+            const bytePos = index * stride + byteOffset
+            if (type === 'int8') this._view.setInt8(bytePos, value)
+            else this._view.setUint8(bytePos, value)
+          }
+          break
+        }
+        case 'int16': {
+          const elemsPerStruct = stride / 2
+          const elemOffset = offset / 2
+          ;(this as any)[`get${key}`] = (index: number) => this.int16[index * elemsPerStruct + elemOffset]
+          ;(this as any)[`set${key}`] = (index: number, value: number) => { this.int16[index * elemsPerStruct + elemOffset] = value }
+          break
+        }
+        case 'uint16': {
+          const elemsPerStruct = stride / 2
+          const elemOffset = offset / 2
+          ;(this as any)[`get${key}`] = (index: number) => this.uint16[index * elemsPerStruct + elemOffset]
+          ;(this as any)[`set${key}`] = (index: number, value: number) => { this.uint16[index * elemsPerStruct + elemOffset] = value }
+          break
+        }
+        case 'int32': {
+          ;(this as any)[`get${key}`] = (index: number) => {
+            return this._view.getInt32(index * stride + offset, true)
+          }
+          ;(this as any)[`set${key}`] = (index: number, value: number) => {
+            this._view.setInt32(index * stride + offset, value, true)
+          }
+          break
+        }
+        case 'uint32': {
+          const elemsPerStruct = stride / 4
+          const elemOffset = offset / 4
+          ;(this as any)[`get${key}`] = (index: number) => this.uint32[index * elemsPerStruct + elemOffset]
+          ;(this as any)[`set${key}`] = (index: number, value: number) => { this.uint32[index * elemsPerStruct + elemOffset] = value }
+          break
+        }
+        case 'float32': {
+          const elemsPerStruct = stride / 4
+          const elemOffset = offset / 4
+          ;(this as any)[`get${key}`] = (index: number) => this.float32[index * elemsPerStruct + elemOffset]
+          ;(this as any)[`set${key}`] = (index: number, value: number) => { this.float32[index * elemsPerStruct + elemOffset] = value }
+          break
+        }
+      }
+    }
   }
 
   get int16(): Int16Array {
