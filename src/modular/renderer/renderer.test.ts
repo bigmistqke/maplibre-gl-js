@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { Renderer } from './renderer.ts'
-import { BackgroundLayer } from '../layers/background.ts'
-import { RasterLayer } from '../layers/raster.ts'
-import type { TileService } from '../core/tile-service.ts'
-import type { LayerInstance } from '../core/renderer-api.ts'
+import { Renderer } from '@modular/renderer/renderer.ts'
+import { BackgroundLayer } from '@modular/layers/background.ts'
+import { RasterLayer } from '@modular/layers/raster.ts'
+import type { TileService } from '@modular/core/tile-service.ts'
+import type { LayerInstance } from '@modular/core/renderer-api.ts'
 
 function makeFakeTileService(): TileService {
   return {

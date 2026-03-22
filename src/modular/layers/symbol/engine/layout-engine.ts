@@ -1,9 +1,9 @@
-import { CollisionIndex } from '../vendor/collision_index.ts'
-import type { SingleCollisionBox } from '../vendor/collision_index.ts'
-import type { CollisionData } from '../base/types.ts'
-import type { LabelData } from './cross-tile-index.ts'
-import type { RenderContext } from '../../../core/render-extension.ts'
-import { TransformAdapter } from '../vendor/transform_adapter.ts'
+import { CollisionIndex } from '@modular/layers/symbol/vendor/collision_index.ts'
+import type { SingleCollisionBox } from '@modular/layers/symbol/vendor/collision_index.ts'
+import type { CollisionData } from '@modular/layers/symbol/base/types.ts'
+import type { LabelData } from '@modular/layers/symbol/engine/cross-tile-index.ts'
+import type { RenderContext } from '@modular/core/render-extension.ts'
+import { TransformAdapter } from '@modular/layers/symbol/vendor/transform_adapter.ts'
 import { mat4 } from 'gl-matrix'
 
 /** Minimal interface for what LayoutEngine needs from a layer */

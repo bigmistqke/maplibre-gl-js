@@ -1,6 +1,6 @@
 // src/modular/renderer/mercator.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { MercatorProjection, lngToTileX, latToTileY } from './mercator.ts'
+import { MercatorProjection, lngToTileX, latToTileY } from '@modular/renderer/mercator.ts'
 
 describe('lngToTileX', () => {
   it('longitude 0 at zoom 0 is 0.5 (half the world)', () => {

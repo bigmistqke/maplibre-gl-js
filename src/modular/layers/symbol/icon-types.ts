@@ -1,5 +1,5 @@
 // src/modular/layers/symbol/icon-types.ts
-import { defineStruct } from '../../core/struct-array'
+import { defineStruct } from '@modular/core/struct-array'
 
 export type SpriteEntry = {
   x: number

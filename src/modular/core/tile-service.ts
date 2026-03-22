@@ -1,5 +1,5 @@
 // src/modular/core/tile-service.ts
-import type { TileID } from './types.ts'
+import type { TileID } from '@modular/core/types.ts'
 
 export interface TileService {
   /** Fetch and decode a tile. Resolves with [ImageBitmap] on success, [] on cancel or error. */

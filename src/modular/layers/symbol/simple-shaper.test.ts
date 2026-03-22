@@ -1,7 +1,7 @@
 // src/modular/layers/symbol/simple-shaper.test.ts
 import { describe, it, expect } from 'vitest'
-import { getNeededGlyphs, shapeAndBuildQuads } from './simple-shaper.ts'
-import type { GlyphMap, GlyphPositions } from './types.ts'
+import { getNeededGlyphs, shapeAndBuildQuads } from '@modular/layers/symbol/simple-shaper.ts'
+import type { GlyphMap, GlyphPositions } from '@modular/layers/symbol/types.ts'
 
 describe('getNeededGlyphs', () => {
   it('returns codepoints for ASCII text', () => {

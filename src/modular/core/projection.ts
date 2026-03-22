@@ -1,4 +1,4 @@
-import type { CameraState, TileID, TileMesh } from './types.ts'
+import type { CameraState, TileID, TileMesh } from '@modular/core/types.ts'
 
 export interface Viewport {
   width: number

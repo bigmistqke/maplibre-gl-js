@@ -1,7 +1,7 @@
 // src/modular/layers/symbol/engine/layout-engine.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { LayoutEngine } from './layout-engine.ts'
-import type { CollisionData } from '../base/types.ts'
+import { LayoutEngine } from '@modular/layers/symbol/engine/layout-engine.ts'
+import type { CollisionData } from '@modular/layers/symbol/base/types.ts'
 
 function mockLayer(collisionData: CollisionData[]) {
   return {

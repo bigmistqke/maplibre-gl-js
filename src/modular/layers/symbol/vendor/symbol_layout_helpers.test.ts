@@ -6,8 +6,8 @@ import {
   buildGlyphQuads,
   getLineAnchors,
   getCenterLineAnchor,
-} from './symbol_layout_helpers.ts'
-import type { GlyphPositions, GlyphMap } from '../types.ts'
+} from '@modular/layers/symbol/vendor/symbol_layout_helpers.ts'
+import type { GlyphPositions, GlyphMap } from '@modular/layers/symbol/types.ts'
 import Point from '@mapbox/point-geometry'
 
 describe('getDefaultHorizontalShaping', () => {

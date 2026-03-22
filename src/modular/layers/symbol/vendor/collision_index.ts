@@ -3,14 +3,14 @@
 // Modifications: import paths, type narrowing, STUB terrain elevation
 
 import Point from '@mapbox/point-geometry';
-import {clipLine} from './clip_line.ts';
-import {PathInterpolator} from './path_interpolator.ts';
-import {GridIndex} from './grid_index.ts';
+import {clipLine} from '@modular/layers/symbol/vendor/clip_line.ts';
+import {PathInterpolator} from '@modular/layers/symbol/vendor/path_interpolator.ts';
+import {GridIndex} from '@modular/layers/symbol/vendor/grid_index.ts';
 import {mat4, vec4} from 'gl-matrix';
 
-import type {ISymbolTransform, UnwrappedTileIDLike, PointProjection} from './types.ts';
-import type {OverlapMode} from './overlap_mode.ts';
-import type {StructArray} from '../../../core/struct-array.ts';
+import type {ISymbolTransform, UnwrappedTileIDLike, PointProjection} from '@modular/layers/symbol/vendor/types.ts';
+import type {OverlapMode} from '@modular/layers/symbol/vendor/overlap_mode.ts';
+import type {StructArray} from '@modular/core/struct-array.ts';
 import {
     getTileSkewVectors,
     xyTransformMat4,
@@ -18,7 +18,7 @@ import {
     projectPathSpecialProjection,
     pathSlicedToLongestUnoccluded,
     type SymbolProjectionContext,
-} from './projection.ts';
+} from '@modular/layers/symbol/vendor/projection.ts';
 
 // ---------------------------------------------------------------------------
 // Inlined from maplibre-gl-js src/util/util.ts

@@ -1,7 +1,7 @@
 // src/modular/layers/symbol/workers/icon-worker-service.ts
 import * as Comlink from 'comlink'
 import type { Remote } from 'comlink'
-import type { IconTileData, SpriteData } from '../icon-types.ts'
+import type { IconTileData, SpriteData } from '@modular/layers/symbol/icon-types.ts'
 
 // Type-only import of the worker class — loaded via URL at runtime, not bundled inline
 type SymbolWorkerIconType = import('./symbol-worker-icon.ts').SymbolWorkerIcon

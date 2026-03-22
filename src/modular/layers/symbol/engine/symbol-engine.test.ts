@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { SymbolEngine } from './symbol-engine.ts'
+import { SymbolEngine } from '@modular/layers/symbol/engine/symbol-engine.ts'
 
 function mockRenderer() {
   return {

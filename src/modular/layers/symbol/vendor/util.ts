@@ -5,8 +5,8 @@
 //   src/source/pixels_to_tile_units.ts — pixelsToTileUnits
 
 import Point from '@mapbox/point-geometry';
-import type { StructArray } from '../../../core/struct-array.ts';
-import { TILE_EXTENT } from '../../../core/constants.ts';
+import type { StructArray } from '@modular/core/struct-array.ts';
+import { TILE_EXTENT } from '@modular/core/constants.ts';
 
 // ---------------------------------------------------------------------------
 // pixelsToTileUnits

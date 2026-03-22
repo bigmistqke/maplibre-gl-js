@@ -1,16 +1,16 @@
 // src/modular/layers/symbol/base/symbol-layer-base.ts
 
-import { createDebug } from '../../../debug.ts'
-import type { RendererAPI, LayerInstance } from '../../../core/renderer-api.ts'
-import type { DrawContext, RenderContext } from '../../../core/render-extension.ts'
-import type { CameraState } from '../../../core/types.ts'
-import type { PlaceableLayer } from '../engine/layout-engine.ts'
-import { SymbolEngine } from '../engine/symbol-engine.ts'
-import type { TileFetcher } from './tile-fetcher.ts'
-import type { CollisionData, GPUBucket } from './types.ts'
-import type { LabelData } from '../engine/cross-tile-index.ts'
-import { lngToTileX, latToTileY } from '../../../renderer/mercator.ts'
-import { TILE_SIZE } from '../../../core/constants.ts'
+import { createDebug } from '@modular/debug.ts'
+import type { RendererAPI, LayerInstance } from '@modular/core/renderer-api.ts'
+import type { DrawContext, RenderContext } from '@modular/core/render-extension.ts'
+import type { CameraState } from '@modular/core/types.ts'
+import type { PlaceableLayer } from '@modular/layers/symbol/engine/layout-engine.ts'
+import { SymbolEngine } from '@modular/layers/symbol/engine/symbol-engine.ts'
+import type { TileFetcher } from '@modular/layers/symbol/base/tile-fetcher.ts'
+import type { CollisionData, GPUBucket } from '@modular/layers/symbol/base/types.ts'
+import type { LabelData } from '@modular/layers/symbol/engine/cross-tile-index.ts'
+import { lngToTileX, latToTileY } from '@modular/renderer/mercator.ts'
+import { TILE_SIZE } from '@modular/core/constants.ts'
 
 const debug = createDebug?.('SymbolLayerBase', false)
 

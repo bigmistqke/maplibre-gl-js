@@ -1,4 +1,4 @@
-import type { FramebufferObject, RendererInternals } from '../../core/surface.ts'
+import type { FramebufferObject, RendererInternals } from '@modular/core/surface.ts'
 
 export const FBO_SIZE = 512
 

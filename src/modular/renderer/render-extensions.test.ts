@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { RenderExtensions } from './render-extensions.ts'
-import type { RenderContext } from '../core/render-extension.ts'
+import { RenderExtensions } from '@modular/renderer/render-extensions.ts'
+import type { RenderContext } from '@modular/core/render-extension.ts'
 
 const mockCtx = {} as RenderContext
 

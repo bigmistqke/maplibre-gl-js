@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/base/tile-fetcher.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { TileFetcher } from './tile-fetcher.ts'
+import { TileFetcher } from '@modular/layers/symbol/base/tile-fetcher.ts'
 
 describe('TileFetcher', () => {
   function createFetcher<T>(fetchFn: (key: string, data: ArrayBuffer) => Promise<T | null>) {

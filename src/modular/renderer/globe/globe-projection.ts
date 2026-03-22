@@ -1,11 +1,11 @@
 import Point from '@mapbox/point-geometry'
-import type { CameraState, TileID, TileMesh } from '../../core/types.ts'
-import type { Projection, Viewport } from '../../core/projection.ts'
-import { GLOBE_PRELUDE } from './globe-prelude.glsl.ts'
-import { SubdivisionGranularityExpression, SubdivisionGranularitySetting } from './subdivision_granularity_settings.ts'
-import { subdividePolygon } from './subdivision.ts'
-import { computeGlobeMatrix, computeGlobeClippingPlane, computeTileMercatorCoords } from './globe-transform.ts'
-import { MercatorProjection } from '../mercator.ts'
+import type { CameraState, TileID, TileMesh } from '@modular/core/types.ts'
+import type { Projection, Viewport } from '@modular/core/projection.ts'
+import { GLOBE_PRELUDE } from '@modular/renderer/globe/globe-prelude.glsl.ts'
+import { SubdivisionGranularityExpression, SubdivisionGranularitySetting } from '@modular/renderer/globe/subdivision_granularity_settings.ts'
+import { subdividePolygon } from '@modular/renderer/globe/subdivision.ts'
+import { computeGlobeMatrix, computeGlobeClippingPlane, computeTileMercatorCoords } from '@modular/renderer/globe/globe-transform.ts'
+import { MercatorProjection } from '@modular/renderer/mercator.ts'
 
 // Globe ↔ mercator crossfade: transition = 1 (pure globe) below start, 0 (pure mercator) above end.
 // Mirrors MapLibre's _globeness behaviour — at high zoom curvature is imperceptible, mercator is used.

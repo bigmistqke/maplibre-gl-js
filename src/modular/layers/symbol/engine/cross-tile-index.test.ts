@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { CrossTileIndex, type LabelData } from './cross-tile-index.ts'
-import type { TileID } from '../../../core/types.ts'
+import { CrossTileIndex, type LabelData } from '@modular/layers/symbol/engine/cross-tile-index.ts'
+import type { TileID } from '@modular/core/types.ts'
 
 function makeTileID(z: number, x: number, y: number): TileID {
   return { z, x, y, key: `${z}/${x}/${y}` }

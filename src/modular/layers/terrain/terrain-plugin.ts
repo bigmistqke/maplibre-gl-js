@@ -1,17 +1,17 @@
 // src/modular/layers/terrain/terrain-plugin.ts
-import type { LngLat, TileID } from '../../core/types.ts'
-import type { RendererInternals } from '../../core/surface.ts'
-import type { SourceDefinition } from '../../core/renderer-api.ts'
-import type { MapGL } from '../../core/map.ts'
-import type { WebGL2RendererAPI } from '../../core/renderer-api.ts'
-import type { Plugin } from '../../core/map.ts'
-import { RTTPool, FBO_SIZE } from './rtt-pool.ts'
-import { WorkerDEMTileService } from './worker-dem-tile-service.ts'
-import { buildTerrainMesh } from './terrain-mesh.ts'
-import { TERRAIN_VERT, TERRAIN_FRAG } from './terrain-shaders.ts'
+import type { LngLat, TileID } from '@modular/core/types.ts'
+import type { RendererInternals } from '@modular/core/surface.ts'
+import type { SourceDefinition } from '@modular/core/renderer-api.ts'
+import type { MapGL } from '@modular/core/map.ts'
+import type { WebGL2RendererAPI } from '@modular/core/renderer-api.ts'
+import type { Plugin } from '@modular/core/map.ts'
+import { RTTPool, FBO_SIZE } from '@modular/layers/terrain/rtt-pool.ts'
+import { WorkerDEMTileService } from '@modular/layers/terrain/worker-dem-tile-service.ts'
+import { buildTerrainMesh } from '@modular/layers/terrain/terrain-mesh.ts'
+import { TERRAIN_VERT, TERRAIN_FRAG } from '@modular/layers/terrain/terrain-shaders.ts'
 // ELEVATION_PRELUDE defines projectTileWithElevation used by TERRAIN_VERT
-import { ELEVATION_PRELUDE, flatRenderTiles } from '../../renderer/flat-render-tiles.ts'
-import { lngToTileX, latToTileY } from '../../renderer/mercator.ts'
+import { ELEVATION_PRELUDE, flatRenderTiles } from '@modular/renderer/flat-render-tiles.ts'
+import { lngToTileX, latToTileY } from '@modular/renderer/mercator.ts'
 
 // Mapbox terrain-RGB unpack factors — matches MapLibre DEMData.getUnpackVector()
 // Shader formula: (texture * 255) * unpack.xyz → rgb.r + rgb.g + rgb.b - unpack.a

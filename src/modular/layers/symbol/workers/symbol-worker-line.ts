@@ -7,28 +7,28 @@
 import * as Comlink from 'comlink'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
-import { createDebug } from '../../../debug.ts'
-import { clipLine } from '../vendor/clip_line.ts'
-import { mergeLines } from '../vendor/merge_lines.ts'
+import { createDebug } from '@modular/debug.ts'
+import { clipLine } from '@modular/layers/symbol/vendor/clip_line.ts'
+import { mergeLines } from '@modular/layers/symbol/vendor/merge_lines.ts'
 import {
   shapeTextForLayout,
   buildGlyphQuads,
   getLineAnchors,
-} from '../vendor/symbol_layout_helpers.ts'
-import { glyphRange } from '../glyph-loader.ts'
-import { StructArray, createStructArray } from '../../../core/struct-array.ts'
-import { GlyphVertexLayout } from '../types.ts'
+} from '@modular/layers/symbol/vendor/symbol_layout_helpers.ts'
+import { glyphRange } from '@modular/layers/symbol/glyph-loader.ts'
+import { StructArray, createStructArray } from '@modular/core/struct-array.ts'
+import { GlyphVertexLayout } from '@modular/layers/symbol/types.ts'
 import ONE_EM from '../../../../symbol/one_em.ts'
-import { TILE_SIZE } from '../../../core/constants.ts'
+import { TILE_SIZE } from '@modular/core/constants.ts'
 import {
   PlacedSymbolLayout,
   GlyphOffsetLayout,
   SymbolLineVertexLayout,
   SymbolInstanceLayout,
   CollisionBoxLayout,
-} from '../vendor/symbol_structs.ts'
+} from '@modular/layers/symbol/vendor/symbol_structs.ts'
 import { WritingMode } from '../../../../symbol/shaping.ts'
-import type { GlyphMap, GlyphPositions, SymbolTileData, LineLabelInfo } from '../types.ts'
+import type { GlyphMap, GlyphPositions, SymbolTileData, LineLabelInfo } from '@modular/layers/symbol/types.ts'
 
 const debug = createDebug('LineWorker', true)
 

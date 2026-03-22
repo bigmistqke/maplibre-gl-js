@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createRenderer } from './renderer/index.ts'
-import { MapGL } from './core/map.ts'
-import { BackgroundLayer } from './layers/background.ts'
+import { createRenderer } from '@modular/renderer/index.ts'
+import { MapGL } from '@modular/core/map.ts'
+import { BackgroundLayer } from '@modular/layers/background.ts'
 
 function makeCanvas() {
   const gl = {

@@ -1,8 +1,8 @@
 // src/modular/layers/vector-worker-service.ts
 import * as Comlink from 'comlink'
 import type { Remote } from 'comlink'
-import type { TileID } from '../core/types.ts'
-import type { TileService } from '../core/tile-service.ts'
+import type { TileID } from '@modular/core/types.ts'
+import type { TileService } from '@modular/core/tile-service.ts'
 
 // Type-only import of the worker class — loaded via URL at runtime, not bundled inline
 type VectorWorkerType = import('../workers/vector-worker.ts').VectorWorker

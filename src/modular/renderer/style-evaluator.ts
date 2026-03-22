@@ -1,5 +1,5 @@
-import type { ResolvedPaintProperties } from '../core/types.ts'
-import type { LayerInstance } from '../core/renderer-api.ts'
+import type { ResolvedPaintProperties } from '@modular/core/types.ts'
+import type { LayerInstance } from '@modular/core/renderer-api.ts'
 
 const NON_PAINT_FIELDS = new Set(['type', 'source', 'sourceLayer', 'id', 'onAdd'])
 

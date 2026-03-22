@@ -1,8 +1,8 @@
 // src/modular/layers/raster.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { RasterLayer, RasterTileService } from './raster.ts'
-import type { DrawContext } from '../core/render-extension.ts'
-import type { TileID } from '../core/types.ts'
+import { RasterLayer, RasterTileService } from '@modular/layers/raster.ts'
+import type { DrawContext } from '@modular/core/render-extension.ts'
+import type { TileID } from '@modular/core/types.ts'
 
 // — RasterTileService tests —
 

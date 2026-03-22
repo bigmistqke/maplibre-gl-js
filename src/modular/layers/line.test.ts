@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { LineLayer } from './line'
+import { LineLayer } from '@modular/layers/line'
 
 function makeGL() {
   return {

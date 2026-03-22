@@ -1,7 +1,7 @@
 // src/modular/layers/symbol/image-atlas.test.ts
 import { describe, it, expect } from 'vitest'
-import { buildAtlas } from './image-atlas'
-import type { SpriteData } from './icon-types'
+import { buildAtlas } from '@modular/layers/symbol/image-atlas'
+import type { SpriteData } from '@modular/layers/symbol/icon-types'
 
 function makeSpriteImage(w: number, h: number, fill: [number, number, number, number]): ImageData {
   const img = new ImageData(w, h)

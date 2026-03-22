@@ -2,7 +2,7 @@
 // Source: src/symbol/grid_index.ts
 // Modifications: import paths, type narrowing, STUB comments
 
-import type {OverlapMode} from './overlap_mode';
+import type {OverlapMode} from '@modular/layers/symbol/vendor/overlap_mode';
 
 type QueryArgs = {
     hitTest: boolean;

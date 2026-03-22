@@ -1,8 +1,8 @@
 // src/modular/renderer/mercator.ts
 import { mat4, type mat4 as Mat4Type } from 'gl-matrix'
-import type { CameraState, TileID, TileMesh } from '../core/types.ts'
-import type { Projection, Viewport } from '../core/projection.ts'
-import { TILE_SIZE, TILE_EXTENT } from '../core/constants.ts'
+import type { CameraState, TileID, TileMesh } from '@modular/core/types.ts'
+import type { Projection, Viewport } from '@modular/core/projection.ts'
+import { TILE_SIZE, TILE_EXTENT } from '@modular/core/constants.ts'
 
 export function lngToTileX(lng: number, zoom: number): number {
   return ((lng + 180) / 360) * Math.pow(2, zoom)

@@ -1,5 +1,5 @@
-import type { CameraState, TileID, ResolvedPaintProperties, TileMesh } from './types.ts'
-export type { TileMesh } from './types.ts'
+import type { CameraState, TileID, ResolvedPaintProperties, TileMesh } from '@modular/core/types.ts'
+export type { TileMesh } from '@modular/core/types.ts'
 
 export interface ProgramCache {
   get(name: string): WebGLProgram | undefined

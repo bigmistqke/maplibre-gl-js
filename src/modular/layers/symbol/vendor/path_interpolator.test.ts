@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PathInterpolator } from './path_interpolator.ts'
+import { PathInterpolator } from '@modular/layers/symbol/vendor/path_interpolator.ts'
 import Point from '@mapbox/point-geometry'
 
 describe('PathInterpolator', () => {

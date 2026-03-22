@@ -1,6 +1,6 @@
-import type { CameraState, AnimationOptions } from './types.ts'
-import type { RendererAPI, LayerInstance, CustomLayer, SourceDefinition } from './renderer-api.ts'
-import { CameraController } from './camera.ts'
+import type { CameraState, AnimationOptions } from '@modular/core/types.ts'
+import type { RendererAPI, LayerInstance, CustomLayer, SourceDefinition } from '@modular/core/renderer-api.ts'
+import { CameraController } from '@modular/core/camera.ts'
 
 /** Structural type — a plugin is compatible if its onAdd accepts R. */
 export type Plugin<R extends RendererAPI = RendererAPI> = {

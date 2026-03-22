@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/glyph-atlas.ts
 import potpack from 'potpack'
-import type { GlyphMap, GlyphPositions } from './types.ts'
+import type { GlyphMap, GlyphPositions } from '@modular/layers/symbol/types.ts'
 
 const PADDING = 1
 

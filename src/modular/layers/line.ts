@@ -1,7 +1,7 @@
 // src/modular/layers/line.ts
-import type { ProgramDefinition } from '../core/types.ts'
-import type { DrawContext } from '../core/render-extension.ts'
-import type { RendererAPI } from '../core/renderer-api.ts'
+import type { ProgramDefinition } from '@modular/core/types.ts'
+import type { DrawContext } from '@modular/core/render-extension.ts'
+import type { RendererAPI } from '@modular/core/renderer-api.ts'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
 

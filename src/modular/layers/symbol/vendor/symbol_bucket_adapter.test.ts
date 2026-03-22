@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { StructArray } from '../../../core/struct-array.ts'
-import { SymbolBucketAdapter } from './symbol_bucket_adapter.ts'
+import { StructArray } from '@modular/core/struct-array.ts'
+import { SymbolBucketAdapter } from '@modular/layers/symbol/vendor/symbol_bucket_adapter.ts'
 
 describe('SymbolBucketAdapter', () => {
   it('has all required StructArray fields', () => {

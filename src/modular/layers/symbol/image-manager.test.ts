@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { ImageManager } from './image-manager.ts'
+import { ImageManager } from '@modular/layers/symbol/image-manager.ts'
 
 const SPRITE_DATA = {
   'marker': { x: 0, y: 0, width: 4, height: 4, pixelRatio: 1 },

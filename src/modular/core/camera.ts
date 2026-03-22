@@ -1,6 +1,6 @@
-import type { LngLat, CameraState, AnimationOptions } from './types.ts'
-import type { ElevationProvider } from './elevation-provider.ts'
-import { NULL_ELEVATION } from './elevation-provider.ts'
+import type { LngLat, CameraState, AnimationOptions } from '@modular/core/types.ts'
+import type { ElevationProvider } from '@modular/core/elevation-provider.ts'
+import { NULL_ELEVATION } from '@modular/core/elevation-provider.ts'
 
 export interface CameraOptions {
   minZoom?: number

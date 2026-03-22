@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { TransformAdapter } from './transform_adapter.ts'
+import { TransformAdapter } from '@modular/layers/symbol/vendor/transform_adapter.ts'
 
 const camera = { center: { lng: 4.89, lat: 52.37 }, zoom: 14, bearing: 0, pitch: 0, groundElevation: 0 }
 const viewport = { width: 512, height: 512 }

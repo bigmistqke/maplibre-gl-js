@@ -1,4 +1,4 @@
-import type { RenderExtension, RenderContext } from '../core/render-extension.ts'
+import type { RenderExtension, RenderContext } from '@modular/core/render-extension.ts'
 
 export class RenderExtensions {
   private _extensions: RenderExtension[] = []

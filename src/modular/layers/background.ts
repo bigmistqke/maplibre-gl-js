@@ -1,4 +1,4 @@
-import type { ProgramDefinition, ResolvedPaintProperties } from '../core/types.ts'
+import type { ProgramDefinition, ResolvedPaintProperties } from '@modular/core/types.ts'
 
 export interface BackgroundLayerOptions {
   color?: string

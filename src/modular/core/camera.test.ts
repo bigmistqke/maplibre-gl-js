@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { CameraController } from './camera.ts'
+import { CameraController } from '@modular/core/camera.ts'
 
 describe('CameraController', () => {
   it('has sensible defaults', () => {

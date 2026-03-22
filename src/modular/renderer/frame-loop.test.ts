@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { FrameLoop } from './frame-loop.ts'
+import { FrameLoop } from '@modular/renderer/frame-loop.ts'
 
 describe('FrameLoop', () => {
   beforeEach(() => {

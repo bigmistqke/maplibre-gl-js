@@ -2,10 +2,10 @@
 import * as Comlink from 'comlink'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
-import { shapeAndBuildQuads, getNeededGlyphs } from '../simple-shaper.ts'
-import { glyphRange } from '../glyph-loader.ts'
-import type { GlyphMap, SymbolTileData, GlyphPositions } from '../types.ts'
-import { createDebug } from '../../../debug.ts'
+import { shapeAndBuildQuads, getNeededGlyphs } from '@modular/layers/symbol/simple-shaper.ts'
+import { glyphRange } from '@modular/layers/symbol/glyph-loader.ts'
+import type { GlyphMap, SymbolTileData, GlyphPositions } from '@modular/layers/symbol/types.ts'
+import { createDebug } from '@modular/debug.ts'
 
 const debug = createDebug('SymbolWorker', false)
 

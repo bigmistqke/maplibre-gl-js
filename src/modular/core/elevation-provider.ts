@@ -1,4 +1,4 @@
-import type { LngLat } from './types.ts'
+import type { LngLat } from '@modular/core/types.ts'
 
 export interface ElevationProvider {
   getElevation(lngLat: LngLat): number

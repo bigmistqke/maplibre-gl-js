@@ -1,14 +1,14 @@
 // src/modular/layers/symbol/icon-layer.ts
-import type { ProgramDefinition } from '../../core/types.ts'
-import type { DrawContext, RenderContext } from '../../core/render-extension.ts'
-import type { RendererAPI } from '../../core/renderer-api.ts'
-import type { ImageManager } from './image-manager.ts'
-import type { IconTileData } from './icon-types.ts'
-import { IconWorkerService } from './workers/icon-worker-service.ts'
-import { createDebug } from '../../debug.ts'
-import { SymbolLayerBase } from './base/symbol-layer-base.ts'
-import { TileFetcher } from './base/tile-fetcher.ts'
-import type { CollisionData, GPUBucket } from './base/types.ts'
+import type { ProgramDefinition } from '@modular/core/types.ts'
+import type { DrawContext, RenderContext } from '@modular/core/render-extension.ts'
+import type { RendererAPI } from '@modular/core/renderer-api.ts'
+import type { ImageManager } from '@modular/layers/symbol/image-manager.ts'
+import type { IconTileData } from '@modular/layers/symbol/icon-types.ts'
+import { IconWorkerService } from '@modular/layers/symbol/workers/icon-worker-service.ts'
+import { createDebug } from '@modular/debug.ts'
+import { SymbolLayerBase } from '@modular/layers/symbol/base/symbol-layer-base.ts'
+import { TileFetcher } from '@modular/layers/symbol/base/tile-fetcher.ts'
+import type { CollisionData, GPUBucket } from '@modular/layers/symbol/base/types.ts'
 
 const debug = createDebug?.('IconLayer', false)
 

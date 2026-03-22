@@ -1,8 +1,8 @@
 // src/modular/core/surface.ts
-import type { CameraState, TileID, TileMesh, ResolvedPaintProperties } from './types.ts'
-import type { Projection, Viewport } from './projection.ts'
-import type { ProgramCache } from './render-extension.ts'
-import type { LayerInstance, CustomLayer } from './renderer-api.ts'
+import type { CameraState, TileID, TileMesh, ResolvedPaintProperties } from '@modular/core/types.ts'
+import type { Projection, Viewport } from '@modular/core/projection.ts'
+import type { ProgramCache } from '@modular/core/render-extension.ts'
+import type { LayerInstance, CustomLayer } from '@modular/core/renderer-api.ts'
 
 export interface FramebufferObject {
   framebuffer: WebGLFramebuffer

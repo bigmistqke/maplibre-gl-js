@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/glyph-manager.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { GlyphManager } from './glyph-manager.ts'
+import { GlyphManager } from '@modular/layers/symbol/glyph-manager.ts'
 
 // We mock the glyph-loader module so we can control what ranges return
 vi.mock('./glyph-loader.ts', () => ({
@@ -8,7 +8,7 @@ vi.mock('./glyph-loader.ts', () => ({
   loadGlyphRange: vi.fn().mockResolvedValue({}),
 }))
 
-import { loadGlyphRange } from './glyph-loader.ts'
+import { loadGlyphRange } from '@modular/layers/symbol/glyph-loader.ts'
 
 describe('GlyphManager', () => {
   beforeEach(() => {

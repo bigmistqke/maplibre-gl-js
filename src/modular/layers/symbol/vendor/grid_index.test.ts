@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { GridIndex } from './grid_index.ts'
+import { GridIndex } from '@modular/layers/symbol/vendor/grid_index.ts'
 
 describe('GridIndex', () => {
   it('inserts a box and finds it with hitTest', () => {

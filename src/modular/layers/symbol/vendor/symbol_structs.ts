@@ -1,4 +1,4 @@
-import { defineStruct } from '../../../core/struct-array.ts'
+import { defineStruct } from '@modular/core/struct-array.ts'
 
 export const SymbolLineVertexLayout = defineStruct({
   x: 'int16',

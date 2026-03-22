@@ -1,5 +1,5 @@
-import type { ProgramDefinition, TileMesh } from '../core/types.ts'
-import type { ProgramCache } from '../core/render-extension.ts'
+import type { ProgramDefinition, TileMesh } from '@modular/core/types.ts'
+import type { ProgramCache } from '@modular/core/render-extension.ts'
 
 export class WebGLContext {
   readonly gl: WebGLRenderingContext

@@ -14,10 +14,10 @@ import {
     placeFirstAndLastGlyph,
     type SymbolProjectionContext,
     type PointProjection,
-} from './projection.ts';
-import {StructArray} from '../../../core/struct-array.ts';
-import {SymbolLineVertexLayout, GlyphOffsetLayout, DynamicLayoutLayout} from './symbol_structs.ts';
-import {TransformAdapter} from './transform_adapter.ts';
+} from '@modular/layers/symbol/vendor/projection.ts';
+import {StructArray} from '@modular/core/struct-array.ts';
+import {SymbolLineVertexLayout, GlyphOffsetLayout, DynamicLayoutLayout} from '@modular/layers/symbol/vendor/symbol_structs.ts';
+import {TransformAdapter} from '@modular/layers/symbol/vendor/transform_adapter.ts';
 
 /**
  * Helper: create a minimal SymbolProjectionContext for testing.

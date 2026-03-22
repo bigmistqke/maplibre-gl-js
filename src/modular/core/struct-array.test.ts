@@ -1,6 +1,6 @@
 // src/modular/core/struct-array.test.ts
 import { describe, it, expect } from 'vitest'
-import { defineStruct, StructArray, createStructArray } from './struct-array.ts'
+import { defineStruct, StructArray, createStructArray } from '@modular/core/struct-array.ts'
 
 describe('defineStruct', () => {
   it('computes stride as sum of field byte sizes', () => {

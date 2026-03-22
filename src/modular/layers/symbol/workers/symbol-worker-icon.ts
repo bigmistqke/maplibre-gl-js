@@ -2,10 +2,10 @@
 import * as Comlink from 'comlink'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
-import { StructArray } from '../../../core/struct-array'
-import { IconVertexLayout } from '../icon-types'
-import type { SpriteData, SpriteEntry, IconTileData } from '../icon-types'
-import { createDebug } from '../../../debug'
+import { StructArray } from '@modular/core/struct-array'
+import { IconVertexLayout } from '@modular/layers/symbol/icon-types'
+import type { SpriteData, SpriteEntry, IconTileData } from '@modular/layers/symbol/icon-types'
+import { createDebug } from '@modular/debug'
 
 const debug = createDebug('IconWorker', false)
 

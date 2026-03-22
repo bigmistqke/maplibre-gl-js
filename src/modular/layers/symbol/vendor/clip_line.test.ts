@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clipLine } from './clip_line.ts'
+import { clipLine } from '@modular/layers/symbol/vendor/clip_line.ts'
 import Point from '@mapbox/point-geometry'
 
 describe('clipLine', () => {

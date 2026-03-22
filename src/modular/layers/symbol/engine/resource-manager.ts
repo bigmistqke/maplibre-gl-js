@@ -1,5 +1,5 @@
-import { GlyphManager } from '../glyph-manager.ts'
-import { ImageManager } from '../image-manager.ts'
+import { GlyphManager } from '@modular/layers/symbol/glyph-manager.ts'
+import { ImageManager } from '@modular/layers/symbol/image-manager.ts'
 
 export class ResourceManager {
   private _glyphManagers = new Map<string, GlyphManager>()

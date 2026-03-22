@@ -1,9 +1,9 @@
 // src/modular/renderer/tile-manager.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { TileManager } from './tile-manager.ts'
-import type { Projection, Viewport } from '../core/projection.ts'
-import type { CameraState, TileID } from '../core/types.ts'
-import type { TileService } from '../core/tile-service.ts'
+import { TileManager } from '@modular/renderer/tile-manager.ts'
+import type { Projection, Viewport } from '@modular/core/projection.ts'
+import type { CameraState, TileID } from '@modular/core/types.ts'
+import type { TileService } from '@modular/core/tile-service.ts'
 
 const FAKE_TILE: TileID = { z: 10, x: 528, y: 341, key: '10/528/341' }
 const FAKE_TILE_2: TileID = { z: 10, x: 529, y: 341, key: '10/529/341' }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { GlobeProjection } from './globe-projection.ts'
+import { GlobeProjection } from '@modular/renderer/globe/globe-projection.ts'
 
 const camera = { center: { lng: 4.9, lat: 52.37 }, zoom: 3, bearing: 0, pitch: 0, groundElevation: 0 }
 const viewport = { width: 512, height: 512 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mergeLines } from './merge_lines.ts'
+import { mergeLines } from '@modular/layers/symbol/vendor/merge_lines.ts'
 import Point from '@mapbox/point-geometry'
 
 // Minimal SymbolFeature shape — only geometry and text are needed for mergeLines

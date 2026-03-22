@@ -1,8 +1,8 @@
 // src/modular/layers/symbol/glyph-manager.ts
-import { loadGlyphRange, glyphRange } from './glyph-loader.ts'
-import { GlyphAtlas } from './glyph-atlas.ts'
-import type { GlyphMap, GlyphPositions, StyleGlyph } from './types.ts'
-import { createDebug } from '../../debug.ts'
+import { loadGlyphRange, glyphRange } from '@modular/layers/symbol/glyph-loader.ts'
+import { GlyphAtlas } from '@modular/layers/symbol/glyph-atlas.ts'
+import type { GlyphMap, GlyphPositions, StyleGlyph } from '@modular/layers/symbol/types.ts'
+import { createDebug } from '@modular/debug.ts'
 
 const debug = createDebug('GlyphManager', false)
 

@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/icon-types.test.ts
 import { describe, it, expect } from 'vitest'
-import { IconVertexLayout } from './icon-types'
+import { IconVertexLayout } from '@modular/layers/symbol/icon-types'
 
 describe('IconVertexLayout', () => {
   it('has stride of 12 bytes (6 int16/uint16 fields × 2 bytes each)', () => {

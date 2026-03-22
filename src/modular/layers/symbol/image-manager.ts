@@ -1,7 +1,7 @@
-import { loadSprite } from './sprite-loader.ts'
-import { buildAtlas } from './image-atlas.ts'
-import type { SpriteData } from './icon-types.ts'
-import type { AtlasEntry, AtlasResult } from './image-atlas.ts'
+import { loadSprite } from '@modular/layers/symbol/sprite-loader.ts'
+import { buildAtlas } from '@modular/layers/symbol/image-atlas.ts'
+import type { SpriteData } from '@modular/layers/symbol/icon-types.ts'
+import type { AtlasEntry, AtlasResult } from '@modular/layers/symbol/image-atlas.ts'
 
 export type ImageManagerOptions = {
   url: string

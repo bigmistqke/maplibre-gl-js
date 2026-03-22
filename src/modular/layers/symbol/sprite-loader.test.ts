@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { loadSprite } from './sprite-loader.ts'
+import { loadSprite } from '@modular/layers/symbol/sprite-loader.ts'
 
 const SPRITE_DATA = {
   'marker': { x: 0, y: 0, width: 16, height: 16, pixelRatio: 1 },

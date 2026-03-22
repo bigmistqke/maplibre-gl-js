@@ -1,7 +1,7 @@
 // src/modular/layers/raster.ts
-import type { TileID, ProgramDefinition } from '../core/types.ts'
-import type { TileService } from '../core/tile-service.ts'
-import type { DrawContext } from '../core/render-extension.ts'
+import type { TileID, ProgramDefinition } from '@modular/core/types.ts'
+import type { TileService } from '@modular/core/tile-service.ts'
+import type { DrawContext } from '@modular/core/render-extension.ts'
 
 // ──────────────────────────────────────────────
 // GLSL shaders

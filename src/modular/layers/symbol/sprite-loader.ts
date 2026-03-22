@@ -1,4 +1,4 @@
-import type { SpriteData } from './icon-types.ts'
+import type { SpriteData } from '@modular/layers/symbol/icon-types.ts'
 
 export type SpriteResult = {
   data: SpriteData

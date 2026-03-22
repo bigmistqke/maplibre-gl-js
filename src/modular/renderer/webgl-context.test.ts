@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { WebGLContext } from './webgl-context.ts'
-import type { ProgramDefinition } from '../core/types.ts'
+import { WebGLContext } from '@modular/renderer/webgl-context.ts'
+import type { ProgramDefinition } from '@modular/core/types.ts'
 
 function makeGLMock() {
   const programs = new Map<WebGLProgram, boolean>()

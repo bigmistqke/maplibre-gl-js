@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { VectorTileService, FillLayer, tessellatePolygon } from './fill'
-import type { TileID } from '../core/types'
-import type { DrawContext } from '../core/render-extension'
+import { VectorTileService, FillLayer, tessellatePolygon } from '@modular/layers/fill'
+import type { TileID } from '@modular/core/types'
+import type { DrawContext } from '@modular/core/render-extension'
 
 const FAKE_TILE: TileID = { z: 10, x: 1, y: 2, key: '10/1/2' }
 const FAKE_URL = 'https://tiles.example.com/10/1/2.pbf'

@@ -1,6 +1,6 @@
 // src/modular/workers/raster-worker.ts
 import * as Comlink from 'comlink'
-import { createDebug } from '../core/debug.ts'
+import { createDebug } from '@modular/core/debug.ts'
 
 const debug = createDebug('RasterWorker', false)
 

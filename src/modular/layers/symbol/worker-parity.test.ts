@@ -16,10 +16,10 @@ import { shapeText, WritingMode } from '../../../symbol/shaping.ts'
 import { Formatted, FormattedSection } from '@maplibre/maplibre-gl-style-spec'
 import ONE_EM from '../../../symbol/one_em.ts'
 
-import { clipLine as modularClipLine } from './vendor/clip_line.ts'
-import { getLineAnchors, shapeTextForLayout } from './vendor/symbol_layout_helpers.ts'
-import { mergeLines } from './vendor/merge_lines.ts'
-import type { GlyphMap, GlyphPositions, StyleGlyph } from './types.ts'
+import { clipLine as modularClipLine } from '@modular/layers/symbol/vendor/clip_line.ts'
+import { getLineAnchors, shapeTextForLayout } from '@modular/layers/symbol/vendor/symbol_layout_helpers.ts'
+import { mergeLines } from '@modular/layers/symbol/vendor/merge_lines.ts'
+import type { GlyphMap, GlyphPositions, StyleGlyph } from '@modular/layers/symbol/types.ts'
 
 const TILE_EXTENT = 4096
 const FONT_SIZE = 12

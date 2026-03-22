@@ -4,8 +4,8 @@
 // TileManager stores it zero-copy and the terrain plugin can read it.
 import * as Comlink from 'comlink'
 import type { Remote } from 'comlink'
-import type { TileID } from '../../core/types.ts'
-import type { TileService } from '../../core/tile-service.ts'
+import type { TileID } from '@modular/core/types.ts'
+import type { TileService } from '@modular/core/tile-service.ts'
 
 type DEMWorkerType = import('../../workers/dem-worker.ts').DEMWorker
 

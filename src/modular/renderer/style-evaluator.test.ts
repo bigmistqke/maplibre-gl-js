@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { StyleEvaluator } from './style-evaluator.ts'
+import { StyleEvaluator } from '@modular/renderer/style-evaluator.ts'
 
 describe('StyleEvaluator', () => {
   it('returns layer paint properties as-is when literal', () => {

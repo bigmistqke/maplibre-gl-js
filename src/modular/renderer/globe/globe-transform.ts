@@ -1,9 +1,9 @@
 // Adapted from MapLibre's src/geo/projection/vertical_perspective_transform.ts
 // Uses MapLibre's orbital-camera matrix construction so bearing and pitch work correctly.
 import { mat4, vec3 } from 'gl-matrix'
-import type { CameraState } from '../../core/types.ts'
-import type { Viewport } from '../../core/projection.ts'
-import { getGlobeRadiusPixels } from './globe-utils.ts'
+import type { CameraState } from '@modular/core/types.ts'
+import type { Viewport } from '@modular/core/projection.ts'
+import { getGlobeRadiusPixels } from '@modular/renderer/globe/globe-utils.ts'
 
 const DEG_TO_RAD = Math.PI / 180
 

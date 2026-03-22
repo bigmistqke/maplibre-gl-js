@@ -1,8 +1,8 @@
-import type { CameraState, ScreenPoint, Feature, ResolvedPaintProperties, ProgramDefinition } from './types.ts'
-import type { RenderExtension } from './render-extension.ts'
-import type { DrawContext } from './render-extension.ts'
-import type { Viewport } from './projection.ts'
-import type { Surface } from './surface.ts'
+import type { CameraState, ScreenPoint, Feature, ResolvedPaintProperties, ProgramDefinition } from '@modular/core/types.ts'
+import type { RenderExtension } from '@modular/core/render-extension.ts'
+import type { DrawContext } from '@modular/core/render-extension.ts'
+import type { Viewport } from '@modular/core/projection.ts'
+import type { Surface } from '@modular/core/surface.ts'
 
 export interface CustomLayerRenderArgs {
   gl: WebGLRenderingContext

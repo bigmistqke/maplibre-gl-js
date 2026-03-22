@@ -5,11 +5,11 @@
 import Point from '@mapbox/point-geometry';
 
 import {mat2, mat4, vec2, vec4} from 'gl-matrix';
-import * as symbolSize from './symbol_size.ts';
-import {addDynamicAttributes, findLineIntersection} from './util.ts';
+import * as symbolSize from '@modular/layers/symbol/vendor/symbol_size.ts';
+import {addDynamicAttributes, findLineIntersection} from '@modular/layers/symbol/vendor/util.ts';
 
-import type {ISymbolTransform, PointProjection, UnwrappedTileIDLike} from './types.ts';
-import type {StructArray} from '../../../core/struct-array.ts';
+import type {ISymbolTransform, PointProjection, UnwrappedTileIDLike} from '@modular/layers/symbol/vendor/types.ts';
+import type {StructArray} from '@modular/core/struct-array.ts';
 import {WritingMode} from '../../../../symbol/shaping.ts';
 
 /**

@@ -1,4 +1,4 @@
-import type { TileID } from '../../../core/types.ts'
+import type { TileID } from '@modular/core/types.ts'
 
 /**
  * CrossTileIndex — assigns persistent IDs to labels across tiles and zoom levels.

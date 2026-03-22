@@ -1,7 +1,7 @@
 // src/modular/layers/symbol/glyph-atlas.test.ts
 import { describe, it, expect } from 'vitest'
-import { GlyphAtlas } from './glyph-atlas.ts'
-import type { GlyphMap } from './types.ts'
+import { GlyphAtlas } from '@modular/layers/symbol/glyph-atlas.ts'
+import type { GlyphMap } from '@modular/layers/symbol/types.ts'
 
 function makeGlyph(id: number, w: number, h: number): import('./types.ts').StyleGlyph {
   // Fill with a solid value (e.g. 200) for easy testing

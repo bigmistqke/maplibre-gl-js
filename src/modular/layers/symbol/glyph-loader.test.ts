@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { loadGlyphRange, glyphRange } from './glyph-loader.ts'
+import { loadGlyphRange, glyphRange } from '@modular/layers/symbol/glyph-loader.ts'
 
 // Build a minimal glyph PBF for a single codepoint (id=65 = 'A')
 // We use a hand-crafted protobuf. Since constructing real PBFs is complex in

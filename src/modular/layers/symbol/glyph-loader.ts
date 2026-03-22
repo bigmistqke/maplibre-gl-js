@@ -1,5 +1,5 @@
 import Pbf from 'pbf'
-import type { StyleGlyph, GlyphMap } from './types.ts'
+import type { StyleGlyph, GlyphMap } from '@modular/layers/symbol/types.ts'
 
 // ---- Inline minimal PBF parser (avoids importing AlphaImage from src/util/image.ts) ----
 // Mirrors src/style/parse_glyph_pbf.ts but produces our local StyleGlyph type.

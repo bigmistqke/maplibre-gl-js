@@ -1,9 +1,9 @@
-import type { ISymbolTransform, PointProjection, UnwrappedTileIDLike } from './types.ts'
-import type { CameraState } from '../../../core/types.ts'
-import type { Viewport } from '../../../core/projection.ts'
+import type { ISymbolTransform, PointProjection, UnwrappedTileIDLike } from '@modular/layers/symbol/vendor/types.ts'
+import type { CameraState } from '@modular/core/types.ts'
+import type { Viewport } from '@modular/core/projection.ts'
 import { mat4, type mat4 as Mat4Type } from 'gl-matrix'
-import { lngToTileX, latToTileY } from '../../../renderer/mercator.ts'
-import { TILE_SIZE, TILE_EXTENT } from '../../../core/constants.ts'
+import { lngToTileX, latToTileY } from '@modular/renderer/mercator.ts'
+import { TILE_SIZE, TILE_EXTENT } from '@modular/core/constants.ts'
 import Point from '@mapbox/point-geometry'
 
 const FOV = 0.6435011087932844

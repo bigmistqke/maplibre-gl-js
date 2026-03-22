@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { GlyphVertexLayout } from './types.ts'
+import { GlyphVertexLayout } from '@modular/layers/symbol/types.ts'
 
 describe('GlyphVertexLayout', () => {
   it('has stride of 12 bytes (6 fields × 2 bytes each)', () => {

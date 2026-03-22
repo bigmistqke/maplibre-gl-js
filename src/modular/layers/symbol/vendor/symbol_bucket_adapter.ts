@@ -1,5 +1,5 @@
-import { createStructArray } from '../../../core/struct-array.ts'
-import { TILE_EXTENT, TILE_SIZE } from '../../../core/constants.ts'
+import { createStructArray } from '@modular/core/struct-array.ts'
+import { TILE_EXTENT, TILE_SIZE } from '@modular/core/constants.ts'
 import {
   SymbolLineVertexLayout,
   GlyphOffsetLayout,
@@ -9,7 +9,7 @@ import {
   CollisionBoxLayout,
   CollisionVertexLayout,
   OpacityLayout,
-} from './symbol_structs.ts'
+} from '@modular/layers/symbol/vendor/symbol_structs.ts'
 
 class SymbolBuffers {
   placedSymbolArray = createStructArray(PlacedSymbolLayout)

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { createStructArray } from '../../../core/struct-array.ts'
+import { createStructArray } from '@modular/core/struct-array.ts'
 import {
   SymbolLineVertexLayout, GlyphOffsetLayout, DynamicLayoutLayout,
   CollisionBoxLayout, SymbolInstanceLayout, PlacedSymbolLayout,
   TextAnchorOffsetLayout, CollisionVertexLayout, OpacityLayout,
-} from './symbol_structs.ts'
+} from '@modular/layers/symbol/vendor/symbol_structs.ts'
 
 describe('SymbolLineVertexLayout', () => {
   it('has stride 6 and correct fields', () => {

@@ -4,19 +4,19 @@
 //   getAnchorJustification inlined, ITransform → ISymbolTransform,
 //   transform.clone() removed (store reference directly).
 
-import {CollisionIndex, viewportPadding} from './collision_index.ts';
-import {TILE_EXTENT} from '../../../core/constants.ts';
-import * as symbolSize from './symbol_size.ts';
-import * as projection from './projection.ts';
+import {CollisionIndex, viewportPadding} from '@modular/layers/symbol/vendor/collision_index.ts';
+import {TILE_EXTENT} from '@modular/core/constants.ts';
+import * as symbolSize from '@modular/layers/symbol/vendor/symbol_size.ts';
+import * as projection from '@modular/layers/symbol/vendor/projection.ts';
 import {getAnchorAlignment, WritingMode} from '../../../../symbol/shaping.ts';
-import {pixelsToTileUnits, translatePosition, warnOnce} from './util.ts';
+import {pixelsToTileUnits, translatePosition, warnOnce} from '@modular/layers/symbol/vendor/util.ts';
 import Point from '@mapbox/point-geometry';
-import {getOverlapMode, type OverlapMode} from './overlap_mode.ts';
-import {TextAnchorEnum} from './variable_text_anchor.ts';
+import {getOverlapMode, type OverlapMode} from '@modular/layers/symbol/vendor/overlap_mode.ts';
+import {TextAnchorEnum} from '@modular/layers/symbol/vendor/variable_text_anchor.ts';
 
-import type {FeatureKey, PlacedBox, PlacedCircles} from './collision_index.ts';
+import type {FeatureKey, PlacedBox, PlacedCircles} from '@modular/layers/symbol/vendor/collision_index.ts';
 import type {mat4} from 'gl-matrix';
-import type {ISymbolTransform} from './types.ts';
+import type {ISymbolTransform} from '@modular/layers/symbol/vendor/types.ts';
 
 // ---------------------------------------------------------------------------
 // Types — narrow interfaces replacing full MapLibre types

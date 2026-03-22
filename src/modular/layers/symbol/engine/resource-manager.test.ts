@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/engine/resource-manager.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { ResourceManager } from './resource-manager.ts'
+import { ResourceManager } from '@modular/layers/symbol/engine/resource-manager.ts'
 
 vi.mock('../glyph-manager.ts', () => ({
   GlyphManager: vi.fn().mockImplementation(function (this: any, opts: { url: string }) {

@@ -1,7 +1,7 @@
 // src/modular/renderer/tile-manager.ts
-import type { CameraState, TileID } from '../core/types.ts'
-import type { TileService } from '../core/tile-service.ts'
-import type { Projection, Viewport } from '../core/projection.ts'
+import type { CameraState, TileID } from '@modular/core/types.ts'
+import type { TileService } from '@modular/core/tile-service.ts'
+import type { Projection, Viewport } from '@modular/core/projection.ts'
 
 // Ported from MapLibre SourceCache: how many zoom levels to search for fallback tiles.
 // maxOverzooming: how many levels *above* ideal zoom (lower z, coarser) to look for parent tiles.

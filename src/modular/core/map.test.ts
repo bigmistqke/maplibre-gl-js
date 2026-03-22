@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { MapGL } from './map.ts'
-import type { RendererAPI, LayerInstance } from './renderer-api.ts'
+import { MapGL } from '@modular/core/map.ts'
+import type { RendererAPI, LayerInstance } from '@modular/core/renderer-api.ts'
 
 function makeRenderer(): RendererAPI {
   return {

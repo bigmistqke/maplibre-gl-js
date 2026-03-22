@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SymbolLayerBase, type SymbolLayerOptions } from './symbol-layer-base.ts'
-import { TileFetcher } from './tile-fetcher.ts'
-import type { CollisionData, GPUBucket } from './types.ts'
-import type { DrawContext, RenderContext } from '../../../core/render-extension.ts'
-import type { RendererAPI } from '../../../core/renderer-api.ts'
+import { SymbolLayerBase, type SymbolLayerOptions } from '@modular/layers/symbol/base/symbol-layer-base.ts'
+import { TileFetcher } from '@modular/layers/symbol/base/tile-fetcher.ts'
+import type { CollisionData, GPUBucket } from '@modular/layers/symbol/base/types.ts'
+import type { DrawContext, RenderContext } from '@modular/core/render-extension.ts'
+import type { RendererAPI } from '@modular/core/renderer-api.ts'
 
 // ── Concrete test subclass ───────────────────────────────────────────
 

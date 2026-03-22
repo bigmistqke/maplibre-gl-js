@@ -1,7 +1,7 @@
 // src/modular/layers/symbol/workers/line-text-worker-service.ts
 import * as Comlink from 'comlink'
 import type { Remote } from 'comlink'
-import type { GlyphMap, GlyphPositions, SymbolTileData } from '../types.ts'
+import type { GlyphMap, GlyphPositions, SymbolTileData } from '@modular/layers/symbol/types.ts'
 
 type SymbolWorkerLineType = import('./symbol-worker-line.ts').SymbolWorkerLine
 

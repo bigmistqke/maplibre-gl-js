@@ -5,8 +5,8 @@
 // No MSW needed — same-origin requests work without any interception layer.
 
 import { describe, it, expect } from 'vitest'
-import { WorkerRasterTileService } from '../layers/raster-worker-service.ts'
-import type { TileID } from '../core/types.ts'
+import { WorkerRasterTileService } from '@modular/layers/raster-worker-service.ts'
+import type { TileID } from '@modular/core/types.ts'
 
 const FAKE_TILE: TileID = { z: 10, x: 1, y: 2, key: '10/1/2' }
 const TILE_BASE = `${location.origin}/__test-tiles__`

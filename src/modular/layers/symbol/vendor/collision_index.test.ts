@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { CollisionIndex } from './collision_index.ts'
-import type { ISymbolTransform } from './types.ts'
+import { CollisionIndex } from '@modular/layers/symbol/vendor/collision_index.ts'
+import type { ISymbolTransform } from '@modular/layers/symbol/vendor/types.ts'
 import type { mat4 } from 'gl-matrix'
 
 // Minimal ISymbolTransform satisfying the interface

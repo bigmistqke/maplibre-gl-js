@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractCodepoints } from './ensure-glyphs.ts'
+import { extractCodepoints } from '@modular/layers/symbol/ensure-glyphs.ts'
 
 describe('extractCodepoints', () => {
   it('extracts unique codepoints from text strings', () => {

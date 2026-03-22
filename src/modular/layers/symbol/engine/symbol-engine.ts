@@ -1,8 +1,8 @@
-import type { RendererAPI } from '../../../core/renderer-api.ts'
-import type { RenderExtension, RenderContext } from '../../../core/render-extension.ts'
-import { LayoutEngine, type PlaceableLayer } from './layout-engine.ts'
-import { CrossTileIndex } from './cross-tile-index.ts'
-import { ResourceManager } from './resource-manager.ts'
+import type { RendererAPI } from '@modular/core/renderer-api.ts'
+import type { RenderExtension, RenderContext } from '@modular/core/render-extension.ts'
+import { LayoutEngine, type PlaceableLayer } from '@modular/layers/symbol/engine/layout-engine.ts'
+import { CrossTileIndex } from '@modular/layers/symbol/engine/cross-tile-index.ts'
+import { ResourceManager } from '@modular/layers/symbol/engine/resource-manager.ts'
 
 export class SymbolEngine {
   readonly layout: LayoutEngine

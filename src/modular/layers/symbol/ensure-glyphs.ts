@@ -1,6 +1,6 @@
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
-import type { GlyphManager } from './glyph-manager.ts'
+import type { GlyphManager } from '@modular/layers/symbol/glyph-manager.ts'
 
 /**
  * Extract unique codepoints from an array of text strings.

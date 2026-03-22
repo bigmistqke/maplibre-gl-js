@@ -1,6 +1,6 @@
 // src/modular/core/projection.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import type { Projection } from './projection.ts'
+import type { Projection } from '@modular/core/projection.ts'
 
 describe('Projection', () => {
   it('Projection interface is satisfied by duck-typed object', () => {

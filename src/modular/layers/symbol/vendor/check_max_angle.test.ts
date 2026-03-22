@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkMaxAngle } from './check_max_angle.ts'
+import { checkMaxAngle } from '@modular/layers/symbol/vendor/check_max_angle.ts'
 import { Anchor } from '../../../../symbol/anchor.ts'
 import Point from '@mapbox/point-geometry'
 

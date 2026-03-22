@@ -1,6 +1,6 @@
 // src/modular/layers/symbol/image-atlas.ts
 import potpack from 'potpack'
-import type { SpriteData, SpriteEntry } from './icon-types'
+import type { SpriteData, SpriteEntry } from '@modular/layers/symbol/icon-types'
 
 const PADDING = 1
 

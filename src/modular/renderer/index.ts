@@ -1,10 +1,10 @@
 // src/modular/renderer/index.ts
-import type { RendererAPI, WebGL2RendererAPI } from '../core/renderer-api.ts'
-import type { Projection } from '../core/projection.ts'
-import { Renderer } from './renderer.ts'
-import { MercatorProjection } from './mercator.ts'
+import type { RendererAPI, WebGL2RendererAPI } from '@modular/core/renderer-api.ts'
+import type { Projection } from '@modular/core/projection.ts'
+import { Renderer } from '@modular/renderer/renderer.ts'
+import { MercatorProjection } from '@modular/renderer/mercator.ts'
 
-export type { RendererAPI, WebGL2RendererAPI, CustomLayer, CustomLayerRenderArgs } from '../core/renderer-api.ts'
+export type { RendererAPI, WebGL2RendererAPI, CustomLayer, CustomLayerRenderArgs } from '@modular/core/renderer-api.ts'
 
 export interface RendererOptions {
   /** Custom projection — defaults to MercatorProjection (web mercator). */
