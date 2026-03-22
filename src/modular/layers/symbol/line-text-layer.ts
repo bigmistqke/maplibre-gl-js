@@ -410,11 +410,21 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
       )
 
       // Extract results from bucket adapter into our dynamic buffer (viewport pixels → NDC)
-      this._extractDynamicBuffer(bucketShim, dynamicBuffer, canvasWidth, canvasHeight)
+      // The vendored updateLineLabels may produce a different number of dynamic entries
+      // than our pre-allocated buffer (e.g., if quads count != glyph offset count).
+      // Resize the buffer to match the actual output.
+      const dynLen = bucketShim.text.dynamicLayoutVertexArray.length
+      const neededFloats = dynLen * 3
+      let outBuffer = dynamicBuffer
+      if (neededFloats > dynamicBuffer.length) {
+        outBuffer = new Float32Array(neededFloats)
+        this._dynamicBuffers.set(key, outBuffer)
+      }
+      this._extractDynamicBuffer(bucketShim, outBuffer, canvasWidth, canvasHeight)
 
       // Upload dynamic buffer to GPU
       gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
-      gl.bufferData(gl.ARRAY_BUFFER, dynamicBuffer, gl.DYNAMIC_DRAW)
+      gl.bufferData(gl.ARRAY_BUFFER, outBuffer.subarray(0, neededFloats), gl.DYNAMIC_DRAW)
 
       // Bind a_projected_pos from dynamic buffer
       const aProjPos = gl.getAttribLocation(program, 'a_projected_pos')
@@ -429,6 +439,9 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
       debug?.('drawTile: vendored line projection updated', { key, labels: lineLabels.length })
     } else {
       gl.uniform1f(gl.getUniformLocation(program, 'u_is_along_line'), 0.0)
+      // Disable a_projected_pos so it doesn't read from a stale/wrong-size buffer
+      const aProjPos = gl.getAttribLocation(program, 'a_projected_pos')
+      if (aProjPos >= 0) gl.disableVertexAttribArray(aProjPos)
     }
 
     // Bind static buffers and set attributes
