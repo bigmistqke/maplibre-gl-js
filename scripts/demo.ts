@@ -158,9 +158,9 @@ program
     await detectCurrentDemo()
 
     if (to === undefined) {
-      // Instant zoom
+      // Instant zoom — detect MapGL (setCamera) vs MapLibre Map (setZoom)
       const level = parseFloat(from)
-      const result = await evalExpr(`__map.setCamera({ zoom: ${level} })`)
+      const result = await evalExpr(`window.__map.setCamera ? window.__map.setCamera({ zoom: ${level} }) : window.__map.setZoom(${level})`)
       if (!result.ok) { console.error('Error:', result.error); process.exit(1) }
       console.log(`Zoom set to ${level}`)
       if (opts.screenshot) {
@@ -181,12 +181,13 @@ program
     const animExpr = `
       new Promise(resolve => {
         const from = ${fromZ}, to = ${toZ}, dur = ${duration}
-        __map.setCamera({ zoom: from })
+        const setZ = (z) => __map.setCamera ? __map.setCamera({ zoom: z }) : __map.setZoom(z)
+        setZ(from)
         const start = performance.now()
         function tick(now) {
           const t = Math.min((now - start) / dur, 1)
           const ease = t * (2 - t)  // ease-out quad
-          __map.setCamera({ zoom: from + (to - from) * ease })
+          setZ(from + (to - from) * ease)
           if (t < 1) requestAnimationFrame(tick)
           else resolve('done')
         }

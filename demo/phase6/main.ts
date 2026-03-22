@@ -1,6 +1,6 @@
 import { createRenderer } from '../../src/modular/renderer/index.ts'
 import { GlobeProjection } from '../../src/modular/renderer/globe/globe-projection.ts'
-import { MapGL } from '../../src/modular/core/map.ts'
+import { MapGLDemo as MapGL } from '../demo-map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { RasterLayer } from '../../src/modular/layers/raster.ts'
 import { MarkersLayer } from './markers-layer.ts'

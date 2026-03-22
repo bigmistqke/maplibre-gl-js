@@ -10,6 +10,7 @@ import type { TileFetcher } from './tile-fetcher.ts'
 import type { CollisionData, GPUBucket } from './types.ts'
 import type { LabelData } from '../engine/cross-tile-index.ts'
 import { lngToTileX, latToTileY } from '../../../renderer/mercator.ts'
+import { TILE_SIZE } from '../../../core/constants.ts'
 
 const debug = createDebug?.('SymbolLayerBase', false)
 
@@ -175,7 +176,6 @@ export abstract class SymbolLayerBase<T> implements LayerInstance, PlaceableLaye
     canvasHeight: number,
   ): Array<{ x: number; y: number }> {
     const { zoom } = camera
-    const TILE_SIZE = 256
     const worldSize = TILE_SIZE * Math.pow(2, zoom)
     const cx = lngToTileX(camera.center.lng, zoom) * TILE_SIZE
     const cy = latToTileY(camera.center.lat, zoom) * TILE_SIZE

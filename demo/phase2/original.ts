@@ -1,4 +1,5 @@
-import { Map, type RasterTileSource } from 'maplibre-gl-reference'
+import { createMapDemo } from '../demo-map.ts'
+import type { RasterTileSource } from 'maplibre-gl-reference'
 import 'maplibre-gl-reference/dist/maplibre-gl.css'
 
 const SOURCES: Record<string, string> = {
@@ -8,7 +9,7 @@ const SOURCES: Record<string, string> = {
 
 const status = document.getElementById('status')!
 
-const map = new Map({
+const map = createMapDemo({
   container: 'map',
   style: {
     version: 8,

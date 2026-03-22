@@ -31,7 +31,6 @@ export class MapGL<R extends RendererAPI = RendererAPI> {
       },
     )
     this.renderer.setCamera(this._camera.getState())
-    if (typeof window !== 'undefined') (window as any).__map = this
   }
 
   addLayer(layer: LayerInstance | CustomLayer, beforeId?: string): void {

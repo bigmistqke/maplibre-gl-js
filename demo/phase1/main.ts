@@ -1,5 +1,5 @@
 import { createRenderer } from '../../src/modular/renderer/index.ts'
-import { MapGL } from '../../src/modular/core/map.ts'
+import { MapGLDemo as MapGL } from '../demo-map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 
 const canvas = document.getElementById('map') as HTMLCanvasElement

@@ -1,6 +1,6 @@
 // demo/phase-2-raster.ts
 import { createRenderer } from '../src/modular/renderer/index.ts'
-import { MapGL } from '../src/modular/core/map.ts'
+import { MapGLDemo as MapGL } from './demo-map.ts'
 import { RasterLayer } from '../src/modular/layers/raster.ts'
 import type { SourceDefinition } from '../src/modular/core/renderer-api.ts'
 

@@ -1,9 +1,9 @@
-import { Map } from 'maplibre-gl-reference'
+import { createMapDemo } from '../demo-map.ts'
 import 'maplibre-gl-reference/dist/maplibre-gl.css'
 
 const status = document.getElementById('status')!
 
-const map = new Map({
+const map = createMapDemo({
   container: 'map',
   style: {
     version: 8,

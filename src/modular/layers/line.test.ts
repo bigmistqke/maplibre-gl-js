@@ -32,7 +32,7 @@ describe('LineLayer', () => {
     }))
     const gl = makeGL()
     const layer = new LineLayer({ source: 'mvt', sourceLayer: 'roads' })
-    layer.onAdd({ _webgl: { createGeometryBuffer: vi.fn().mockReturnValue({}) } } as any)
+    layer.onAdd({ createGeometryBuffer: vi.fn().mockReturnValue({}) } as any)
     layer.draw({ gl, programs: { get: vi.fn().mockReturnValue({}) }, tileID: { z:10,x:1,y:2,key:'10/1/2' }, meshBuffers: { vert: {} as WebGLBuffer, idx: {} as WebGLBuffer, indexCount: 6 }, zoom:10, paint:{ 'line-color':'#ff0000' }, frameIndex:0, imageAtlas:{}, lineDashAtlas:{}, tileData: new ArrayBuffer(1) } as any)
     expect(gl.drawArrays).toHaveBeenCalledWith(gl.LINES, 0, expect.any(Number))
   })

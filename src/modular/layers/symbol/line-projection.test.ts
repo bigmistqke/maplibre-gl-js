@@ -69,6 +69,35 @@ describe('placeGlyphsAlongLine', () => {
     const result = placeGlyphsAlongLine(line, 0, glyphOffsets)
     expect(result).toHaveLength(0)
   })
+
+  it('flips labels that would read right-to-left (keepUpright)', () => {
+    // Line goes right-to-left: anchor at (200,0), line from (200,0) to (0,0)
+    // Without flipping, glyphs would be placed right-to-left (first.x > last.x)
+    const line = [{ x: 200, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 0 }]
+    const glyphOffsets = [-20, -10, 0, 10, 20]
+    const result = placeGlyphsAlongLine(line, 1, glyphOffsets)
+    expect(result).toHaveLength(5)
+
+    // After flipping, first glyph should have lower x than last glyph (reads left-to-right)
+    expect(result[0].x).toBeLessThan(result[4].x)
+
+    // On a right-to-left line with negated offsets, the walk goes forward
+    // along segments pointing left (angle = π). The shader uses this angle
+    // to rotate glyphs so they face the reading direction.
+    for (const g of result) {
+      expect(Math.abs(g.angle)).toBeCloseTo(Math.PI, 1)
+    }
+  })
+
+  it('does not flip labels that already read left-to-right', () => {
+    const line = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }]
+    const glyphOffsets = [-20, -10, 0, 10, 20]
+    const result = placeGlyphsAlongLine(line, 1, glyphOffsets)
+    expect(result).toHaveLength(5)
+    expect(result[0].x).toBeLessThan(result[4].x)
+    // No rotation added
+    for (const g of result) expect(g.angle).toBeCloseTo(0)
+  })
 })
 
 describe('updateLineLabels', () => {

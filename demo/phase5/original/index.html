@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Phase 10 — Line Text Labels (MapLibre Original)</title>
+  <title>Phase 5 — Vector Tiles (MapLibre Original)</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; color: #eee; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
@@ -16,29 +16,31 @@
     input[type=range] { width: 100%; accent-color: #4af; }
     .field { display: flex; flex-direction: column; gap: 2px; }
     .value { font-size: 11px; opacity: 0.4; }
+    .layer-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+    .layer-toggle input { accent-color: #4af; }
     #status { font-size: 11px; opacity: 0.35; margin-top: auto; }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <div id="sidebar">
-    <a class="back" href="../">← all demos</a>
+    <a class="back" href="../../">← all demos</a>
     <div>
-      <div class="phase-badge">Phase 10 — Original</div>
-      <h2>Line Text Labels</h2>
+      <div class="phase-badge">Phase 5 — Original</div>
+      <h2>Vector Tiles</h2>
     </div>
     <div class="field">
       <label>Zoom</label>
-      <input type="range" id="zoom" min="2" max="14" step="0.1" value="3" />
-      <span class="value" id="zoom-val">3.0</span>
+      <input type="range" id="zoom" min="0" max="8" step="0.1" value="1" />
+      <span class="value" id="zoom-val">1.0</span>
     </div>
     <div class="field">
-      <label>Font Size</label>
-      <input type="range" id="font-size" min="8" max="32" step="1" value="12" />
-      <span class="value" id="font-size-val">12px</span>
+      <label>Layers</label>
+      <label class="layer-toggle"><input type="checkbox" id="toggle-fill" checked /> Fill (countries)</label>
+      <label class="layer-toggle"><input type="checkbox" id="toggle-lines" checked /> Lines (borders)</label>
     </div>
     <div id="status">Initializing...</div>
   </div>
-  <script type="module" src="./original.ts"></script>
+  <script type="module" src="../original.ts"></script>
 </body>
 </html>

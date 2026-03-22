@@ -19,6 +19,7 @@ import { glyphRange } from '../glyph-loader.ts'
 import { StructArray } from '../../../core/struct-array.ts'
 import { GlyphVertexLayout } from '../types.ts'
 import ONE_EM from '../../../../symbol/one_em.ts'
+import { TILE_SIZE } from '../../../core/constants.ts'
 import type { GlyphMap, GlyphPositions, SymbolTileData, LineLabelInfo } from '../types.ts'
 
 const debug = createDebug('LineWorker', true)
@@ -133,7 +134,7 @@ export class SymbolWorkerLine {
 
           // Compute label width in tile units so labels don't overlap.
           // textPixelRatio converts CSS px → tile units at this zoom.
-          const textPixelRatio = TILE_EXTENT / 512
+          const textPixelRatio = TILE_EXTENT / TILE_SIZE
           const labelWidth = (shaping.right - shaping.left) * (fontSize / ONE_EM) * textPixelRatio
           const symbolSpacing = Math.max(labelWidth * 2, 250 * textPixelRatio)
 
@@ -174,6 +175,12 @@ export class SymbolWorkerLine {
 
             for (let qi = 0; qi < quads.length; qi++) {
               const quad = quads[qi]
+              // For along-line text, glyphOffset[1] contains the vertical baseline
+              // offset (SHAPING_DEFAULT_OFFSET = -17) that centers text on the line.
+              // MapLibre applies this as a perpendicular line offset during projection.
+              // We bake it into the quad corners instead, since our projection walk
+              // does not implement lineOffsetY.
+              const baselineY = quad.glyphOffset[1]
               const corners = [quad.tl, quad.tr, quad.bl, quad.br]
               const uvCorners = [
                 { u: quad.tex.x,              v: quad.tex.y },
@@ -188,7 +195,7 @@ export class SymbolWorkerLine {
                   anchor.x,
                   anchor.y,
                   Math.round(corner.x * scale * 32),
-                  Math.round(corner.y * scale * 32),
+                  Math.round((corner.y + baselineY) * scale * 32),
                   Math.round(uv.u),
                   Math.round(uv.v),
                 )

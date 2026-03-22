@@ -37,12 +37,12 @@ function testTileServerPlugin(): Plugin {
 export default defineConfig({
   plugins: [testTileServerPlugin()],
   test: {
-    name: 'mini-browser',
+    name: 'modular-browser',
     browser: {
       enabled: true,
       provider: playwright(),
       instances: [{ browser: 'chromium' }],
     },
-    include: ['src/mini/**/*.browser.test.ts'],
+    include: ['src/modular/**/*.browser.test.ts'],
   },
 })

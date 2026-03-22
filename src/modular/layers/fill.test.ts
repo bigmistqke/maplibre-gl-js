@@ -119,9 +119,9 @@ describe('FillLayer', () => {
       }
     }))
     const gl = makeGLForFill()
-    const fakeWebgl = { createGeometryBuffer: vi.fn().mockReturnValue({}) }
+    const fakeRenderer = { createGeometryBuffer: vi.fn().mockReturnValue({}) }
     const layer = new FillLayer({ source: 'mvt', sourceLayer: 'water' })
-    layer.onAdd({ _webgl: fakeWebgl } as any)
+    layer.onAdd(fakeRenderer as any)
     layer.draw({ gl, programs: { get: vi.fn().mockReturnValue({}) }, tileID: { z:10,x:1,y:2,key:'10/1/2' }, meshBuffers: { vert: {} as WebGLBuffer, idx: {} as WebGLBuffer, indexCount: 6 }, zoom: 10, paint: { 'fill-color': '#0000ff' }, frameIndex: 0, imageAtlas: {}, lineDashAtlas: {}, tileData: new ArrayBuffer(1) } as any)
     expect(gl.drawElements).toHaveBeenCalled()
   })

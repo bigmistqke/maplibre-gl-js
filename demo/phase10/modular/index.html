@@ -2,12 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Phase 8 — Text Labels (MapLibre Original)</title>
+  <title>Phase 10 — Line Text Labels</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; color: #eee; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
-    #map { flex: 1; }
-    #sidebar { width: 220px; padding: 16px; background: #1a1a1a; border-left: 1px solid #2a2a2a; display: flex; flex-direction: column; gap: 16px; }
+    canvas { display: block; flex: 1; }
+    #sidebar {
+      width: 220px; padding: 16px; background: #1a1a1a;
+      border-left: 1px solid #2a2a2a; display: flex; flex-direction: column; gap: 16px;
+    }
     .back { font-size: 11px; opacity: 0.4; text-decoration: none; color: inherit; }
     .back:hover { opacity: 0.8; }
     .phase-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.3; }
@@ -20,25 +23,25 @@
   </style>
 </head>
 <body>
-  <div id="map"></div>
+  <canvas id="map"></canvas>
   <div id="sidebar">
-    <a class="back" href="../">← all demos</a>
+    <a class="back" href="../../">← all demos</a>
     <div>
-      <div class="phase-badge">Phase 8 — Original</div>
-      <h2>Text Labels</h2>
+      <div class="phase-badge">Phase 10</div>
+      <h2>Line Text Labels</h2>
     </div>
     <div class="field">
       <label>Zoom</label>
-      <input type="range" id="zoom" min="2" max="14" step="0.1" value="5" />
-      <span class="value" id="zoom-val">5.0</span>
+      <input type="range" id="zoom" min="2" max="14" step="0.1" value="6" />
+      <span class="value" id="zoom-val">6.0</span>
     </div>
     <div class="field">
       <label>Font Size</label>
-      <input type="range" id="font-size" min="8" max="32" step="1" value="14" />
-      <span class="value" id="font-size-val">14px</span>
+      <input type="range" id="font-size" min="8" max="32" step="1" value="12" />
+      <span class="value" id="font-size-val">12px</span>
     </div>
-    <div id="status">Initializing...</div>
+    <div id="status">Initializing…</div>
   </div>
-  <script type="module" src="./original.ts"></script>
+  <script type="module" src="../main.ts"></script>
 </body>
 </html>

@@ -13,6 +13,7 @@ import { Formatted, FormattedSection } from '@maplibre/maplibre-gl-style-spec'
 import Point from '@mapbox/point-geometry'
 import type { Shaping, TextJustify, SymbolAnchor, PositionedIcon } from '../../../../symbol/shaping.ts'
 import type { GlyphPositions, GlyphMap } from '../types.ts'
+import { TILE_SIZE } from '../../../core/constants.ts'
 import type { SymbolStyleLayer } from '../../../../style/style_layer/symbol_style_layer.ts'
 import type { Feature } from '@maplibre/maplibre-gl-style-spec'
 
@@ -144,7 +145,8 @@ export function getLineAnchors(options: LineAnchorOptions): Anchor[] {
 
   const glyphSize = 24
   const fontScale = fontSize / glyphSize
-  const textMaxBoxScale = fontScale
+  const tilePixelRatio = extent / TILE_SIZE
+  const textMaxBoxScale = tilePixelRatio * fontScale
 
   return getAnchors(
     line,
@@ -160,13 +162,14 @@ export function getLineAnchors(options: LineAnchorOptions): Anchor[] {
 }
 
 export function getCenterLineAnchor(options: Omit<LineAnchorOptions, 'symbolMinDistance'>): Anchor | null {
-  const { line, textMaxAngle, shaping, fontSize } = options
+  const { line, textMaxAngle, shaping, fontSize, extent = 4096 } = options
 
   if (!shaping) return null
 
   const glyphSize = 24
   const fontScale = fontSize / glyphSize
-  const textMaxBoxScale = fontScale
+  const tilePixelRatio = extent / TILE_SIZE
+  const textMaxBoxScale = tilePixelRatio * fontScale
 
   return getCenterAnchor(
     line,

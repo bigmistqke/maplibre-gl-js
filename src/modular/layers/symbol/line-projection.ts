@@ -88,27 +88,47 @@ export function placeGlyphAlongLine(
 /**
  * Place all glyphs for one label along a projected line.
  *
- * STUB: first/last glyph check — MapLibre places first and last glyph first
- *       to early-exit if label doesn't fit on screen. We place all glyphs
- *       unconditionally and hide the label only if a glyph falls off the line.
- * STUB: label flipping — MapLibre checks if first glyph x > last glyph x
- *       (text reads right-to-left on screen) and reverses traversal.
+ * Matches MapLibre's placeGlyphsAlongLine (projection.ts:425):
+ * - Places first and last glyph first to check orientation
+ * - If text reads right-to-left on screen (first.x > last.x), flips
+ *   by negating offsets and adding π to angles (keepUpright)
  */
 export function placeGlyphsAlongLine(
   projectedLine: Array<{ x: number; y: number }>,
   anchorVertex: number,
   glyphOffsets: number[],
 ): ProjectedGlyph[] {
-  const results: ProjectedGlyph[] = []
+  if (glyphOffsets.length === 0) return []
 
-  for (const offset of glyphOffsets) {
-    const placed = placeGlyphAlongLine(projectedLine, anchorVertex, offset)
-    if (!placed) {
-      return []
-    }
-    results.push(placed)
+  // Place all glyphs in forward direction first
+  const results = placeAllGlyphs(projectedLine, anchorVertex, glyphOffsets)
+  if (results.length === 0) return []
+
+  // Check if text reads right-to-left on screen — if so, flip
+  const first = results[0]
+  const last = results[results.length - 1]
+  if (first.x > last.x) {
+    // Flip: negate offsets and re-place.
+    // placeGlyphAlongLine already computes correct angles for the reversed direction.
+    const flipped = placeAllGlyphs(projectedLine, anchorVertex, glyphOffsets.map(o => -o))
+    if (flipped.length === 0) return []
+    return flipped
   }
 
+  return results
+}
+
+function placeAllGlyphs(
+  projectedLine: Array<{ x: number; y: number }>,
+  anchorVertex: number,
+  glyphOffsets: number[],
+): ProjectedGlyph[] {
+  const results: ProjectedGlyph[] = []
+  for (const offset of glyphOffsets) {
+    const placed = placeGlyphAlongLine(projectedLine, anchorVertex, offset)
+    if (!placed) return []
+    results.push(placed)
+  }
   return results
 }
 

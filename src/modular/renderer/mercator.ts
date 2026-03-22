@@ -2,6 +2,7 @@
 import { mat4, type mat4 as Mat4Type } from 'gl-matrix'
 import type { CameraState, TileID, TileMesh } from '../core/types.ts'
 import type { Projection, Viewport } from '../core/projection.ts'
+import { TILE_SIZE, TILE_EXTENT } from '../core/constants.ts'
 
 export function lngToTileX(lng: number, zoom: number): number {
   return ((lng + 180) / 360) * Math.pow(2, zoom)
@@ -19,8 +20,6 @@ const FLAT_QUAD_MESH: TileMesh = {
 }
 
 const DEG = Math.PI / 180
-const EXTENT = 4096
-const TILE_SIZE = 256
 // Same FOV as globe / MapLibre default
 const FOV = 0.6435011087932844  // Math.atan(1) * 2 ≈ 36.87°
 // Earth circumference in metres (equatorial)
@@ -36,11 +35,11 @@ export class MercatorProjection implements Projection {
     const { center, zoom } = camera
     const { width, height } = viewport
     const z = Math.floor(zoom)
-    const tileW = 256 * Math.pow(2, zoom - z)
+    const tileW = TILE_SIZE * Math.pow(2, zoom - z)
 
     // Center in world pixels at fractional zoom
-    const cx = lngToTileX(center.lng, zoom) * 256
-    const cy = latToTileY(center.lat, zoom) * 256
+    const cx = lngToTileX(center.lng, zoom) * TILE_SIZE
+    const cy = latToTileY(center.lat, zoom) * TILE_SIZE
 
     const maxTile = Math.pow(2, z) - 1
 
@@ -119,11 +118,11 @@ export class MercatorProjection implements Projection {
     mat4.translate(m, m, [-cx, -cy, 0])
     mat4.scale    (m, m, [1, 1, pixelsPerMeter])
 
-    // ── Tile matrix: place tile [0,EXTENT]² in world space ───────────────────
+    // ── Tile matrix: place tile [0,TILE_EXTENT]² in world space ───────────────────
     const tileScale = worldSize / Math.pow(2, tileID.z)
     const t = mat4.create() as unknown as Mat4Type
     mat4.translate(t, t, [tileID.x * tileScale, tileID.y * tileScale, 0])
-    mat4.scale    (t, t, [tileScale / EXTENT, tileScale / EXTENT, 1])
+    mat4.scale    (t, t, [tileScale / TILE_EXTENT, tileScale / TILE_EXTENT, 1])
 
     mat4.multiply(m, m, t)
     return m as unknown as Float32Array

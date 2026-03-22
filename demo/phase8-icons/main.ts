@@ -1,6 +1,6 @@
 // demo/phase8-icons/main.ts
 import { createRenderer } from '../../src/modular/renderer/index.ts'
-import { MapGL } from '../../src/modular/core/map.ts'
+import { MapGLDemo as MapGL } from '../demo-map.ts'
 import { BackgroundLayer } from '../../src/modular/layers/background.ts'
 import { FillLayer } from '../../src/modular/layers/fill.ts'
 import { IconLayer } from '../../src/modular/layers/symbol/icon-layer.ts'
