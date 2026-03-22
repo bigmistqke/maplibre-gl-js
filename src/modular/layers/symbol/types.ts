@@ -83,4 +83,16 @@ export type SymbolTileData = {
   lineLabels?: LineLabelInfo[]
   /** Raw text strings per label, parallel with labelPositions. For cross-tile dedup keying. */
   labelTexts?: string[]
+
+  // StructArray data (new — produced by worker, consumed by vendored projection)
+  placedSymbolArrayBuffer?: ArrayBuffer
+  glyphOffsetArrayBuffer?: ArrayBuffer
+  lineVertexArrayBuffer?: ArrayBuffer
+  symbolInstanceArrayBuffer?: ArrayBuffer
+  collisionBoxArrayBuffer?: ArrayBuffer
+  placedSymbolCount?: number
+  glyphOffsetCount?: number
+  lineVertexCount?: number
+  symbolInstanceCount?: number
+  collisionBoxCount?: number
 }

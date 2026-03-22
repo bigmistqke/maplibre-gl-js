@@ -1,5 +1,7 @@
 // src/modular/renderer/flat-render-tiles.ts
-import type { RendererInternals } from '../core/surface.ts'
+import type { RendererInternals, MeshBuffers } from '../core/surface.ts'
+import type { LayerInstance } from '../core/renderer-api.ts'
+import type { TileID } from '../core/types.ts'
 
 export const ELEVATION_PRELUDE = /* glsl */`
 #ifndef PROJECT_TILE_WITH_ELEVATION_DEFINED

@@ -16,10 +16,18 @@ import {
   getLineAnchors,
 } from '../vendor/symbol_layout_helpers.ts'
 import { glyphRange } from '../glyph-loader.ts'
-import { StructArray } from '../../../core/struct-array.ts'
+import { StructArray, createStructArray } from '../../../core/struct-array.ts'
 import { GlyphVertexLayout } from '../types.ts'
 import ONE_EM from '../../../../symbol/one_em.ts'
 import { TILE_SIZE } from '../../../core/constants.ts'
+import {
+  PlacedSymbolLayout,
+  GlyphOffsetLayout,
+  SymbolLineVertexLayout,
+  SymbolInstanceLayout,
+  CollisionBoxLayout,
+} from '../vendor/symbol_structs.ts'
+import { WritingMode } from '../../../../symbol/shaping.ts'
 import type { GlyphMap, GlyphPositions, SymbolTileData, LineLabelInfo } from '../types.ts'
 
 const debug = createDebug('LineWorker', true)
@@ -92,6 +100,14 @@ export class SymbolWorkerLine {
     const indicesPerLabel: number[] = []
     const labelTexts: string[] = []
     const lineLabels: LineLabelInfo[] = []
+
+    // StructArrays for vendored projection code
+    const placedSymbolArray = createStructArray(PlacedSymbolLayout)
+    const glyphOffsetArray = createStructArray(GlyphOffsetLayout)
+    const lineVertexArray = createStructArray(SymbolLineVertexLayout)
+    const symbolInstanceArray = createStructArray(SymbolInstanceLayout)
+    const collisionBoxArray = createStructArray(CollisionBoxLayout)
+    const SIZE_PACK_FACTOR = 128
 
     // Collect all line features with resolved text for merging
     const lineFeatures: Array<{ geometry: ReturnType<ReturnType<typeof layer.feature>['loadGeometry']>; text: string }> = []
@@ -221,19 +237,118 @@ export class SymbolWorkerLine {
             // MapLibre uses the same approach: placeGlyphAlongLine starts
             // at the projected anchor point (not a vertex) and walks the
             // line array from anchorSegment.
+            const flatLineVerts = line.flatMap(p => [p.x, p.y])
             lineLabels.push({
               anchorX: anchor.x,
               anchorY: anchor.y,
               segment: anchor.segment,
               glyphOffsets,
-              lineVertices: line.flatMap(p => [p.x, p.y]),
+              lineVertices: flatLineVerts,
             })
+
+            // -- StructArray population (mirrors bucket_shim.ts) --
+            const numGlyphs = glyphOffsets.length
+            const numLineVerts = flatLineVerts.length / 2
+
+            // lineVertexArray: one entry per vertex with tileUnitDistanceFromAnchor
+            const lineStartForThisLabel = lineVertexArray.length
+            for (let li = 0; li < numLineVerts; li++) {
+              const lx = flatLineVerts[li * 2]
+              const ly = flatLineVerts[li * 2 + 1]
+              // tileUnitDistanceFromAnchor: 0 for now (not critical for basic line walking)
+              lineVertexArray.emplaceBack(lx, ly, 0)
+            }
+
+            // glyphOffsetArray: one entry per glyph
+            const glyphStartForThisLabel = glyphOffsetArray.length
+            for (let gi = 0; gi < numGlyphs; gi++) {
+              glyphOffsetArray.emplaceBack(glyphOffsets[gi])
+            }
+
+            // placedSymbolArray: one entry per label
+            const packedSize = Math.round(fontSize * SIZE_PACK_FACTOR)
+            placedSymbolArray.emplaceBack(
+              anchor.x,                        // anchorX
+              anchor.y,                        // anchorY
+              glyphStartForThisLabel,          // glyphStartIndex
+              numGlyphs,                       // numGlyphs
+              glyphStartForThisLabel * 4,      // vertexStartIndex (4 verts per glyph)
+              lineStartForThisLabel,           // lineStartIndex
+              numLineVerts,                    // lineLength
+              anchor.segment,                  // segment
+              packedSize,                      // lowerSize
+              packedSize,                      // upperSize
+              0,                               // lineOffsetX
+              0,                               // lineOffsetY
+              WritingMode.horizontal,          // writingMode
+              0,                               // placedOrientation
+              0,                               // hidden
+              0,                               // crossTileID
+              -1,                              // associatedIconIndex
+            )
+
+            // collisionBoxArray: one box per label
+            const textPixelRatioForBox = TILE_EXTENT / TILE_SIZE
+            const halfW = Math.round((shaping.right - shaping.left) * (fontSize / ONE_EM) * textPixelRatioForBox / 2)
+            const halfH = Math.round((shaping.top - shaping.bottom) * (fontSize / ONE_EM) * textPixelRatioForBox / 2)
+            const collisionBoxStart = collisionBoxArray.length
+            collisionBoxArray.emplaceBack(
+              anchor.x,        // anchorPointX
+              anchor.y,        // anchorPointY
+              -halfW,          // x1
+              -halfH,          // y1
+              halfW,           // x2
+              halfH,           // y2
+              0,               // featureIndex
+              0,               // sourceLayerIndex
+              0,               // bucketIndex
+            )
+
+            // symbolInstanceArray: one entry per label
+            const placedSymbolIdx = placedSymbolArray.length - 1
+            symbolInstanceArray.emplaceBack(
+              anchor.x,         // anchorX
+              anchor.y,         // anchorY
+              placedSymbolIdx,  // rightJustifiedTextSymbolIndex
+              placedSymbolIdx,  // centerJustifiedTextSymbolIndex
+              placedSymbolIdx,  // leftJustifiedTextSymbolIndex
+              -1,               // verticalPlacedTextSymbolIndex
+              -1,               // placedIconSymbolIndex
+              -1,               // verticalPlacedIconSymbolIndex
+              0,                // key
+              collisionBoxStart,     // textBoxStartIndex
+              collisionBoxStart + 1, // textBoxEndIndex
+              0,                // verticalTextBoxStartIndex
+              0,                // verticalTextBoxEndIndex
+              0,                // iconBoxStartIndex
+              0,                // iconBoxEndIndex
+              0,                // verticalIconBoxStartIndex
+              0,                // verticalIconBoxEndIndex
+              0,                // featureIndex
+              numGlyphs * 4,   // numHorizontalGlyphVertices
+              0,                // numVerticalGlyphVertices
+              0,                // numIconVertices
+              0,                // numVerticalIconVertices
+              0,                // useRuntimeCollisionCircles
+              0,                // crossTileID
+              0,                // textBoxScale
+              0,                // collisionCircleDiameter
+              0,                // textAnchorOffsetStartIndex
+              0,                // textAnchorOffsetEndIndex
+            )
           }
         }
       }
     }
 
     debug('_runLayout done', { key, quads: allIdx.length / 6, labels: labelPositions.length })
+
+    // Trim StructArrays to exact size and extract transferable buffers
+    placedSymbolArray._trim()
+    glyphOffsetArray._trim()
+    lineVertexArray._trim()
+    symbolInstanceArray._trim()
+    collisionBoxArray._trim()
 
     const data: SymbolTileData = {
       vertices: new Int16Array(allVerts).buffer,
@@ -243,6 +358,18 @@ export class SymbolWorkerLine {
       labelTexts,
       indicesPerLabel,
       lineLabels,
+
+      // StructArray buffers for vendored projection code
+      placedSymbolArrayBuffer: placedSymbolArray.arrayBuffer,
+      glyphOffsetArrayBuffer: glyphOffsetArray.arrayBuffer,
+      lineVertexArrayBuffer: lineVertexArray.arrayBuffer,
+      symbolInstanceArrayBuffer: symbolInstanceArray.arrayBuffer,
+      collisionBoxArrayBuffer: collisionBoxArray.arrayBuffer,
+      placedSymbolCount: placedSymbolArray.length,
+      glyphOffsetCount: glyphOffsetArray.length,
+      lineVertexCount: lineVertexArray.length,
+      symbolInstanceCount: symbolInstanceArray.length,
+      collisionBoxCount: collisionBoxArray.length,
     }
     this._buckets.set(key, data)
     return allIdx.length === 0 ? null : data

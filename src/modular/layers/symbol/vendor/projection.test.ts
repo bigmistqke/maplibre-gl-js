@@ -34,7 +34,7 @@ function makeProjectionContext(
     }
 
     const transform = new TransformAdapter(
-        {center: {lng: 0, lat: 0}, zoom: 10},
+        {center: {lng: 0, lat: 0}, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0},
         {width: 800, height: 600}
     );
 
@@ -216,7 +216,7 @@ describe('projection (vendored)', () => {
             }
 
             const transform = new TransformAdapter(
-                {center: {lng: 0, lat: 0}, zoom: 10},
+                {center: {lng: 0, lat: 0}, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0},
                 {width: 800, height: 600}
             );
 
@@ -376,7 +376,7 @@ describe('projection (vendored)', () => {
     describe('getPitchedLabelPlaneMatrix', () => {
         it('returns a valid matrix', () => {
             const transform = new TransformAdapter(
-                {center: {lng: 0, lat: 0}, zoom: 10},
+                {center: {lng: 0, lat: 0}, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0},
                 {width: 800, height: 600}
             );
             const m = getPitchedLabelPlaneMatrix(true, transform, 1);
@@ -390,7 +390,7 @@ describe('projection (vendored)', () => {
     describe('getGlCoordMatrix', () => {
         it('returns pixelsToClipSpaceMatrix when not pitchWithMap', () => {
             const transform = new TransformAdapter(
-                {center: {lng: 0, lat: 0}, zoom: 10},
+                {center: {lng: 0, lat: 0}, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0},
                 {width: 800, height: 600}
             );
             const m = getGlCoordMatrix(false, false, transform, 1);
@@ -399,7 +399,7 @@ describe('projection (vendored)', () => {
 
         it('returns a scale matrix when pitchWithMap', () => {
             const transform = new TransformAdapter(
-                {center: {lng: 0, lat: 0}, zoom: 10},
+                {center: {lng: 0, lat: 0}, zoom: 10, bearing: 0, pitch: 0, groundElevation: 0},
                 {width: 800, height: 600}
             );
             const m = getGlCoordMatrix(true, true, transform, 2);

@@ -12,6 +12,7 @@ describe('Projection', () => {
         vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
         indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
       }),
+      getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
     }
     expect(typeof proj.vertexShaderPrelude).toBe('string')
     expect(typeof proj.getVisibleTiles).toBe('function')
@@ -29,6 +30,7 @@ describe('Projection', () => {
       getVisibleTiles: () => [],
       setTileUniforms: vi.fn(),
       getMeshForTile: vi.fn().mockReturnValue(mockMesh),
+      getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
     }
     const mesh = proj.getMeshForTile({ z: 10, x: 512, y: 341, key: '10/512/341' })
     expect(mesh.vertices).toBeInstanceOf(Float32Array)

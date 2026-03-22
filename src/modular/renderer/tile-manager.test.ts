@@ -27,6 +27,7 @@ function makeProjection(tiles: TileID[]): Projection {
       vertices: new Float32Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]),
       indices: new Uint16Array([0, 1, 2, 1, 3, 2]),
     }),
+    getTileMatrix: vi.fn().mockReturnValue(new Float32Array(16)),
   }
 }
 

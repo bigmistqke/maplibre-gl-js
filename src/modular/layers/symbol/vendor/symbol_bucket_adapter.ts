@@ -35,10 +35,12 @@ export class SymbolBucketAdapter {
   overscaling: number
   tilePixelRatio: number
   textSizeData: any // STUB: will be populated by worker
+  iconSizeData: any // STUB: will be populated by worker
 
   constructor(overscaling = 1) {
     this.overscaling = overscaling
     this.tilePixelRatio = TILE_EXTENT / (TILE_SIZE * overscaling)
     this.textSizeData = { kind: 'constant', layoutSize: 12 } // STUB: default
+    this.iconSizeData = { kind: 'constant', layoutSize: 1 } // STUB: default
   }
 }

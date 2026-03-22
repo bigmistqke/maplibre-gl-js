@@ -14,7 +14,8 @@ import type { LabelData } from './engine/cross-tile-index.ts'
 import murmur3 from 'murmurhash-js'
 import { updateLineLabels, getPitchedLabelPlaneMatrix } from './vendor/projection.ts'
 import { TransformAdapter } from './vendor/transform_adapter.ts'
-import { buildBucketShim, extractDynamicBuffer } from './vendor/bucket_shim.ts'
+import { SymbolBucketAdapter } from './vendor/symbol_bucket_adapter.ts'
+import { WritingMode } from '../../../symbol/shaping.ts'
 import { TILE_EXTENT, TILE_SIZE } from '../../core/constants.ts'
 import { mat4 } from 'gl-matrix'
 
@@ -380,8 +381,8 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
         wrap: 0,
       }
 
-      // Build bucket shim from our LineLabelInfo[]
-      const bucketShim = buildBucketShim(lineLabels, this._fontSize)
+      // Build SymbolBucketAdapter from our LineLabelInfo[]
+      const bucketShim = this._buildBucketAdapter(lineLabels)
 
       // Compute label plane matrices
       // For pitchWithMap=false, rotateWithMap=false:
@@ -408,8 +409,8 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
         () => 0,         // getElevation — flat map
       )
 
-      // Extract results from bucket shim into our dynamic buffer (viewport pixels → NDC)
-      extractDynamicBuffer(bucketShim, dynamicBuffer, canvasWidth, canvasHeight)
+      // Extract results from bucket adapter into our dynamic buffer (viewport pixels → NDC)
+      this._extractDynamicBuffer(bucketShim, dynamicBuffer, canvasWidth, canvasHeight)
 
       // Upload dynamic buffer to GPU
       gl.bindBuffer(gl.ARRAY_BUFFER, dynamicGLBuffer)
@@ -579,6 +580,95 @@ export class LineTextLayer extends SymbolLayerBase<SymbolTileData> {
     this._dynamicGLBuffers.delete(key)
     this._workerService.cancel(key)
     super.evictTile(key)
+  }
+
+  /**
+   * Build a SymbolBucketAdapter from LineLabelInfo[] so the vendored
+   * updateLineLabels can consume it. Replaces the old bucket_shim.
+   */
+  private _buildBucketAdapter(lineLabels: LineLabelInfo[]): SymbolBucketAdapter {
+    const bucket = new SymbolBucketAdapter()
+    const fontSize = this._fontSize
+    const SIZE_PACK_FACTOR = 128
+    const packedSize = Math.round(fontSize * SIZE_PACK_FACTOR)
+
+    bucket.textSizeData = { kind: 'constant', layoutSize: fontSize }
+
+    let glyphStart = 0
+    let lineStart = 0
+
+    for (const label of lineLabels) {
+      const numGlyphs = label.glyphOffsets.length
+      const numLineVerts = label.lineVertices.length / 2
+
+      const lineStartForThisLabel = lineStart
+      for (let i = 0; i < numLineVerts; i++) {
+        bucket.lineVertexArray.emplaceBack(
+          label.lineVertices[i * 2],
+          label.lineVertices[i * 2 + 1],
+          0,
+        )
+      }
+
+      const glyphStartForThisLabel = glyphStart
+      for (let i = 0; i < numGlyphs; i++) {
+        bucket.glyphOffsetArray.emplaceBack(label.glyphOffsets[i])
+      }
+
+      bucket.text.placedSymbolArray.emplaceBack(
+        label.anchorX,
+        label.anchorY,
+        glyphStartForThisLabel,
+        numGlyphs,
+        glyphStartForThisLabel * 4,
+        lineStartForThisLabel,
+        numLineVerts,
+        label.segment,
+        packedSize,
+        packedSize,
+        0,
+        0,
+        WritingMode.horizontal,
+        0,
+        0,
+        0,
+        -1,
+      )
+
+      glyphStart += numGlyphs
+      lineStart += numLineVerts
+    }
+
+    // Pre-size dynamic layout for output: 4 vertices per glyph
+    bucket.text.dynamicLayoutVertexArray.resize(glyphStart * 4)
+
+    return bucket
+  }
+
+  /**
+   * Extract (x, y, angle) per glyph vertex from the dynamicLayoutVertexArray
+   * written by vendored updateLineLabels, converting viewport pixels to NDC.
+   */
+  private _extractDynamicBuffer(
+    bucket: SymbolBucketAdapter,
+    dynamicBuffer: Float32Array,
+    viewportWidth: number,
+    viewportHeight: number,
+  ): void {
+    const dynArr = bucket.text.dynamicLayoutVertexArray
+    const len = dynArr.length
+    const invW = 2 / viewportWidth
+    const invH = 2 / viewportHeight
+
+    for (let i = 0; i < len; i++) {
+      const ax = (dynArr as any).getax(i)
+      const ay = (dynArr as any).getay(i)
+      const angle = (dynArr as any).getangle(i)
+      const off = i * 3
+      dynamicBuffer[off] = ax * invW - 1
+      dynamicBuffer[off + 1] = 1 - ay * invH
+      dynamicBuffer[off + 2] = angle
+    }
   }
 
   destroy(): void {
