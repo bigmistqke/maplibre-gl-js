@@ -144,6 +144,41 @@ export class StructArray<K extends string> {
     this.length++
   }
 
+  get(index: number): Record<K, number> {
+    const { stride, fields } = this._schema
+    const view = this._view
+    const proxy = {} as Record<K, number>
+    for (const [key, { offset, type }] of Object.entries(fields) as [K, { offset: number; type: FieldType }][]) {
+      const bytePos = index * stride + offset
+      Object.defineProperty(proxy, key, {
+        enumerable: true,
+        get(): number {
+          switch (type) {
+            case 'int8':    return view.getInt8(bytePos)
+            case 'uint8':   return view.getUint8(bytePos)
+            case 'int16':   return view.getInt16(bytePos, true)
+            case 'uint16':  return view.getUint16(bytePos, true)
+            case 'int32':   return view.getInt32(bytePos, true)
+            case 'uint32':  return view.getUint32(bytePos, true)
+            case 'float32': return view.getFloat32(bytePos, true)
+          }
+        },
+        set(value: number): void {
+          switch (type) {
+            case 'int8':    view.setInt8(bytePos, value); break
+            case 'uint8':   view.setUint8(bytePos, value); break
+            case 'int16':   view.setInt16(bytePos, value, true); break
+            case 'uint16':  view.setUint16(bytePos, value, true); break
+            case 'int32':   view.setInt32(bytePos, value, true); break
+            case 'uint32':  view.setUint32(bytePos, value, true); break
+            case 'float32': view.setFloat32(bytePos, value, true); break
+          }
+        },
+      })
+    }
+    return proxy
+  }
+
   get arrayBuffer(): ArrayBuffer {
     return this._buf.slice(0, this.length * this._schema.stride)
   }

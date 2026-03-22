@@ -169,4 +169,18 @@ describe('StructArray', () => {
     arr.setoffsetX(0, 42.5)
     expect(arr.getoffsetX(0)).toBeCloseTo(42.5)
   })
+
+  it('get(index) returns object with field getters/setters', () => {
+    const layout = defineStruct({
+      anchorX: 'int16', anchorY: 'int16', hidden: 'uint8',
+    })
+    const arr = new StructArray(layout)
+    arr.emplaceBack(100, 200, 0)
+    const s = arr.get(0)
+    expect(s.anchorX).toBe(100)
+    expect(s.anchorY).toBe(200)
+    expect(s.hidden).toBe(0)
+    s.hidden = 1
+    expect(arr.get(0).hidden).toBe(1)
+  })
 })
