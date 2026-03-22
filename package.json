@@ -132,6 +132,7 @@
     "typedoc": "^0.28.17",
     "typedoc-plugin-markdown": "^4.10.0",
     "typescript": "^5.9.3",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "4.1.0",
     "vitest-webgl-canvas-mock": "^1.1.0"
   },
