@@ -39,8 +39,33 @@ describe('TransformAdapter', () => {
         expect(() => adapter.calculatePosMatrix({ canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 })).toThrow('Not implemented yet')
     })
 
-    it('throws on projectTileCoordinates (not yet implemented)', () => {
+    it('projectTileCoordinates returns clip-space coords for tile center', () => {
         const adapter = new TransformAdapter(camera, viewport)
-        expect(() => adapter.projectTileCoordinates(0, 0, { canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 }, () => 0)).toThrow('Not implemented yet')
+        const unwrapped = { canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 }
+        const result = adapter.projectTileCoordinates(2048, 2048, unwrapped, () => 0)
+        // Tile center should be near clip-space origin (0,0) when camera is centered on tile
+        expect(result.point.x).toBeCloseTo(0, 0)
+        expect(result.point.y).toBeCloseTo(0, 0)
+        expect(result.signedDistanceFromCamera).toBeGreaterThan(0)
+        expect(result.isOccluded).toBe(false)
+    })
+
+    it('projectTileCoordinates: tile corners map to expected clip-space', () => {
+        const adapter = new TransformAdapter(camera, viewport)
+        const unwrapped = { canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 }
+        const topLeft = adapter.projectTileCoordinates(0, 0, unwrapped, () => 0)
+        const bottomRight = adapter.projectTileCoordinates(4096, 4096, unwrapped, () => 0)
+        // Top-left should be negative x, positive y (clip space Y up)
+        expect(topLeft.point.x).toBeLessThan(0)
+        // Bottom-right should be positive x, negative y
+        expect(bottomRight.point.x).toBeGreaterThan(0)
+    })
+
+    it('signedDistanceFromCamera is the w component (positive = in front of camera)', () => {
+        const adapter = new TransformAdapter(camera, viewport)
+        const unwrapped = { canonical: { z: 14, x: 8414, y: 5384 }, wrap: 0 }
+        const result = adapter.projectTileCoordinates(2048, 2048, unwrapped, () => 0)
+        // w should be approximately cameraToCenterDistance for points at the ground plane
+        expect(result.signedDistanceFromCamera).toBeCloseTo(adapter.cameraToCenterDistance, -1)
     })
 })
