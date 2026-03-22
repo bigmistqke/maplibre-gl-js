@@ -10,7 +10,7 @@
  *   debug('draw called', { key })
  */
 export function createDebug(subject: string, enabled: boolean) {
-    if (import.meta.env.PROD || !enabled) return _noop;
+    if ((import.meta as any).env?.PROD || !enabled) return _noop;
     return function debug(message: string, extra?: unknown) {
         if (extra !== undefined) {
             console.log(

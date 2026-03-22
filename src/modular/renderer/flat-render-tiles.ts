@@ -65,7 +65,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
 
             for (const layer of opaqueLayers) {
                 const paint = evaluate(layer, camera.zoom);
-                const program = programs.get((layer.constructor as { programs?: { name: string }[] }).programs?.[0]?.name);
+                const program = layer.programs?.[0]?.name ? programs.get(layer.programs[0].name) : undefined;
                 if (program) {
                     gl.useProgram(program);
                     projection.setTileUniforms(gl, program, tileID, camera, viewport);
@@ -95,7 +95,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
     // Phase 3: draw symbol layers AFTER all opaque layers (no stencil clipping)
     for (const {layer, tileID, meshBuffers, data, sourceType} of deferredSymbols) {
         const paint = evaluate(layer, camera.zoom);
-        const program = programs.get((layer.constructor as { programs?: { name: string }[] }).programs?.[0]?.name);
+        const program = layer.programs?.[0]?.name ? programs.get(layer.programs[0].name) : undefined;
         if (program) {
             gl.useProgram(program);
             projection.setTileUniforms(gl, program, tileID, camera, viewport);
@@ -110,7 +110,7 @@ export function flatRenderTiles(internals: RendererInternals): void {
             frameIndex,
             camera,
             tileMatrix: projection.getTileMatrix(tileID, camera, viewport),
-            tileData: sourceType === 'vector' ? data : undefined,
+            tileData: sourceType === 'vector' ? data as Transferable : undefined,
             imageAtlas: {}, // STUB: not wired yet
             lineDashAtlas: {}, // STUB: not wired yet
         });

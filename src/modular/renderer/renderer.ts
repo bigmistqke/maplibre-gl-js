@@ -275,7 +275,7 @@ export class Renderer implements RendererAPI {
                 this._projection.vertexShaderPrelude}\n${ 
                 ELEVATION_PRELUDE}`;
             const defs = this._layers.flatMap(e =>
-                (e.layer.constructor as { programs?: ProgramDefinition[] }).programs ?? []
+                e.layer.programs ?? []
             );
             const layers = this._webgl.compilePrograms(defs, prelude);
             const stencil = this._webgl.compileStencilProgram(prelude);

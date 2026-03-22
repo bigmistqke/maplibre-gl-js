@@ -244,7 +244,7 @@ export class TerrainPlugin implements Plugin<WebGL2RendererAPI> {
 
                     for (const layer of sourceLayers) {
                         const paint = internals.evaluate(layer, internals.camera.zoom);
-                        const program = internals.programs.get((layer.constructor as { programs?: { name: string }[] }).programs?.[0]?.name);
+                        const program = layer.programs?.[0]?.name ? internals.programs.get(layer.programs[0].name) : undefined;
                         if (program) {
                             gl.useProgram(program);
                             // Tile-local ortho: maps the srcTile's sub-area that covers demTile → NDC [-1,1].
