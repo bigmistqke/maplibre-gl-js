@@ -1,32 +1,32 @@
-import { defineStruct, type StructArray } from '@modular/core/struct-array.ts'
+import {defineStruct, type StructArray} from '@modular/core/struct-array.ts';
 
 // ---- Glyph types ----
 
 export type GlyphMetrics = {
-  width: number
-  height: number
-  left: number
-  top: number
-  advance: number
-}
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+    advance: number;
+};
 
 export type StyleGlyph = {
-  id: number
-  bitmap: { width: number; height: number; data: Uint8Array }
-  metrics: GlyphMetrics
-}
+    id: number;
+    bitmap: { width: number; height: number; data: Uint8Array };
+    metrics: GlyphMetrics;
+};
 
 /** Keyed by fontstack → codepoint → glyph (or null if missing from font) */
-export type GlyphMap = { [stack: string]: { [id: number]: StyleGlyph | null } }
+export type GlyphMap = { [stack: string]: { [id: number]: StyleGlyph | null } };
 
 /** Position of a glyph in the packed atlas image */
 export type GlyphPosition = {
-  rect: { x: number; y: number; w: number; h: number }
-  metrics: GlyphMetrics
-}
+    rect: { x: number; y: number; w: number; h: number };
+    metrics: GlyphMetrics;
+};
 
 /** Atlas positions keyed by fontstack → codepoint */
-export type GlyphPositions = { [stack: string]: { [id: number]: GlyphPosition } }
+export type GlyphPositions = { [stack: string]: { [id: number]: GlyphPosition } };
 
 // ---- Vertex layout ----
 
@@ -39,60 +39,60 @@ export type GlyphPositions = { [stack: string]: { [id: number]: GlyphPosition } 
  * Stride: 2+2+2+2+2+2 = 12 bytes
  */
 export const GlyphVertexLayout = defineStruct({
-  ax: 'int16',
-  ay: 'int16',
-  ox: 'int16',
-  oy: 'int16',
-  u:  'uint16',
-  v:  'uint16',
-})
+    ax: 'int16',
+    ay: 'int16',
+    ox: 'int16',
+    oy: 'int16',
+    u: 'uint16',
+    v: 'uint16',
+});
 
 // ---- Tile data produced by worker ----
 
 /** Metadata for a single line label, used for per-frame projection on the main thread. */
 export type LineLabelInfo = {
-  /** Anchor position X in tile coords */
-  anchorX: number
-  /** Anchor position Y in tile coords */
-  anchorY: number
-  /** Index of the line segment the anchor sits on */
-  segment: number
-  /**
+    /** Anchor position X in tile coords */
+    anchorX: number;
+    /** Anchor position Y in tile coords */
+    anchorY: number;
+    /** Index of the line segment the anchor sits on */
+    segment: number;
+    /**
    * Distance along the line for each glyph center (in tile units, relative to anchor).
    * Negative = before anchor, positive = after anchor. One entry per glyph.
    */
-  glyphOffsets: number[]
-  /** Flat array of line vertices [x0, y0, x1, y1, ...] in tile coords */
-  lineVertices: number[]
-}
+    glyphOffsets: number[];
+    /** Flat array of line vertices [x0, y0, x1, y1, ...] in tile coords */
+    lineVertices: number[];
+};
 
 export type SymbolTileData = {
-  /** Interleaved vertex data matching GlyphVertexLayout */
-  vertices: ArrayBuffer
-  /** Uint16 index data */
-  indices: ArrayBuffer
-  /** Number of indices (= drawElements count) */
-  count: number
-  /** Label anchor positions in tile coords (for debugging / collision) */
-  labelPositions: { x: number; y: number }[]
-  /** Label sizes in screen pixels at layout fontSize (for collision boxes) */
-  labelSizes?: { w: number; h: number }[]
-  /** Number of index-buffer indices per label (for per-label draw calls) */
-  indicesPerLabel?: number[]
-  /** Line label metadata for per-frame projection. Only present for line text. */
-  lineLabels?: LineLabelInfo[]
-  /** Raw text strings per label, parallel with labelPositions. For cross-tile dedup keying. */
-  labelTexts?: string[]
+    /** Interleaved vertex data matching GlyphVertexLayout */
+    vertices: ArrayBuffer;
+    /** Uint16 index data */
+    indices: ArrayBuffer;
+    /** Number of indices (= drawElements count) */
+    count: number;
+    /** Label anchor positions in tile coords (for debugging / collision) */
+    labelPositions: { x: number; y: number }[];
+    /** Label sizes in screen pixels at layout fontSize (for collision boxes) */
+    labelSizes?: { w: number; h: number }[];
+    /** Number of index-buffer indices per label (for per-label draw calls) */
+    indicesPerLabel?: number[];
+    /** Line label metadata for per-frame projection. Only present for line text. */
+    lineLabels?: LineLabelInfo[];
+    /** Raw text strings per label, parallel with labelPositions. For cross-tile dedup keying. */
+    labelTexts?: string[];
 
-  // StructArray data (new — produced by worker, consumed by vendored projection)
-  placedSymbolArrayBuffer?: ArrayBuffer
-  glyphOffsetArrayBuffer?: ArrayBuffer
-  lineVertexArrayBuffer?: ArrayBuffer
-  symbolInstanceArrayBuffer?: ArrayBuffer
-  collisionBoxArrayBuffer?: ArrayBuffer
-  placedSymbolCount?: number
-  glyphOffsetCount?: number
-  lineVertexCount?: number
-  symbolInstanceCount?: number
-  collisionBoxCount?: number
-}
+    // StructArray data (new — produced by worker, consumed by vendored projection)
+    placedSymbolArrayBuffer?: ArrayBuffer;
+    glyphOffsetArrayBuffer?: ArrayBuffer;
+    lineVertexArrayBuffer?: ArrayBuffer;
+    symbolInstanceArrayBuffer?: ArrayBuffer;
+    collisionBoxArrayBuffer?: ArrayBuffer;
+    placedSymbolCount?: number;
+    glyphOffsetCount?: number;
+    lineVertexCount?: number;
+    symbolInstanceCount?: number;
+    collisionBoxCount?: number;
+};

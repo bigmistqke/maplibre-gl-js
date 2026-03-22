@@ -1,25 +1,25 @@
-import type { RenderExtension, RenderContext } from '@modular/core/render-extension.ts'
+import type {RenderExtension, RenderContext} from '@modular/core/render-extension.ts';
 
 export class RenderExtensions {
-  private _extensions: RenderExtension[] = []
+    private _extensions: RenderExtension[] = [];
 
-  add(extension: RenderExtension): void {
-    this._extensions.push(extension)
-  }
+    add(extension: RenderExtension): void {
+        this._extensions.push(extension);
+    }
 
-  remove(id: string): void {
-    this._extensions = this._extensions.filter(e => e.id !== id)
-  }
+    remove(id: string): void {
+        this._extensions = this._extensions.filter(e => e.id !== id);
+    }
 
-  getAll(): RenderExtension[] {
-    return [...this._extensions]
-  }
+    getAll(): RenderExtension[] {
+        return [...this._extensions];
+    }
 
-  runBeforeTiles(ctx: RenderContext): void {
-    for (const ext of this._extensions) ext.beforeTiles?.(ctx)
-  }
+    runBeforeTiles(ctx: RenderContext): void {
+        for (const ext of this._extensions) ext.beforeTiles?.(ctx);
+    }
 
-  runAfterTiles(ctx: RenderContext): void {
-    for (const ext of this._extensions) ext.afterTiles?.(ctx)
-  }
+    runAfterTiles(ctx: RenderContext): void {
+        for (const ext of this._extensions) ext.afterTiles?.(ctx);
+    }
 }

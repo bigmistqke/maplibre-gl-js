@@ -10,23 +10,23 @@
  *   debug('draw called', { key })
  */
 export function createDebug(subject: string, enabled: boolean) {
-  if (import.meta.env.PROD || !enabled) return _noop
-  return function debug(message: string, extra?: unknown) {
-    if (extra !== undefined) {
-      console.log(
-        `%c[${subject}]%c ${message}`,
-        'color: #6af; font-weight: bold',
-        'color: inherit',
-        extra,
-      )
-    } else {
-      console.log(
-        `%c[${subject}]%c ${message}`,
-        'color: #6af; font-weight: bold',
-        'color: inherit',
-      )
-    }
-  }
+    if (import.meta.env.PROD || !enabled) return _noop;
+    return function debug(message: string, extra?: unknown) {
+        if (extra !== undefined) {
+            console.log(
+                `%c[${subject}]%c ${message}`,
+                'color: #6af; font-weight: bold',
+                'color: inherit',
+                extra,
+            );
+        } else {
+            console.log(
+                `%c[${subject}]%c ${message}`,
+                'color: #6af; font-weight: bold',
+                'color: inherit',
+            );
+        }
+    };
 }
 
 function _noop(_message: string, _extra?: unknown) {}

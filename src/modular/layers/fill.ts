@@ -1,52 +1,52 @@
-import type { TileID } from '@modular/core/types'
-import type { TileService } from '@modular/core/tile-service'
-import type { ProgramDefinition } from '@modular/core/types'
-import type { DrawContext } from '@modular/core/render-extension'
-import type { RendererAPI } from '@modular/core/renderer-api'
-import { VectorTile } from '@mapbox/vector-tile'
-import Pbf from 'pbf'
-import earcut from 'earcut'
+import type {TileID} from '@modular/core/types';
+import type {TileService} from '@modular/core/tile-service';
+import type {ProgramDefinition} from '@modular/core/types';
+import type {DrawContext} from '@modular/core/render-extension';
+import type {RendererAPI} from '@modular/core/renderer-api';
+import {VectorTile} from '@mapbox/vector-tile';
+import Pbf from 'pbf';
+import earcut from 'earcut';
 
 export class VectorTileService implements TileService {
-  private _pending = new globalThis.Map<string, AbortController>()
+    private _pending = new globalThis.Map<string, AbortController>();
 
-  async request(tileID: TileID, url: string): Promise<Transferable[]> {
-    const controller = new AbortController()
-    this._pending.set(tileID.key, controller)
-    try {
-      const res = await fetch(url, { signal: controller.signal })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const buf = await res.arrayBuffer()
-      if (!this._pending.has(tileID.key)) return []
-      this._pending.delete(tileID.key)
-      return [buf]
-    } catch {
-      this._pending.delete(tileID.key)
-      return []
+    async request(tileID: TileID, url: string): Promise<Transferable[]> {
+        const controller = new AbortController();
+        this._pending.set(tileID.key, controller);
+        try {
+            const res = await fetch(url, {signal: controller.signal});
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const buf = await res.arrayBuffer();
+            if (!this._pending.has(tileID.key)) return [];
+            this._pending.delete(tileID.key);
+            return [buf];
+        } catch {
+            this._pending.delete(tileID.key);
+            return [];
+        }
     }
-  }
 
-  cancel(key: string): void {
-    this._pending.get(key)?.abort()
-    this._pending.delete(key)
-  }
+    cancel(key: string): void {
+        this._pending.get(key)?.abort();
+        this._pending.delete(key);
+    }
 
-  destroy(): void {
-    for (const c of this._pending.values()) c.abort()
-    this._pending.clear()
-  }
+    destroy(): void {
+        for (const c of this._pending.values()) c.abort();
+        this._pending.clear();
+    }
 }
 
 // GLSL
 const fillVert = `
 attribute vec2 a_pos;
 void main() { gl_Position = projectTile(a_pos); }
-`
+`;
 const fillFrag = `
 precision mediump float;
 uniform vec4 u_color;
 void main() { gl_FragColor = u_color; }
-`
+`;
 
 // Tessellation
 interface Point { x: number; y: number }
@@ -54,11 +54,11 @@ export interface TessellationResult { vertices: Float32Array; indices: Uint32Arr
 
 /** Shoelace signed area. Negative = clockwise in y-down tile space = outer ring (MVT spec). */
 function signedArea(ring: Point[]): number {
-  let area = 0
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    area += (ring[j].x + ring[i].x) * (ring[j].y - ring[i].y)
-  }
-  return area / 2
+    let area = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        area += (ring[j].x + ring[i].x) * (ring[j].y - ring[i].y);
+    }
+    return area / 2;
 }
 
 /**
@@ -67,123 +67,123 @@ function signedArea(ring: Point[]): number {
  * Each new clockwise ring starts a new polygon and is tessellated independently.
  */
 export function tessellatePolygon(rings: Point[][]): TessellationResult {
-  const allVerts: number[] = []
-  const allIdx: number[] = []
-  let flat: number[] = []
-  let holeIndices: number[] = []
-  let vi = 0
+    const allVerts: number[] = [];
+    const allIdx: number[] = [];
+    let flat: number[] = [];
+    let holeIndices: number[] = [];
+    let vi = 0;
 
-  function flush() {
-    if (flat.length === 0) return
-    const idxOffset = allVerts.length / 2
-    const localIdx = earcut(flat, holeIndices.length ? holeIndices : undefined, 2)
-    for (const v of flat) allVerts.push(v)
-    for (const idx of localIdx) allIdx.push(idx + idxOffset)
-    flat = []
-    holeIndices = []
-    vi = 0
-  }
-
-  for (const ring of rings) {
-    if (signedArea(ring) < 0) {
-      flush()  // CW in tile coords = new outer ring — flush previous polygon first
-    } else {
-      holeIndices.push(vi)  // CCW in tile coords = hole for current outer ring
+    function flush() {
+        if (flat.length === 0) return;
+        const idxOffset = allVerts.length / 2;
+        const localIdx = earcut(flat, holeIndices.length ? holeIndices : undefined, 2);
+        for (const v of flat) allVerts.push(v);
+        for (const idx of localIdx) allIdx.push(idx + idxOffset);
+        flat = [];
+        holeIndices = [];
+        vi = 0;
     }
-    for (const p of ring) { flat.push(p.x, p.y); vi++ }
-  }
-  flush()
 
-  return {
-    vertices: new Float32Array(allVerts),
-    indices: new Uint32Array(allIdx),
-  }
+    for (const ring of rings) {
+        if (signedArea(ring) < 0) {
+            flush();  // CW in tile coords = new outer ring — flush previous polygon first
+        } else {
+            holeIndices.push(vi);  // CCW in tile coords = hole for current outer ring
+        }
+        for (const p of ring) { flat.push(p.x, p.y); vi++; }
+    }
+    flush();
+
+    return {
+        vertices: new Float32Array(allVerts),
+        indices: new Uint32Array(allIdx),
+    };
 }
 
 function parseColor(c: string): [number, number, number, number] {
-  const h = c.replace('#', '')
-  if (h.length === 3) return [parseInt(h[0]+h[0],16)/255, parseInt(h[1]+h[1],16)/255, parseInt(h[2]+h[2],16)/255, 1]
-  return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1]
+    const h = c.replace('#', '');
+    if (h.length === 3) return [parseInt(h[0]+h[0],16)/255, parseInt(h[1]+h[1],16)/255, parseInt(h[2]+h[2],16)/255, 1];
+    return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1];
 }
 
 export interface FillLayerOptions {
-  source: string
-  sourceLayer: string
-  color?: string
-  opacity?: number
+    source: string;
+    sourceLayer: string;
+    color?: string;
+    opacity?: number;
 }
 
 export class FillLayer {
-  readonly type = 'fill' as const
-  static programs: ProgramDefinition[] = [{ name: 'fill', vertex: fillVert, fragment: fillFrag }]
-  static TileService = VectorTileService
+    readonly type = 'fill' as const;
+    static programs: ProgramDefinition[] = [{name: 'fill', vertex: fillVert, fragment: fillFrag}];
+    static TileService = VectorTileService;
 
-  readonly source: string
-  readonly sourceLayer: string
-  readonly color: string
-  readonly opacity: number
+    readonly source: string;
+    readonly sourceLayer: string;
+    readonly color: string;
+    readonly opacity: number;
 
-  private _tileBuffers = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number }>()
-  private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer'>>
+    private _tileBuffers = new globalThis.Map<string, { verts: WebGLBuffer; idx: WebGLBuffer; count: number }>();
+    private _webgl!: Required<Pick<RendererAPI, 'createGeometryBuffer'>>;
 
-  constructor(options: FillLayerOptions) {
-    this.source = options.source
-    this.sourceLayer = options.sourceLayer
-    this.color = options.color ?? '#000000'
-    this.opacity = options.opacity ?? 1
-  }
-
-  onAdd(renderer: RendererAPI): void {
-    this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer'>>
-  }
-
-  evictTile(key: string): void {
-    this._tileBuffers.delete(key)
-  }
-
-  draw(ctx: DrawContext): void {
-    const { gl, programs, paint, tileID, tileData } = ctx
-    if (!tileData) return
-    const program = programs.get('fill')
-    if (!program) return
-
-    const key = tileID.key
-    if (!this._tileBuffers.has(key)) {
-      const tile = new VectorTile(new Pbf(tileData as ArrayBuffer))
-      const layer = tile.layers[this.sourceLayer]
-      if (!layer || layer.length === 0) return
-
-      const allVerts: number[] = []
-      const allIdx: number[] = []
-      let vertOffset = 0
-
-      for (let i = 0; i < layer.length; i++) {
-        const feat = layer.feature(i)
-        if (feat.type !== 3) continue
-        const { vertices, indices } = tessellatePolygon(feat.loadGeometry())
-        for (const v of vertices) allVerts.push(v)
-        for (const idx of indices) allIdx.push(idx + vertOffset)
-        vertOffset += vertices.length / 2
-      }
-
-      if (allIdx.length === 0) return
-
-      const vertBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:verts`, new Float32Array(allVerts), gl.ARRAY_BUFFER)
-      const idxBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:idx`, new Uint32Array(allIdx), gl.ELEMENT_ARRAY_BUFFER)
-      this._tileBuffers.set(key, { verts: vertBuf, idx: idxBuf, count: allIdx.length })
+    constructor(options: FillLayerOptions) {
+        this.source = options.source;
+        this.sourceLayer = options.sourceLayer;
+        this.color = options.color ?? '#000000';
+        this.opacity = options.opacity ?? 1;
     }
 
-    const bufs = this._tileBuffers.get(key)
-    if (!bufs) return
+    onAdd(renderer: RendererAPI): void {
+        this._webgl = renderer as Required<Pick<RendererAPI, 'createGeometryBuffer'>>;
+    }
 
-    gl.useProgram(program)
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufs.verts)
-    const aPos = gl.getAttribLocation(program, 'a_pos')
-    gl.enableVertexAttribArray(aPos)
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
-    const [r, g, b, a] = parseColor((paint['fill-color'] as string | undefined) ?? this.color)
-    gl.uniform4f(gl.getUniformLocation(program, 'u_color'), r, g, b, a * ((paint['fill-opacity'] as number | undefined) ?? this.opacity))
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx)
-    gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_INT, 0)
-  }
+    evictTile(key: string): void {
+        this._tileBuffers.delete(key);
+    }
+
+    draw(ctx: DrawContext): void {
+        const {gl, programs, paint, tileID, tileData} = ctx;
+        if (!tileData) return;
+        const program = programs.get('fill');
+        if (!program) return;
+
+        const key = tileID.key;
+        if (!this._tileBuffers.has(key)) {
+            const tile = new VectorTile(new Pbf(tileData as ArrayBuffer));
+            const layer = tile.layers[this.sourceLayer];
+            if (!layer || layer.length === 0) return;
+
+            const allVerts: number[] = [];
+            const allIdx: number[] = [];
+            let vertOffset = 0;
+
+            for (let i = 0; i < layer.length; i++) {
+                const feat = layer.feature(i);
+                if (feat.type !== 3) continue;
+                const {vertices, indices} = tessellatePolygon(feat.loadGeometry());
+                for (const v of vertices) allVerts.push(v);
+                for (const idx of indices) allIdx.push(idx + vertOffset);
+                vertOffset += vertices.length / 2;
+            }
+
+            if (allIdx.length === 0) return;
+
+            const vertBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:verts`, new Float32Array(allVerts), gl.ARRAY_BUFFER);
+            const idxBuf = this._webgl.createGeometryBuffer(`tile:${key}:fill:idx`, new Uint32Array(allIdx), gl.ELEMENT_ARRAY_BUFFER);
+            this._tileBuffers.set(key, {verts: vertBuf, idx: idxBuf, count: allIdx.length});
+        }
+
+        const bufs = this._tileBuffers.get(key);
+        if (!bufs) return;
+
+        gl.useProgram(program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufs.verts);
+        const aPos = gl.getAttribLocation(program, 'a_pos');
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+        const [r, g, b, a] = parseColor((paint['fill-color'] as string | undefined) ?? this.color);
+        gl.uniform4f(gl.getUniformLocation(program, 'u_color'), r, g, b, a * ((paint['fill-opacity'] as number | undefined) ?? this.opacity));
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufs.idx);
+        gl.drawElements(gl.TRIANGLES, bufs.count, gl.UNSIGNED_INT, 0);
+    }
 }

@@ -1,52 +1,52 @@
-import type { mat4, vec2 } from 'gl-matrix'
-import type Point from '@mapbox/point-geometry'
+import type {mat4, vec2} from 'gl-matrix';
+import type Point from '@mapbox/point-geometry';
 
 export interface PointProjection {
-  point: Point
-  signedDistanceFromCamera: number
-  isOccluded: boolean
+    point: Point;
+    signedDistanceFromCamera: number;
+    isOccluded: boolean;
 }
 
 export interface UnwrappedTileIDLike {
-  canonical: { z: number; x: number; y: number }
-  wrap: number
-  key?: string | number
+    canonical: { z: number; x: number; y: number };
+    wrap: number;
+    key?: string | number;
 }
 
 export interface ISymbolTransform {
-  width: number
-  height: number
-  cameraToCenterDistance: number
-  pitch: number
-  angle: number // bearing in radians
-  zoom: number
-  // Used by projection.ts getTileSkewVectors
-  rollInRadians: number
-  pitchInRadians: number
-  bearingInRadians: number
-  // Used by projection.ts getGlCoordMatrix
-  pixelsToClipSpaceMatrix: mat4
-  // Used by projection.ts updateLineLabels for pitched text correction
-  getPitchedTextCorrection(textAnchorX: number, textAnchorY: number, unwrappedTileID: UnwrappedTileIDLike): number
-  calculatePosMatrix(unwrappedTileID: UnwrappedTileIDLike): mat4
-  projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileIDLike, getElevation: (x: number, y: number) => number): PointProjection
+    width: number;
+    height: number;
+    cameraToCenterDistance: number;
+    pitch: number;
+    angle: number; // bearing in radians
+    zoom: number;
+    // Used by projection.ts getTileSkewVectors
+    rollInRadians: number;
+    pitchInRadians: number;
+    bearingInRadians: number;
+    // Used by projection.ts getGlCoordMatrix
+    pixelsToClipSpaceMatrix: mat4;
+    // Used by projection.ts updateLineLabels for pitched text correction
+    getPitchedTextCorrection(textAnchorX: number, textAnchorY: number, unwrappedTileID: UnwrappedTileIDLike): number;
+    calculatePosMatrix(unwrappedTileID: UnwrappedTileIDLike): mat4;
+    projectTileCoordinates(x: number, y: number, unwrappedTileID: UnwrappedTileIDLike, getElevation: (x: number, y: number) => number): PointProjection;
 }
 
 export interface ISymbolTile {
-  tileID: { canonical: { z: number; x: number; y: number }; key: string | number }
-  holdingForFade(): boolean
+    tileID: { canonical: { z: number; x: number; y: number }; key: string | number };
+    holdingForFade(): boolean;
 }
 
 export interface ISymbolStyleLayer {
-  id: string
-  layout: {
-    get(name: string): { evaluate(...args: any[]): any }
-  }
+    id: string;
+    layout: {
+        get(name: string): { evaluate(...args: any[]): any };
+    };
 }
 
 export interface FeatureKeyLike {
-  bucketInstanceId: number
-  featureIndex: number
-  collisionGroupID: number
-  overlapMode: string
+    bucketInstanceId: number;
+    featureIndex: number;
+    collisionGroupID: number;
+    overlapMode: string;
 }

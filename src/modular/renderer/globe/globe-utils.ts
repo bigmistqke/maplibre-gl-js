@@ -1,33 +1,33 @@
-import {vec3} from 'gl-matrix'
-import type {ReadonlyVec4} from 'gl-matrix'
+import {vec3} from 'gl-matrix';
+import type {ReadonlyVec4} from 'gl-matrix';
 
 // Inline helpers from MapLibre's util.ts
-function clamp(n: number, lo: number, hi: number): number { return Math.min(Math.max(n, lo), hi) }
-function lerp(a: number, b: number, t: number): number { return a + (b - a) * t }
+function clamp(n: number, lo: number, hi: number): number { return Math.min(Math.max(n, lo), hi); }
+function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
 function wrap(n: number, min: number, max: number): number {
-    const d = max - min
-    const w = ((n - min) % d + d) % d + min
-    return w === min ? max : w
+    const d = max - min;
+    const w = ((n - min) % d + d) % d + min;
+    return w === min ? max : w;
 }
-function mod(n: number, m: number): number { return ((n % m) + m) % m }
+function mod(n: number, m: number): number { return ((n % m) + m) % m; }
 function remapSaturate(value: number, inLow: number, inHigh: number, outLow: number, outHigh: number): number {
-    return clamp((value - inLow) / (inHigh - inLow), 0, 1) * (outHigh - outLow) + outLow
+    return clamp((value - inLow) / (inHigh - inLow), 0, 1) * (outHigh - outLow) + outLow;
 }
-function scaleZoom(scale: number): number { return Math.log(scale) / Math.LN2 }
-function createVec3f64(): vec3 { return new Float64Array(3) as unknown as vec3 }
+function scaleZoom(scale: number): number { return Math.log(scale) / Math.LN2; }
+function createVec3f64(): vec3 { return new Float64Array(3) as unknown as vec3; }
 
 const MAX_VALID_LATITUDE = 85.051129;
 
 // Inline LngLat as a plain object with constructor
 interface LngLatLike { lng: number; lat: number }
 class LngLat implements LngLatLike {
-    lng: number
-    lat: number
-    constructor(lng: number, lat: number) { this.lng = lng; this.lat = lat }
+    lng: number;
+    lat: number;
+    constructor(lng: number, lat: number) { this.lng = lng; this.lat = lat; }
 }
 
 // Mini uses 4096 tile extent (MVT default); MapLibre uses 8192
-const EXTENT = 4096
+const EXTENT = 4096;
 
 export function getGlobeCircumferencePixels(transform: {worldSize: number; center: {lat: number}}): number {
     const radius = getGlobeRadiusPixels(transform.worldSize, transform.center.lat);

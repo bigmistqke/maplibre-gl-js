@@ -1,11 +1,11 @@
 // @ts-nocheck — verbatim copy from MapLibre; strict errors suppressed intentionally
-import earcut from 'earcut'
-import Point from '@mapbox/point-geometry'
-import type { SubdivisionGranularityExpression } from '@modular/renderer/globe/subdivision_granularity_settings'
-export { SubdivisionGranularitySetting, SubdivisionGranularityExpression } from '@modular/renderer/globe/subdivision_granularity_settings'
+import earcut from 'earcut';
+import Point from '@mapbox/point-geometry';
+import type {SubdivisionGranularityExpression} from '@modular/renderer/globe/subdivision_granularity_settings';
+export {SubdivisionGranularitySetting, SubdivisionGranularityExpression} from '@modular/renderer/globe/subdivision_granularity_settings';
 
 // Mini uses 4096 tile extent (MVT default); MapLibre uses 8192
-const EXTENT = 4096
+const EXTENT = 4096;
 
 // Minimal CanonicalTileID stub matching MapLibre's interface
 interface CanonicalTileID { z: number; x: number; y: number }

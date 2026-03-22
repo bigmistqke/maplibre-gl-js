@@ -158,4 +158,4 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
     vec3 spherePos = projectToSphere(posInTile, posInTile);
     return interpolateProjectionFor3D(posInTile, spherePos, elevation);
 }
-`
+`;

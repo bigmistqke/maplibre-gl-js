@@ -49,7 +49,7 @@ void main() {
   gl_Position = projectTileWithElevation(tilePos, elevation * u_exaggeration);
   v_uv = a_pos;
 }
-`
+`;
 
 export const TERRAIN_FRAG = /* glsl */`
 precision mediump float;
@@ -62,4 +62,4 @@ void main() {
   // into the FBO with Y=0 at the top (tile space). Flip v_uv.y to correct the orientation.
   fragColor = texture(u_map_texture, vec2(v_uv.x, 1.0 - v_uv.y));
 }
-`
+`;

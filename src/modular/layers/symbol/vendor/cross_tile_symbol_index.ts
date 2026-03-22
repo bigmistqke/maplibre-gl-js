@@ -2,410 +2,410 @@
 // Source: src/symbol/cross_tile_index.ts
 // Modifications: import paths, type narrowing
 
-import KDBush from 'kdbush'
+import KDBush from 'kdbush';
 
-const EXTENT = 4096
+const EXTENT = 4096;
 
 // Round anchor positions to roughly 4 pixel grid
-const roundingFactor = 512 / EXTENT / 2
+const roundingFactor = 512 / EXTENT / 2;
 
-export const KDBUSH_THRESHHOLD = 128
+export const KDBUSH_THRESHHOLD = 128;
 
 // Minimal structural type replacing MapLibre's OverscaledTileID
 export interface OverscaledTileIDLike {
-  overscaledZ: number
-  wrap: number
-  key: string | number
-  canonical: { z: number; x: number; y: number }
-  isChildOf(parent: OverscaledTileIDLike): boolean
-  scaledTo(targetZ: number): OverscaledTileIDLike
-  unwrapTo(wrap: number): OverscaledTileIDLike
+    overscaledZ: number;
+    wrap: number;
+    key: string | number;
+    canonical: { z: number; x: number; y: number };
+    isChildOf(parent: OverscaledTileIDLike): boolean;
+    scaledTo(targetZ: number): OverscaledTileIDLike;
+    unwrapTo(wrap: number): OverscaledTileIDLike;
 }
 
 // Minimal structural type replacing MapLibre's SymbolBucket
 export interface SymbolBucketLike {
-  symbolInstances: {
-    length: number
-    get(i: number): {
-      key: number
-      crossTileID: number
-      anchorX: number
-      anchorY: number
-    }
-  }
-  bucketInstanceId: number
-  layerIds: string[]
+    symbolInstances: {
+        length: number;
+        get(i: number): {
+            key: number;
+            crossTileID: number;
+            anchorX: number;
+            anchorY: number;
+        };
+    };
+    bucketInstanceId: number;
+    layerIds: string[];
 }
 
 interface SymbolsByKeyEntry {
-  index?: KDBush
-  positions?: { x: number; y: number }[]
-  crossTileIDs: number[]
+    index?: KDBush;
+    positions?: { x: number; y: number }[];
+    crossTileIDs: number[];
 }
 
 class TileLayerIndex {
-  _symbolsByKey: Record<number, SymbolsByKeyEntry> = {}
+    _symbolsByKey: Record<number, SymbolsByKeyEntry> = {};
 
-  constructor(
-    public tileID: OverscaledTileIDLike,
-    symbolInstances: SymbolBucketLike['symbolInstances'],
-    public bucketInstanceId: number,
-  ) {
+    constructor(
+        public tileID: OverscaledTileIDLike,
+        symbolInstances: SymbolBucketLike['symbolInstances'],
+        public bucketInstanceId: number,
+    ) {
     // group the symbolInstances by key
-    const symbolInstancesByKey = new Map<
-      number,
-      Array<{ key: number; crossTileID: number; anchorX: number; anchorY: number }>
-    >()
-    for (let i = 0; i < symbolInstances.length; i++) {
-      const symbolInstance = symbolInstances.get(i)
-      const key = symbolInstance.key
-      const instances = symbolInstancesByKey.get(key)
-      if (instances) {
-        // This tile may have multiple symbol instances with the same key
-        // Store each one along with its coordinates
-        instances.push(symbolInstance)
-      } else {
-        symbolInstancesByKey.set(key, [symbolInstance])
-      }
-    }
-
-    // index the SymbolInstances in each bucket
-    for (const [key, symbols] of symbolInstancesByKey) {
-      const positions = symbols.map((symbolInstance) => ({
-        x: Math.floor(symbolInstance.anchorX * roundingFactor),
-        y: Math.floor(symbolInstance.anchorY * roundingFactor),
-      }))
-      const crossTileIDs = symbols.map((v) => v.crossTileID)
-      const entry: SymbolsByKeyEntry = { positions, crossTileIDs }
-
-      // once we get too many symbols for a given key, it becomes much faster to index it before queries
-      if (entry.positions && entry.positions.length > KDBUSH_THRESHHOLD) {
-        const index = new KDBush(entry.positions.length, 16, Uint16Array)
-        for (const { x, y } of entry.positions) index.add(x, y)
-        index.finish()
-
-        // clear all references to the original positions data
-        delete entry.positions
-        entry.index = index
-      }
-
-      this._symbolsByKey[key] = entry
-    }
-  }
-
-  // Converts the coordinates of the input symbol instance into coordinates that can be compared
-  // against other symbols in this index. Coordinates are:
-  // (1) local-tile-based (so after correction we get x,y values relative to our local anchorX/Y)
-  // (2) converted to the z-scale of this TileLayerIndex
-  // (3) down-sampled by "roundingFactor" from tile coordinate precision in order to be
-  //     more tolerant of small differences between tiles.
-  getScaledCoordinates(
-    symbolInstance: { anchorX: number; anchorY: number },
-    childTileID: OverscaledTileIDLike,
-  ): { x: number; y: number } {
-    const { x: localX, y: localY, z: localZ } = this.tileID.canonical
-    const { x, y, z } = childTileID.canonical
-
-    const zDifference = z - localZ
-    const scale = roundingFactor / Math.pow(2, zDifference)
-    const xWorld = (x * EXTENT + symbolInstance.anchorX) * scale
-    const yWorld = (y * EXTENT + symbolInstance.anchorY) * scale
-    const xOffset = localX * EXTENT * roundingFactor
-    const yOffset = localY * EXTENT * roundingFactor
-    const result = {
-      x: Math.floor(xWorld - xOffset),
-      y: Math.floor(yWorld - yOffset),
-    }
-
-    return result
-  }
-
-  findMatches(
-    symbolInstances: SymbolBucketLike['symbolInstances'],
-    newTileID: OverscaledTileIDLike,
-    zoomCrossTileIDs: { [crossTileID: number]: boolean },
-  ) {
-    const tolerance =
-      this.tileID.canonical.z < newTileID.canonical.z
-        ? 1
-        : Math.pow(2, this.tileID.canonical.z - newTileID.canonical.z)
-
-    for (let i = 0; i < symbolInstances.length; i++) {
-      const symbolInstance = symbolInstances.get(i)
-      if (symbolInstance.crossTileID) {
-        // already has a match, skip
-        continue
-      }
-
-      const entry = this._symbolsByKey[symbolInstance.key]
-      if (!entry) {
-        // No symbol with this key in this bucket
-        continue
-      }
-
-      const scaledSymbolCoord = this.getScaledCoordinates(symbolInstance, newTileID)
-
-      if (entry.index) {
-        // Return any symbol with the same keys whose coordinates are within 1
-        // grid unit. (with a 4px grid, this covers a 12px by 12px area)
-        const indexes = entry.index
-          .range(
-            scaledSymbolCoord.x - tolerance,
-            scaledSymbolCoord.y - tolerance,
-            scaledSymbolCoord.x + tolerance,
-            scaledSymbolCoord.y + tolerance,
-          )
-          .sort()
-
-        for (const idx of indexes) {
-          const crossTileID = entry.crossTileIDs[idx]
-
-          if (!zoomCrossTileIDs[crossTileID]) {
-            // Once we've marked ourselves duplicate against this parent symbol,
-            // don't let any other symbols at the same zoom level duplicate against
-            // the same parent (see issue #5993)
-            zoomCrossTileIDs[crossTileID] = true
-            symbolInstance.crossTileID = crossTileID
-            break
-          }
+        const symbolInstancesByKey = new Map<
+            number,
+            Array<{ key: number; crossTileID: number; anchorX: number; anchorY: number }>
+        >();
+        for (let i = 0; i < symbolInstances.length; i++) {
+            const symbolInstance = symbolInstances.get(i);
+            const key = symbolInstance.key;
+            const instances = symbolInstancesByKey.get(key);
+            if (instances) {
+                // This tile may have multiple symbol instances with the same key
+                // Store each one along with its coordinates
+                instances.push(symbolInstance);
+            } else {
+                symbolInstancesByKey.set(key, [symbolInstance]);
+            }
         }
-      } else if (entry.positions) {
-        for (let j = 0; j < entry.positions.length; j++) {
-          const thisTileSymbol = entry.positions[j]
-          const crossTileID = entry.crossTileIDs[j]
 
-          // Return any symbol with the same keys whose coordinates are within 1
-          // grid unit. (with a 4px grid, this covers a 12px by 12px area)
-          if (
-            Math.abs(thisTileSymbol.x - scaledSymbolCoord.x) <= tolerance &&
+        // index the SymbolInstances in each bucket
+        for (const [key, symbols] of symbolInstancesByKey) {
+            const positions = symbols.map((symbolInstance) => ({
+                x: Math.floor(symbolInstance.anchorX * roundingFactor),
+                y: Math.floor(symbolInstance.anchorY * roundingFactor),
+            }));
+            const crossTileIDs = symbols.map((v) => v.crossTileID);
+            const entry: SymbolsByKeyEntry = {positions, crossTileIDs};
+
+            // once we get too many symbols for a given key, it becomes much faster to index it before queries
+            if (entry.positions && entry.positions.length > KDBUSH_THRESHHOLD) {
+                const index = new KDBush(entry.positions.length, 16, Uint16Array);
+                for (const {x, y} of entry.positions) index.add(x, y);
+                index.finish();
+
+                // clear all references to the original positions data
+                delete entry.positions;
+                entry.index = index;
+            }
+
+            this._symbolsByKey[key] = entry;
+        }
+    }
+
+    // Converts the coordinates of the input symbol instance into coordinates that can be compared
+    // against other symbols in this index. Coordinates are:
+    // (1) local-tile-based (so after correction we get x,y values relative to our local anchorX/Y)
+    // (2) converted to the z-scale of this TileLayerIndex
+    // (3) down-sampled by "roundingFactor" from tile coordinate precision in order to be
+    //     more tolerant of small differences between tiles.
+    getScaledCoordinates(
+        symbolInstance: { anchorX: number; anchorY: number },
+        childTileID: OverscaledTileIDLike,
+    ): { x: number; y: number } {
+        const {x: localX, y: localY, z: localZ} = this.tileID.canonical;
+        const {x, y, z} = childTileID.canonical;
+
+        const zDifference = z - localZ;
+        const scale = roundingFactor / Math.pow(2, zDifference);
+        const xWorld = (x * EXTENT + symbolInstance.anchorX) * scale;
+        const yWorld = (y * EXTENT + symbolInstance.anchorY) * scale;
+        const xOffset = localX * EXTENT * roundingFactor;
+        const yOffset = localY * EXTENT * roundingFactor;
+        const result = {
+            x: Math.floor(xWorld - xOffset),
+            y: Math.floor(yWorld - yOffset),
+        };
+
+        return result;
+    }
+
+    findMatches(
+        symbolInstances: SymbolBucketLike['symbolInstances'],
+        newTileID: OverscaledTileIDLike,
+        zoomCrossTileIDs: { [crossTileID: number]: boolean },
+    ) {
+        const tolerance =
+            this.tileID.canonical.z < newTileID.canonical.z
+                ? 1
+                : Math.pow(2, this.tileID.canonical.z - newTileID.canonical.z);
+
+        for (let i = 0; i < symbolInstances.length; i++) {
+            const symbolInstance = symbolInstances.get(i);
+            if (symbolInstance.crossTileID) {
+                // already has a match, skip
+                continue;
+            }
+
+            const entry = this._symbolsByKey[symbolInstance.key];
+            if (!entry) {
+                // No symbol with this key in this bucket
+                continue;
+            }
+
+            const scaledSymbolCoord = this.getScaledCoordinates(symbolInstance, newTileID);
+
+            if (entry.index) {
+                // Return any symbol with the same keys whose coordinates are within 1
+                // grid unit. (with a 4px grid, this covers a 12px by 12px area)
+                const indexes = entry.index
+                    .range(
+                        scaledSymbolCoord.x - tolerance,
+                        scaledSymbolCoord.y - tolerance,
+                        scaledSymbolCoord.x + tolerance,
+                        scaledSymbolCoord.y + tolerance,
+                    )
+                    .sort();
+
+                for (const idx of indexes) {
+                    const crossTileID = entry.crossTileIDs[idx];
+
+                    if (!zoomCrossTileIDs[crossTileID]) {
+                        // Once we've marked ourselves duplicate against this parent symbol,
+                        // don't let any other symbols at the same zoom level duplicate against
+                        // the same parent (see issue #5993)
+                        zoomCrossTileIDs[crossTileID] = true;
+                        symbolInstance.crossTileID = crossTileID;
+                        break;
+                    }
+                }
+            } else if (entry.positions) {
+                for (let j = 0; j < entry.positions.length; j++) {
+                    const thisTileSymbol = entry.positions[j];
+                    const crossTileID = entry.crossTileIDs[j];
+
+                    // Return any symbol with the same keys whose coordinates are within 1
+                    // grid unit. (with a 4px grid, this covers a 12px by 12px area)
+                    if (
+                        Math.abs(thisTileSymbol.x - scaledSymbolCoord.x) <= tolerance &&
             Math.abs(thisTileSymbol.y - scaledSymbolCoord.y) <= tolerance &&
             !zoomCrossTileIDs[crossTileID]
-          ) {
-            // Once we've marked ourselves duplicate against this parent symbol,
-            // don't let any other symbols at the same zoom level duplicate against
-            // the same parent (see issue #5993)
-            zoomCrossTileIDs[crossTileID] = true
-            symbolInstance.crossTileID = crossTileID
-            break
-          }
+                    ) {
+                        // Once we've marked ourselves duplicate against this parent symbol,
+                        // don't let any other symbols at the same zoom level duplicate against
+                        // the same parent (see issue #5993)
+                        zoomCrossTileIDs[crossTileID] = true;
+                        symbolInstance.crossTileID = crossTileID;
+                        break;
+                    }
+                }
+            }
         }
-      }
     }
-  }
 
-  getCrossTileIDsLists() {
-    return Object.values(this._symbolsByKey).map(({ crossTileIDs }) => crossTileIDs)
-  }
+    getCrossTileIDsLists() {
+        return Object.values(this._symbolsByKey).map(({crossTileIDs}) => crossTileIDs);
+    }
 }
 
 class CrossTileIDs {
-  maxCrossTileID: number
-  constructor() {
-    this.maxCrossTileID = 0
-  }
-  generate() {
-    return ++this.maxCrossTileID
-  }
+    maxCrossTileID: number;
+    constructor() {
+        this.maxCrossTileID = 0;
+    }
+    generate() {
+        return ++this.maxCrossTileID;
+    }
 }
 
 class CrossTileSymbolLayerIndex {
-  indexes: {
-    [zoom in string | number]: {
-      [tileId in string | number]: TileLayerIndex
-    }
-  }
-  usedCrossTileIDs: {
-    [zoom in string | number]: {
-      [crossTileID: number]: boolean
-    }
-  }
-  lng: number
+    indexes: {
+        [zoom in string | number]: {
+            [tileId in string | number]: TileLayerIndex
+        }
+    };
+    usedCrossTileIDs: {
+        [zoom in string | number]: {
+            [crossTileID: number]: boolean;
+        }
+    };
+    lng: number;
 
-  constructor() {
-    this.indexes = {}
-    this.usedCrossTileIDs = {}
-    this.lng = 0
-  }
+    constructor() {
+        this.indexes = {};
+        this.usedCrossTileIDs = {};
+        this.lng = 0;
+    }
 
-  /*
+    /*
    * Sometimes when a user pans across the antimeridian the longitude value gets wrapped.
    * To prevent labels from flashing out and in we adjust the tileID values in the indexes
    * so that they match the new wrapped version of the map.
    */
-  handleWrapJump(lng: number) {
-    const wrapDelta = Math.round((lng - this.lng) / 360)
-    if (wrapDelta !== 0) {
-      for (const zoom in this.indexes) {
-        const zoomIndexes = this.indexes[zoom]
-        const newZoomIndex: Record<string | number, TileLayerIndex> = {}
-        for (const key in zoomIndexes) {
-          // change the tileID's wrap and add it to a new index
-          const index = zoomIndexes[key]
-          index.tileID = index.tileID.unwrapTo(index.tileID.wrap + wrapDelta)
-          newZoomIndex[index.tileID.key] = index
+    handleWrapJump(lng: number) {
+        const wrapDelta = Math.round((lng - this.lng) / 360);
+        if (wrapDelta !== 0) {
+            for (const zoom in this.indexes) {
+                const zoomIndexes = this.indexes[zoom];
+                const newZoomIndex: Record<string | number, TileLayerIndex> = {};
+                for (const key in zoomIndexes) {
+                    // change the tileID's wrap and add it to a new index
+                    const index = zoomIndexes[key];
+                    index.tileID = index.tileID.unwrapTo(index.tileID.wrap + wrapDelta);
+                    newZoomIndex[index.tileID.key] = index;
+                }
+                this.indexes[zoom] = newZoomIndex;
+            }
         }
-        this.indexes[zoom] = newZoomIndex
-      }
+        this.lng = lng;
     }
-    this.lng = lng
-  }
 
-  addBucket(
-    tileID: OverscaledTileIDLike,
-    bucket: SymbolBucketLike,
-    crossTileIDs: CrossTileIDs,
-  ) {
-    if (
-      this.indexes[tileID.overscaledZ] &&
-      this.indexes[tileID.overscaledZ][tileID.key]
+    addBucket(
+        tileID: OverscaledTileIDLike,
+        bucket: SymbolBucketLike,
+        crossTileIDs: CrossTileIDs,
     ) {
-      if (
-        this.indexes[tileID.overscaledZ][tileID.key].bucketInstanceId ===
+        if (
+            this.indexes[tileID.overscaledZ] &&
+      this.indexes[tileID.overscaledZ][tileID.key]
+        ) {
+            if (
+                this.indexes[tileID.overscaledZ][tileID.key].bucketInstanceId ===
         bucket.bucketInstanceId
-      ) {
-        return false
-      } else {
-        // We're replacing this bucket with an updated version
-        // Remove the old bucket's "used crossTileIDs" now so that
-        // the new bucket can claim them.
-        // The old index entries themselves stick around until
-        // 'removeStaleBuckets' is called.
-        this.removeBucketCrossTileIDs(
-          tileID.overscaledZ,
-          this.indexes[tileID.overscaledZ][tileID.key],
-        )
-      }
-    }
-
-    for (let i = 0; i < bucket.symbolInstances.length; i++) {
-      const symbolInstance = bucket.symbolInstances.get(i)
-      symbolInstance.crossTileID = 0
-    }
-
-    if (!this.usedCrossTileIDs[tileID.overscaledZ]) {
-      this.usedCrossTileIDs[tileID.overscaledZ] = {}
-    }
-    const zoomCrossTileIDs = this.usedCrossTileIDs[tileID.overscaledZ]
-
-    for (const zoom in this.indexes) {
-      const zoomIndexes = this.indexes[zoom]
-      if (Number(zoom) > tileID.overscaledZ) {
-        for (const id in zoomIndexes) {
-          const childIndex = zoomIndexes[id]
-          if (childIndex.tileID.isChildOf(tileID)) {
-            childIndex.findMatches(bucket.symbolInstances, tileID, zoomCrossTileIDs)
-          }
+            ) {
+                return false;
+            } else {
+                // We're replacing this bucket with an updated version
+                // Remove the old bucket's "used crossTileIDs" now so that
+                // the new bucket can claim them.
+                // The old index entries themselves stick around until
+                // 'removeStaleBuckets' is called.
+                this.removeBucketCrossTileIDs(
+                    tileID.overscaledZ,
+                    this.indexes[tileID.overscaledZ][tileID.key],
+                );
+            }
         }
-      } else {
-        const parentCoord = tileID.scaledTo(Number(zoom))
-        const parentIndex = zoomIndexes[parentCoord.key]
-        if (parentIndex) {
-          parentIndex.findMatches(bucket.symbolInstances, tileID, zoomCrossTileIDs)
+
+        for (let i = 0; i < bucket.symbolInstances.length; i++) {
+            const symbolInstance = bucket.symbolInstances.get(i);
+            symbolInstance.crossTileID = 0;
         }
-      }
-    }
 
-    for (let i = 0; i < bucket.symbolInstances.length; i++) {
-      const symbolInstance = bucket.symbolInstances.get(i)
-      if (!symbolInstance.crossTileID) {
-        // symbol did not match any known symbol, assign a new id
-        symbolInstance.crossTileID = crossTileIDs.generate()
-        zoomCrossTileIDs[symbolInstance.crossTileID] = true
-      }
-    }
-
-    if (this.indexes[tileID.overscaledZ] === undefined) {
-      this.indexes[tileID.overscaledZ] = {}
-    }
-    this.indexes[tileID.overscaledZ][tileID.key] = new TileLayerIndex(
-      tileID,
-      bucket.symbolInstances,
-      bucket.bucketInstanceId,
-    )
-
-    return true
-  }
-
-  removeBucketCrossTileIDs(zoom: string | number, removedBucket: TileLayerIndex) {
-    for (const crossTileIDs of removedBucket.getCrossTileIDsLists()) {
-      for (const crossTileID of crossTileIDs) {
-        delete this.usedCrossTileIDs[zoom][crossTileID]
-      }
-    }
-  }
-
-  removeStaleBuckets(currentIDs: { [k in string | number]: boolean }) {
-    let tilesChanged = false
-    for (const z in this.indexes) {
-      const zoomIndexes = this.indexes[z]
-      for (const tileKey in zoomIndexes) {
-        if (!currentIDs[zoomIndexes[tileKey].bucketInstanceId]) {
-          this.removeBucketCrossTileIDs(z, zoomIndexes[tileKey])
-          delete zoomIndexes[tileKey]
-          tilesChanged = true
+        if (!this.usedCrossTileIDs[tileID.overscaledZ]) {
+            this.usedCrossTileIDs[tileID.overscaledZ] = {};
         }
-      }
+        const zoomCrossTileIDs = this.usedCrossTileIDs[tileID.overscaledZ];
+
+        for (const zoom in this.indexes) {
+            const zoomIndexes = this.indexes[zoom];
+            if (Number(zoom) > tileID.overscaledZ) {
+                for (const id in zoomIndexes) {
+                    const childIndex = zoomIndexes[id];
+                    if (childIndex.tileID.isChildOf(tileID)) {
+                        childIndex.findMatches(bucket.symbolInstances, tileID, zoomCrossTileIDs);
+                    }
+                }
+            } else {
+                const parentCoord = tileID.scaledTo(Number(zoom));
+                const parentIndex = zoomIndexes[parentCoord.key];
+                if (parentIndex) {
+                    parentIndex.findMatches(bucket.symbolInstances, tileID, zoomCrossTileIDs);
+                }
+            }
+        }
+
+        for (let i = 0; i < bucket.symbolInstances.length; i++) {
+            const symbolInstance = bucket.symbolInstances.get(i);
+            if (!symbolInstance.crossTileID) {
+                // symbol did not match any known symbol, assign a new id
+                symbolInstance.crossTileID = crossTileIDs.generate();
+                zoomCrossTileIDs[symbolInstance.crossTileID] = true;
+            }
+        }
+
+        if (this.indexes[tileID.overscaledZ] === undefined) {
+            this.indexes[tileID.overscaledZ] = {};
+        }
+        this.indexes[tileID.overscaledZ][tileID.key] = new TileLayerIndex(
+            tileID,
+            bucket.symbolInstances,
+            bucket.bucketInstanceId,
+        );
+
+        return true;
     }
-    return tilesChanged
-  }
+
+    removeBucketCrossTileIDs(zoom: string | number, removedBucket: TileLayerIndex) {
+        for (const crossTileIDs of removedBucket.getCrossTileIDsLists()) {
+            for (const crossTileID of crossTileIDs) {
+                delete this.usedCrossTileIDs[zoom][crossTileID];
+            }
+        }
+    }
+
+    removeStaleBuckets(currentIDs: { [k in string | number]: boolean }) {
+        let tilesChanged = false;
+        for (const z in this.indexes) {
+            const zoomIndexes = this.indexes[z];
+            for (const tileKey in zoomIndexes) {
+                if (!currentIDs[zoomIndexes[tileKey].bucketInstanceId]) {
+                    this.removeBucketCrossTileIDs(z, zoomIndexes[tileKey]);
+                    delete zoomIndexes[tileKey];
+                    tilesChanged = true;
+                }
+            }
+        }
+        return tilesChanged;
+    }
 }
 
 export class CrossTileSymbolIndex {
-  layerIndexes: { [layerId: string]: CrossTileSymbolLayerIndex }
-  crossTileIDs: CrossTileIDs
-  maxBucketInstanceId: number
-  bucketsInCurrentPlacement: { [_: number]: boolean }
+    layerIndexes: { [layerId: string]: CrossTileSymbolLayerIndex };
+    crossTileIDs: CrossTileIDs;
+    maxBucketInstanceId: number;
+    bucketsInCurrentPlacement: { [_: number]: boolean };
 
-  constructor() {
-    this.layerIndexes = {}
-    this.crossTileIDs = new CrossTileIDs()
-    this.maxBucketInstanceId = 0
-    this.bucketsInCurrentPlacement = {}
-  }
-
-  addLayer(
-    layerId: string,
-    tiles: Array<{ tileID: OverscaledTileIDLike; bucket: SymbolBucketLike }>,
-    lng: number,
-  ) {
-    let layerIndex = this.layerIndexes[layerId]
-    if (layerIndex === undefined) {
-      layerIndex = this.layerIndexes[layerId] = new CrossTileSymbolLayerIndex()
+    constructor() {
+        this.layerIndexes = {};
+        this.crossTileIDs = new CrossTileIDs();
+        this.maxBucketInstanceId = 0;
+        this.bucketsInCurrentPlacement = {};
     }
 
-    let symbolBucketsChanged = false
-    const currentBucketIDs: { [k: number]: boolean } = {}
+    addLayer(
+        layerId: string,
+        tiles: Array<{ tileID: OverscaledTileIDLike; bucket: SymbolBucketLike }>,
+        lng: number,
+    ) {
+        let layerIndex = this.layerIndexes[layerId];
+        if (layerIndex === undefined) {
+            layerIndex = this.layerIndexes[layerId] = new CrossTileSymbolLayerIndex();
+        }
 
-    layerIndex.handleWrapJump(lng)
+        let symbolBucketsChanged = false;
+        const currentBucketIDs: { [k: number]: boolean } = {};
 
-    for (const { tileID, bucket } of tiles) {
-      if (!bucket.bucketInstanceId) {
-        ;(bucket as { bucketInstanceId: number }).bucketInstanceId =
-          ++this.maxBucketInstanceId
-      }
+        layerIndex.handleWrapJump(lng);
 
-      if (layerIndex.addBucket(tileID, bucket, this.crossTileIDs)) {
-        symbolBucketsChanged = true
-      }
-      currentBucketIDs[bucket.bucketInstanceId] = true
+        for (const {tileID, bucket} of tiles) {
+            if (!bucket.bucketInstanceId) {
+                ;(bucket as { bucketInstanceId: number }).bucketInstanceId =
+                    ++this.maxBucketInstanceId;
+            }
+
+            if (layerIndex.addBucket(tileID, bucket, this.crossTileIDs)) {
+                symbolBucketsChanged = true;
+            }
+            currentBucketIDs[bucket.bucketInstanceId] = true;
+        }
+
+        if (layerIndex.removeStaleBuckets(currentBucketIDs)) {
+            symbolBucketsChanged = true;
+        }
+
+        return symbolBucketsChanged;
     }
 
-    if (layerIndex.removeStaleBuckets(currentBucketIDs)) {
-      symbolBucketsChanged = true
+    pruneUnusedLayers(usedLayers: Array<string>) {
+        const usedLayerMap: { [layerId: string]: boolean } = {};
+        usedLayers.forEach((usedLayer) => {
+            usedLayerMap[usedLayer] = true;
+        });
+        for (const layerId in this.layerIndexes) {
+            if (!usedLayerMap[layerId]) {
+                delete this.layerIndexes[layerId];
+            }
+        }
     }
-
-    return symbolBucketsChanged
-  }
-
-  pruneUnusedLayers(usedLayers: Array<string>) {
-    const usedLayerMap: { [layerId: string]: boolean } = {}
-    usedLayers.forEach((usedLayer) => {
-      usedLayerMap[usedLayer] = true
-    })
-    for (const layerId in this.layerIndexes) {
-      if (!usedLayerMap[layerId]) {
-        delete this.layerIndexes[layerId]
-      }
-    }
-  }
 }
